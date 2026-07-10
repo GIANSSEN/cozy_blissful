@@ -8,9 +8,9 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ClientController;
 use App\Http\Controllers\API\TherapistController;
 
-// Public auth routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+// Public auth routes with rate limiting
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // Protected routes group
 Route::middleware('auth:sanctum')->group(function () {
@@ -33,11 +33,23 @@ Route::middleware('auth:sanctum')->group(function () {
     // Group 1: /admin/* -> Admin only
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'index']);
+        Route::get('/appointments', [AdminController::class, 'getAppointments']);
+        Route::post('/appointments/{id}/assign', [AdminController::class, 'assignTherapist']);
+        Route::post('/appointments/{id}/status', [AdminController::class, 'updateStatus']);
+        Route::get('/therapists', [AdminController::class, 'getTherapists']);
+        
+        // Services CRUD
+        Route::get('/services', [AdminController::class, 'getServices']);
+        Route::post('/services', [AdminController::class, 'storeService']);
+        Route::put('/services/{id}', [AdminController::class, 'updateService']);
+        Route::delete('/services/{id}', [AdminController::class, 'deleteService']);
     });
 
     // Group 2: /therapist/* -> Therapist only
     Route::middleware('role:therapist')->prefix('therapist')->group(function () {
         Route::get('/dashboard', [TherapistController::class, 'index']);
+        Route::get('/availability', [TherapistController::class, 'getAvailability']);
+        Route::post('/availability/toggle', [TherapistController::class, 'toggleAvailability']);
     });
 
     // Group 3: /booking/* -> Client only for booking management

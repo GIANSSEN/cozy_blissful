@@ -13,6 +13,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminAppointments from './pages/admin/AdminAppointments';
 import AdminServices from './pages/admin/AdminServices';
 import AdminPayments from './pages/admin/AdminPayments';
+import AdminStaff from './pages/admin/AdminStaff';
 
 // Therapist Pages
 import TherapistDashboard from './pages/therapist/TherapistDashboard';
@@ -60,6 +61,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminPayments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/staff"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminStaff />
               </ProtectedRoute>
             }
           />

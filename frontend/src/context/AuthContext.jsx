@@ -49,18 +49,19 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || 'Login failed. Please check credentials.'
+        error: err.response?.data?.message || 'Login failed. Please check credentials.',
+        errors: err.response?.data?.errors
       };
     }
   };
 
-  const register = async (name, email, password, roleChoice) => {
+  const register = async (name, email, password, passwordConfirmation) => {
     try {
       const res = await API.post('/register', {
         name,
         email,
         password,
-        role: roleChoice
+        password_confirmation: passwordConfirmation
       });
       const { access_token, role: userRole, user: userData } = res.data;
 
@@ -76,7 +77,8 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       return {
         success: false,
-        error: err.response?.data?.message || 'Registration failed. Please try again.'
+        error: err.response?.data?.message || 'Registration failed. Please try again.',
+        errors: err.response?.data?.errors
       };
     }
   };

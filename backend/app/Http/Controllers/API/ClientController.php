@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
+use App\Models\Service;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
@@ -14,49 +17,119 @@ class ClientController extends Controller
     {
         $user = $request->user();
 
+        // Fetch real appointments for this user
+        $appointments = Appointment::with(['therapist', 'service'])
+            ->where('client_id', $user->id)
+            ->orderBy('datetime', 'desc')
+            ->get();
+
+        $bookings = $appointments->map(function ($appt) {
+            return [
+                'id' => $appt->id,
+                'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
+                'service' => $appt->service ? $appt->service->name : 'Custom Service',
+                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'status' => $appt->status,
+                'notes' => $appt->notes
+            ];
+        });
+
+        // Fetch active services
+        $availableServices = Service::where('status', 'active')->get()->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'name' => $s->name,
+                'price' => $s->price,
+                'duration' => $s->duration . ' min',
+                'description' => $s->description,
+                'image' => $s->image
+            ];
+        });
+
+        // Fetch therapist list (users with therapist role)
+        $therapists = User::role('therapist')->get()->map(function ($t) {
+            return [
+                'id' => $t->id,
+                'name' => $t->name,
+                'specialty' => 'Spa Professional'
+            ];
+        });
+
         return response()->json([
             'message' => 'Client bookings retrieved successfully',
-            'client_name' => $user ? $user->name : 'Jane Client',
-            'bookings' => [
-                [
-                    'id' => 1,
-                    'therapist_name' => 'John Therapist',
-                    'service' => 'Swedish Massage (60 min)',
-                    'datetime' => '2026-07-11 10:00:00',
-                    'status' => 'Confirmed'
-                ]
-            ],
-            'available_services' => [
-                [ 'id' => 1, 'name' => 'Swedish Massage', 'price' => 80.00, 'duration' => '60 min' ],
-                [ 'id' => 2, 'name' => 'Deep Tissue Massage', 'price' => 120.00, 'duration' => '90 min' ],
-                [ 'id' => 3, 'name' => 'Aromatherapy Massage', 'price' => 95.00, 'duration' => '60 min' ]
-            ],
-            'available_therapists' => [
-                [ 'id' => 1, 'name' => 'John Therapist', 'specialty' => 'Relaxation & Swedish' ],
-                [ 'id' => 2, 'name' => 'Sarah Connor', 'specialty' => 'Deep Tissue & Sports Recovery' ]
-            ]
+            'client_name' => $user->name,
+            'bookings' => $bookings,
+            'available_services' => $availableServices,
+            'available_therapists' => $therapists
         ]);
     }
 
     /**
-     * Create a mock booking for the client.
+     * Create a real booking for the client.
      */
     public function store(Request $request)
     {
         $request->validate([
             'service' => 'required|string',
-            'therapist' => 'required|string',
+            'therapist' => 'nullable|string',
             'datetime' => 'required|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        $user = $request->user();
+
+        // 1. Find service
+        // Service could be passed as service name or service ID. Let's find it.
+        $service = Service::where('name', $request->service)
+            ->orWhere('id', $request->service)
+            ->first();
+
+        if (!$service) {
+            // Fallback: create or use default Swedish Massage
+            $service = Service::firstOrCreate(
+                ['name' => 'Swedish Massage'],
+                ['category' => 'Massage Therapy', 'price' => 749.00, 'duration' => 60]
+            );
+        }
+
+        // 2. Find therapist (if preferred)
+        $therapistId = null;
+        if ($request->therapist && $request->therapist !== 'Awaiting Assignment') {
+            $therapist = User::role('therapist')
+                ->where('name', $request->therapist)
+                ->orWhere('id', $request->therapist)
+                ->first();
+            if ($therapist) {
+                $therapistId = $therapist->id;
+            }
+        }
+
+        // Parse datetime safely
+        try {
+            $parsedDatetime = \Carbon\Carbon::parse($request->datetime);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Invalid date time format.'], 422);
+        }
+
+        // 3. Create appointment
+        $appt = Appointment::create([
+            'client_id' => $user->id,
+            'therapist_id' => $therapistId,
+            'service_id' => $service->id,
+            'datetime' => $parsedDatetime,
+            'status' => 'Pending',
+            'notes' => $request->notes,
         ]);
 
         return response()->json([
             'message' => 'Booking created successfully!',
             'booking' => [
-                'id' => rand(100, 999),
-                'therapist_name' => $request->therapist,
-                'service' => $request->service,
-                'datetime' => $request->datetime,
-                'status' => 'Pending'
+                'id' => $appt->id,
+                'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
+                'service' => $service->name,
+                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'status' => 'Pending',
+                'notes' => $appt->notes
             ]
         ], 201);
     }

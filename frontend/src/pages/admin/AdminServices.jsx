@@ -3,46 +3,46 @@ import AdminLayout from './AdminLayout';
 import API from '../../api/axios';
 import {
   Plus, Pencil, Trash2, X, Save, Search,
-  Filter, Clock, Tag, ShoppingBag, AlertCircle,
-  CheckCircle2, ChevronDown,
+  Clock, ShoppingBag, AlertCircle, CheckCircle2,
+  ChevronDown, Image,
 } from 'lucide-react';
 
-// ─── Real Cozy Blissful default services ────────────────────────────────────
+// ─── Real Cozy Blissful default services with Image URLs ────────────────────
 
 const DEFAULT_SERVICES = [
   // Massage Therapy
-  { name: 'Swedish Massage',               category: 'Massage Therapy', price: 749,  duration: 60,  description: 'Classic relaxing full-body massage with long, gliding strokes.' },
-  { name: 'Deep Tissue Massage',           category: 'Massage Therapy', price: 849,  duration: 60,  description: 'Firm pressure targeting deep muscle layers and chronic tension.' },
-  { name: 'Hilot Massage',                 category: 'Massage Therapy', price: 749,  duration: 60,  description: 'Traditional Filipino healing massage using coconut oil.' },
-  { name: 'Traditional Massage',           category: 'Massage Therapy', price: 749,  duration: 60,  description: 'Standard relaxation massage using medium pressure.' },
-  { name: 'Thai Massage',                  category: 'Massage Therapy', price: 849,  duration: 60,  description: 'Assisted stretching and acupressure for flexibility and relief.' },
-  { name: 'Post Natal Massage',            category: 'Massage Therapy', price: 899,  duration: 60,  description: 'Gentle restorative massage for mothers after childbirth.' },
-  { name: 'Hard Massage',                  category: 'Massage Therapy', price: 849,  duration: 60,  description: 'Deep, intense pressure for serious muscle tension relief.' },
-  { name: 'Combination Swedish & Hilot',   category: 'Massage Therapy', price: 899,  duration: 60,  description: 'Best of both worlds — Swedish relaxation meets Hilot healing.' },
-  { name: 'Ventosa w/ Massage',            category: 'Massage Therapy', price: 999,  duration: 60,  description: 'Cupping therapy combined with full-body relaxation massage.' },
-  { name: 'Lymphatic Massage',             category: 'Massage Therapy', price: 999,  duration: 60,  description: 'Gentle drainage technique to boost lymph flow and reduce swelling.' },
-  { name: 'Pre-Natal Massage',             category: 'Massage Therapy', price: 899,  duration: 60,  description: 'Safe, adapted massage for pregnant clients to ease discomfort.' },
-  { name: 'Body Scrub / Massage',          category: 'Massage Therapy', price: 999,  duration: 90,  description: 'Exfoliating body scrub followed by full relaxation massage.' },
-  { name: 'Couple Massage',                category: 'Massage Therapy', price: 999,  duration: 60,  description: 'Simultaneous massage for two — perfect for partners or friends.' },
+  { name: 'Swedish Massage',               category: 'Massage Therapy', price: 749,  duration: 60,  image: 'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=500&q=80', description: 'Classic relaxing full-body massage with long, gliding strokes.' },
+  { name: 'Deep Tissue Massage',           category: 'Massage Therapy', price: 849,  duration: 60,  image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=500&q=80', description: 'Firm pressure targeting deep muscle layers and chronic tension.' },
+  { name: 'Hilot Massage',                 category: 'Massage Therapy', price: 749,  duration: 60,  image: 'https://images.unsplash.com/photo-1519823551278-64ac928349d2?auto=format&fit=crop&w=500&q=80', description: 'Traditional Filipino healing massage using coconut oil.' },
+  { name: 'Traditional Massage',           category: 'Massage Therapy', price: 749,  duration: 60,  image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=500&q=80', description: 'Standard relaxation massage using medium pressure.' },
+  { name: 'Thai Massage',                  category: 'Massage Therapy', price: 849,  duration: 60,  image: 'https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=500&q=80', description: 'Assisted stretching and acupressure for flexibility and relief.' },
+  { name: 'Post Natal Massage',            category: 'Massage Therapy', price: 899,  duration: 60,  image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=500&q=80', description: 'Gentle restorative massage for mothers after childbirth.' },
+  { name: 'Hard Massage',                  category: 'Massage Therapy', price: 849,  duration: 60,  image: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=500&q=80', description: 'Deep, intense pressure for serious muscle tension relief.' },
+  { name: 'Combination Swedish & Hilot',   category: 'Massage Therapy', price: 899,  duration: 60,  image: 'https://images.unsplash.com/photo-1611078489935-0cb964de46d6?auto=format&fit=crop&w=500&q=80', description: 'Best of both worlds — Swedish relaxation meets Hilot healing.' },
+  { name: 'Ventosa w/ Massage',            category: 'Massage Therapy', price: 999,  duration: 60,  image: 'https://images.unsplash.com/photo-1519824206182-41622907f7e3?auto=format&fit=crop&w=500&q=80', description: 'Cupping therapy combined with full-body relaxation massage.' },
+  { name: 'Lymphatic Massage',             category: 'Massage Therapy', price: 999,  duration: 60,  image: 'https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=500&q=80', description: 'Gentle drainage technique to boost lymph flow and reduce swelling.' },
+  { name: 'Pre-Natal Massage',             category: 'Massage Therapy', price: 899,  duration: 60,  image: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=500&q=80', description: 'Safe, adapted massage for pregnant clients to ease discomfort.' },
+  { name: 'Body Scrub / Massage',          category: 'Massage Therapy', price: 999,  duration: 90,  image: 'https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=500&q=80', description: 'Exfoliating body scrub followed by full relaxation massage.' },
+  { name: 'Couple Massage',                category: 'Massage Therapy', price: 999,  duration: 60,  image: 'https://images.unsplash.com/photo-1519823551278-64ac928349d2?auto=format&fit=crop&w=500&q=80', description: 'Simultaneous massage for two — perfect for partners or friends.' },
   // Nail Care
-  { name: 'Manicure',                      category: 'Nail Care',       price: 299,  duration: 30,  description: 'Professional manicure including shaping, cuticle care, and polish.' },
-  { name: 'Pedicure',                      category: 'Nail Care',       price: 299,  duration: 30,  description: 'Professional pedicure with soak, scrub, shaping, and polish.' },
-  { name: 'Regular Nails (Mani & Pedi)',   category: 'Nail Care',       price: 399,  duration: 60,  description: 'Combined manicure and pedicure package at a special rate.' },
-  { name: 'Manigel',                       category: 'Nail Care',       price: 699,  duration: 60,  description: 'Gel manicure for a long-lasting, chip-free glossy finish.' },
-  { name: 'Pedigel',                       category: 'Nail Care',       price: 699,  duration: 60,  description: 'Gel pedicure for extended-wear beautiful feet.' },
-  { name: 'Gel Nails (Mani & Pedi)',       category: 'Nail Care',       price: 1199, duration: 90,  description: 'Full gel manicure and pedicure combo package.' },
-  { name: 'ManePedi Foot Spa',             category: 'Nail Care',       price: 799,  duration: 60,  description: 'Manicure, pedicure, and relaxing foot spa treatment.' },
-  { name: 'Nails Extension',               category: 'Nail Care',       price: 1499, duration: 120, description: 'Professional nail extensions for added length and strength.' },
-  { name: 'Nails Extension with Design',   category: 'Nail Care',       price: 1699, duration: 150, description: 'Nail extensions with custom nail art designs.' },
-  { name: 'Nails Extension Package',       category: 'Nail Care',       price: 1999, duration: 180, description: 'Full nail extension package — extensions, design, and finishing treatment.' },
+  { name: 'Manicure',                      category: 'Nail Care',       price: 299,  duration: 30,  image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=500&q=80', description: 'Professional manicure including shaping, cuticle care, and polish.' },
+  { name: 'Pedicure',                      category: 'Nail Care',       price: 299,  duration: 30,  image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=500&q=80', description: 'Professional pedicure with soak, scrub, shaping, and polish.' },
+  { name: 'Regular Nails (Mani & Pedi)',   category: 'Nail Care',       price: 399,  duration: 60,  image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=500&q=80', description: 'Combined manicure and pedicure package at a special rate.' },
+  { name: 'Manigel',                       category: 'Nail Care',       price: 699,  duration: 60,  image: 'https://images.unsplash.com/photo-1632345031435-8797b2d58045?auto=format&fit=crop&w=500&q=80', description: 'Gel manicure for a long-lasting, chip-free glossy finish.' },
+  { name: 'Pedigel',                       category: 'Nail Care',       price: 699,  duration: 60,  image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=500&q=80', description: 'Gel pedicure for extended-wear beautiful feet.' },
+  { name: 'Gel Nails (Mani & Pedi)',       category: 'Nail Care',       price: 1199, duration: 90,  image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=500&q=80', description: 'Full gel manicure and pedicure combo package.' },
+  { name: 'ManePedi Foot Spa',             category: 'Nail Care',       price: 799,  duration: 60,  image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=500&q=80', description: 'Manicure, pedicure, and relaxing foot spa treatment.' },
+  { name: 'Nails Extension',               category: 'Nail Care',       price: 1499, duration: 120, image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=500&q=80', description: 'Professional nail extensions for added length and strength.' },
+  { name: 'Nails Extension with Design',   category: 'Nail Care',       price: 1699, duration: 150, image: 'https://images.unsplash.com/photo-1607779097040-26e80aa78e66?auto=format&fit=crop&w=500&q=80', description: 'Nail extensions with custom nail art designs.' },
+  { name: 'Nails Extension Package',       category: 'Nail Care',       price: 1999, duration: 180, image: 'https://images.unsplash.com/photo-1632345031435-8797b2d58045?auto=format&fit=crop&w=500&q=80', description: 'Full nail extension package — extensions, design, and finishing treatment.' },
   // Other Services
-  { name: 'Ear Wax Candling',              category: 'Other Services',  price: null, duration: 30,  description: 'Ear candling therapy to gently remove excess earwax.' },
-  { name: 'Eyebrow Threading',             category: 'Other Services',  price: null, duration: 15,  description: 'Precise eyebrow shaping using traditional threading technique.' },
-  { name: 'Under Arm Waxing',              category: 'Other Services',  price: null, duration: 20,  description: 'Smooth underarm hair removal using professional wax.' },
-  { name: 'Foot Spa',                      category: 'Other Services',  price: null, duration: 45,  description: 'Relaxing foot soak, scrub, and moisturizing treatment.' },
-  { name: 'Eyelash Extensions',            category: 'Other Services',  price: null, duration: 90,  description: 'Professional lash extension application for fuller, longer lashes.' },
-  { name: 'Legs Waxing (Half or Full)',    category: 'Other Services',  price: null, duration: 30,  description: 'Smooth leg hair removal — choose half or full leg.' },
-  { name: 'Paraffin Treatment (Hand & Foot)', category: 'Other Services', price: null, duration: 45, description: 'Warm paraffin wax dip for ultra-soft hands and feet.' },
+  { name: 'Ear Wax Candling',              category: 'Other Services',  price: null, duration: 30,  image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=500&q=80', description: 'Ear candling therapy to gently remove excess earwax.' },
+  { name: 'Eyebrow Threading',             category: 'Other Services',  price: null, duration: 15,  image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=500&q=80', description: 'Precise eyebrow shaping using traditional threading technique.' },
+  { name: 'Under Arm Waxing',              category: 'Other Services',  price: null, duration: 20,  image: 'https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=500&q=80', description: 'Smooth underarm hair removal using professional wax.' },
+  { name: 'Foot Spa',                      category: 'Other Services',  price: null, duration: 45,  image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=500&q=80', description: 'Relaxing foot soak, scrub, and moisturizing treatment.' },
+  { name: 'Eyelash Extensions',            category: 'Other Services',  price: null, duration: 90,  image: 'https://images.unsplash.com/photo-1583001931096-959e9a1a6223?auto=format&fit=crop&w=500&q=80', description: 'Professional lash extension application for fuller, longer lashes.' },
+  { name: 'Legs Waxing (Half or Full)',    category: 'Other Services',  price: null, duration: 30,  image: 'https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=500&q=80', description: 'Smooth leg hair removal — choose half or full leg.' },
+  { name: 'Paraffin Treatment (Hand & Foot)', category: 'Other Services', price: null, duration: 45, image: 'https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=500&q=80', description: 'Warm paraffin wax dip for ultra-soft hands and feet.' },
 ];
 
 const CATEGORIES = ['All', 'Massage Therapy', 'Nail Care', 'Other Services'];
@@ -117,7 +117,7 @@ const AdminServices = () => {
   const [errors,    setErrors]    = useState({});
   const [deleteId,  setDeleteId]  = useState(null);
 
-  const EMPTY_FORM = { name: '', category: 'Massage Therapy', price: '', duration: '', description: '' };
+  const EMPTY_FORM = { name: '', category: 'Massage Therapy', price: '', duration: '', image: '', description: '' };
   const [form, setForm] = useState(EMPTY_FORM);
 
   // ── Load from API, fallback to defaults ────────────────────────────────
@@ -161,7 +161,6 @@ const AdminServices = () => {
     };
     try {
       if (editing) {
-        // Try API; fall back to local update
         try {
           const r = await API.put(`/admin/services/${editing.id}`, payload);
           setServices((prev) => prev.map((s) => s.id === editing.id ? { ...s, ...r.data?.service ?? payload } : s));
@@ -209,6 +208,7 @@ const AdminServices = () => {
       category:    svc.category,
       price:       svc.price !== null ? String(svc.price) : '',
       duration:    String(svc.duration),
+      image:       svc.image || '',
       description: svc.description || '',
     });
     setErrors({});
@@ -338,6 +338,14 @@ const AdminServices = () => {
                 />
               </div>
 
+              <ClayInput
+                label="Service Image URL"
+                id="svc-image"
+                placeholder="e.g. https://images.unsplash.com/..."
+                value={form.image}
+                onChange={f('image')}
+              />
+
               <div className="space-y-1.5">
                 <label htmlFor="svc-desc" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Description</label>
                 <textarea
@@ -359,7 +367,7 @@ const AdminServices = () => {
                     {DEFAULT_SERVICES.filter((d) => !services.find((s) => s.name === d.name)).map((d) => (
                       <button
                         key={d.name}
-                        onClick={() => setForm({ name: d.name, category: d.category, price: d.price !== null ? String(d.price) : '', duration: String(d.duration), description: d.description })}
+                        onClick={() => setForm({ name: d.name, category: d.category, price: d.price !== null ? String(d.price) : '', duration: String(d.duration), image: d.image, description: d.description })}
                         className="w-full text-left flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-emerald-800 transition group"
                         style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.04)' }}
                       >
@@ -464,7 +472,7 @@ const AdminServices = () => {
           </div>
 
           {/* Services grid */}
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
             {filtered.length === 0 ? (
               <div className="col-span-3 text-center py-20 text-slate-400">
                 <ShoppingBag className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -476,48 +484,64 @@ const AdminServices = () => {
                 return (
                   <div
                     key={svc.id}
-                    className="group rounded-3xl p-5 flex flex-col gap-3 transition-all hover:scale-[1.02]"
-                    style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '12px 12px 28px #eae6df, -12px -12px 28px #ffffff, inset 3px 3px 6px rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.8)' }}
+                    className="group rounded-[24px] overflow-hidden flex flex-col transition-all hover:scale-[1.02]"
+                    style={{
+                      background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)',
+                      boxShadow: '12px 12px 28px #eae6df, -12px -12px 28px #ffffff, inset 3px 3px 6px rgba(255,255,255,0.8)',
+                      border: '1px solid rgba(255,255,255,0.8)'
+                    }}
                   >
-                    {/* Header row */}
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${cs.bg} ${cs.text} flex-shrink-0`}>
-                        <span className={`w-1 h-1 rounded-full ${cs.dot}`} />
-                        {svc.category}
-                      </span>
-                      {/* Action buttons */}
-                      <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(svc)} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-emerald-700 transition" style={{ background: 'rgba(255,255,255,0.8)' }}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => setDeleteId(svc.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 transition" style={{ background: 'rgba(255,255,255,0.8)' }}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                    {/* Thumbnail representation */}
+                    {svc.image && (
+                      <div className="w-full h-36 overflow-hidden relative">
+                        <img src={svc.image} alt={svc.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                       </div>
-                    </div>
-
-                    {/* Name */}
-                    <h3 className="font-bold text-slate-800 text-sm leading-snug">{svc.name}</h3>
-
-                    {/* Description */}
-                    {svc.description && (
-                      <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{svc.description}</p>
                     )}
 
-                    {/* Price + Duration */}
-                    <div className="flex items-center justify-between pt-2 mt-auto border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                       <div>
-                        {svc.price
-                          ? <span className="text-lg font-black" style={{ color: '#062c22' }}>₱{Number(svc.price).toLocaleString()}</span>
-                          : <span className="text-xs font-semibold text-slate-400 italic">Call for price</span>
-                        }
+                        {/* Header row */}
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${cs.bg} ${cs.text} flex-shrink-0`}>
+                            <span className={`w-1 h-1 rounded-full ${cs.dot}`} />
+                            {svc.category}
+                          </span>
+                          {/* Action buttons */}
+                          <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openEdit(svc)} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-emerald-700 transition" style={{ background: 'rgba(255,255,255,0.8)' }}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setDeleteId(svc.id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 transition" style={{ background: 'rgba(255,255,255,0.8)' }}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Name */}
+                        <h3 className="font-bold text-slate-800 text-sm leading-snug">{svc.name}</h3>
+
+                        {/* Description */}
+                        {svc.description && (
+                          <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-2">{svc.description}</p>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-slate-400">
-                        <Clock className="w-3 h-3" />
-                        {svc.duration >= 60
-                          ? `${Math.floor(svc.duration / 60)}${svc.duration % 60 > 0 ? `.5` : ''} hr${svc.duration > 60 ? 's' : ''}`
-                          : `${svc.duration} min`
-                        }
+
+                      {/* Price + Duration */}
+                      <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
+                        <div>
+                          {svc.price
+                            ? <span className="text-base font-black" style={{ color: '#062c22' }}>₱{Number(svc.price).toLocaleString()}</span>
+                            : <span className="text-xs font-semibold text-slate-400 italic">Call for price</span>
+                          }
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                          <Clock className="w-3 h-3" />
+                          {svc.duration >= 60
+                            ? `${Math.floor(svc.duration / 60)}${svc.duration % 60 > 0 ? `.5` : ''} hr${svc.duration > 60 ? 's' : ''}`
+                            : `${svc.duration} min`
+                          }
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -52,18 +53,29 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'role' => 'required|string|in:admin,therapist,client',
+            'password' => [
+                'required',
+                'string',
+                'confirmed',
+                'min:8',
+                'regex:/[@$!%*?&"\'\/\\\\^#()_+\-=\[\]{};:`~<>,.?]/'
+            ],
+        ], [
+            'password.regex' => 'The password must contain at least one special character.',
+            'password.min' => 'The password must be at least 8 characters.',
         ]);
 
+        // Sanitize name to prevent XSS
+        $sanitizedName = strip_tags($request->name);
+
         $user = User::create([
-            'name' => $request->name,
+            'name' => $sanitizedName,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
-        // Assign the role using Spatie permission
-        $user->assignRole($request->role);
+        // Hardcode client role for public registration to prevent privilege escalation
+        $user->assignRole('client');
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -71,7 +83,7 @@ class AuthController extends Controller
             'message' => 'Registration successful',
             'access_token' => $token,
             'token_type' => 'Bearer',
-            'role' => $request->role,
+            'role' => 'client',
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
