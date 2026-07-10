@@ -228,12 +228,7 @@ const LandingPage = () => {
                 <span>Book Now</span>
               </Link>
             </motion.div>
-            {/* Trustpilot */}
-            <motion.div variants={heroItem} className="inline-flex flex-col p-4 rounded-2xl space-y-1" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' }}>
-              <div className="flex items-center space-x-2"><Star className="w-4 h-4 text-emerald-400 fill-emerald-400" /><span className="text-white font-semibold text-sm">Trustpilot</span></div>
-              <div className="flex space-x-0.5">{[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 text-emerald-400 fill-emerald-400" />)}</div>
-              <p className="text-emerald-200/70 text-xs"><strong>Excellent</strong> | Based on 1,000+ reviews</p>
-            </motion.div>
+            {/* Trustpilot badge removed */}
           </motion.div>
 
           {/* Right — floating image */}
