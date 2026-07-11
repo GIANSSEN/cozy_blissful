@@ -47,10 +47,19 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, role: userRole };
     } catch (err) {
+      const status = err.response?.status;
+      if (status === 429) {
+        return {
+          success: false,
+          rateLimited: true,
+          retryAfter: err.response?.data?.retry_after ?? 900,
+          error: err.response?.data?.message || 'Too many login attempts.',
+        };
+      }
       return {
         success: false,
         error: err.response?.data?.message || 'Login failed. Please check credentials.',
-        errors: err.response?.data?.errors
+        errors: err.response?.data?.errors,
       };
     }
   };
@@ -75,10 +84,19 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, role: userRole };
     } catch (err) {
+      const status = err.response?.status;
+      if (status === 429) {
+        return {
+          success: false,
+          rateLimited: true,
+          retryAfter: err.response?.data?.retry_after ?? 3600,
+          error: err.response?.data?.message || 'Too many registration attempts.',
+        };
+      }
       return {
         success: false,
         error: err.response?.data?.message || 'Registration failed. Please try again.',
-        errors: err.response?.data?.errors
+        errors: err.response?.data?.errors,
       };
     }
   };

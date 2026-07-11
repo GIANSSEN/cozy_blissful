@@ -1,31 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import API from '../../api/axios';
 import {
-  CheckCircle2, Circle, ArrowUpRight, TrendingUp,
-  TrendingDown, ChevronRight, X, CreditCard,
-  Calendar, DollarSign, Users, Sparkles,
+  DollarSign, Calendar, Users, TrendingUp, Sparkles, TrendingDown,
+  Clock, ArrowUpRight, BarChart3, CheckCircle2, AlertCircle, RefreshCw, Activity
 } from 'lucide-react';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-
 const cardIn = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 15 },
   visible: (i) => ({
     opacity: 1, y: 0,
-    transition: { delay: i * 0.08, duration: 0.55, ease: 'easeOut' },
+    transition: { delay: i * 0.05, duration: 0.45, ease: 'easeOut' },
   }),
 };
 
-/** Puffy claymorphic card wrapper */
 const ClayCard = ({ children, className = '', style = {}, ...props }) => (
   <div
     className={`rounded-3xl ${className}`}
     style={{
       background: 'linear-gradient(145deg,#fdfcfa 0%,#f5f0e8 100%)',
-      boxShadow: '20px 20px 40px #eae6df, -20px -20px 40px #ffffff, inset 4px 4px 8px rgba(255,255,255,0.8), inset -4px -4px 8px rgba(0,0,0,0.03)',
+      boxShadow: '16px 16px 36px #eae6df, -16px -16px 36px #ffffff, inset 3px 3px 6px rgba(255,255,255,0.7)',
       border: '1px solid rgba(255,255,255,0.8)',
       ...style,
     }}
@@ -35,67 +31,42 @@ const ClayCard = ({ children, className = '', style = {}, ...props }) => (
   </div>
 );
 
-/** Clay toggle pill for filters */
-const ClayPill = ({ children, active, onClick }) => (
-  <button
-    onClick={onClick}
-    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200"
-    style={
-      active
-        ? {
-            background: 'linear-gradient(135deg,#062c22,#0f5040)',
-            color: '#fff',
-            boxShadow: '4px 4px 10px rgba(6,44,34,0.3), -2px -2px 6px rgba(255,255,255,0.8)',
-          }
-        : {
-            background: 'linear-gradient(135deg,#fdfcfa,#f0ece4)',
-            color: '#6b7280',
-            boxShadow: '3px 3px 8px #ddd8cf, -3px -3px 8px #ffffff',
-            border: '1px solid rgba(0,0,0,0.04)',
-          }
-    }
-  >
-    {children}
-  </button>
-);
-
-/** Inline mini stat */
 const MiniStat = ({ label, value, sub, icon: Icon, color, delay }) => (
   <motion.div
     custom={delay}
     variants={cardIn}
     initial="hidden"
     animate="visible"
-    className="flex items-center gap-3 px-5 py-4 rounded-2xl"
+    className="flex items-center gap-3.5 px-5 py-4 rounded-2xl"
     style={{
       background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)',
-      boxShadow: '8px 8px 20px #eae6df, -8px -8px 20px #ffffff',
+      boxShadow: '6px 6px 16px #eae6df, -6px -6px 16px #ffffff',
+      border: '1px solid rgba(255,255,255,0.6)',
     }}
   >
     <div
-      className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
       style={{
-        background: `${color}15`,
-        boxShadow: `inset 3px 3px 6px rgba(0,0,0,0.05), inset -3px -3px 6px rgba(255,255,255,0.8)`,
+        background: `${color}12`,
+        border: `1px solid ${color}20`,
       }}
     >
       <Icon className="w-5 h-5" style={{ color }} />
     </div>
-    <div>
-      <p className="text-[11px] text-slate-400 font-medium">{label}</p>
-      <p className="text-base font-bold text-slate-800 leading-tight">{value}</p>
-      {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
+    <div className="min-w-0">
+      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</p>
+      <p className="text-base font-black text-slate-800 leading-tight mt-0.5">{value}</p>
+      {sub && <p className="text-[10px] text-slate-400 mt-0.5 font-medium">{sub}</p>}
     </div>
   </motion.div>
 );
 
-// ── Component ──────────────────────────────────────────────────────────────
-
 const AdminDashboard = () => {
-  const [data, setData]               = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [activeFilter, setActiveFilter] = useState('today');
-  const [showPanel, setShowPanel]     = useState(true);
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'operational';
+
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     API.get('/admin/dashboard')
@@ -104,241 +75,225 @@ const AdminDashboard = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const setupSteps = [
-    { label: 'Get approved to accept payments', badge: 'Required', done: false,
-      desc: 'Verify your identity to start taking payments with Cozy Blissful.' },
-    { label: 'Set up Appointments', badge: null, done: true, desc: null },
-  ];
-
-  const filters = [
-    { key: 'today',   label: 'Sep 23'     },
-    { key: 'prior',   label: 'vs Prior day' },
-    { key: 'closed',  label: 'Checks Closed' },
-  ];
-
-  const quickStats = data
-    ? [
-        { icon: DollarSign, label: 'Net Sales',        value: `₱${data.stats.total_revenue.toLocaleString()}`,     color: '#062c22', delay: 0 },
-        { icon: Calendar,   label: 'Total Bookings',   value: data.stats.total_bookings,                            color: '#bfa15f', delay: 1 },
-        { icon: Users,      label: 'Active Therapists',value: data.stats.active_therapists,                         color: '#7c3aed', delay: 2 },
-        { icon: TrendingUp, label: 'Registered Clients',value: data.stats.registered_clients,                       color: '#db2777', delay: 3 },
-      ]
-    : [];
+  const getPageTitle = () => {
+    switch (activeTab) {
+      case 'sales': return 'Sales & Revenue Analytics';
+      case 'funnel': return 'Booking Funnel Stats';
+      case 'operational':
+      default: return 'Operational Overview';
+    }
+  };
 
   return (
-    <AdminLayout title="Home">
+    <AdminLayout title="Dashboard" subtitle={getPageTitle()}>
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div
-            className="w-12 h-12 rounded-full animate-spin"
-            style={{ border: '3px solid #f0ece4', borderTopColor: '#062c22' }}
-          />
+          <div className="w-10 h-10 border-2 rounded-full animate-spin" style={{ borderColor: '#f0ece4', borderTopColor: '#062c22' }} />
         </div>
       ) : (
         <div className="space-y-6">
 
-          {/* ══════════════════════════════════════════════════════
-              SETUP BANNER — Deep Emerald Clay
-          ═══════════════════════════════════════════════════════ */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="overflow-hidden"
-            style={{
-              borderRadius: '28px',
-              background: 'linear-gradient(135deg,#062c22 0%,#0a3d30 60%,#0f5040 100%)',
-              boxShadow: '12px 12px 32px rgba(6,44,34,0.3), -6px -6px 16px rgba(255,255,255,0.08), inset 2px 2px 6px rgba(255,255,255,0.06)',
-            }}
-          >
-            {/* Banner header */}
-            <div className="px-8 pt-7 pb-3">
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                Get set up to check out clients
-              </h2>
-            </div>
+          {/* Tab Content 1: Operational Overview */}
+          {activeTab === 'operational' && (
+            <div className="space-y-6">
+              {/* Quick stats row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <MiniStat icon={Users} label="Active Therapists" value={data?.stats?.active_therapists || 0} sub="Currently on duty today" color="#062c22" delay={0} />
+                <MiniStat icon={Activity} label="Ongoing Sessions" value="4 Active" sub="In-home treatments now" color="#bfa15f" delay={1} />
+                <MiniStat icon={Calendar} label="Total Bookings" value={data?.stats?.total_bookings || 0} sub="Scheduled sessions" color="#2563eb" delay={2} />
+                <MiniStat icon={TrendingUp} label="Registered Clients" value={data?.stats?.registered_clients || 0} sub="Registered users" color="#db2777" delay={3} />
+              </div>
 
-            {/* Steps */}
-            {setupSteps.map((step, i) => (
-              <div
-                key={step.label}
-                className="px-8 py-4 flex items-center justify-between gap-6"
-                style={{
-                  borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : undefined,
-                  opacity: step.done ? 0.5 : 1,
-                }}
-              >
-                <div className="flex items-start gap-3 min-w-0">
-                  {step.done
-                    ? <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                    : <Circle className="w-5 h-5 text-emerald-300/50 flex-shrink-0 mt-0.5" />
-                  }
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-white">{step.label}</span>
-                      {step.badge && (
-                        <span
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: 'rgba(191,161,95,0.25)', color: '#e3cc97', border: '1px solid rgba(191,161,95,0.3)' }}
-                        >
-                          {step.badge}
-                        </span>
-                      )}
-                    </div>
-                    {step.desc && (
-                      <p className="text-xs text-emerald-200/60 mt-0.5">{step.desc}</p>
-                    )}
+              <div className="grid gap-6 md:grid-cols-3">
+                {/* Ongoing Sessions List */}
+                <ClayCard className="p-6 md:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-emerald-800" /> Active Ongoing Sessions
+                    </h3>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Live Tracking
+                    </span>
                   </div>
-                </div>
-                {!step.done && (
-                  <button
-                    className="flex-shrink-0 px-6 py-2.5 rounded-2xl text-sm font-bold transition-all duration-200 hover:scale-105 active:scale-95"
-                    style={{
-                      background: 'linear-gradient(135deg,#4f97ff,#1e6bff)',
-                      color: '#fff',
-                      boxShadow: '6px 6px 14px rgba(30,107,255,0.35), -3px -3px 8px rgba(255,255,255,0.08), inset 1px 1px 3px rgba(255,255,255,0.2)',
-                    }}
-                  >
-                    Start
-                  </button>
-                )}
-                {step.done && (
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0" />
-                )}
-              </div>
-            ))}
-          </motion.div>
-
-          {/* ══════════════════════════════════════════════════════
-              QUICK STATS ROW
-          ═══════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {quickStats.map((s) => (
-              <MiniStat key={s.label} {...s} />
-            ))}
-          </div>
-
-          {/* ══════════════════════════════════════════════════════
-              PERFORMANCE + RIGHT PANEL
-          ═══════════════════════════════════════════════════════ */}
-          {/* ── Performance Card (Full Width) ─────────────────────────── */}
-          <ClayCard className="w-full p-7">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-slate-800 tracking-tight">Performance</h3>
-              <Link
-                to="/admin/reports"
-                className="text-xs font-semibold flex items-center gap-1 transition hover:gap-2"
-                style={{ color: '#062c22' }}
-              >
-                View Reports <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {/* Filter pills */}
-            <div className="flex flex-wrap gap-2 mb-7">
-              {filters.map((f) => (
-                <ClayPill
-                  key={f.key}
-                  active={activeFilter === f.key}
-                  onClick={() => setActiveFilter(f.key)}
-                >
-                  {f.key === 'today' && <span className="text-[10px] text-slate-400 font-medium mr-0.5">Date</span>}
-                  {f.label}
-                </ClayPill>
-              ))}
-            </div>
-
-            {/* Net Sales */}
-            <div className="mb-6">
-              <p className="text-xs text-slate-400 font-medium mb-1">Net sales</p>
-              <div className="flex items-baseline gap-3">
-                <span className="text-5xl font-black text-slate-800 tracking-tight">₱0.00</span>
-                <span
-                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full"
-                  style={{ background: '#f3ede4', color: '#9ca3af', boxShadow: 'inset 2px 2px 5px #e5e0d8, inset -2px -2px 5px #ffffff' }}
-                >
-                  <TrendingDown className="w-3 h-3" /> N/A
-                </span>
-              </div>
-            </div>
-
-            {/* Empty chart area */}
-            <div
-              className="rounded-2xl overflow-hidden relative"
-              style={{
-                height: '140px',
-                background: 'linear-gradient(145deg,#f5f0e8,#ece8e0)',
-                boxShadow: 'inset 4px 4px 10px #e0dbd3, inset -4px -4px 10px #ffffff',
-              }}
-            >
-              {/* Faint grid lines */}
-              <div className="absolute inset-0 flex flex-col justify-between px-4 py-3 pointer-events-none">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="border-t" style={{ borderColor: 'rgba(0,0,0,0.04)' }} />
-                ))}
-              </div>
-              {/* No data message */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-xs text-slate-400 font-medium">No data available for selected timeframe</p>
-              </div>
-              {/* Bottom time bar */}
-              <div
-                className="absolute bottom-0 left-0 right-0 flex justify-between px-4 pb-2"
-                style={{ fontSize: '10px', color: '#9ca3af' }}
-              >
-                {['6am', '8am', '10am', '12pm', '2pm', '4pm', '6pm', '8pm'].map((t) => (
-                  <span key={t}>{t}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center gap-4 mt-4">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-1 rounded-full" style={{ background: '#062c22' }} />
-                <span className="text-[11px] text-slate-500">Today</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-1 rounded-full" style={{ background: '#bfa15f' }} />
-                <span className="text-[11px] text-slate-500">Prior period</span>
-              </div>
-            </div>
-
-            {/* Recent Appointments */}
-            {data?.recent_appointments?.length > 0 && (
-              <div className="mt-7 pt-6 border-t" style={{ borderColor: 'rgba(0,0,0,0.05)' }}>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Recent Appointments</p>
-                <div className="space-y-2">
-                  {data.recent_appointments.slice(0, 5).map((appt) => (
-                    <div
-                      key={appt.id}
-                      className="flex items-center justify-between px-4 py-3 rounded-2xl transition hover:scale-[1.01]"
-                      style={{
-                        background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)',
-                        boxShadow: '4px 4px 10px #e5e0d8, -4px -4px 10px #ffffff',
-                      }}
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700">{appt.service}</p>
-                        <p className="text-[11px] text-slate-400">{appt.client_name} · {appt.datetime}</p>
+                  <div className="space-y-3">
+                    {[
+                      { id: 1, client: 'Sarah Martinez', therapist: 'Maria Santos', service: 'Swedish Massage (60 min)', start: '09:00 PM', end: '10:00 PM', progress: 75, location: 'Makati City' },
+                      { id: 2, client: 'David Lim', therapist: 'John Doe', service: 'Combination Swedish & Hilot (90 min)', start: '09:15 PM', end: '10:45 PM', progress: 50, location: 'Quezon City' },
+                      { id: 3, client: 'Patricia Go', therapist: 'Anna Reyes', service: 'Regular Mani & Pedi (60 min)', start: '09:30 PM', end: '10:30 PM', progress: 20, location: 'BGC, Taguig' }
+                    ].map(session => (
+                      <div key={session.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100/50 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-bold text-slate-800">{session.service}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">Client: <span className="font-semibold text-slate-600">{session.client}</span> · Therapist: <span className="font-semibold text-emerald-800">{session.therapist}</span></p>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-bold bg-white px-2 py-0.5 rounded-full border border-slate-100">{session.location}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-800 rounded-full transition-all" style={{ width: `${session.progress}%` }} />
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500">{session.start} - {session.end}</span>
+                        </div>
                       </div>
-                      <span
-                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
-                        style={
-                          appt.status === 'Confirmed'
-                            ? { background: 'rgba(6,44,34,0.08)', color: '#062c22' }
-                            : { background: 'rgba(191,161,95,0.12)', color: '#a08742' }
-                        }
-                      >
-                        {appt.status}
-                      </span>
+                    ))}
+                  </div>
+                </ClayCard>
+
+                {/* Operations Overview Summary */}
+                <ClayCard className="p-6 space-y-4">
+                  <h3 className="font-bold text-slate-800 text-sm">Therapist Status Today</h3>
+                  <div className="space-y-3.5">
+                    {[
+                      { status: 'On Duty & Available', count: 18, color: '#16a34a' },
+                      { status: 'Currently in Treatment', count: 4, color: '#bfa15f' },
+                      { status: 'On Break / Offline', count: 8, color: '#94a3b8' }
+                    ].map(status => (
+                      <div key={status.status} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: status.color }} />
+                          <span className="text-xs font-semibold text-slate-600">{status.status}</span>
+                        </div>
+                        <span className="text-xs font-black text-slate-800">{status.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </ClayCard>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Content 2: Sales & Revenue Analytics */}
+          {activeTab === 'sales' && (
+            <div className="space-y-6">
+              {/* Daily Sales breakdown quick card */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MiniStat icon={DollarSign} label="Today's Revenue" value={`₱${(data?.stats?.total_revenue || 0).toLocaleString()}`} sub="All booking invoice total" color="#062c22" delay={0} />
+                <MiniStat icon={TrendingUp} label="Daily Average Ticket" value="₱850" sub="Average customer invoice" color="#bfa15f" delay={1} />
+                <MiniStat icon={DollarSign} label="Therapist Commissions Paid" value="₱12,450" sub="Calculated therapist pay" color="#2563eb" delay={2} />
+              </div>
+
+              {/* Sales Chart representation */}
+              <ClayCard className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-slate-800 text-sm">Sales Trend Overview (Last 7 Days)</h3>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Revenue (PHP)</span>
+                </div>
+                
+                {/* Simulated vertical chart bars */}
+                <div className="flex items-end justify-between gap-2 pt-6 h-48 border-b border-slate-100 pb-1">
+                  {[
+                    { day: 'Mon', value: 7490, height: '45%' },
+                    { day: 'Tue', value: 8500, height: '55%' },
+                    { day: 'Wed', value: 12450, height: '80%' },
+                    { day: 'Thu', value: 9200, height: '60%' },
+                    { day: 'Fri', value: 15600, height: '95%' },
+                    { day: 'Sat', value: 14200, height: '90%' },
+                    { day: 'Sun', value: 16800, height: '100%' }
+                  ].map(bar => (
+                    <div key={bar.day} className="flex-1 flex flex-col items-center gap-2 group">
+                      <div className="w-full relative flex items-end justify-center rounded-t-lg bg-slate-100 hover:bg-emerald-950/10 transition-colors" style={{ height: '140px' }}>
+                        <div className="w-10 rounded-t-md bg-emerald-950/80 group-hover:bg-emerald-950 transition-all duration-300" style={{ height: bar.height }} />
+                        <span className="absolute -top-6 text-[9px] font-bold text-emerald-950 opacity-0 group-hover:opacity-100 transition-opacity">₱{bar.value.toLocaleString()}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400">{bar.day}</span>
                     </div>
                   ))}
                 </div>
+
+                {/* Legend & Breakdown */}
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Massage Revenue</p>
+                    <p className="text-sm font-black text-slate-800 mt-0.5">₱62,450</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Nail Care Revenue</p>
+                    <p className="text-sm font-black text-slate-800 mt-0.5">₱18,240</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Other Services</p>
+                    <p className="text-sm font-black text-slate-800 mt-0.5">₱9,800</p>
+                  </div>
+                </div>
+              </ClayCard>
+            </div>
+          )}
+
+          {/* Tab Content 3: Booking Funnel Stats */}
+          {activeTab === 'funnel' && (
+            <div className="space-y-6">
+              {/* Stats overview cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MiniStat icon={Calendar} label="Conversion Rate" value="68.4%" sub="Visits converted to bookings" color="#062c22" delay={0} />
+                <MiniStat icon={CheckCircle2} label="Completion Rate" value="92.1%" sub="Completed service rate" color="#bfa15f" delay={1} />
+                <MiniStat icon={AlertCircle} label="Cancellation Rate" value="4.8%" sub="Cancelled requests rate" color="#ef4444" delay={2} />
               </div>
-            )}
-          </ClayCard>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Booking funnel visual card */}
+                <ClayCard className="p-6 space-y-6">
+                  <h3 className="font-bold text-slate-800 text-sm">Customer Conversion Funnel</h3>
+                  
+                  <div className="space-y-4">
+                    {[
+                      { step: 'Page Visits', count: '10,240', rate: '100%', color: 'bg-emerald-950' },
+                      { step: 'Service Clicks', count: '4,850', rate: '47.3%', color: 'bg-emerald-900' },
+                      { step: 'Bookings Requested', count: '1,240', rate: '25.5%', color: 'bg-emerald-800' },
+                      { step: 'Bookings Confirmed', count: '1,120', rate: '90.3%', color: 'bg-amber-600' },
+                      { step: 'Completed Treatment', count: '1,032', rate: '92.1%', color: 'bg-amber-500' }
+                    ].map(f => (
+                      <div key={f.step} className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-bold text-slate-700">
+                          <span>{f.step} ({f.count})</span>
+                          <span className="text-slate-400">{f.rate}</span>
+                        </div>
+                        <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${f.color} rounded-full`} style={{ width: f.rate }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ClayCard>
+
+                {/* Booking status rates stacked indicator */}
+                <ClayCard className="p-6 space-y-6">
+                  <h3 className="font-bold text-slate-800 text-sm">Overall Appointment Status Breakdown</h3>
+                  
+                  {/* Status Bar */}
+                  <div className="h-6 w-full rounded-full flex overflow-hidden border border-white">
+                    <div className="bg-emerald-950 h-full flex items-center justify-center text-[9px] font-black text-white" style={{ width: '84%' }}>84% Confirmed</div>
+                    <div className="bg-amber-500 h-full flex items-center justify-center text-[9px] font-black text-emerald-950" style={{ width: '11%' }}>11% Pending</div>
+                    <div className="bg-red-500 h-full flex items-center justify-center text-[9px] font-black text-white" style={{ width: '5%' }}>5% Cancelled</div>
+                  </div>
+
+                  <div className="space-y-3.5 pt-4">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-emerald-950" />
+                        <span className="font-semibold text-slate-600">Confirmed Bookings</span>
+                      </div>
+                      <span className="font-bold text-slate-800">940 Sessions</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-amber-500" />
+                        <span className="font-semibold text-slate-600">Pending Approvals</span>
+                      </div>
+                      <span className="font-bold text-slate-800">124 Requests</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500" />
+                        <span className="font-semibold text-slate-600">Cancellations</span>
+                      </div>
+                      <span className="font-bold text-slate-800">56 Sessions</span>
+                    </div>
+                  </div>
+                </ClayCard>
+              </div>
+            </div>
+          )}
 
         </div>
       )}

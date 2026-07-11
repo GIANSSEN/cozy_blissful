@@ -28,7 +28,7 @@ class TherapistController extends Controller
 
         // Total hours worked based on completed appointments
         $hoursWorked = Appointment::where('therapist_id', $user->id)
-            ->where('status', 'Completed')
+            ->where('appointments.status', 'Completed')
             ->join('services', 'appointments.service_id', '=', 'services.id')
             ->sum('services.duration') / 60.0;
         $hoursWorked = round($hoursWorked, 1);
@@ -121,7 +121,7 @@ class TherapistController extends Controller
         $dateStr = $request->date;
 
         $existing = TherapistAvailability::where('therapist_id', $user->id)
-            ->whereDate('date', $dateStr)
+            ->where('date', $dateStr)
             ->first();
 
         if ($existing) {

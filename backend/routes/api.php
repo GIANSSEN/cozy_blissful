@@ -8,9 +8,9 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ClientController;
 use App\Http\Controllers\API\TherapistController;
 
-// Public auth routes with rate limiting
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+// Public auth routes with custom rate limiting for enhanced security
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle.register');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle.login');
 
 // Protected routes group
 Route::middleware('auth:sanctum')->group(function () {
@@ -37,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/appointments/{id}/assign', [AdminController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [AdminController::class, 'updateStatus']);
         Route::get('/therapists', [AdminController::class, 'getTherapists']);
-        
+
         // Services CRUD
         Route::get('/services', [AdminController::class, 'getServices']);
         Route::post('/services', [AdminController::class, 'storeService']);

@@ -29,7 +29,8 @@ class RoleAccessTest extends TestCase
         $response = $this->postJson('/api/register', [
             'name' => 'Registered Client',
             'email' => 'clientreg@example.com',
-            'password' => 'password123',
+            'password' => 'SecretPass123!',
+            'password_confirmation' => 'SecretPass123!',
             'role' => 'client',
         ]);
 

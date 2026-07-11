@@ -20,7 +20,7 @@ class AdminController extends Controller
         // 1. Core metrics
         $totalBookings = Appointment::count();
         
-        $totalRevenue = Appointment::where('status', 'Completed')
+        $totalRevenue = Appointment::where('appointments.status', 'Completed')
             ->join('services', 'appointments.service_id', '=', 'services.id')
             ->sum('services.price');
 
