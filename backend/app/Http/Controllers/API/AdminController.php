@@ -253,4 +253,28 @@ class AdminController extends Controller
             'message' => 'Service deleted successfully'
         ]);
     }
+
+    /**
+     * Get all customers.
+     */
+    public function getCustomers()
+    {
+        $clients = User::role('client')
+            ->withCount('appointments')
+            ->get()
+            ->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'email' => $c->email,
+                    'phone' => $c->phone ?? 'N/A',
+                    'bookings' => $c->appointments_count,
+                    'notes' => $c->notes ?? 'No special notes'
+                ];
+            });
+
+        return response()->json([
+            'customers' => $clients
+        ]);
+    }
 }

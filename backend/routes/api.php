@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/appointments/{id}/assign', [AdminController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [AdminController::class, 'updateStatus']);
         Route::get('/therapists', [AdminController::class, 'getTherapists']);
+        Route::get('/customers', [AdminController::class, 'getCustomers']);
 
         // Services CRUD
         Route::get('/services', [AdminController::class, 'getServices']);
