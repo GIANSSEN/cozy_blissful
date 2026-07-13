@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\TherapistAvailability;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BookingApprovedMail;
 
 class AdminController extends Controller
 {
@@ -111,6 +113,7 @@ class AdminController extends Controller
         ]);
 
         $appt = Appointment::findOrFail($id);
+        $oldStatus = $appt->status;
         $appt->therapist_id = $request->therapist_id;
         
         // If therapist is assigned and status was Pending, auto-confirm the booking
@@ -121,6 +124,14 @@ class AdminController extends Controller
         $appt->save();
 
         $appt->load(['client', 'therapist', 'service']);
+
+        if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
+            try {
+                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to queue booking approved email: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'message' => 'Therapist assigned successfully',
@@ -147,10 +158,19 @@ class AdminController extends Controller
         ]);
 
         $appt = Appointment::findOrFail($id);
+        $oldStatus = $appt->status;
         $appt->status = $request->status;
         $appt->save();
 
         $appt->load(['client', 'therapist', 'service']);
+
+        if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
+            try {
+                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to queue booking approved email in updateStatus: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'message' => 'Appointment status updated successfully',

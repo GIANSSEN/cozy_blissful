@@ -159,52 +159,242 @@ const LandingPage = () => {
     <div className="min-h-screen text-slate-800 overflow-x-hidden selection:bg-emerald-200 selection:text-emerald-900" style={{ fontFamily: "'Inter', sans-serif", background: '#faf9f7' }}>
       {/* NAVIGATION */}
       <motion.header
-        initial={{ y: -60, opacity: 0 }}
+        initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed top-0 w-full z-50 transition-all duration-500"
-        style={{ background: scrolled ? 'rgba(250,249,247,0.94)' : 'transparent', backdropFilter: scrolled ? 'blur(20px)' : 'none', WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none', boxShadow: scrolled ? '0 1px 0 rgba(0,0,0,0.06), 0 4px 30px rgba(0,0,0,0.04)' : 'none' }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="fixed top-0 w-full z-50"
+        style={{
+          background: scrolled
+            ? 'rgba(6,28,20,0.92)'
+            : 'transparent',
+          backdropFilter: scrolled ? 'blur(24px) saturate(1.8)' : 'none',
+          WebkitBackdropFilter: scrolled ? 'blur(24px) saturate(1.8)' : 'none',
+          borderBottom: scrolled ? '1px solid rgba(191,161,95,0.12)' : '1px solid transparent',
+          boxShadow: scrolled ? '0 8px 40px rgba(0,0,0,0.35), 0 1px 0 rgba(191,161,95,0.08)' : 'none',
+          transition: 'background 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease',
+        }}
       >
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <img src="/cb-logo.jpg" alt="Cozy Blissful Logo" className="w-11 h-11 rounded-full object-cover" style={{ boxShadow: scrolled ? '0 4px 14px rgba(6,44,34,0.2)' : '0 4px 20px rgba(0,0,0,0.35)', border: '2px solid rgba(191,161,95,0.4)' }} />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white" />
-            </div>
-            <div className="leading-tight">
-              <span className={`text-sm font-black tracking-wide block transition-colors duration-300 ${scrolled ? 'text-emerald-950' : 'text-white'}`}>Cozy Blissful</span>
-              <span className={`text-[9px] font-bold tracking-widest uppercase block transition-colors duration-300 ${scrolled ? 'text-amber-600' : 'text-amber-300'}`}>Home Service Spa</span>
-            </div>
-          </div>
-          <nav className="hidden md:flex items-center space-x-8">
-            {[['#services', 'Services'], ['#how-it-works', 'How It Works'], ['#why-us', 'Why Us'], ['#testimonials', 'Reviews']].map(([href, label]) => (
-              <a key={href} href={href} className={`text-xs font-semibold tracking-wide transition-all duration-200 relative group ${scrolled ? 'text-slate-600 hover:text-emerald-900' : 'text-white/80 hover:text-white'}`}>
-                {label}
-                <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-amber-400 group-hover:w-full transition-all duration-300 rounded-full" />
-              </a>
-            ))}
-          </nav>
-          <div className="hidden md:flex items-center space-x-3">
-            <Link to="/login" className={`py-2 px-5 text-xs font-bold rounded-xl transition-all duration-200 ${scrolled ? 'text-emerald-900 bg-slate-50 hover:bg-slate-100 border border-slate-200/80' : 'text-white border border-white/20 hover:bg-white/10'}`}>Log In</Link>
-            <Link to="/register" className="py-2 px-5 text-xs font-bold text-white rounded-xl transition-all duration-200 hover:scale-105 active:scale-95" style={{ background: 'linear-gradient(135deg,#bfa15f,#d4b87a)', boxShadow: '0 4px 14px rgba(191,161,95,0.35)' }}>Book Now</Link>
-          </div>
-          <button className={`md:hidden p-2 rounded-xl transition-colors ${scrolled ? 'text-slate-700' : 'text-white'}`} onClick={() => setMobileMenu(!mobileMenu)}>
-            <motion.div animate={{ rotate: mobileMenu ? 90 : 0 }} transition={{ duration: 0.2 }}>
-              {mobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        {/* Top accent line */}
+        <motion.div
+          className="absolute top-0 left-0 right-0 h-[2px] origin-left"
+          style={{ background: 'linear-gradient(90deg, transparent 0%, #bfa15f 30%, #e8cc8a 60%, #bfa15f 80%, transparent 100%)' }}
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: scrolled ? 1 : 0, opacity: scrolled ? 1 : 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        />
+
+        <div className="max-w-7xl mx-auto px-5 lg:px-10">
+          <div className="flex items-center justify-between py-3.5 lg:py-4">
+
+            {/* LOGO */}
+            <motion.div className="flex items-center gap-3" whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+              <div className="relative flex-shrink-0">
+                {/* Pulse ring */}
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{ border: '1.5px solid rgba(191,161,95,0.5)' }}
+                  animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <img
+                  src="/cb-logo.jpg"
+                  alt="Cozy Blissful Logo"
+                  className="w-10 h-10 lg:w-11 lg:h-11 rounded-full object-cover relative z-10"
+                  style={{
+                    border: '2px solid rgba(191,161,95,0.55)',
+                    boxShadow: '0 0 0 1px rgba(191,161,95,0.15), 0 4px 20px rgba(0,0,0,0.4)'
+                  }}
+                />
+                {/* Online indicator */}
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 z-20"
+                  style={{ background: '#34d399', borderColor: scrolled ? '#061c14' : '#073328' }}
+                />
+              </div>
+              <div className="leading-none">
+                <span className="text-sm font-black tracking-wide text-white block">Cozy Blissful</span>
+                <span
+                  className="text-[9px] font-bold tracking-[0.18em] uppercase block mt-0.5"
+                  style={{ color: '#bfa15f' }}
+                >
+                  Home Service Spa
+                </span>
+              </div>
             </motion.div>
-          </button>
+
+            {/* DESKTOP NAV */}
+            <nav className="hidden md:flex items-center gap-1">
+              {[['#services', 'Services'], ['#how-it-works', 'How It Works'], ['#why-us', 'Why Us'], ['#testimonials', 'Reviews']].map(([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="relative px-4 py-2 text-[11px] font-semibold tracking-wide text-white/70 hover:text-white transition-colors duration-200 rounded-lg group"
+                  style={{ letterSpacing: '0.04em' }}
+                >
+                  {label}
+                  <span
+                    className="absolute bottom-1 left-4 right-4 h-px rounded-full transition-all duration-300 origin-left scale-x-0 group-hover:scale-x-100"
+                    style={{ background: 'linear-gradient(90deg, #bfa15f, #e8cc8a)' }}
+                  />
+                </a>
+              ))}
+            </nav>
+
+            {/* DESKTOP ACTIONS */}
+            <div className="hidden md:flex items-center gap-2.5">
+              {/* Contact pill */}
+              <a
+                href="https://wa.me/639995435913"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all duration-200 hover:scale-105"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.65)',
+                }}
+              >
+                <Phone className="w-3 h-3" style={{ color: '#bfa15f' }} />
+                <span>+63 999 543 5913</span>
+              </a>
+
+              <Link
+                to="/login"
+                className="px-5 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 hover:bg-white/10 active:scale-95"
+                style={{
+                  color: 'rgba(255,255,255,0.75)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                Log In
+              </Link>
+
+              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+                <Link
+                  to="/register"
+                  className="px-5 py-2 text-[11px] font-bold text-white rounded-xl flex items-center gap-1.5"
+                  style={{
+                    background: 'linear-gradient(135deg, #bfa15f 0%, #d4b87a 50%, #c8a455 100%)',
+                    boxShadow: '0 4px 16px rgba(191,161,95,0.4), 0 1px 0 rgba(255,255,255,0.15) inset',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Book Now
+                </Link>
+              </motion.div>
+            </div>
+
+            {/* MOBILE HAMBURGER */}
+            <motion.button
+              className="md:hidden relative flex items-center justify-center w-10 h-10 rounded-xl"
+              style={{
+                background: 'rgba(255,255,255,0.07)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'white',
+              }}
+              onClick={() => setMobileMenu(!mobileMenu)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.93 }}
+            >
+              <AnimatePresence mode="wait">
+                {mobileMenu ? (
+                  <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <X className="w-4.5 h-4.5" />
+                  </motion.div>
+                ) : (
+                  <motion.div key="open" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <Menu className="w-4.5 h-4.5" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
+          </div>
         </div>
+
+        {/* MOBILE DRAWER */}
         <AnimatePresence>
           {mobileMenu && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3 }} className="md:hidden border-t border-slate-100/60 overflow-hidden" style={{ background: 'rgba(250,249,247,0.98)', backdropFilter: 'blur(20px)' }}>
-              <div className="px-6 py-5 space-y-4">
-                {[['#services', 'Services'], ['#how-it-works', 'How It Works'], ['#why-us', 'Why Us'], ['#testimonials', 'Reviews']].map(([href, label]) => (
-                  <a key={href} href={href} onClick={() => setMobileMenu(false)} className="block text-sm font-semibold text-slate-700 hover:text-emerald-800 transition-colors py-1">{label}</a>
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="md:hidden overflow-hidden"
+              style={{
+                background: 'rgba(4,20,14,0.97)',
+                backdropFilter: 'blur(24px)',
+                borderBottom: '1px solid rgba(191,161,95,0.12)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+              }}
+            >
+              <div className="px-5 py-6 flex flex-col gap-1">
+                {/* Nav links */}
+                {[['#services', 'Services'], ['#how-it-works', 'How It Works'], ['#why-us', 'Why Us'], ['#testimonials', 'Reviews']].map(([href, label], i) => (
+                  <motion.a
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileMenu(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-white/70 hover:text-white group"
+                    style={{ background: 'transparent' }}
+                    whileHover={{ backgroundColor: 'rgba(191,161,95,0.08)', x: 4 }}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 + 0.1 }}
+                  >
+                    <span className="w-1 h-1 rounded-full flex-shrink-0 transition-colors duration-200" style={{ background: '#bfa15f' }} />
+                    <span className="text-sm font-semibold tracking-wide">{label}</span>
+                  </motion.a>
                 ))}
-                <div className="flex gap-3 pt-3 border-t border-slate-100">
-                  <Link to="/login" onClick={() => setMobileMenu(false)} className="flex-1 text-center py-3 bg-slate-100 text-emerald-950 rounded-xl text-xs font-bold">Log In</Link>
-                  <Link to="/register" onClick={() => setMobileMenu(false)} className="flex-1 text-center py-3 text-white rounded-xl text-xs font-bold" style={{ background: 'linear-gradient(135deg,#bfa15f,#d4b87a)' }}>Book Now</Link>
+
+                {/* Divider */}
+                <div className="my-3 h-px mx-1" style={{ background: 'rgba(191,161,95,0.12)' }} />
+
+                {/* Contact */}
+                <a
+                  href="https://wa.me/639995435913"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/55 text-sm font-medium"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  <Phone className="w-4 h-4 flex-shrink-0" style={{ color: '#bfa15f' }} />
+                  <span>+63 999 543 5913</span>
+                </a>
+
+                {/* CTA Buttons */}
+                <div className="flex gap-2.5 mt-2">
+                  <Link
+                    to="/login"
+                    onClick={() => setMobileMenu(false)}
+                    className="flex-1 text-center py-3 rounded-xl text-sm font-bold transition-all duration-200"
+                    style={{
+                      color: 'rgba(255,255,255,0.8)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setMobileMenu(false)}
+                    className="flex-1 text-center py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #bfa15f 0%, #d4b87a 100%)',
+                      boxShadow: '0 4px 16px rgba(191,161,95,0.35)',
+                    }}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Book Now
+                  </Link>
                 </div>
+
+                {/* Brand footer in drawer */}
+                <p className="text-center text-[10px] font-medium mt-4" style={{ color: 'rgba(255,255,255,0.2)', letterSpacing: '0.12em' }}>
+                  COZY BLISSFUL · HOME SERVICE SPA
+                </p>
               </div>
             </motion.div>
           )}

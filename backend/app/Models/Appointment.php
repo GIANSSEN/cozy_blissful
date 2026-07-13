@@ -16,6 +16,8 @@ class Appointment extends Model
         'datetime',
         'status',
         'notes',
+        'reminder_24h_sent_at',
+        'reminder_2h_sent_at',
     ];
 
     protected $casts = [

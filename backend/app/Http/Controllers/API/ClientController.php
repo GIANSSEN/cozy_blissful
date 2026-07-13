@@ -7,6 +7,8 @@ use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BookingConfirmationMail;
 
 class ClientController extends Controller
 {
@@ -120,6 +122,15 @@ class ClientController extends Controller
             'status' => 'Pending',
             'notes' => $request->notes,
         ]);
+
+        if ($user->email) {
+            try {
+                Mail::to($user->email)->queue(new BookingConfirmationMail($appt));
+            } catch (\Exception $e) {
+                // Log fail but don't break response
+                \Illuminate\Support\Facades\Log::error('Failed to queue booking confirmation email: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'message' => 'Booking created successfully!',

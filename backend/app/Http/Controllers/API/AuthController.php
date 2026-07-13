@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WelcomeMail;
 
 class AuthController extends Controller
 {
@@ -154,6 +156,14 @@ class AuthController extends Controller
                 'email' => $sanitizedEmail,
                 'ip' => $request->ip(),
             ]);
+
+            if ($user->email) {
+                try {
+                    Mail::to($user->email)->queue(new WelcomeMail($user->name));
+                } catch (\Exception $e) {
+                    Log::error('Failed to queue welcome email: ' . $e->getMessage());
+                }
+            }
 
             return response()->json([
                 'message' => 'Registration successful',
