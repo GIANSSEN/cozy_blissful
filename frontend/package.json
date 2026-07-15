@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "cd ../backend && php artisan serve",
+    "serve": "npm run dev & cd ../backend && php artisan serve",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
