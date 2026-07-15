@@ -9,12 +9,48 @@
     scroll-behavior: smooth;
   }
   body {
-    background-color: #faf9f7;
-    color: #1e293b;
+    background-color: var(--bg);
+    color: var(--text);
     font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  :root {
+    color-scheme: light;
+    --bg: #faf9f7;
+    --panel: #ffffff;
+    --panel-soft: #f3ede4;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: rgba(148,163,184,0.25);
+    --card: #ffffff;
+    --button: #0a3d30;
+    --button-text: #ffffff;
+    --input: #ffffff;
+    --input-border: #d7dadd;
+    --shadow: 0 20px 60px rgba(15,23,42,0.08);
+    --selection-bg: rgba(52, 201, 158, 0.2);
+    --selection-text: #041e16;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --bg: #0f1720;
+    --panel: #111827;
+    --panel-soft: #1f2937;
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --border: rgba(148,163,184,0.2);
+    --card: #111827;
+    --button: #34c99e;
+    --button-text: #0f1720;
+    --input: #1f2937;
+    --input-border: #374151;
+    --shadow: 0 20px 60px rgba(0,0,0,0.35);
+    --selection-bg: rgba(52, 201, 158, 0.3);
+    --selection-text: #f8fafc;
   }
 }
 

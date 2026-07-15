@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import API from '../../api/axios';
+import { useTheme } from '../../context/ThemeContext';
 import {
   Plus, Pencil, Trash2, X, Save, Search,
   Clock, ShoppingBag, AlertCircle, CheckCircle2,
@@ -55,9 +56,9 @@ const ClayCard = ({ children, className = '', style = {} }) => (
   <div
     className={`rounded-3xl ${className}`}
     style={{
-      background: 'linear-gradient(145deg,#fdfcfa 0%,#f5f0e8 100%)',
-      boxShadow: '16px 16px 36px #eae6df, -16px -16px 36px #ffffff, inset 3px 3px 6px rgba(255,255,255,0.7)',
-      border: '1px solid rgba(255,255,255,0.8)',
+      background: 'var(--panel)',
+      boxShadow: 'var(--shadow)',
+      border: '1px solid var(--border)',
       ...style,
     }}
   >
@@ -67,11 +68,11 @@ const ClayCard = ({ children, className = '', style = {} }) => (
 
 const ClayInput = ({ label, id, error, ...props }) => (
   <div className="space-y-1.5">
-    {label && <label htmlFor={id} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</label>}
+    {label && <label htmlFor={id} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest dark:text-slate-400">{label}</label>}
     <input
       id={id}
-      className="w-full px-4 py-2.5 rounded-xl text-xs text-slate-700 outline-none border border-slate-200 focus:border-emerald-850 transition"
-      style={{ background: '#faf9f6' }}
+      className="w-full px-4 py-2.5 rounded-xl text-sm text-slate-900 outline-none border border-slate-200 focus:border-emerald-700 transition dark:text-slate-100 dark:bg-slate-900 dark:border-slate-700 dark:focus:border-emerald-400"
+      style={{ background: 'var(--input)' }}
       {...props}
     />
     {error && <p className="text-[11px] text-red-500">{error}</p>}
@@ -80,12 +81,12 @@ const ClayInput = ({ label, id, error, ...props }) => (
 
 const ClaySelect = ({ label, id, children, ...props }) => (
   <div className="space-y-1.5">
-    {label && <label htmlFor={id} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</label>}
+    {label && <label htmlFor={id} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest dark:text-slate-400">{label}</label>}
     <div className="relative">
       <select
         id={id}
-        className="w-full appearance-none px-4 py-2.5 rounded-xl text-xs text-slate-700 outline-none cursor-pointer pr-9 border border-slate-200"
-        style={{ background: '#faf9f6' }}
+        className="w-full appearance-none px-4 py-2.5 rounded-xl text-sm text-slate-900 outline-none cursor-pointer pr-9 border border-slate-200 dark:text-slate-100 dark:bg-slate-900 dark:border-slate-700"
+        style={{ background: 'var(--input)' }}
         {...props}
       >
         {children}
@@ -96,6 +97,7 @@ const ClaySelect = ({ label, id, children, ...props }) => (
 );
 
 const AdminServices = () => {
+  const { theme } = useTheme();
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'all';
 
@@ -283,17 +285,17 @@ const AdminServices = () => {
           <div
             className="w-full max-w-sm flex flex-col h-full overflow-y-auto"
             style={{
-              background: '#faf8f5',
-              boxShadow: '-20px 0 60px rgba(0,0,0,0.12)',
-              borderLeft: '1px solid rgba(255,255,255,0.6)',
+              background: theme === 'dark' ? '#0f1720' : '#faf8f5',
+              boxShadow: theme === 'dark' ? '-20px 0 60px rgba(0,0,0,0.35)' : '-20px 0 60px rgba(0,0,0,0.12)',
+              borderLeft: theme === 'dark' ? '1px solid rgba(148,163,184,0.14)' : '1px solid rgba(255,255,255,0.6)',
             }}
           >
-            <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+            <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: theme === 'dark' ? 'rgba(148,163,184,0.12)' : 'rgba(0,0,0,0.06)' }}>
               <div>
-                <h2 className="text-base font-bold text-slate-800">{editing ? 'Edit Service' : 'Add New Service'}</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{editing ? editing.name : 'Fill in the service details below'}</p>
+                <h2 className={`text-base font-bold ${theme === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{editing ? 'Edit Service' : 'Add New Service'}</h2>
+                <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`}>{editing ? editing.name : 'Fill in the service details below'}</p>
               </div>
-              <button onClick={closeForm} className="w-9 h-9 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-700 transition border border-slate-200" style={{ background: '#faf9f6' }}>
+              <button onClick={closeForm} className={`w-9 h-9 rounded-2xl flex items-center justify-center ${theme === 'dark' ? 'text-slate-300 hover:text-white border border-slate-700 bg-slate-900/90' : 'text-slate-400 hover:text-slate-700 border border-slate-200 bg-[#faf9f6]' } transition`}>
                 <X className="w-4 h-4" />
               </button>
             </div>
