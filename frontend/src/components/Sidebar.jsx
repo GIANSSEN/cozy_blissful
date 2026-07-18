@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -6,9 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Calendar, Users, ShoppingBag,
   Package, CreditCard, Settings, ChevronDown,
-  LogOut, Search, Bell, HelpCircle,
+  LogOut, Search, ChevronLeft,
   Moon, Sun, X, Home,
-  TrendingUp, DollarSign, TrendingDown, Clock, AlertCircle,
+  DollarSign, Clock, AlertCircle,
   UserCheck, ShieldAlert, Gift, Hourglass, Tags, Truck,
   FileText, Coins, Wallet, UserCog, Megaphone, Boxes,
   History, Star, HeartPulse, ListOrdered,
@@ -140,7 +140,7 @@ const D = {
 };
 
 const Sidebar = ({ isOpen, onClose }) => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -150,19 +150,6 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   /* ── Accordion: only ONE item expanded at a time ── */
   const [openTitle, setOpenTitle] = useState(null);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const profileRef = useRef(null);
-
-  // Close profile dropdown on click outside
-  useEffect(() => {
-    const handler = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
-        setProfileMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const t = theme === 'dark' ? D : L;
   const isDark = theme === 'dark';
@@ -215,7 +202,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
       <aside
         className={`
-          fixed lg:sticky top-0 h-screen flex flex-col z-40
+          fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased
           transition-transform duration-300 lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
@@ -304,7 +291,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <Icon className="w-4 h-4 flex-shrink-0"
                     style={{ color: active ? t.accent : t.txtMuted }} />
                   <span className="text-[12.5px] font-semibold leading-tight flex-1"
-                    style={{ color: active ? t.txt : t.txtSub }}>
+                    style={{ color: active ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
                   {active && (
@@ -331,7 +318,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <Icon className="w-4 h-4 flex-shrink-0"
                     style={{ color: isActive ? t.accent : t.txtMuted }} />
                   <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight truncate"
-                    style={{ color: isActive ? t.txt : t.txtSub }}>
+                    style={{ color: isActive ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
                   <motion.span animate={{ rotate: isOpenNow ? 180 : 0 }} transition={{ duration: 0.2 }}
@@ -366,7 +353,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                               <SubIcon className="w-3.5 h-3.5 flex-shrink-0"
                                 style={{ color: active ? t.activeSubTxt : t.txtMuted }} />
                               <span className="text-[11.5px] font-medium leading-tight truncate"
-                                style={{ color: active ? t.activeSubTxt : t.txtSub }}>
+                                style={{ color: active ? t.activeSubTxt : t.txtSub, letterSpacing: '-0.005em' }}>
                                 {sub.label}
                               </span>
                             </Link>
@@ -381,48 +368,35 @@ const Sidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* ── User profile with clickable popover ── */}
-        <div ref={profileRef} className="relative py-5 flex justify-center items-center flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
-          <button 
-            type="button"
-            onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white cursor-pointer relative focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 10px rgba(6,44,34,0.3)' }}
-          >
-            {user?.name?.charAt(0)?.toUpperCase() || 'A'}
-            
-            {/* Online Status Indicator Dot */}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
-          </button>
+        {/* ── Footer actions ── */}
+        <div className="px-3 py-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}` }}>
+          <Link to="/" onClick={onClose}
+            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
+            style={{ background: 'transparent', textDecoration: 'none' }}
+            onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <Home className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:-translate-x-0.5"
+              style={{ color: t.txtMuted }} />
+            <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
+              style={{ color: t.txtSub, letterSpacing: '-0.01em' }}>
+              Back to Landing
+            </span>
+            <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0"
+              style={{ color: t.txtMuted }} />
+          </Link>
 
-          {/* Clickable Menu Popover */}
-          <AnimatePresence>
-            {profileMenuOpen && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                transition={{ duration: 0.15 }}
-                className="absolute bottom-[90%] left-3 right-3 lg:bottom-4 lg:left-[80%] lg:right-auto lg:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-3 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4)] z-50 flex flex-col gap-1"
-              >
-                <div className="px-2 py-1.5 border-b border-slate-100 dark:border-slate-800/80 text-left">
-                  <p className="text-[9px] font-black tracking-wider uppercase text-amber-500">{user?.role || 'Administrator'}</p>
-                  <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">{user?.name}</p>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
-                </div>
-                
-                <Link to="/" onClick={() => { setProfileMenuOpen(false); onClose?.(); }} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors mt-1" style={{ textDecoration: 'none' }}>
-                  <Home className="w-4 h-4 text-slate-400" />
-                  <span>Back to Landing</span>
-                </Link>
-                
-                <button onClick={() => { setProfileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors w-full text-left">
-                  <LogOut className="w-4 h-4 text-red-400" />
-                  <span>Sign Out</span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <button type="button" onClick={handleLogout}
+            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
+            style={{ background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <LogOut className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+              style={{ color: '#ef4444' }} />
+            <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
+              style={{ color: '#ef4444', letterSpacing: '-0.01em' }}>
+              Sign Out
+            </span>
+          </button>
         </div>
       </aside>
     </>

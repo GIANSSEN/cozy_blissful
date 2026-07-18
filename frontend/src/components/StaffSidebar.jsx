@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Calendar, Users, ChevronDown,
-  LogOut, Search, Moon, Sun, X, Home,
+  LogOut, Search, Moon, Sun, X, Home, ChevronLeft,
   CalendarDays, Clock, UserCheck, Activity,
   FileText,
 } from 'lucide-react';
@@ -64,7 +64,7 @@ const D = {
 };
 
 const StaffSidebar = ({ isOpen, onClose }) => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,7 +121,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
 
       <aside
         className={`
-          fixed lg:sticky top-0 h-screen flex flex-col z-40
+          fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased
           transition-transform duration-300 lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
@@ -210,7 +210,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
                   <Icon className="w-4 h-4 flex-shrink-0"
                     style={{ color: active ? t.accent : t.txtMuted }} />
                   <span className="text-[12.5px] font-semibold leading-tight flex-1"
-                    style={{ color: active ? t.txt : t.txtSub }}>
+                    style={{ color: active ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
                   {active && (
@@ -237,7 +237,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
                   <Icon className="w-4 h-4 flex-shrink-0"
                     style={{ color: isActive ? t.accent : t.txtMuted }} />
                   <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight truncate"
-                    style={{ color: isActive ? t.txt : t.txtSub }}>
+                    style={{ color: isActive ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
                   <motion.span animate={{ rotate: isOpenNow ? 180 : 0 }} transition={{ duration: 0.2 }}
@@ -272,7 +272,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
                               <SubIcon className="w-3.5 h-3.5 flex-shrink-0"
                                 style={{ color: active ? t.activeSubTxt : t.txtMuted }} />
                               <span className="text-[11.5px] font-medium leading-tight truncate"
-                                style={{ color: active ? t.activeSubTxt : t.txtSub }}>
+                                style={{ color: active ? t.activeSubTxt : t.txtSub, letterSpacing: '-0.005em' }}>
                                 {sub.label}
                               </span>
                             </Link>
@@ -287,34 +287,35 @@ const StaffSidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* ── User profile with hover popover ── */}
-        <div className="relative group py-5 flex justify-center items-center flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white cursor-pointer relative"
-            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 10px rgba(6,44,34,0.3)' }}>
-            {user?.name?.charAt(0)?.toUpperCase() || 'S'}
-            
-            {/* Online Status Indicator Dot */}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
-          </div>
+        {/* ── Footer actions ── */}
+        <div className="px-3 py-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}` }}>
+          <Link to="/" onClick={onClose}
+            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
+            style={{ background: 'transparent', textDecoration: 'none' }}
+            onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <Home className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:-translate-x-0.5"
+              style={{ color: t.txtMuted }} />
+            <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
+              style={{ color: t.txtSub, letterSpacing: '-0.01em' }}>
+              Back to Landing
+            </span>
+            <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0"
+              style={{ color: t.txtMuted }} />
+          </Link>
 
-          {/* Hover Menu Popover */}
-          <div className="absolute bottom-[90%] left-3 right-3 lg:bottom-4 lg:left-[80%] lg:right-auto lg:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-3 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4)] opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 z-50 flex flex-col gap-1">
-            <div className="px-2 py-1.5 border-b border-slate-100 dark:border-slate-800/80">
-              <p className="text-[9px] font-black tracking-wider uppercase text-amber-500">{user?.role || 'Staff Member'}</p>
-              <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">{user?.name}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
-            </div>
-            
-            <Link to="/" onClick={onClose} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors mt-1" style={{ textDecoration: 'none' }}>
-              <Home className="w-4 h-4 text-slate-400" />
-              <span>Back to Landing</span>
-            </Link>
-            
-            <button onClick={handleLogout} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors w-full text-left">
-              <LogOut className="w-4 h-4 text-red-400" />
-              <span>Sign Out</span>
-            </button>
-          </div>
+          <button type="button" onClick={handleLogout}
+            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
+            style={{ background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            <LogOut className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+              style={{ color: '#ef4444' }} />
+            <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
+              style={{ color: '#ef4444', letterSpacing: '-0.01em' }}>
+              Sign Out
+            </span>
+          </button>
         </div>
       </aside>
     </>
