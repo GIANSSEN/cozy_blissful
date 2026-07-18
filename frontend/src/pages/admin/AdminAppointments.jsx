@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import { ImageTextSkeletonGrid } from '../../components/Skeleton';
 import API from '../../api/axios';
 import {
   Calendar as CalendarIcon, Clock, User, CheckCircle, AlertCircle,
@@ -104,9 +105,7 @@ const AdminAppointments = () => {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-emerald-900" />
-          </div>
+          <ImageTextSkeletonGrid cols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" />
         ) : (
           <div>
             

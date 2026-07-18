@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import { ImageTextSkeletonGrid } from '../../components/Skeleton';
 import API from '../../api/axios';
 import { useTheme } from '../../context/ThemeContext';
 import {
@@ -337,9 +338,7 @@ const AdminServices = () => {
 
       {/* ── Main Content ── */}
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-10 h-10 border-2 rounded-full animate-spin" style={{ borderColor: '#f0ece4', borderTopColor: '#062c22' }} />
-        </div>
+        <ImageTextSkeletonGrid cols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" />
       ) : (
         <div className="space-y-6">
 

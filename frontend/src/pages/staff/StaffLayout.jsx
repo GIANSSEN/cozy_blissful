@@ -1,29 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Sidebar from '../../components/Sidebar';
-import { Menu, Bell, Search, LogOut, Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import StaffSidebar from '../../components/StaffSidebar';
+import { Menu, Bell, Search, LogOut, Home, ChevronDown, X } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/* ── Placeholder admin notifications ─────────────────────────────── */
+/* ── Placeholder notifications ────────────────────────────────────── */
 const NOTIFICATIONS = [
-  { id: 1, text: 'New appointment request from David Lim', time: '3 min ago', read: false },
-  { id: 2, text: 'Staff availability updated for tomorrow', time: '20 min ago', read: false },
-  { id: 3, text: 'Monthly revenue report is ready to view', time: '2 hrs ago', read: true },
-  { id: 4, text: 'Patricia Go completed her session', time: '4 hrs ago', read: true },
+  { id: 1, text: 'New appointment booked by Sarah Martinez', time: '2 min ago', read: false },
+  { id: 2, text: 'John Therapist updated availability for tomorrow', time: '15 min ago', read: false },
+  { id: 3, text: 'Deep Tissue session confirmed for 3:00 PM', time: '1 hr ago', read: true },
+  { id: 4, text: 'System backup completed successfully', time: '3 hrs ago', read: true },
 ];
 
 /**
- * AdminLayout
- * InfinitySpace-inspired shell: sidebar on the left, slim top-bar + content on the right.
- * Now includes clickable notification bell dropdown and profile avatar dropdown.
+ * StaffLayout — layout shell for staff portal pages.
+ * Mirrors AdminLayout structure but with StaffSidebar and staff-specific branding.
  */
-const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
+const StaffLayout = ({ children, title = 'Staff Portal', subtitle }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-
   const { theme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -32,7 +30,6 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
   const profileRef = useRef(null);
 
   const isDark = theme === 'dark';
-  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -49,6 +46,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
     navigate('/login');
   };
 
+  const unreadCount = NOTIFICATIONS.filter(n => !n.read).length;
+
   return (
     <div
       className="flex min-h-screen relative"
@@ -59,7 +58,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
       }}
     >
       {/* ── Sidebar ── */}
-      <Sidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
+      <StaffSidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* ── Right canvas ── */}
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden min-w-0">
@@ -120,7 +119,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
               <span>Search anything…</span>
             </div>
 
-            {/* Notification bell with dropdown */}
+            {/* Notification bell */}
             <div className="relative" ref={notifRef}>
               <button
                 title="Notifications"
@@ -141,6 +140,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
                 )}
               </button>
 
+              {/* Notification dropdown */}
               <AnimatePresence>
                 {showNotifications && (
                   <motion.div
@@ -168,7 +168,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
                     <div className="max-h-64 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
                       {NOTIFICATIONS.map(n => (
                         <div key={n.id}
-                          className="px-4 py-3 flex items-start gap-3 cursor-pointer transition-all"
+                          className="px-4 py-3 flex items-start gap-3 transition-all cursor-pointer"
                           style={{
                             background: !n.read ? (isDark ? 'rgba(52,211,153,0.04)' : 'rgba(10,61,48,0.03)') : 'transparent',
                             borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
@@ -198,16 +198,16 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
               </AnimatePresence>
             </div>
 
-            {/* Admin badge */}
+            {/* Coordinator badge */}
             <span
               className="hidden md:flex items-center rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em]"
               style={{
-                background: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)',
-                border: `1px solid ${isDark ? 'rgba(52,211,153,0.2)' : 'rgba(10,61,48,0.12)'}`,
-                color: isDark ? '#34d399' : '#062c22',
+                background: isDark ? 'rgba(191,161,95,0.1)' : 'rgba(191,161,95,0.08)',
+                border: `1px solid ${isDark ? 'rgba(191,161,95,0.2)' : 'rgba(191,161,95,0.15)'}`,
+                color: isDark ? '#d4b87a' : '#8a6d2b',
               }}
             >
-              ✦ Admin
+              ✦ Coordinator
             </span>
 
             {/* Profile avatar with dropdown */}
@@ -219,11 +219,12 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
                   background: 'linear-gradient(135deg,#062c22,#0f5040)',
                   boxShadow: '0 2px 8px rgba(6,44,34,0.3)',
                 }}
-                title={user?.name || 'Admin'}
+                title={user?.name || 'Staff'}
               >
-                {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+                {user?.name?.charAt(0)?.toUpperCase() || 'S'}
               </button>
 
+              {/* Profile dropdown */}
               <AnimatePresence>
                 {showProfile && (
                   <motion.div
@@ -243,21 +244,21 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
                       style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
                         style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
-                        {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+                        {user?.name?.charAt(0)?.toUpperCase() || 'S'}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
-                          {user?.name || 'Administrator'}
+                          {user?.name || 'Staff Member'}
                         </p>
                         <p className="text-[10px] truncate mt-0.5" style={{ color: isDark ? '#5c6a7e' : '#8a9099' }}>
-                          {user?.email || 'admin@cozy.spa'}
+                          {user?.email || 'staff@cozy.spa'}
                         </p>
                         <span className="inline-block mt-1.5 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest"
                           style={{
-                            background: isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.07)',
-                            color: isDark ? '#34d399' : '#0a3d30',
+                            background: isDark ? 'rgba(191,161,95,0.12)' : 'rgba(191,161,95,0.1)',
+                            color: isDark ? '#d4b87a' : '#8a6d2b',
                           }}>
-                          System Administrator
+                          Staff Coordinator
                         </span>
                       </div>
                     </div>
@@ -301,4 +302,4 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
   );
 };
 
-export default AdminLayout;
+export default StaffLayout;

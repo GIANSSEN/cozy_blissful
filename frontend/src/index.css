@@ -120,3 +120,29 @@ input::-webkit-credentials-auto-fill-button {
   height: 0 !important;
 }
 
+/* Premium Shimmer Loading Animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--shimmer-bg) 25%, var(--shimmer-light) 50%, var(--shimmer-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+:root {
+  --shimmer-bg: #eae6de;
+  --shimmer-light: #f5f2eb;
+}
+
+.dark {
+  --shimmer-bg: #1e2638;
+  --shimmer-light: #28334a;
+}
+

@@ -4,101 +4,50 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LayoutDashboard, Calendar, Users, ShoppingBag,
-  Package, CreditCard, Settings, ChevronDown,
-  LogOut, Search, Bell, HelpCircle,
-  Moon, Sun, X, Home,
-  TrendingUp, DollarSign, TrendingDown, Clock, AlertCircle,
-  UserCheck, ShieldAlert, Gift, Hourglass, Tags, Truck,
-  FileText, Coins, Wallet, Sliders, Globe, Beaker,
+  LayoutDashboard, Calendar, Users, ChevronDown,
+  LogOut, Search, Moon, Sun, X, Home,
+  CalendarDays, Clock, UserCheck, Activity,
+  FileText,
 } from 'lucide-react';
 
-/* ── Menu: Dashboard has NO submenus — it is a direct link ─────────── */
+/* ── Staff-specific menu — limited scope ─────────────────────────── */
 const MENU = [
   {
     title: 'Dashboard',
     icon: LayoutDashboard,
-    path: '/admin/dashboard',   // direct link, no subs
+    path: '/staff/dashboard',
     subs: [],
   },
   {
-    title: 'Bookings & Appointments',
-    icon: Calendar,
-    path: null,
-    basePath: '/admin/appointments',
-    subs: [
-      { label: 'Master Calendar View',       tab: 'calendar', path: '/admin/appointments' },
-      { label: 'Pending Approvals',          tab: 'pending',  path: '/admin/appointments' },
-      { label: 'Cancellation & Reschedule',  tab: 'requests', path: '/admin/appointments' },
-    ],
-  },
-  {
-    title: 'User Management',
+    title: 'Therapist Management',
     icon: Users,
     path: null,
-    basePath: '/admin/staff',
+    basePath: '/staff/therapists',
     subs: [
-      { label: 'Therapists & Staff Profiles', tab: 'profiles',  path: '/admin/staff' },
-      { label: 'Customer Database',            tab: 'customers', path: '/admin/staff' },
-      { label: 'Role Access Control (RBAC)',   tab: 'rbac',      path: '/admin/staff' },
+      { label: 'Schedule Coordinator', tab: 'schedule',     path: '/staff/therapists' },
+      { label: 'Availability Calendar', tab: 'availability', path: '/staff/therapists' },
     ],
   },
   {
-    title: 'Service Maintenance',
-    icon: ShoppingBag,
+    title: 'Bookings Overview',
+    icon: Calendar,
     path: null,
-    basePath: '/admin/services',
+    basePath: '/staff/appointments',
     subs: [
-      { label: 'All Services',           tab: 'all',        path: '/admin/services' },
-      { label: 'Promos & Packages',      tab: 'promos',     path: '/admin/services' },
-      { label: 'Categories & Durations', tab: 'categories', path: '/admin/services' },
-    ],
-  },
-  {
-    title: 'Product Maintenance',
-    icon: Package,
-    path: null,
-    basePath: '/admin/products',
-    subs: [
-      { label: 'Retail Products',           tab: 'retail',   path: '/admin/products' },
-      { label: 'Internal Supplies',         tab: 'supplies', path: '/admin/products' },
-      { label: 'Stock Control & Suppliers', tab: 'stock',    path: '/admin/products' },
-    ],
-  },
-  {
-    title: 'Financials & Reports',
-    icon: CreditCard,
-    path: null,
-    basePath: '/admin/payments',
-    subs: [
-      { label: 'Daily Sales Logs',      tab: 'sales',    path: '/admin/payments' },
-      { label: 'Payroll & Commissions', tab: 'payroll',  path: '/admin/payments' },
-      { label: 'Expense Tracker',       tab: 'expenses', path: '/admin/payments' },
-    ],
-  },
-  {
-    title: 'System Settings',
-    icon: Settings,
-    path: null,
-    basePath: '/admin/settings',
-    subs: [
-      { label: 'Spa Configuration',        tab: 'config',        path: '/admin/settings' },
-      { label: 'Content Management (CMS)', tab: 'cms',           path: '/admin/settings' },
-      { label: 'Notification Rules',       tab: 'notifications', path: '/admin/settings' },
+      { label: "Today's Appointments", tab: 'today',    path: '/staff/appointments' },
+      { label: 'Upcoming Sessions',     tab: 'upcoming', path: '/staff/appointments' },
     ],
   },
 ];
 
 const SUB_ICON = {
-  calendar: Calendar,   pending: Clock,        requests: AlertCircle,
-  profiles: UserCheck,  customers: Users,      rbac: ShieldAlert,
-  all: ShoppingBag,     promos: Gift,          categories: Hourglass,
-  retail: Tags,         supplies: Beaker,      stock: Truck,
-  sales: DollarSign,    payroll: Coins,        expenses: Wallet,
-  config: Sliders,      cms: Globe,            notifications: Bell,
+  schedule: CalendarDays,
+  availability: Activity,
+  today: Clock,
+  upcoming: UserCheck,
 };
 
-/* ── Colour tokens ──────────────────────────────────────────────────── */
+/* ── Colour tokens (same system as admin Sidebar) ────────────────── */
 const L = {
   bg: '#ffffff', sidebar: '#ffffff',
   hover: '#f5f7fa', activeParent: '#f0f4ff', activeSub: '#eef2ff',
@@ -114,7 +63,7 @@ const D = {
   txt: '#dde3ef', txtMuted: '#4e5a70', txtSub: '#8a9ab0',
 };
 
-const Sidebar = ({ isOpen, onClose }) => {
+const StaffSidebar = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
@@ -122,8 +71,6 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || '';
   const [search, setSearch] = useState('');
-
-  /* ── Accordion: only ONE item expanded at a time ── */
   const [openTitle, setOpenTitle] = useState(null);
 
   const t = theme === 'dark' ? D : L;
@@ -135,7 +82,6 @@ const Sidebar = ({ isOpen, onClose }) => {
     setOpenTitle(found ? found.title : null);
   }, [location.pathname]);
 
-  /* Accordion toggle — closes current if same, closes old & opens new if different */
   const handleToggle = (title) => {
     setOpenTitle(prev => (prev === title ? null : title));
   };
@@ -157,8 +103,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const isSubActive = sub =>
     location.pathname === sub.path &&
     (activeTab === sub.tab ||
-      (!activeTab && ['calendar','profiles','all','retail','config'].includes(sub.tab)) ||
-      (!activeTab && sub.tab === 'sales' && sub.path === '/admin/payments'));
+      (!activeTab && ['schedule', 'today'].includes(sub.tab)));
 
   return (
     <>
@@ -190,7 +135,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* ── Brand ── */}
         <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${t.border}` }}>
-          <button onClick={() => navigate('/admin/dashboard')}
+          <button onClick={() => navigate('/staff/dashboard')}
             className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
             <div className="w-9 h-9 rounded-2xl overflow-hidden flex-shrink-0"
               style={{ boxShadow: '0 4px 14px rgba(10,61,48,0.35)' }}>
@@ -202,7 +147,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </p>
               <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-0.5 truncate"
                 style={{ color: t.gold }}>
-                Home Service Spa
+                Staff Portal
               </p>
             </div>
           </button>
@@ -241,7 +186,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* ── Label ── */}
         <div className="px-5 pt-3 pb-1 flex-shrink-0">
           <p className="text-[9px] font-black tracking-[0.25em] uppercase" style={{ color: t.txtMuted }}>
-            Main Menu
+            Staff Menu
           </p>
         </div>
 
@@ -276,7 +221,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               );
             }
 
-            /* Other menu items: accordion */
+            /* Accordion items */
             const basePath = cat.basePath || '';
             const isActive = location.pathname.startsWith(basePath);
             const isOpenNow = (openTitle === cat.title) || (search.length > 0 && cat.forceOpen);
@@ -345,27 +290,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* ── Bottom links ── */}
         <div className="px-3 pt-2 pb-1 space-y-0.5 flex-shrink-0"
           style={{ borderTop: `1px solid ${t.border}` }}>
-          <Link to="/admin/settings?tab=config" onClick={onClose}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full"
-            style={{
-              background: location.pathname.startsWith('/admin/settings') ? t.activeParent : 'transparent',
-              textDecoration: 'none',
-            }}
-            onMouseEnter={e => { if (!location.pathname.startsWith('/admin/settings')) e.currentTarget.style.background = t.hover; }}
-            onMouseLeave={e => { if (!location.pathname.startsWith('/admin/settings')) e.currentTarget.style.background = 'transparent'; }}>
-            <Settings className="w-4 h-4 flex-shrink-0"
-              style={{ color: location.pathname.startsWith('/admin/settings') ? t.accent : t.txtMuted }} />
-            <span className="text-[12.5px] font-semibold"
-              style={{ color: location.pathname.startsWith('/admin/settings') ? t.txt : t.txtSub }}>
-              Setting
-            </span>
-          </Link>
-        </div>
-
-        {/* ── Back to Home ── */}
-        <div className="px-3 pb-1 flex-shrink-0">
           <Link to="/" onClick={onClose}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full"
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
             style={{ background: 'transparent', textDecoration: 'none' }}
             onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
@@ -373,19 +299,20 @@ const Sidebar = ({ isOpen, onClose }) => {
             <span className="text-[12.5px] font-semibold" style={{ color: t.txtSub }}>Back to Home</span>
           </Link>
         </div>
+
         {/* ── User card ── */}
         <div className="px-4 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
               style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.3)' }}>
-              {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+              {user?.name?.charAt(0)?.toUpperCase() || 'S'}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[12px] font-bold truncate leading-tight" style={{ color: t.txt }}>
-                {user?.name || 'Admin'}
+                {user?.name || 'Staff'}
               </p>
               <p className="text-[10px] truncate mt-0.5" style={{ color: t.txtMuted }}>
-                {user?.email || 'admin@cozy.spa'}
+                {user?.email || 'staff@cozy.spa'}
               </p>
             </div>
             <button title="Sign Out" onClick={handleLogout}
@@ -402,4 +329,4 @@ const Sidebar = ({ isOpen, onClose }) => {
   );
 };
 
-export default Sidebar;
+export default StaffSidebar;

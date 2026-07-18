@@ -22,9 +22,13 @@ import AdminSettings from './pages/admin/AdminSettings';
 // Therapist Pages
 import TherapistDashboard from './pages/therapist/TherapistDashboard';
 
+// Staff Pages
+import StaffDashboard from './pages/staff/StaffDashboard';
+import StaffTherapists from './pages/staff/StaffTherapists';
+import StaffAppointments from './pages/staff/StaffAppointments';
+
 // Client Pages
 import ClientDashboard from './pages/client/ClientDashboard';
-
 // Page transition wrapper
 const PageTransition = ({ children }) => (
   <motion.div
@@ -59,6 +63,11 @@ function AnimatedRoutes() {
 
         {/* ── Therapist ────────────────────────────────── */}
         <Route path="/therapist/dashboard" element={<ProtectedRoute allowedRoles={['therapist']}><PageTransition><TherapistDashboard /></PageTransition></ProtectedRoute>} />
+
+        {/* ── Staff ────────────────────────────────────── */}
+        <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={['staff']}><PageTransition><StaffDashboard /></PageTransition></ProtectedRoute>} />
+        <Route path="/staff/therapists" element={<ProtectedRoute allowedRoles={['staff']}><PageTransition><StaffTherapists /></PageTransition></ProtectedRoute>} />
+        <Route path="/staff/appointments" element={<ProtectedRoute allowedRoles={['staff']}><PageTransition><StaffAppointments /></PageTransition></ProtectedRoute>} />
 
         {/* ── Client ──────────────────────────────────── */}
         <Route path="/booking/dashboard" element={<ProtectedRoute allowedRoles={['client']}><PageTransition><ClientDashboard /></PageTransition></ProtectedRoute>} />

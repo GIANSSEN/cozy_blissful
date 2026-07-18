@@ -169,6 +169,7 @@ const Register = () => {
     if (res.success) {
       if (res.role === 'admin') navigate('/admin/dashboard');
       else if (res.role === 'therapist') navigate('/therapist/dashboard');
+      else if (res.role === 'staff') navigate('/staff/dashboard');
       else navigate('/booking/dashboard');
       return;
     }

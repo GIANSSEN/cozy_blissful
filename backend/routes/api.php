@@ -7,6 +7,7 @@ use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ClientController;
 use App\Http\Controllers\API\TherapistController;
+use App\Http\Controllers\API\StaffController;
 
 // Public auth routes with custom rate limiting for enhanced security
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle.register');
@@ -53,7 +54,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/availability/toggle', [TherapistController::class, 'toggleAvailability']);
     });
 
-    // Group 3: /booking/* -> Client only for booking management
+    // Group 3: /staff/* -> Staff only
+    Route::middleware('role:staff')->prefix('staff')->group(function () {
+        Route::get('/dashboard',              [StaffController::class, 'index']);
+        Route::get('/therapists',             [StaffController::class, 'getTherapists']);
+        Route::post('/availability/toggle',   [StaffController::class, 'toggleAvailability']);
+        Route::get('/appointments',           [StaffController::class, 'getAppointments']);
+    });
+
+    // Group 4: /booking/* -> Client only for booking management
     Route::middleware('role:client')->prefix('booking')->group(function () {
         Route::get('/dashboard', [ClientController::class, 'index']);
         Route::post('/store', [ClientController::class, 'store']);

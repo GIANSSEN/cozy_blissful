@@ -21,9 +21,10 @@ class DatabaseSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Create roles if they don't exist
-        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole     = Role::firstOrCreate(['name' => 'admin',     'guard_name' => 'web']);
         $therapistRole = Role::firstOrCreate(['name' => 'therapist', 'guard_name' => 'web']);
-        $clientRole = Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+        $clientRole    = Role::firstOrCreate(['name' => 'client',    'guard_name' => 'web']);
+        $staffRole     = Role::firstOrCreate(['name' => 'staff',     'guard_name' => 'web']);
 
         // Create Admin User
         $admin = User::firstOrCreate(
@@ -44,6 +45,16 @@ class DatabaseSeeder extends Seeder
             ]
         );
         $client->syncRoles([$clientRole]);
+
+        // Create Staff User
+        $staff = User::firstOrCreate(
+            ['email' => 'staff@example.com'],
+            [
+                'name'     => 'Staff Coordinator',
+                'password' => bcrypt('password'),
+            ]
+        );
+        $staff->syncRoles([$staffRole]);
 
         // Create Therapist Users
         $therapist1 = User::firstOrCreate(

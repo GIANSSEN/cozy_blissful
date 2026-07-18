@@ -103,6 +103,7 @@ const Login = () => {
   const redirect = useCallback((role) => {
     if (role === 'admin') navigate('/admin/dashboard');
     else if (role === 'therapist') navigate('/therapist/dashboard');
+    else if (role === 'staff') navigate('/staff/dashboard');
     else navigate('/booking/dashboard');
   }, [navigate]);
 
