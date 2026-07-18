@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import {
-  Users, Calendar, Check, AlertCircle, Info, Search,
-  Shield, Lock, Save, CheckCircle2, ToggleLeft, ToggleRight,
-  Crown, Stethoscope, UserCheck, UserCog, User
+  Users, Calendar, AlertCircle,
+  Shield, Lock, Save, CheckCircle2,
+  Crown, Stethoscope, UserCheck, UserCog, User, ListOrdered,
 } from 'lucide-react';
 
 /* ── RBAC initial state including staff role ────────────────────── */
@@ -78,7 +79,6 @@ const AdminStaff = () => {
   const [therapists, setTherapists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
-  const [customerSearch, setCustomerSearch] = useState('');
   const [rbacPermissions, setRbacPermissions] = useState(INITIAL_PERMISSIONS);
   const [rbacSaved, setRbacSaved] = useState(false);
   const [savingRbac, setSavingRbac] = useState(false);
@@ -119,19 +119,21 @@ const AdminStaff = () => {
 
   const getPageTitle = () => {
     switch (activeTab) {
-      case 'customers': return 'Customer Database';
-      case 'rbac': return 'Role Access Control';
+      case 'queue': return 'Therapist Queue';
+      case 'rbac': return 'System Permissions';
       case 'profiles':
-      default: return 'Staff & Therapist Profiles';
+      default: return 'Attendance & Profiles';
     }
   };
 
-  const mockCustomers = [
-    { id: 1, name: 'Sarah Martinez', email: 'sarah@example.com', phone: '+63 917 123 4567', bookings: 12, notes: 'Prefers Swedish Massage with Lavender Oil, medium pressure.' },
-    { id: 2, name: 'David Lim', email: 'david.lim@example.com', phone: '+63 918 987 6543', bookings: 5, notes: 'Requires Deep Tissue focus on lower back and neck.' },
-    { id: 3, name: 'Patricia Go', email: 'patty.go@example.com', phone: '+63 919 444 5555', bookings: 8, notes: 'Regular gel nails client. Prefers Anna Reyes.' },
-    { id: 4, name: 'John Vincent', email: 'vincent.j@example.com', phone: '+63 922 555 1234', bookings: 1, notes: 'First time. Prefers standard Hilot massage.' },
-  ].filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.email.toLowerCase().includes(customerSearch.toLowerCase()));
+  /* Mock therapist queue — next-in-line order for walk-in / unassigned bookings */
+  const mockQueue = therapists.map((t, idx) => ({
+    id: t.id,
+    name: t.name,
+    specialty: t.specialty,
+    position: idx + 1,
+    status: idx === 0 ? 'Next Up' : 'Waiting',
+  }));
 
   const toggleRbac = (role, permission) => {
     const meta = ROLE_META[role];
@@ -153,7 +155,7 @@ const AdminStaff = () => {
   };
 
   return (
-    <AdminLayout title="User Management" subtitle={getPageTitle()}>
+    <AdminLayout title="Staff & Schedule" subtitle={getPageTitle()}>
       <div className="space-y-6">
 
         {/* ── Therapist Profiles Tab ── */}
@@ -174,30 +176,7 @@ const AdminStaff = () => {
             )}
 
             {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-6">
-                    <div className="space-y-2.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl shimmer flex-shrink-0" />
-                        <div className="space-y-2">
-                          <div className="shimmer w-28 h-3 rounded" style={{ height: '12px' }} />
-                          <div className="shimmer w-40 h-2 rounded" style={{ height: '8px' }} />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="shimmer w-16 h-4 rounded-full" style={{ height: '16px' }} />
-                        <div className="shimmer w-20 h-4 rounded-full" style={{ height: '16px' }} />
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-4 xl:pt-0">
-                      {[1, 2, 3, 4, 5, 6, 7].map(j => (
-                        <div key={j} className="w-[48px] h-[38px] rounded-xl shimmer animate-pulse" />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <LoadingSpinner />
             ) : therapists.length === 0 ? (
               <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center shadow-sm">
                 <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -262,45 +241,45 @@ const AdminStaff = () => {
           </div>
         )}
 
-        {/* ── Customer Database Tab ── */}
-        {activeTab === 'customers' && (
+        {/* ── Therapist Queue Tab ── */}
+        {activeTab === 'queue' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Customer Registry</h2>
-              <div className="relative w-full sm:w-60">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input type="text" placeholder="Search customer name..."
-                  value={customerSearch} onChange={e => setCustomerSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-800"
-                  style={{ background: '#faf9f6' }} />
-              </div>
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Next-In-Line Queue</h2>
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-100">
+                {mockQueue.length} In Queue
+              </span>
             </div>
-            <div className="grid gap-4">
-              {mockCustomers.map(cust => (
-                <div key={cust.id} className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm space-y-3 hover:shadow-md transition">
-                  <div className="flex items-start justify-between gap-4">
+
+            {mockQueue.length === 0 ? (
+              <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center shadow-sm">
+                <ListOrdered className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="font-bold text-slate-700">No therapists in queue</p>
+                <p className="text-xs text-slate-400 mt-1">Therapists awaiting walk-in assignment will appear here.</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {mockQueue.map(q => (
+                  <div key={q.id} className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm flex items-center justify-between gap-4 hover:shadow-md transition">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-amber-50 text-amber-800 rounded-xl flex items-center justify-center font-bold text-sm">
-                        {cust.name.charAt(0)}
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
+                        #{q.position}
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-800 text-sm leading-none">{cust.name}</h4>
-                        <p className="text-[11px] text-slate-400 mt-1">{cust.email} · {cust.phone}</p>
+                        <h4 className="font-bold text-slate-800 text-sm leading-tight">{q.name}</h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{q.specialty}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded-full">
-                      {cust.bookings} Bookings
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      q.status === 'Next Up' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'
+                    }`}>
+                      {q.status}
                     </span>
                   </div>
-                  {cust.notes && (
-                    <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex items-start gap-2">
-                      <Info className="w-3.5 h-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
-                      <span><strong>Treatment Notes:</strong> {cust.notes}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

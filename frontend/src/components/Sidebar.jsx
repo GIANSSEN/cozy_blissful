@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,7 +10,8 @@ import {
   Moon, Sun, X, Home,
   TrendingUp, DollarSign, TrendingDown, Clock, AlertCircle,
   UserCheck, ShieldAlert, Gift, Hourglass, Tags, Truck,
-  FileText, Coins, Wallet, Sliders, Globe, Beaker,
+  FileText, Coins, Wallet, UserCog, Megaphone, Boxes,
+  History, Star, HeartPulse, ListOrdered,
 } from 'lucide-react';
 
 /* ── Menu: Dashboard has NO submenus — it is a direct link ─────────── */
@@ -22,80 +23,104 @@ const MENU = [
     subs: [],
   },
   {
-    title: 'Bookings & Appointments',
+    title: 'Appointments',
     icon: Calendar,
     path: null,
     basePath: '/admin/appointments',
     subs: [
-      { label: 'Master Calendar View',       tab: 'calendar', path: '/admin/appointments' },
-      { label: 'Pending Approvals',          tab: 'pending',  path: '/admin/appointments' },
-      { label: 'Cancellation & Reschedule',  tab: 'requests', path: '/admin/appointments' },
+      { label: 'Calendar', tab: 'calendar', path: '/admin/appointments' },
+      { label: 'Pending',  tab: 'pending',  path: '/admin/appointments' },
+      { label: 'Requests', tab: 'requests', path: '/admin/appointments' },
     ],
   },
   {
-    title: 'User Management',
+    title: 'Customers',
     icon: Users,
+    path: null,
+    basePath: '/admin/customers',
+    subs: [
+      { label: 'Customer Profiles',          tab: 'profiles', path: '/admin/customers' },
+      { label: 'Reviews & Feedback',         tab: 'reviews',  path: '/admin/customers' },
+      { label: 'Medical & Allergy Records',  tab: 'medical',  path: '/admin/customers' },
+    ],
+  },
+  {
+    title: 'Staff & Schedule',
+    icon: UserCog,
     path: null,
     basePath: '/admin/staff',
     subs: [
-      { label: 'Therapists & Staff Profiles', tab: 'profiles',  path: '/admin/staff' },
-      { label: 'Customer Database',            tab: 'customers', path: '/admin/staff' },
-      { label: 'Role Access Control (RBAC)',   tab: 'rbac',      path: '/admin/staff' },
+      { label: 'Attendance & Profiles', tab: 'profiles', path: '/admin/staff' },
+      { label: 'Therapist Queue',       tab: 'queue',    path: '/admin/staff' },
+      { label: 'System Permissions',    tab: 'rbac',     path: '/admin/staff' },
     ],
   },
   {
-    title: 'Service Maintenance',
+    title: 'Services & Offers',
     icon: ShoppingBag,
     path: null,
     basePath: '/admin/services',
     subs: [
-      { label: 'All Services',           tab: 'all',        path: '/admin/services' },
-      { label: 'Promos & Packages',      tab: 'promos',     path: '/admin/services' },
-      { label: 'Categories & Durations', tab: 'categories', path: '/admin/services' },
+      { label: 'All Services', tab: 'all',        path: '/admin/services' },
+      { label: 'Categories',   tab: 'categories', path: '/admin/services' },
     ],
   },
   {
-    title: 'Product Maintenance',
+    title: 'Marketing & Loyalty',
+    icon: Megaphone,
+    path: null,
+    basePath: '/admin/marketing',
+    subs: [
+      { label: 'Gift Cards & Vouchers', tab: 'giftcards', path: '/admin/marketing' },
+      { label: 'Promo Campaigns',       tab: 'promos',    path: '/admin/marketing' },
+    ],
+  },
+  {
+    title: 'Inventory',
     icon: Package,
     path: null,
     basePath: '/admin/products',
     subs: [
-      { label: 'Retail Products',           tab: 'retail',   path: '/admin/products' },
-      { label: 'Internal Supplies',         tab: 'supplies', path: '/admin/products' },
-      { label: 'Stock Control & Suppliers', tab: 'stock',    path: '/admin/products' },
+      { label: 'Product Catalog',    tab: 'retail',    path: '/admin/products' },
+      { label: 'Stock Control',      tab: 'stock',     path: '/admin/products' },
+      { label: 'Suppliers & Orders', tab: 'suppliers', path: '/admin/products' },
     ],
   },
   {
-    title: 'Financials & Reports',
+    title: 'Financials',
     icon: CreditCard,
     path: null,
     basePath: '/admin/payments',
     subs: [
-      { label: 'Daily Sales Logs',      tab: 'sales',    path: '/admin/payments' },
+      { label: 'Sales',                 tab: 'sales',    path: '/admin/payments' },
       { label: 'Payroll & Commissions', tab: 'payroll',  path: '/admin/payments' },
       { label: 'Expense Tracker',       tab: 'expenses', path: '/admin/payments' },
     ],
   },
   {
+    title: 'Audit Logs',
+    icon: History,
+    path: '/admin/audit-logs',
+    basePath: '/admin/audit-logs',
+    subs: [],
+  },
+  {
     title: 'System Settings',
     icon: Settings,
-    path: null,
+    path: '/admin/settings',
     basePath: '/admin/settings',
-    subs: [
-      { label: 'Spa Configuration',        tab: 'config',        path: '/admin/settings' },
-      { label: 'Content Management (CMS)', tab: 'cms',           path: '/admin/settings' },
-      { label: 'Notification Rules',       tab: 'notifications', path: '/admin/settings' },
-    ],
+    subs: [],
   },
 ];
 
 const SUB_ICON = {
   calendar: Calendar,   pending: Clock,        requests: AlertCircle,
-  profiles: UserCheck,  customers: Users,      rbac: ShieldAlert,
-  all: ShoppingBag,     promos: Gift,          categories: Hourglass,
-  retail: Tags,         supplies: Beaker,      stock: Truck,
+  profiles: UserCheck,  reviews: Star,         medical: HeartPulse,
+  queue: ListOrdered,   rbac: ShieldAlert,
+  all: ShoppingBag,     categories: Hourglass,
+  giftcards: Gift,      promos: Megaphone,
+  retail: Tags,         stock: Truck,          suppliers: Boxes,
   sales: DollarSign,    payroll: Coins,        expenses: Wallet,
-  config: Sliders,      cms: Globe,            notifications: Bell,
 };
 
 /* ── Colour tokens ──────────────────────────────────────────────────── */
@@ -125,6 +150,19 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   /* ── Accordion: only ONE item expanded at a time ── */
   const [openTitle, setOpenTitle] = useState(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileRef = useRef(null);
+
+  // Close profile dropdown on click outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const t = theme === 'dark' ? D : L;
   const isDark = theme === 'dark';
@@ -140,7 +178,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     setOpenTitle(prev => (prev === title ? null : title));
   };
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
+  const handleLogout = async () => { await logout(); onClose?.(); navigate('/login'); };
 
   /* Search filter */
   const filtered = MENU.map(cat => {
@@ -154,11 +192,12 @@ const Sidebar = ({ isOpen, onClose }) => {
     return null;
   }).filter(Boolean);
 
-  const isSubActive = sub =>
-    location.pathname === sub.path &&
-    (activeTab === sub.tab ||
-      (!activeTab && ['calendar','profiles','all','retail','config'].includes(sub.tab)) ||
-      (!activeTab && sub.tab === 'sales' && sub.path === '/admin/payments'));
+  const isSubActive = sub => {
+    if (location.pathname !== sub.path) return false;
+    if (activeTab) return activeTab === sub.tab;
+    const parentCat = MENU.find(m => m.basePath === sub.path);
+    return parentCat?.subs?.[0]?.tab === sub.tab;
+  };
 
   return (
     <>
@@ -181,7 +220,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
         style={{
-          width: 252, minWidth: 252,
+          width: 272, minWidth: 272,
           background: t.sidebar,
           borderRight: `1px solid ${t.border}`,
           boxShadow: isDark ? '4px 0 40px rgba(0,0,0,0.45)' : '4px 0 24px rgba(0,0,0,0.06)',
@@ -190,7 +229,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* ── Brand ── */}
         <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${t.border}` }}>
-          <button onClick={() => navigate('/admin/dashboard')}
+          <button onClick={() => { navigate('/admin/dashboard'); onClose?.(); }}
             className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
             <div className="w-9 h-9 rounded-2xl overflow-hidden flex-shrink-0"
               style={{ boxShadow: '0 4px 14px rgba(10,61,48,0.35)' }}>
@@ -252,7 +291,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
             /* Dashboard: direct link, no accordion */
             if (cat.path && cat.subs.length === 0) {
-              const active = location.pathname === cat.path;
+              const active = location.pathname === cat.path || (cat.basePath && location.pathname.startsWith(cat.basePath));
               return (
                 <Link key={cat.title} to={cat.path} onClick={onClose}
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full"
@@ -342,60 +381,48 @@ const Sidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* ── Bottom links ── */}
-        <div className="px-3 pt-2 pb-1 space-y-0.5 flex-shrink-0"
-          style={{ borderTop: `1px solid ${t.border}` }}>
-          <Link to="/admin/settings?tab=config" onClick={onClose}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full"
-            style={{
-              background: location.pathname.startsWith('/admin/settings') ? t.activeParent : 'transparent',
-              textDecoration: 'none',
-            }}
-            onMouseEnter={e => { if (!location.pathname.startsWith('/admin/settings')) e.currentTarget.style.background = t.hover; }}
-            onMouseLeave={e => { if (!location.pathname.startsWith('/admin/settings')) e.currentTarget.style.background = 'transparent'; }}>
-            <Settings className="w-4 h-4 flex-shrink-0"
-              style={{ color: location.pathname.startsWith('/admin/settings') ? t.accent : t.txtMuted }} />
-            <span className="text-[12.5px] font-semibold"
-              style={{ color: location.pathname.startsWith('/admin/settings') ? t.txt : t.txtSub }}>
-              Setting
-            </span>
-          </Link>
-        </div>
+        {/* ── User profile with clickable popover ── */}
+        <div ref={profileRef} className="relative py-5 flex justify-center items-center flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
+          <button 
+            type="button"
+            onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white cursor-pointer relative focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 10px rgba(6,44,34,0.3)' }}
+          >
+            {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+            
+            {/* Online Status Indicator Dot */}
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+          </button>
 
-        {/* ── Back to Home ── */}
-        <div className="px-3 pb-1 flex-shrink-0">
-          <Link to="/" onClick={onClose}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full"
-            style={{ background: 'transparent', textDecoration: 'none' }}
-            onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-            <Home className="w-4 h-4 flex-shrink-0" style={{ color: t.txtMuted }} />
-            <span className="text-[12.5px] font-semibold" style={{ color: t.txtSub }}>Back to Home</span>
-          </Link>
-        </div>
-        {/* ── User card ── */}
-        <div className="px-4 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.3)' }}>
-              {user?.name?.charAt(0)?.toUpperCase() || 'A'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-bold truncate leading-tight" style={{ color: t.txt }}>
-                {user?.name || 'Admin'}
-              </p>
-              <p className="text-[10px] truncate mt-0.5" style={{ color: t.txtMuted }}>
-                {user?.email || 'admin@cozy.spa'}
-              </p>
-            </div>
-            <button title="Sign Out" onClick={handleLogout}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all flex-shrink-0"
-              style={{ color: t.txtMuted }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = t.hover; }}
-              onMouseLeave={e => { e.currentTarget.style.color = t.txtMuted; e.currentTarget.style.background = 'transparent'; }}>
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {/* Clickable Menu Popover */}
+          <AnimatePresence>
+            {profileMenuOpen && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ duration: 0.15 }}
+                className="absolute bottom-[90%] left-3 right-3 lg:bottom-4 lg:left-[80%] lg:right-auto lg:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-3 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4)] z-50 flex flex-col gap-1"
+              >
+                <div className="px-2 py-1.5 border-b border-slate-100 dark:border-slate-800/80 text-left">
+                  <p className="text-[9px] font-black tracking-wider uppercase text-amber-500">{user?.role || 'Administrator'}</p>
+                  <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">{user?.name}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
+                </div>
+                
+                <Link to="/" onClick={() => { setProfileMenuOpen(false); onClose?.(); }} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors mt-1" style={{ textDecoration: 'none' }}>
+                  <Home className="w-4 h-4 text-slate-400" />
+                  <span>Back to Landing</span>
+                </Link>
+                
+                <button onClick={() => { setProfileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors w-full text-left">
+                  <LogOut className="w-4 h-4 text-red-400" />
+                  <span>Sign Out</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </aside>
     </>

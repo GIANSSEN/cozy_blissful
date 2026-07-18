@@ -3,9 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import API from '../../api/axios';
 import StaffLayout from './StaffLayout';
-import {
-  ImageTextSkeletonGrid
-} from '../../components/Skeleton';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import {
   Users, Calendar, Clock, CheckCircle, Activity,
   UserCheck, Check, RefreshCw, CalendarDays
@@ -137,7 +135,7 @@ const StaffDashboard = () => {
         </motion.div>
 
         {loading ? (
-          <ImageTextSkeletonGrid cols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" />
+          <LoadingSpinner />
         ) : (
           <>
             {/* ── Stats Row ── */}

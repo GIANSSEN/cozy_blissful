@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import API from '../../api/axios';
 import StaffLayout from './StaffLayout';
-import { SkeletonSessionFeed, ImageTextSkeletonGrid } from '../../components/Skeleton';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { Clock, UserCheck, Calendar, CheckCircle, AlertCircle, Search, RefreshCw } from 'lucide-react';
 
 const ClayCard = ({ children, className = '', style = {}, ...props }) => (
@@ -131,7 +131,7 @@ const StaffAppointments = () => {
 
         {/* Appointment List */}
         {loading ? (
-          <ImageTextSkeletonGrid cols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" />
+          <LoadingSpinner />
         ) : filtered.length === 0 ? (
           <ClayCard className="p-16 text-center">
             <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-4">

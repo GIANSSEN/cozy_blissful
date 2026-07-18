@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -86,7 +86,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
     setOpenTitle(prev => (prev === title ? null : title));
   };
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
+  const handleLogout = async () => { await logout(); onClose?.(); navigate('/login'); };
 
   /* Search filter */
   const filtered = MENU.map(cat => {
@@ -126,7 +126,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
         style={{
-          width: 252, minWidth: 252,
+          width: 272, minWidth: 272,
           background: t.sidebar,
           borderRight: `1px solid ${t.border}`,
           boxShadow: isDark ? '4px 0 40px rgba(0,0,0,0.45)' : '4px 0 24px rgba(0,0,0,0.06)',
@@ -135,7 +135,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
         {/* ── Brand ── */}
         <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${t.border}` }}>
-          <button onClick={() => navigate('/staff/dashboard')}
+          <button onClick={() => { navigate('/staff/dashboard'); onClose?.(); }}
             className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
             <div className="w-9 h-9 rounded-2xl overflow-hidden flex-shrink-0"
               style={{ boxShadow: '0 4px 14px rgba(10,61,48,0.35)' }}>
@@ -287,40 +287,32 @@ const StaffSidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* ── Bottom links ── */}
-        <div className="px-3 pt-2 pb-1 space-y-0.5 flex-shrink-0"
-          style={{ borderTop: `1px solid ${t.border}` }}>
-          <Link to="/" onClick={onClose}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
-            style={{ background: 'transparent', textDecoration: 'none' }}
-            onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-            <Home className="w-4 h-4 flex-shrink-0" style={{ color: t.txtMuted }} />
-            <span className="text-[12.5px] font-semibold" style={{ color: t.txtSub }}>Back to Home</span>
-          </Link>
-        </div>
+        {/* ── User profile with hover popover ── */}
+        <div className="relative group py-5 flex justify-center items-center flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white cursor-pointer relative"
+            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 10px rgba(6,44,34,0.3)' }}>
+            {user?.name?.charAt(0)?.toUpperCase() || 'S'}
+            
+            {/* Online Status Indicator Dot */}
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+          </div>
 
-        {/* ── User card ── */}
-        <div className="px-4 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.3)' }}>
-              {user?.name?.charAt(0)?.toUpperCase() || 'S'}
+          {/* Hover Menu Popover */}
+          <div className="absolute bottom-[90%] left-3 right-3 lg:bottom-4 lg:left-[80%] lg:right-auto lg:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-3 shadow-[0_12px_36px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.4)] opacity-0 scale-95 pointer-events-none group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto transition-all duration-200 z-50 flex flex-col gap-1">
+            <div className="px-2 py-1.5 border-b border-slate-100 dark:border-slate-800/80">
+              <p className="text-[9px] font-black tracking-wider uppercase text-amber-500">{user?.role || 'Staff Member'}</p>
+              <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">{user?.name}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-bold truncate leading-tight" style={{ color: t.txt }}>
-                {user?.name || 'Staff'}
-              </p>
-              <p className="text-[10px] truncate mt-0.5" style={{ color: t.txtMuted }}>
-                {user?.email || 'staff@cozy.spa'}
-              </p>
-            </div>
-            <button title="Sign Out" onClick={handleLogout}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all flex-shrink-0"
-              style={{ color: t.txtMuted }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = t.hover; }}
-              onMouseLeave={e => { e.currentTarget.style.color = t.txtMuted; e.currentTarget.style.background = 'transparent'; }}>
-              <LogOut className="w-3.5 h-3.5" />
+            
+            <Link to="/" onClick={onClose} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors mt-1" style={{ textDecoration: 'none' }}>
+              <Home className="w-4 h-4 text-slate-400" />
+              <span>Back to Landing</span>
+            </Link>
+            
+            <button onClick={handleLogout} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors w-full text-left">
+              <LogOut className="w-4 h-4 text-red-400" />
+              <span>Sign Out</span>
             </button>
           </div>
         </div>

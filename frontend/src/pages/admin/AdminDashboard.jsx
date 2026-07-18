@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import AdminLayout from './AdminLayout';
-import { ImageTextSkeletonGrid } from '../../components/Skeleton';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import { useTheme } from '../../context/ThemeContext';
 import {
@@ -140,7 +140,7 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <AdminLayout title="Dashboard" subtitle="Overview">
-        <ImageTextSkeletonGrid cols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" />
+        <LoadingSpinner />
       </AdminLayout>
     );
   }

@@ -1,11 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
 import { Sliders, Globe, Bell, Save, CheckCircle2 } from 'lucide-react';
 
 const AdminSettings = () => {
   const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState('config');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || 'config');
+
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
   const [toast, setToast] = useState(false);
 
   const [spaConfig, setSpaConfig] = useState({
@@ -64,7 +78,7 @@ const AdminSettings = () => {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`flex min-h-[3.2rem] items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition-all ${
                     active
                       ? theme === 'dark'

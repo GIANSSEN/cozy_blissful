@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import { DollarSign, CheckCircle, Clock, Plus, Landmark, FileText, ArrowUpRight } from 'lucide-react';
 
@@ -54,7 +55,7 @@ const AdminPayments = () => {
   ];
 
   return (
-    <AdminLayout title="Financials &amp; Reports" subtitle={getPageTitle()}>
+    <AdminLayout title="Financials" subtitle={getPageTitle()}>
       <div className="space-y-6">
         
         {/* Toast Notification */}
@@ -66,9 +67,7 @@ const AdminPayments = () => {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-emerald-900" />
-          </div>
+          <LoadingSpinner />
         ) : (
           <div>
             

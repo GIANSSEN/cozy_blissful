@@ -3,9 +3,7 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import API from '../../api/axios';
 import StaffLayout from './StaffLayout';
-import {
-  ImageTextSkeletonGrid
-} from '../../components/Skeleton';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import {
   Users, CalendarDays, Activity, Check, AlertCircle,
   UserCheck, Clock, RefreshCw
@@ -134,7 +132,7 @@ const StaffTherapists = () => {
         </div>
 
         {loading ? (
-          <ImageTextSkeletonGrid cols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" />
+          <LoadingSpinner />
         ) : (
           <>
             {/* ── Schedule Coordinator Tab ── */}

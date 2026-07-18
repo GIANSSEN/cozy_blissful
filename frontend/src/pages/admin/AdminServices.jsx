@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
-import { ImageTextSkeletonGrid } from '../../components/Skeleton';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Plus, Pencil, Trash2, X, Save, Search,
   Clock, ShoppingBag, AlertCircle, CheckCircle2,
-  ChevronDown, Gift, Hourglass
+  ChevronDown, Hourglass
 } from 'lucide-react';
 
 const DEFAULT_SERVICES = [
@@ -228,24 +228,16 @@ const AdminServices = () => {
     max:   Math.max(...services.filter((s) => s.category === cat && s.price).map((s) => s.price)),
   }));
 
-  // Mock Promos and packages list
-  const mockPromos = [
-    { id: 1, name: 'Sparty Package Deluxe', desc: 'Indulge in a 3-hour group massage and nail spa package for up to 5 persons. Complimentary tea included.', price: 4999, duration: 180 },
-    { id: 2, name: 'Kiddie Sparty Special', desc: 'Adapted massage strokes and organic non-toxic regular mani-pedi treatments for kids under 12.', price: 1999, duration: 120 },
-    { id: 3, name: 'Seasonal Holiday Relief Promo', desc: 'A custom combination of Hilot Healing massage followed by hot banana wrap therapy. Available Dec-Jan.', price: 1299, duration: 90 }
-  ];
-
   const getPageTitle = () => {
     switch (activeTab) {
-      case 'promos': return 'Promos & Packages';
-      case 'categories': return 'Categories & Durations';
+      case 'categories': return 'Categories';
       case 'all':
       default: return 'All Services';
     }
   };
 
   return (
-    <AdminLayout title="Service Maintenance" subtitle={getPageTitle()}>
+    <AdminLayout title="Services & Offers" subtitle={getPageTitle()}>
       {/* ── Toast ── */}
       {toast && (
         <div
@@ -338,7 +330,7 @@ const AdminServices = () => {
 
       {/* ── Main Content ── */}
       {loading ? (
-        <ImageTextSkeletonGrid cols="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" />
+        <LoadingSpinner />
       ) : (
         <div className="space-y-6">
 
@@ -421,42 +413,6 @@ const AdminServices = () => {
                       </div>
                     </div>
                   </ClayCard>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Tab Content: Promos & Packages ── */}
-          {activeTab === 'promos' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-800 text-sm">Active Sparty Packages &amp; Seasonal Promos</h3>
-                <button className="flex items-center gap-1 px-4 py-2 bg-emerald-950 text-white rounded-xl text-xs font-bold hover:bg-emerald-900 transition">
-                  <Plus className="w-3.5 h-3.5" /> Add Package
-                </button>
-              </div>
-
-              <div className="grid gap-4">
-                {mockPromos.map(promo => (
-                  <div key={promo.id} className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:shadow-md transition">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Gift className="w-4 h-4 text-amber-500" />
-                        <h4 className="font-bold text-slate-850 text-sm">{promo.name}</h4>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-relaxed">{promo.desc}</p>
-                      <div className="flex items-center gap-3 pt-1 text-[10px] text-slate-400 font-bold">
-                        <span className="flex items-center gap-0.5"><Clock className="w-3.5 h-3.5" /> {promo.duration}m duration</span>
-                        <span>·</span>
-                        <span className="text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">₱{promo.price.toLocaleString()} Standard Payout</span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 self-end sm:self-auto flex-shrink-0">
-                      <button onClick={() => showToast('Edit promo is mocked')} className="p-2 border rounded-xl text-slate-500 hover:text-emerald-850 bg-slate-50 transition"><Pencil className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => showToast('Delete promo is mocked')} className="p-2 border border-red-100 rounded-xl text-red-500 hover:text-red-750 bg-red-50 transition"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                  </div>
                 ))}
               </div>
             </div>

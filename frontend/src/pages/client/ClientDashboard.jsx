@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import {
   Calendar, Clock, CheckCircle, AlertCircle,
@@ -297,9 +298,7 @@ const ClientDashboard = () => {
         </AnimatePresence>
 
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="w-10 h-10 rounded-full animate-spin" style={{ border: '3px solid #f0ece4', borderTopColor: '#062c22' }} />
-          </div>
+          <LoadingSpinner />
         ) : (
           <div className="grid lg:grid-cols-3 gap-6">
 

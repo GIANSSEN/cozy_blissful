@@ -13,10 +13,13 @@ import Register from './pages/Auth/Register';
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminAppointments from './pages/admin/AdminAppointments';
+import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminServices from './pages/admin/AdminServices';
+import AdminMarketing from './pages/admin/AdminMarketing';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminStaff from './pages/admin/AdminStaff';
 import AdminProducts from './pages/admin/AdminProducts';
+import AdminAuditLogs from './pages/admin/AdminAuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
 
 // Therapist Pages
@@ -32,10 +35,9 @@ import ClientDashboard from './pages/client/ClientDashboard';
 // Page transition wrapper
 const PageTransition = ({ children }) => (
   <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -6 }}
-    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+    initial={{ opacity: 0, y: 6 }}
+    animate={{ opacity: 1, y: 0, transition: { duration: 0.16, ease: [0.22, 1, 0.36, 1] } }}
+    exit={{ opacity: 0, y: -4, transition: { duration: 0.08, ease: "easeIn" } }}
   >
     {children}
   </motion.div>
@@ -55,10 +57,13 @@ function AnimatedRoutes() {
         {/* ── Admin ──────────────────────────────────────── */}
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminDashboard /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminAppointments /></PageTransition></ProtectedRoute>} />
+        <Route path="/admin/customers" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminCustomers /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/services" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminServices /></PageTransition></ProtectedRoute>} />
+        <Route path="/admin/marketing" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminMarketing /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/payments" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminPayments /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminStaff /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminProducts /></PageTransition></ProtectedRoute>} />
+        <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminAuditLogs /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminSettings /></PageTransition></ProtectedRoute>} />
 
         {/* ── Therapist ────────────────────────────────── */}
