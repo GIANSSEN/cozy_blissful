@@ -86,17 +86,17 @@ return [
 
         'pgsql' => [
             'driver'         => 'pgsql',
-            'url'            => env('DB_PG_URL'),
-            'host'           => env('DB_PG_HOST', '127.0.0.1'),
-            'port'           => env('DB_PG_PORT', '5432'),
-            'database'       => env('DB_PG_DATABASE', 'laravel_postgres'),
-            'username'       => env('DB_PG_USERNAME', 'postgres'),
-            'password'       => env('DB_PG_PASSWORD', ''),
+            'url'            => env('DB_URL'),
+            'host'           => env('DB_HOST', '127.0.0.1'),
+            'port'           => env('DB_PORT', '5432'),
+            'database'       => env('DB_DATABASE', 'laravel'),
+            'username'       => env('DB_USERNAME', 'postgres'),
+            'password'       => env('DB_PASSWORD', ''),
             'charset'        => 'utf8',
             'prefix'         => '',
             'prefix_indexes' => true,
             'search_path'    => 'public',
-            'sslmode'        => env('DB_PG_SSLMODE', 'prefer'),
+            'sslmode'        => env('DB_SSLMODE', 'prefer'),
         ],
 
         'sqlsrv' => [
