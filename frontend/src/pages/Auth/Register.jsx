@@ -83,9 +83,9 @@ const RateLimitBanner = ({ retryAfter }) => {
   return (
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-start gap-2 p-2.5 rounded-lg text-[11px]"
-      style={{ background: 'rgba(253,230,138,0.07)', border: '1px solid rgba(253,230,138,0.18)' }}>
-      <Clock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-px" />
-      <span style={{ color: 'rgba(253,230,138,0.85)' }}>
+      style={{ background: 'rgba(220,53,69,0.07)', border: '1px solid rgba(220,53,69,0.18)' }}>
+      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#dc3545' }} />
+      <span style={{ color: 'rgba(200,35,51,0.85)' }}>
         <strong>Too many attempts.</strong>{' '}
         {s > 0 ? `Retry in ${m > 0 ? `${m}m ` : ''}${sec}s.` : 'You may try again.'}
       </span>
@@ -98,23 +98,23 @@ const Input = ({ label, id, error, rightEl, ...props }) => {
   return (
     <div>
       <label htmlFor={id} className="block text-[10px] font-bold tracking-widest uppercase mb-1"
-        style={{ color: 'rgba(255,255,255,0.38)' }}>{label}</label>
+        style={{ color: 'rgba(255,255,255,0.68)' }}>{label}</label>
       <div className="relative">
         <input id={id} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           className="w-full text-sm rounded-lg outline-none transition-all duration-150"
           style={{
-            background: focused ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.04)',
-            border: error ? '1px solid rgba(248,113,113,0.5)' : focused ? '1px solid rgba(191,161,95,0.55)' : '1px solid rgba(255,255,255,0.09)',
+            background: focused ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
+            border: error ? '1px solid rgba(220,53,69,0.6)' : focused ? '1px solid rgba(220,53,69,0.6)' : '1px solid rgba(255,255,255,0.1)',
             color: '#fff', padding: rightEl ? '0.5rem 2.5rem 0.5rem 0.75rem' : '0.5rem 0.75rem',
-            boxShadow: focused && !error ? '0 0 0 3px rgba(191,161,95,0.07)' : 'none',
-            caretColor: '#e8cc8a',
+            boxShadow: focused && !error ? '0 0 0 3px rgba(220,53,69,0.1)' : 'none',
+            caretColor: '#dc3545',
           }} {...props} />
         {rightEl && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightEl}</div>}
       </div>
       <AnimatePresence>
         {error && (
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="mt-0.5 text-[11px] flex items-center gap-1" style={{ color: '#f87171' }}>
+            className="mt-0.5 text-[11px] flex items-center gap-1" style={{ color: '#ff6b6b' }}>
             <AlertCircle className="w-3 h-3 flex-shrink-0" />{error}
           </motion.p>
         )}
@@ -192,47 +192,47 @@ const Register = () => {
 
   return (
     <div className="h-screen flex overflow-hidden select-none"
-      style={{ fontFamily: "'Inter', sans-serif", background: 'linear-gradient(135deg,#041e16 0%,#062c22 55%,#0a3d30 100%)' }}>
+      style={{ fontFamily: "'Inter', sans-serif", background: 'linear-gradient(135deg,#8b0000 0%,#A71D2A 55%,#DC3545 100%)' }}>
 
       {/* ═══════════ LEFT BRANDING PANEL ═══════════ */}
       <div className="hidden lg:flex flex-col h-full w-[52%] xl:w-[54%] relative overflow-hidden px-10 xl:px-14 py-8">
 
-        <FloatingOrb style={{ width: 400, height: 400, right: '-10%', top: '8%', background: 'radial-gradient(circle,rgba(191,161,95,0.15) 0%,transparent 70%)' }} duration={13} />
-        <FloatingOrb style={{ width: 260, height: 260, left: '-4%', bottom: '12%', background: 'radial-gradient(circle,rgba(52,201,158,0.09) 0%,transparent 70%)' }} delay={4} duration={15} />
+        <FloatingOrb style={{ width: 400, height: 400, right: '-10%', top: '8%', background: 'radial-gradient(circle,rgba(255,255,255,0.15) 0%,transparent 70%)' }} duration={13} />
+        <FloatingOrb style={{ width: 260, height: 260, left: '-4%', bottom: '12%', background: 'radial-gradient(circle,rgba(255,255,255,0.09) 0%,transparent 70%)' }} delay={4} duration={15} />
 
         <svg className="absolute right-0 bottom-0 pointer-events-none" width="420" height="420" viewBox="0 0 420 420" style={{ opacity: 0.045 }}>
-          <circle cx="360" cy="360" r="210" stroke="#bfa15f" strokeWidth="1" fill="none"/>
+          <circle cx="360" cy="360" r="210" stroke="#ffffff" strokeWidth="1" fill="none"/>
           <circle cx="360" cy="360" r="150" stroke="#fff" strokeWidth="0.6" fill="none"/>
-          <circle cx="360" cy="360" r="90"  stroke="#bfa15f" strokeWidth="0.4" fill="none"/>
+          <circle cx="360" cy="360" r="90"  stroke="#ffffff" strokeWidth="0.4" fill="none"/>
         </svg>
 
         {/* Logo */}
         <div className="flex items-center gap-2.5 z-10 mb-6 flex-shrink-0">
           <div className="relative">
             <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-full object-cover"
-              style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.4)', border: '2px solid rgba(191,161,95,0.45)' }} />
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2" style={{ borderColor: '#041e16' }} />
+              style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.5)' }} />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2" style={{ borderColor: '#8b0000' }} />
           </div>
           <div>
             <p className="text-sm font-black tracking-wide text-white leading-none">Cozy Blissful</p>
-            <p className="text-[9px] font-bold tracking-widest uppercase mt-0.5" style={{ color: '#e8cc8a' }}>Home Service Spa</p>
+            <p className="text-[9px] font-bold tracking-widest uppercase mt-0.5" style={{ color: 'rgba(255,255,255,0.95)' }}>Home Service Spa</p>
           </div>
         </div>
 
         {/* Badge + Headline */}
         <div className="z-10 mb-5 flex-shrink-0">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-amber-300 mb-3"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(191,161,95,0.22)' }}>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white mb-3"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.3)' }}>
             <Sparkles className="w-3 h-3" />
             <span>Join 2,500+ Happy Clients Today</span>
           </div>
           <h2 className="text-3xl xl:text-4xl font-black text-white leading-tight tracking-tight mb-2">
             Start Your<br />
-            <span style={{ WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundImage: 'linear-gradient(135deg,#e8cc8a 0%,#bfa15f 55%,#d4b87a 100%)', backgroundClip: 'text' }}>
+            <span style={{ WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundImage: 'linear-gradient(135deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.8) 55%,rgba(255,255,255,0.9) 100%)', backgroundClip: 'text' }}>
               Wellness Journey.
             </span>
           </h2>
-          <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.48)', maxWidth: '24rem' }}>
+          <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.68)', maxWidth: '24rem' }}>
             Massage therapy &amp; nail care delivered to your home. 7 days a week, 6 AM – 11 PM.
           </p>
         </div>
@@ -241,26 +241,26 @@ const Register = () => {
         <div className="grid grid-cols-4 gap-2 mb-4 z-10 flex-shrink-0">
           {STATS.map(s => (
             <div key={s.label} className="rounded-lg px-2 py-2 text-center"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-              <p className="text-sm font-black leading-none mb-0.5" style={{ color: '#e8cc8a' }}>{s.value}</p>
-              <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.38)' }}>{s.label}</p>
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <p className="text-sm font-black leading-none mb-0.5" style={{ color: 'rgba(255,255,255,0.95)' }}>{s.value}</p>
+              <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Services */}
         <div className="mb-4 z-10 flex-shrink-0">
-          <p className="text-[9px] font-bold tracking-widest uppercase mb-2" style={{ color: 'rgba(255,255,255,0.28)' }}>Our Services</p>
+          <p className="text-[9px] font-bold tracking-widest uppercase mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Our Services</p>
           <div className="flex flex-col gap-1.5">
             {SERVICES.map(s => (
               <div key={s.name} className="flex items-center justify-between rounded-lg px-3 py-2"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div className="flex items-center gap-2">
                   <span className="text-base">{s.icon}</span>
                   <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.78)' }}>{s.name}</span>
                 </div>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(191,161,95,0.14)', color: '#e8cc8a' }}>{s.note}</span>
+                  style={{ background: 'rgba(255,255,255,0.16)', color: 'rgba(255,255,255,0.95)' }}>{s.note}</span>
               </div>
             ))}
           </div>
@@ -285,14 +285,14 @@ const Register = () => {
 
       {/* ═══════════ RIGHT FORM PANEL ═══════════ */}
       <div className="flex flex-1 h-full items-center justify-center px-5 sm:px-8 relative overflow-y-auto"
-        style={{ background: 'rgba(2,8,5,0.58)', backdropFilter: 'blur(40px)', WebkitBackdropFilter: 'blur(40px)', borderLeft: '1px solid rgba(255,255,255,0.05)' }}>
+        style={{ background: 'rgba(255,255,255,0.95)', borderLeft: '1px solid rgba(0,0,0,0.05)' }}>
 
         {/* Mobile logo */}
         <div className="lg:hidden absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <img src="/cb-logo.jpg" alt="" className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid rgba(191,161,95,0.4)' }} />
+          <img src="/cb-logo.jpg" alt="" className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid rgba(220,53,69,0.3)' }} />
           <div>
-            <p className="text-xs font-black text-white leading-none">Cozy Blissful</p>
-            <p className="text-[8px] font-bold tracking-widest uppercase mt-px" style={{ color: '#e8cc8a' }}>Home Service Spa</p>
+            <p className="text-xs font-black text-gray-800 leading-none">Cozy Blissful</p>
+            <p className="text-[8px] font-bold tracking-widest uppercase mt-px" style={{ color: '#DC3545' }}>Home Service Spa</p>
           </div>
         </div>
 
@@ -302,8 +302,8 @@ const Register = () => {
 
           {/* Header */}
           <div className="mb-4">
-            <h1 className="text-[1.4rem] font-black text-white tracking-tight leading-none">Create account</h1>
-            <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Join Cozy Blissful — it's free</p>
+            <h1 className="text-[1.4rem] font-black text-gray-800 tracking-tight leading-none">Create account</h1>
+            <p className="text-xs mt-1" style={{ color: 'rgba(0,0,0,0.55)' }}>Join Cozy Blissful — it's free</p>
           </div>
 
           {/* Alerts */}
@@ -314,9 +314,9 @@ const Register = () => {
             {error && !rateLimit && (
               <motion.div key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                 className="flex items-start gap-2 p-2.5 rounded-lg text-[11px] mb-3"
-                style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.22)' }}>
-                <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-px" />
-                <span style={{ color: '#fca5a5' }}>{error}</span>
+                style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.22)' }}>
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#dc2626' }} />
+                <span style={{ color: '#b91c1c' }}>{error}</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -349,31 +349,31 @@ const Register = () => {
             <motion.button type="submit" id="register-submit" disabled={submitting || rateLimit > 0}
               whileHover={{ scale: submitting ? 1 : 1.015 }} whileTap={{ scale: submitting ? 1 : 0.975 }}
               className="w-full flex justify-center items-center gap-2 py-2.5 rounded-lg text-sm font-bold mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg,#c9a851,#e8cc8a)', color: '#041e16', boxShadow: '0 5px 20px rgba(191,161,95,0.25)', letterSpacing: '0.015em' }}>
+              style={{ background: 'linear-gradient(135deg,#C82333,#DC3545)', color: '#ffffff', boxShadow: '0 5px 20px rgba(220,53,69,0.25)', letterSpacing: '0.015em' }}>
               {submitting
-                ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(4,30,22,0.2)', borderTopColor: '#041e16' }} />
+                ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#ffffff' }} />
                 : <><UserPlus className="w-3.5 h-3.5" /><span>Create account</span></>}
             </motion.button>
           </form>
 
           {/* Divider + links */}
           <div className="flex items-center gap-3 my-3.5">
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
-            <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.22)' }}>or</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
+            <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
+            <span className="text-[10px]" style={{ color: 'rgba(0,0,0,0.4)' }}>or</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
           </div>
 
-          <p className="text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.36)' }}>
+          <p className="text-center text-[11px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
             Have an account?{' '}
-            <Link to="/login" className="font-bold hover:underline underline-offset-2" style={{ color: '#e8cc8a' }}>
+            <Link to="/login" className="font-bold hover:underline underline-offset-2" style={{ color: '#DC3545' }}>
               Sign in
             </Link>
           </p>
           <div className="mt-2.5 text-center">
             <Link to="/" className="inline-flex items-center gap-1 text-[11px] transition-colors"
-              style={{ color: 'rgba(255,255,255,0.2)' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.2)'}>
+              style={{ color: 'rgba(0,0,0,0.35)' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,0,0,0.65)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,0,0,0.35)'}>
               ← Back to home
             </Link>
           </div>
