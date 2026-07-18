@@ -1,72 +1,136 @@
 import React, { useState } from 'react';
 import Sidebar from '../../components/Sidebar';
-import { Menu } from 'lucide-react';
+import { Menu, Bell, Search } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * AdminLayout
- * Responsive dashboard template: fixed desktop sidebar or sliding mobile drawer + content panel.
+ * InfinitySpace-inspired shell: sidebar on the left, slim top-bar + content on the right.
  */
 const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { theme } = useTheme();
+  const { user } = useAuth();
+
+  const isDark = theme === 'dark';
 
   return (
     <div
       className="flex min-h-screen relative"
       style={{
-        background: theme === 'dark' ? '#0b1320' : '#f7f2eb',
-        color: theme === 'dark' ? '#f8fafc' : '#0f1720',
+        background: isDark ? '#0f1420' : '#f5f7fa',
+        color: isDark ? '#e8ecf3' : '#1a1d23',
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* ── Backdrop for Mobile Sidebar ── */}
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-30 lg:hidden transition-opacity"
-          onClick={() => setMobileSidebarOpen(false)}
-        />
-      )}
-
-      {/* ── Left Sidebar Drawer (Desktop & Mobile) ── */}
+      {/* ── Sidebar (desktop sticky / mobile drawer) ── */}
       <Sidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
-      {/* ── Right Content Canvas ── */}
+      {/* ── Right canvas ── */}
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden min-w-0">
-        {/* Top Header Bar */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b px-6 lg:px-8 py-4 backdrop-blur-xl"
+
+        {/* ── Top header bar ── */}
+        <header
+          className="sticky top-0 z-20 flex items-center justify-between px-6 lg:px-8 py-3.5 backdrop-blur-xl"
           style={{
-            background: theme === 'dark' ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.95)',
-            borderColor: theme === 'dark' ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.12)',
+            background: isDark ? 'rgba(15,20,32,0.97)' : 'rgba(255,255,255,0.97)',
+            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+            boxShadow: isDark ? '0 1px 12px rgba(0,0,0,0.25)' : '0 1px 8px rgba(0,0,0,0.04)',
           }}
         >
+          {/* Left: hamburger (mobile) + page title */}
           <div className="flex items-center gap-3">
-            {/* Hamburger for mobile screens */}
             <button
               onClick={() => setMobileSidebarOpen(true)}
-              className={`lg:hidden rounded-xl border px-2 p-2 transition ${
-                theme === 'dark'
-                  ? 'border-slate-700 bg-slate-900/90 text-slate-300 hover:bg-slate-800'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
-              }`}
+              className="lg:hidden w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+                color: isDark ? '#a0aec0' : '#64748b',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`,
+              }}
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-4 h-4" />
             </button>
 
             <div>
-              <h1 className={`text-lg lg:text-xl font-black tracking-tight leading-tight ${theme === 'dark' ? 'text-slate-100' : 'text-slate-950'}`}>{title}</h1>
-              {subtitle && <p className={`text-[11px] mt-0.5 font-medium leading-none ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{subtitle}</p>}
+              <h1
+                className="text-base lg:text-lg font-black tracking-tight leading-tight"
+                style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
+              >
+                {title}
+              </h1>
+              {subtitle && (
+                <p
+                  className="text-[10px] mt-0.5 font-medium leading-none"
+                  style={{ color: isDark ? '#5c6a7e' : '#8a9099' }}
+                >
+                  {subtitle}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className={`rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] shadow-[0_10px_30px_-20px_rgba(20,83,45,0.8)] ${theme === 'dark' ? 'border-slate-700 bg-slate-900/85 text-emerald-200' : 'border-slate-200 bg-slate-50 text-emerald-800'}`}>
-              ✦ Admin Access
+          {/* Right: search + badge + avatar */}
+          <div className="flex items-center gap-2">
+            {/* Inline search (desktop) */}
+            <div
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl text-[12px]"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
+                color: isDark ? '#5c6a7e' : '#8a9099',
+              }}
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Search anything…</span>
+            </div>
+
+            {/* Notification bell */}
+            <button
+              title="Notifications"
+              className="relative w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
+                color: isDark ? '#a0aec0' : '#64748b',
+              }}
+            >
+              <Bell className="w-4 h-4" />
+              {/* Notification dot */}
+              <span
+                className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                style={{ background: '#ef4444' }}
+              />
+            </button>
+
+            {/* Admin access badge */}
+            <span
+              className="hidden md:flex items-center rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em]"
+              style={{
+                background: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)',
+                border: `1px solid ${isDark ? 'rgba(52,211,153,0.2)' : 'rgba(10,61,48,0.12)'}`,
+                color: isDark ? '#34d399' : '#062c22',
+              }}
+            >
+              ✦ Admin
             </span>
+
+            {/* User avatar */}
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white flex-shrink-0 cursor-pointer"
+              style={{
+                background: 'linear-gradient(135deg,#062c22,#0f5040)',
+                boxShadow: '0 2px 8px rgba(6,44,34,0.3)',
+              }}
+              title={user?.name || 'Admin'}
+            >
+              {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+            </div>
           </div>
         </header>
 
-        {/* Dynamic Page Content */}
+        {/* ── Page content ── */}
         <main className="flex-1 px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
           {children}
         </main>
