@@ -28,9 +28,9 @@ const MENU = [
     path: null,
     basePath: '/admin/appointments',
     subs: [
-      { label: 'Calendar', tab: 'calendar', path: '/admin/appointments' },
-      { label: 'Pending',  tab: 'pending',  path: '/admin/appointments' },
-      { label: 'Requests', tab: 'requests', path: '/admin/appointments' },
+      { label: 'Master Calendar View', tab: 'calendar', path: '/admin/appointments' },
+      { label: 'Pending Approvals', tab: 'Pending approvals', path: '/admin/appointments' },
+      { label: 'Cancellation & Reschedule', tab: 'requests', path: '/admin/appointments' },
     ],
   },
   {
@@ -39,9 +39,8 @@ const MENU = [
     path: null,
     basePath: '/admin/customers',
     subs: [
-      { label: 'Customer Profiles',          tab: 'profiles', path: '/admin/customers' },
-      { label: 'Reviews & Feedback',         tab: 'reviews',  path: '/admin/customers' },
-      { label: 'Medical & Allergy Records',  tab: 'medical',  path: '/admin/customers' },
+      { label: 'Customer Profiles', tab: 'profiles', path: '/admin/customers' },
+      { label: 'Reviews & Feedback', tab: 'reviews', path: '/admin/customers' },
     ],
   },
   {
@@ -51,8 +50,8 @@ const MENU = [
     basePath: '/admin/staff',
     subs: [
       { label: 'Attendance & Profiles', tab: 'profiles', path: '/admin/staff' },
-      { label: 'Therapist Queue',       tab: 'queue',    path: '/admin/staff' },
-      { label: 'System Permissions',    tab: 'rbac',     path: '/admin/staff' },
+      { label: 'Therapist Queue', tab: 'queue', path: '/admin/staff' },
+      { label: 'System Permissions', tab: 'rbac', path: '/admin/staff' },
     ],
   },
   {
@@ -61,8 +60,8 @@ const MENU = [
     path: null,
     basePath: '/admin/services',
     subs: [
-      { label: 'All Services', tab: 'all',        path: '/admin/services' },
-      { label: 'Categories',   tab: 'categories', path: '/admin/services' },
+      { label: 'All Services', tab: 'all', path: '/admin/services' },
+      { label: 'Categories', tab: 'categories', path: '/admin/services' },
     ],
   },
   {
@@ -72,7 +71,7 @@ const MENU = [
     basePath: '/admin/marketing',
     subs: [
       { label: 'Gift Cards & Vouchers', tab: 'giftcards', path: '/admin/marketing' },
-      { label: 'Promo Campaigns',       tab: 'promos',    path: '/admin/marketing' },
+      { label: 'Promo Campaigns', tab: 'promos', path: '/admin/marketing' },
     ],
   },
   {
@@ -81,8 +80,8 @@ const MENU = [
     path: null,
     basePath: '/admin/products',
     subs: [
-      { label: 'Product Catalog',    tab: 'retail',    path: '/admin/products' },
-      { label: 'Stock Control',      tab: 'stock',     path: '/admin/products' },
+      { label: 'Product Catalog', tab: 'retail', path: '/admin/products' },
+      { label: 'Stock Control', tab: 'stock', path: '/admin/products' },
       { label: 'Suppliers & Orders', tab: 'suppliers', path: '/admin/products' },
     ],
   },
@@ -92,9 +91,9 @@ const MENU = [
     path: null,
     basePath: '/admin/payments',
     subs: [
-      { label: 'Sales',                 tab: 'sales',    path: '/admin/payments' },
-      { label: 'Payroll & Commissions', tab: 'payroll',  path: '/admin/payments' },
-      { label: 'Expense Tracker',       tab: 'expenses', path: '/admin/payments' },
+      { label: 'Sales', tab: 'sales', path: '/admin/payments' },
+      { label: 'Payroll & Commissions', tab: 'payroll', path: '/admin/payments' },
+      { label: 'Expense Tracker', tab: 'expenses', path: '/admin/payments' },
     ],
   },
   {
@@ -114,13 +113,12 @@ const MENU = [
 ];
 
 const SUB_ICON = {
-  calendar: Calendar,   pending: Clock,        requests: AlertCircle,
-  profiles: UserCheck,  reviews: Star,         medical: HeartPulse,
-  queue: ListOrdered,   rbac: ShieldAlert,
-  all: ShoppingBag,     categories: Hourglass,
-  giftcards: Gift,      promos: Megaphone,
-  retail: Tags,         stock: Truck,          suppliers: Boxes,
-  sales: DollarSign,    payroll: Coins,        expenses: Wallet,
+  calendar: Calendar, pending: Clock, requests: AlertCircle,
+  queue: ListOrdered, rbac: ShieldAlert,
+  all: ShoppingBag, categories: Hourglass,
+  giftcards: Gift, promos: Megaphone,
+  retail: Tags, stock: Truck, suppliers: Boxes,
+  sales: DollarSign, payroll: Coins, expenses: Wallet,
 };
 
 /* ── Colour tokens ──────────────────────────────────────────────────── */
