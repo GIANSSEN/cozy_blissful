@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserPlus, Eye, EyeOff, AlertCircle, Clock, Check, X, ArrowRight, Sparkles, Shield, MapPin } from 'lucide-react';
@@ -25,6 +25,163 @@ const SERVICES = [
   { icon: '💅', name: 'Nail Care',       note: 'From ₱299' },
   { icon: '✨', name: 'Beauty & Wellness', note: 'Ask for price' },
 ];
+
+// ─── Social sign-in (OAuth 2.0) ───────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
+
+const loadScript = (src, id) => new Promise((resolve, reject) => {
+  const existing = document.getElementById(id);
+  if (existing) {
+    if (existing.dataset.loaded === 'true') return resolve();
+    existing.addEventListener('load', resolve);
+    existing.addEventListener('error', reject);
+    return;
+  }
+  const s = document.createElement('script');
+  s.src = src; s.id = id; s.async = true; s.defer = true;
+  s.addEventListener('load', () => { s.dataset.loaded = 'true'; resolve(); });
+  s.addEventListener('error', reject);
+  document.head.appendChild(s);
+});
+
+const GoogleGlyph = () => (
+  <svg viewBox="0 0 48 48" className="w-5 h-5" aria-hidden="true">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+  </svg>
+);
+
+const FacebookGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-5 h-5" aria-hidden="true">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+  </svg>
+);
+
+const AppleGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true" style={{ color: '#000' }}>
+    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.08 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.48-2.53 3.23l-.07-.04c-.98.95-2.05.8-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.08 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.48-2.53 3.23l-.07-.04zM12.03 7.25c-.15-2.23-2.04-4.05-4.2-3.95-2.05 1.51-2.08 3.72-.04 5.25.44-.35.88-.64 1.37-.79.49-.15 1.02-.2 1.56-.1.35.07.69.18 1.02.32.41-.44.74-.91.99-1.4.15-.28.27-.57.3-.33z"/>
+  </svg>
+);
+
+const SocialTile = ({ label, onClick, disabled, pending, children }) => (
+  <motion.button type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label}
+    whileHover={{ scale: disabled ? 1 : 1.05, y: disabled ? 0 : -1 }} whileTap={{ scale: disabled ? 1 : 0.95 }}
+    className="w-[68px] h-11 rounded-lg flex items-center justify-center bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+    style={{ border: '1px solid #ecf0f1', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+    {pending
+      ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: '#bfa15f' }} />
+      : children}
+  </motion.button>
+);
+
+const SocialSignIn = ({ onSuccess, onError, disabled }) => {
+  const { socialLogin } = useAuth();
+  const [pending, setPending] = useState(null); // 'google' | 'facebook' | null
+  const [googleReady, setGoogleReady] = useState(false);
+  const [fbReady, setFbReady] = useState(false);
+  const googleBtnRef = useRef(null);
+  const busy = useRef(false);
+
+  const finish = useCallback(async (provider, providerToken) => {
+    if (busy.current) return;
+    busy.current = true;
+    setPending(provider);
+    const res = await socialLogin(provider, providerToken);
+    busy.current = false;
+    setPending(null);
+    if (res.success) onSuccess(res.role);
+    else onError(res.error);
+  }, [socialLogin, onSuccess, onError]);
+
+  // Google Identity Services — official script; the credential response
+  // carries a JWT ID token that is only trusted after backend verification.
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    let cancelled = false;
+    loadScript('https://accounts.google.com/gsi/client', 'google-gsi')
+      .then(() => {
+        if (cancelled || !window.google?.accounts?.id || !googleBtnRef.current) return;
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (resp) => { if (resp?.credential) finish('google', resp.credential); },
+        });
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          type: 'icon', theme: 'outline', size: 'large', shape: 'rectangular',
+        });
+        setGoogleReady(true);
+      })
+      .catch(() => onError('Could not load Google Sign-In. Check your connection and try again.'));
+    return () => { cancelled = true; };
+  }, [finish, onError]);
+
+  // Meta JavaScript SDK — initialized with the app ID from env config only.
+  useEffect(() => {
+    if (!FACEBOOK_APP_ID) return;
+    let cancelled = false;
+    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
+      .then(() => {
+        if (cancelled || !window.FB) return;
+        window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
+        setFbReady(true);
+      })
+      .catch(() => onError('Could not load Facebook Login. Check your connection and try again.'));
+    return () => { cancelled = true; };
+  }, [onError]);
+
+  const handleFacebook = () => {
+    if (!fbReady || pending || disabled) return;
+    window.FB.login((resp) => {
+      const accessToken = resp?.authResponse?.accessToken;
+      if (resp.status === 'connected' && accessToken) finish('facebook', accessToken);
+    }, { scope: 'public_profile,email' });
+  };
+
+  if (!GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID) return null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 my-4">
+        <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
+        <span className="text-[11px]" style={{ color: 'rgba(0,0,0,0.5)' }}>or</span>
+        <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
+      </div>
+
+      <div className="flex items-center justify-center gap-3"
+        style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
+        {GOOGLE_CLIENT_ID && (
+          <div className="relative w-[68px] h-11">
+            {/* Official Google-rendered icon button (brand compliant), stretched over the tile */}
+            <div className="absolute inset-0 rounded-lg bg-white flex items-center justify-center pointer-events-none"
+              style={{ border: '1px solid #ecf0f1', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              {pending === 'google'
+                ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: '#041e16' }} />
+                : <GoogleGlyph />}
+            </div>
+            <div ref={googleBtnRef} aria-label="Sign up with Google" title="Sign up with Google"
+              className="absolute inset-0 flex items-center justify-center overflow-hidden"
+              style={{ opacity: googleReady && pending !== 'google' ? 0.011 : 0, colorScheme: 'light' }} />
+          </div>
+        )}
+
+        {FACEBOOK_APP_ID && (
+          <SocialTile label="Sign up with Facebook" onClick={handleFacebook}
+            disabled={!fbReady || pending !== null} pending={pending === 'facebook'}>
+            <FacebookGlyph />
+          </SocialTile>
+        )}
+
+        {/* Apple Sign-In Button */}
+        <SocialTile label="Sign up with Apple" onClick={() => { /* Apple OAuth coming soon */ }}
+          disabled={true} pending={false}>
+          <AppleGlyph />
+        </SocialTile>
+      </div>
+    </div>
+  );
+};
 
 const StrengthChecks = [
   { key: 'len', label: '8+ chars',     test: p => p.length >= 8 },
@@ -83,9 +240,9 @@ const RateLimitBanner = ({ retryAfter }) => {
   return (
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-start gap-2 p-2.5 rounded-lg text-[11px]"
-      style={{ background: 'rgba(220,53,69,0.07)', border: '1px solid rgba(220,53,69,0.18)' }}>
-      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#dc3545' }} />
-      <span style={{ color: 'rgba(200,35,51,0.85)' }}>
+      style={{ background: 'rgba(191,161,95,0.07)', border: '1px solid rgba(191,161,95,0.18)' }}>
+      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#bfa15f' }} />
+      <span style={{ color: 'rgba(167,146,97,0.85)' }}>
         <strong>Too many attempts.</strong>{' '}
         {s > 0 ? `Retry in ${m > 0 ? `${m}m ` : ''}${sec}s.` : 'You may try again.'}
       </span>
@@ -104,10 +261,10 @@ const Input = ({ label, id, error, rightEl, ...props }) => {
           className="w-full text-sm rounded-lg outline-none transition-all duration-150"
           style={{
             background: focused ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
-            border: error ? '1px solid rgba(220,53,69,0.6)' : focused ? '1px solid rgba(220,53,69,0.6)' : '1px solid rgba(255,255,255,0.1)',
+            border: error ? '1px solid rgba(191,161,95,0.6)' : focused ? '1px solid rgba(191,161,95,0.6)' : '1px solid rgba(255,255,255,0.1)',
             color: '#fff', padding: rightEl ? '0.5rem 2.5rem 0.5rem 0.75rem' : '0.5rem 0.75rem',
-            boxShadow: focused && !error ? '0 0 0 3px rgba(220,53,69,0.1)' : 'none',
-            caretColor: '#dc3545',
+            boxShadow: focused && !error ? '0 0 0 3px rgba(191,161,95,0.1)' : 'none',
+            caretColor: '#bfa15f',
           }} {...props} />
         {rightEl && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightEl}</div>}
       </div>
@@ -192,7 +349,7 @@ const Register = () => {
 
   return (
     <div className="h-screen flex overflow-hidden select-none"
-      style={{ fontFamily: "'Inter', sans-serif", background: 'linear-gradient(135deg,#8b0000 0%,#A71D2A 55%,#DC3545 100%)' }}>
+      style={{ fontFamily: "'Inter', sans-serif", background: 'linear-gradient(135deg,#041e16 0%,#073328 55%,#0e4d38 100%)' }}>
 
       {/* ═══════════ LEFT BRANDING PANEL ═══════════ */}
       <div className="hidden lg:flex flex-col h-full w-[52%] xl:w-[54%] relative overflow-hidden px-10 xl:px-14 py-8">
@@ -211,7 +368,7 @@ const Register = () => {
           <div className="relative">
             <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-full object-cover"
               style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.5)' }} />
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2" style={{ borderColor: '#8b0000' }} />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2" style={{ borderColor: '#041e16' }} />
           </div>
           <div>
             <p className="text-sm font-black tracking-wide text-white leading-none">Cozy Blissful</p>
@@ -349,23 +506,23 @@ const Register = () => {
             <motion.button type="submit" id="register-submit" disabled={submitting || rateLimit > 0}
               whileHover={{ scale: submitting ? 1 : 1.015 }} whileTap={{ scale: submitting ? 1 : 0.975 }}
               className="w-full flex justify-center items-center gap-2 py-2.5 rounded-lg text-sm font-bold mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg,#C82333,#DC3545)', color: '#ffffff', boxShadow: '0 5px 20px rgba(220,53,69,0.25)', letterSpacing: '0.015em' }}>
+              style={{ background: 'linear-gradient(135deg,#a89658,#bfa15f)', color: '#041e16', boxShadow: '0 5px 20px rgba(191,161,95,0.25)', letterSpacing: '0.015em' }}>
               {submitting
-                ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#ffffff' }} />
+                ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#041e16' }} />
                 : <><UserPlus className="w-3.5 h-3.5" /><span>Create account</span></>}
             </motion.button>
           </form>
 
-          {/* Divider + links */}
-          <div className="flex items-center gap-3 my-3.5">
-            <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
-            <span className="text-[10px]" style={{ color: 'rgba(0,0,0,0.4)' }}>or</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
-          </div>
+          {/* Social quick signup */}
+          <SocialSignIn
+            disabled={submitting}
+            onSuccess={redirect}
+            onError={(msg) => { setRateLimit(null); setError(msg); }}
+          />
 
-          <p className="text-center text-[11px]" style={{ color: 'rgba(0,0,0,0.65)' }}>
+          <p className="text-center text-[11px] mt-5" style={{ color: 'rgba(0,0,0,0.65)' }}>
             Have an account?{' '}
-            <Link to="/login" className="font-bold hover:underline underline-offset-2" style={{ color: '#DC3545' }}>
+            <Link to="/login" className="font-bold hover:underline underline-offset-2" style={{ color: '#bfa15f' }}>
               Sign in
             </Link>
           </p>

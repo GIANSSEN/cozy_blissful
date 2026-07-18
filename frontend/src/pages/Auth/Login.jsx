@@ -4,12 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import { LogIn, Eye, EyeOff, AlertCircle, Clock, Mail, Lock, Sparkles, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ─── Brand palette (Red Theme) ────────────────────────────────────────────────
+// ─── Brand palette (LandingPage-inspired Green/Gold Theme) ────────────────────
 const BRAND = {
-  deep: '#8b0000',
-  red: '#DC3545',
-  redLight: '#E74C3C',
-  redDark: '#C82333',
+  deep: '#041e16',
+  green: '#0a3d30',
+  gold: '#bfa15f',
+  goldLight: '#e8cc8a',
+  emerald: '#34d399',
   ink: '#2c3e50',
   inkSoft: '#7f8c8d',
   line: '#ecf0f1',
@@ -85,7 +86,7 @@ const SocialTile = ({ label, onClick, disabled, pending, children }) => (
     className="w-[68px] h-11 rounded-lg flex items-center justify-center bg-white disabled:opacity-50 disabled:cursor-not-allowed"
     style={{ border: `1px solid ${BRAND.line}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
     {pending
-      ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.red }} />
+      ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
       : children}
   </motion.button>
 );
@@ -226,9 +227,9 @@ const RateLimitBanner = ({ retryAfter }) => {
   return (
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-start gap-2 p-2.5 rounded-lg text-[11px]"
-      style={{ background: 'rgba(220,53,69,0.1)', border: '1px solid rgba(220,53,69,0.35)' }}>
-      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#c82333' }} />
-      <span style={{ color: '#a91b24' }}>
+      style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.35)' }}>
+      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
+      <span style={{ color: '#8b7a45' }}>
         <strong>Too many attempts.</strong>{' '}
         {s > 0 ? `Retry in ${m > 0 ? `${m}m ` : ''}${sec}s.` : 'You may try again.'}
       </span>
@@ -244,14 +245,14 @@ const Input = ({ label, id, icon: Icon, error, rightEl, ...props }) => {
       <label htmlFor={id} className="block text-xs font-semibold mb-1.5" style={{ color: BRAND.ink }}>{label}</label>
       <div className="relative">
         <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-          style={{ color: error ? '#dc2626' : BRAND.red }} />
+          style={{ color: error ? '#dc2626' : BRAND.gold }} />
         <input id={id} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           className="w-full text-sm rounded-lg outline-none transition-all duration-150 bg-white"
           style={{
-            border: error ? '1px solid rgba(220,38,38,0.55)' : focused ? `1px solid ${BRAND.red}` : `1px solid ${BRAND.line}`,
+            border: error ? '1px solid rgba(220,38,38,0.55)' : focused ? `1px solid ${BRAND.gold}` : `1px solid ${BRAND.line}`,
             color: BRAND.ink, padding: rightEl ? '0.65rem 2.6rem 0.65rem 2.5rem' : '0.65rem 0.9rem 0.65rem 2.5rem',
-            boxShadow: focused && !error ? `0 0 0 3px rgba(220,53,69,0.12)` : '0 1px 2px rgba(0,0,0,0.04)',
-            caretColor: BRAND.red,
+            boxShadow: focused && !error ? `0 0 0 3px rgba(191,161,95,0.12)` : '0 1px 2px rgba(0,0,0,0.04)',
+            caretColor: BRAND.gold,
           }} {...props} />
         {rightEl && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightEl}</div>}
       </div>
@@ -325,12 +326,12 @@ const Login = () => {
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden select-none px-4 py-8"
       style={{ fontFamily: "'Inter', sans-serif", background: '#f5f5f5' }}>
 
-      {/* ═══ Background brand shapes (red theme) ═══ */}
+      {/* ═══ Background brand shapes (green/gold theme - LandingPage style) ═══ */}
       <div className="absolute left-0 top-0 h-full w-[42%] hidden md:block"
-        style={{ background: `linear-gradient(160deg, ${BRAND.deep} 0%, ${BRAND.red} 100%)` }} />
-      <div className="absolute rounded-full" style={{ width: 340, height: 340, right: -120, top: -140, background: BRAND.red, opacity: 0.92 }} />
-      <div className="absolute rounded-full" style={{ width: 300, height: 300, right: -60, bottom: -150, border: `26px solid ${BRAND.red}`, opacity: 0.9 }} />
-      <div className="absolute rounded-full" style={{ width: 120, height: 120, right: '14%', bottom: '6%', background: BRAND.redLight, opacity: 0.25 }} />
+        style={{ background: `linear-gradient(160deg, ${BRAND.deep} 0%, ${BRAND.green} 100%)` }} />
+      <div className="absolute rounded-full" style={{ width: 340, height: 340, right: -120, top: -140, background: BRAND.gold, opacity: 0.92 }} />
+      <div className="absolute rounded-full" style={{ width: 300, height: 300, right: -60, bottom: -150, border: `26px solid ${BRAND.gold}`, opacity: 0.9 }} />
+      <div className="absolute rounded-full" style={{ width: 120, height: 120, right: '14%', bottom: '6%', background: BRAND.goldLight, opacity: 0.25 }} />
 
       {/* ═══ Card ═══ */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -338,9 +339,9 @@ const Login = () => {
         className="relative w-full max-w-[980px] rounded-2xl overflow-hidden flex"
         style={{ boxShadow: '0 24px 70px rgba(0,0,0,0.25)' }}>
 
-        {/* ─── Left brand panel (red gradient) ─── */}
+        {/* ─── Left brand panel (green/gold gradient - LandingPage style) ─── */}
         <div className="hidden md:flex flex-col justify-center w-[46%] relative px-9 py-10"
-          style={{ background: `linear-gradient(150deg, ${BRAND.red} 0%, ${BRAND.deep} 90%)` }}>
+          style={{ background: `linear-gradient(150deg, ${BRAND.green} 0%, ${BRAND.deep} 90%)` }}>
 
           {/* Decorative shapes - white circles */}
           <div className="absolute rounded-full" style={{ width: 130, height: 130, left: 36, top: -46, border: '5px solid rgba(255,255,255,0.9)' }} />
@@ -418,7 +419,7 @@ const Login = () => {
             {/* Logo + heading */}
             <div className="flex flex-col items-center mb-6">
               <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-3"
-                style={{ boxShadow: '0 6px 20px rgba(220,53,69,0.15)', border: `1px solid ${BRAND.line}` }}>
+                style={{ boxShadow: `0 6px 20px rgba(191,161,95,0.15)`, border: `1px solid ${BRAND.line}` }}>
                 <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-xl object-cover" />
               </div>
               <h1 className="text-xl font-black tracking-tight" style={{ color: BRAND.ink }}>Welcome Back !</h1>
@@ -443,9 +444,9 @@ const Login = () => {
               {notice && (
                 <motion.div key="note" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="flex items-start gap-2 p-2.5 rounded-lg text-[11px] mb-3"
-                  style={{ background: 'rgba(220,53,69,0.1)', border: '1px solid rgba(220,53,69,0.3)' }}>
-                  <Info className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#c82333' }} />
-                  <span style={{ color: '#a91b24' }}>{notice}</span>
+                  style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.3)' }}>
+                  <Info className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
+                  <span style={{ color: '#8b7a45' }}>{notice}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -473,12 +474,12 @@ const Login = () => {
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-medium" style={{ color: BRAND.ink }}>
                   <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded cursor-pointer" style={{ accentColor: BRAND.red }} />
+                    className="w-3.5 h-3.5 rounded cursor-pointer" style={{ accentColor: BRAND.gold }} />
                   Remember me
                 </label>
                 <button type="button"
                   className="text-[11px] font-bold hover:underline underline-offset-2"
-                  style={{ color: BRAND.red }}
+                  style={{ color: BRAND.gold }}
                   onClick={() => { setError(null); setNotice('Password reset is handled by our team for now — message us on Facebook or WhatsApp and we\'ll help you right away.'); }}>
                   Reset Password!
                 </button>
@@ -487,9 +488,9 @@ const Login = () => {
               <motion.button type="submit" id="login-submit" disabled={submitting || rateLimit > 0}
                 whileHover={{ scale: submitting ? 1 : 1.015 }} whileTap={{ scale: submitting ? 1 : 0.975 }}
                 className="w-full flex justify-center items-center gap-2 py-2.5 rounded-lg text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: `linear-gradient(135deg,${BRAND.redDark},${BRAND.red})`, color: 'white', boxShadow: `0 6px 18px ${BRAND.red}55`, letterSpacing: '0.015em' }}>
+                style={{ background: `linear-gradient(135deg,${BRAND.goldLight},${BRAND.gold})`, color: '#041e16', boxShadow: `0 6px 18px ${BRAND.gold}55`, letterSpacing: '0.015em' }}>
                 {submitting
-                  ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(4,30,22,0.2)', borderTopColor: BRAND.deep }} />
+                  ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(191,161,95,0.2)', borderTopColor: BRAND.deep }} />
                   : <><LogIn className="w-3.5 h-3.5" /><span>Login</span></>}
               </motion.button>
             </form>
@@ -503,7 +504,7 @@ const Login = () => {
 
             <p className="text-center text-[11px] mt-5" style={{ color: BRAND.inkSoft }}>
               Don&apos;t have an account?{' '}
-              <Link to="/register" className="font-bold hover:underline underline-offset-2" style={{ color: BRAND.red }}>
+              <Link to="/register" className="font-bold hover:underline underline-offset-2" style={{ color: BRAND.gold }}>
                 Create Account
               </Link>
             </p>
