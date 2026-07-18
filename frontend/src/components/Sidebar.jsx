@@ -11,7 +11,7 @@ import {
   DollarSign, Clock, AlertCircle,
   UserCheck, ShieldAlert, Gift, Hourglass, Tags, Truck,
   FileText, Coins, Wallet, UserCog, Megaphone, Boxes,
-  History, Star, HeartPulse, ListOrdered,
+  History, Star, ListOrdered,
 } from 'lucide-react';
 
 /* ── Menu: Dashboard has NO submenus — it is a direct link ─────────── */
@@ -29,7 +29,7 @@ const MENU = [
     basePath: '/admin/appointments',
     subs: [
       { label: 'Master Calendar View', tab: 'calendar', path: '/admin/appointments' },
-      { label: 'Pending Approvals', tab: 'Pending approvals', path: '/admin/appointments' },
+      { label: 'Pending Approvals', tab: 'pending', path: '/admin/appointments' },
       { label: 'Cancellation & Reschedule', tab: 'requests', path: '/admin/appointments' },
     ],
   },
@@ -114,6 +114,7 @@ const MENU = [
 
 const SUB_ICON = {
   calendar: Calendar, pending: Clock, requests: AlertCircle,
+  profiles: UserCheck, reviews: Star,
   queue: ListOrdered, rbac: ShieldAlert,
   all: ShoppingBag, categories: Hourglass,
   giftcards: Gift, promos: Megaphone,
@@ -233,7 +234,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
           <div className="flex items-center gap-1 ml-2 flex-shrink-0">
             <button onClick={toggleTheme}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
               style={{ background: t.hover, color: t.txtMuted }}
               title={isDark ? 'Switch to Light' : 'Switch to Dark'}>
               {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
@@ -279,21 +280,23 @@ const Sidebar = ({ isOpen, onClose }) => {
               const active = location.pathname === cat.path || (cat.basePath && location.pathname.startsWith(cat.basePath));
               return (
                 <Link key={cat.title} to={cat.path} onClick={onClose}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full"
+                  className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full active:scale-[0.98]"
                   style={{
                     background: active ? t.activeParent : 'transparent',
                     textDecoration: 'none',
                   }}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeParent : 'transparent'; }}>
-                  <Icon className="w-4 h-4 flex-shrink-0"
+                  <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
                     style={{ color: active ? t.accent : t.txtMuted }} />
                   <span className="text-[12.5px] font-semibold leading-tight flex-1"
                     style={{ color: active ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
                   {active && (
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                       style={{ background: t.accent }} />
                   )}
                 </Link>
@@ -309,11 +312,11 @@ const Sidebar = ({ isOpen, onClose }) => {
               <div key={cat.title}>
                 <button
                   onClick={() => handleToggle(cat.title)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
+                  className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98]"
                   style={{ background: isActive ? t.activeParent : 'transparent' }}
                   onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = t.hover; }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? t.activeParent : 'transparent'; }}>
-                  <Icon className="w-4 h-4 flex-shrink-0"
+                  <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
                     style={{ color: isActive ? t.accent : t.txtMuted }} />
                   <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight truncate"
                     style={{ color: isActive ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
@@ -336,25 +339,30 @@ const Sidebar = ({ isOpen, onClose }) => {
                       style={{ overflow: 'hidden' }}>
                       <div className="ml-4 pl-3 py-1 space-y-0.5"
                         style={{ borderLeft: `1.5px solid ${t.border}` }}>
-                        {cat.subs.map(sub => {
+                        {cat.subs.map((sub, idx) => {
                           const active = isSubActive(sub);
                           const SubIcon = SUB_ICON[sub.tab] || FileText;
                           return (
-                            <Link key={sub.label} to={`${sub.path}?tab=${sub.tab}`} onClick={onClose}
-                              className="flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150"
-                              style={{
-                                background: active ? t.activeSub : 'transparent',
-                                textDecoration: 'none',
-                              }}
-                              onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
-                              onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeSub : 'transparent'; }}>
-                              <SubIcon className="w-3.5 h-3.5 flex-shrink-0"
-                                style={{ color: active ? t.activeSubTxt : t.txtMuted }} />
-                              <span className="text-[11.5px] font-medium leading-tight truncate"
-                                style={{ color: active ? t.activeSubTxt : t.txtSub, letterSpacing: '-0.005em' }}>
-                                {sub.label}
-                              </span>
-                            </Link>
+                            <motion.div key={sub.label}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.18, delay: idx * 0.04, ease: 'easeOut' }}>
+                              <Link to={`${sub.path}?tab=${sub.tab}`} onClick={onClose}
+                                className="group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150 active:scale-[0.98]"
+                                style={{
+                                  background: active ? t.activeSub : 'transparent',
+                                  textDecoration: 'none',
+                                }}
+                                onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
+                                onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeSub : 'transparent'; }}>
+                                <SubIcon className="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
+                                  style={{ color: active ? t.activeSubTxt : t.txtMuted }} />
+                                <span className="text-[11.5px] font-medium leading-tight truncate transition-transform duration-150 group-hover:translate-x-0.5"
+                                  style={{ color: active ? t.activeSubTxt : t.txtSub, letterSpacing: '-0.005em' }}>
+                                  {sub.label}
+                                </span>
+                              </Link>
+                            </motion.div>
                           );
                         })}
                       </div>
