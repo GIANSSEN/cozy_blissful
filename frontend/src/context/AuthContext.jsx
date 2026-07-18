@@ -64,6 +64,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Exchange a verified provider token (Google ID token / Facebook access
+  // token) for our own application session via the backend — the user is
+  // never logged in from client-side state alone.
+  const socialLogin = async (provider, providerToken) => {
+    try {
+      const payload = provider === 'google'
+        ? { credential: providerToken }
+        : { access_token: providerToken };
+      const res = await API.post(`/auth/${provider}`, payload);
+      const { access_token, role: userRole, user: userData } = res.data;
+
+      setToken(access_token);
+      setRole(userRole);
+      setUser(userData);
+
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('role', userRole);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      return { success: true, role: userRole };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.message || 'Social sign-in failed. Please try again.',
+      };
+    }
+  };
+
   const register = async (name, email, password, passwordConfirmation) => {
     try {
       const res = await API.post('/register', {
@@ -118,7 +146,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, role, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, role, loading, login, socialLogin, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

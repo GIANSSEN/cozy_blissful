@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogIn, Eye, EyeOff, AlertCircle, Clock, Check, ArrowRight, Sparkles, Shield, MapPin } from 'lucide-react';
@@ -12,6 +12,149 @@ const SOCIALS = [
   { label: 'YouTube',   href: '#', color: '#FF0000', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
   { label: 'WhatsApp',  href: '#', color: '#25D366', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg> },
 ];
+
+// ─── Social sign-in (OAuth 2.0) ───────────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
+
+const loadScript = (src, id) => new Promise((resolve, reject) => {
+  const existing = document.getElementById(id);
+  if (existing) {
+    if (existing.dataset.loaded === 'true') return resolve();
+    existing.addEventListener('load', resolve);
+    existing.addEventListener('error', reject);
+    return;
+  }
+  const s = document.createElement('script');
+  s.src = src; s.id = id; s.async = true; s.defer = true;
+  s.addEventListener('load', () => { s.dataset.loaded = 'true'; resolve(); });
+  s.addEventListener('error', reject);
+  document.head.appendChild(s);
+});
+
+const GoogleGlyph = () => (
+  <svg viewBox="0 0 48 48" className="w-4 h-4" aria-hidden="true">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+  </svg>
+);
+
+const FacebookGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="#fff" className="w-4 h-4" aria-hidden="true">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+  </svg>
+);
+
+const SocialSignIn = ({ onSuccess, onError, disabled }) => {
+  const { socialLogin } = useAuth();
+  const [pending, setPending] = useState(null); // 'google' | 'facebook' | null
+  const [googleReady, setGoogleReady] = useState(false);
+  const [fbReady, setFbReady] = useState(false);
+  const googleBtnRef = useRef(null);
+  const busy = useRef(false);
+
+  const finish = useCallback(async (provider, providerToken) => {
+    if (busy.current) return;
+    busy.current = true;
+    setPending(provider);
+    const res = await socialLogin(provider, providerToken);
+    busy.current = false;
+    setPending(null);
+    if (res.success) onSuccess(res.role);
+    else onError(res.error);
+  }, [socialLogin, onSuccess, onError]);
+
+  // Google Identity Services — official script; the credential response
+  // carries a JWT ID token that is only trusted after backend verification.
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    let cancelled = false;
+    loadScript('https://accounts.google.com/gsi/client', 'google-gsi')
+      .then(() => {
+        if (cancelled || !window.google?.accounts?.id || !googleBtnRef.current) return;
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (resp) => { if (resp?.credential) finish('google', resp.credential); },
+        });
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          type: 'standard', theme: 'filled_black', size: 'large',
+          text: 'signin_with', shape: 'rectangular', logo_alignment: 'left',
+          width: googleBtnRef.current.offsetWidth || 300,
+        });
+        setGoogleReady(true);
+      })
+      .catch(() => onError('Could not load Google Sign-In. Check your connection and try again.'));
+    return () => { cancelled = true; };
+  }, [finish, onError]);
+
+  // Meta JavaScript SDK — initialized with the app ID from env config only.
+  useEffect(() => {
+    if (!FACEBOOK_APP_ID) return;
+    let cancelled = false;
+    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
+      .then(() => {
+        if (cancelled || !window.FB) return;
+        window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
+        setFbReady(true);
+      })
+      .catch(() => onError('Could not load Facebook Login. Check your connection and try again.'));
+    return () => { cancelled = true; };
+  }, [onError]);
+
+  const handleFacebook = () => {
+    if (!fbReady || pending || disabled) return;
+    window.FB.login((resp) => {
+      const accessToken = resp?.authResponse?.accessToken;
+      if (resp.status === 'connected' && accessToken) finish('facebook', accessToken);
+    }, { scope: 'public_profile,email' });
+  };
+
+  if (!GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID) return null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 my-4">
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
+        <span className="text-[10px] tracking-wide" style={{ color: 'rgba(255,255,255,0.32)' }}>Or sign in with</span>
+        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
+      </div>
+
+      <div className="space-y-2" style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
+        {GOOGLE_CLIENT_ID && (
+          <div className="relative">
+            {/* Official Google-rendered button (brand compliant) */}
+            <div ref={googleBtnRef} className="w-full flex justify-center" style={{ colorScheme: 'light', minHeight: 40 }} />
+            {!googleReady && (
+              <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg text-xs font-semibold"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.55)' }}>
+                <GoogleGlyph /><span>Sign in with Google</span>
+              </div>
+            )}
+            {pending === 'google' && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg" style={{ background: 'rgba(2,8,5,0.6)' }}>
+                <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.25)', borderTopColor: '#fff' }} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {FACEBOOK_APP_ID && (
+          <motion.button type="button" onClick={handleFacebook}
+            disabled={!fbReady || pending !== null}
+            whileHover={{ scale: pending ? 1 : 1.015 }} whileTap={{ scale: pending ? 1 : 0.975 }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ background: '#1877F2', color: '#fff', letterSpacing: '0.01em' }}>
+            {pending === 'facebook'
+              ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.35)', borderTopColor: '#fff' }} />
+              : <><FacebookGlyph /><span>Sign in with Facebook</span></>}
+          </motion.button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const STATS = [
   { value: '2,500+', label: 'Clients' },
@@ -294,6 +437,13 @@ const Login = () => {
                 : <><LogIn className="w-3.5 h-3.5" /><span>Sign in</span></>}
             </motion.button>
           </form>
+
+          {/* Social sign-in */}
+          <SocialSignIn
+            disabled={submitting}
+            onSuccess={redirect}
+            onError={(msg) => { setRateLimit(null); setError(msg); }}
+          />
 
           {/* Divider + links */}
           <div className="flex items-center gap-3 my-4">
