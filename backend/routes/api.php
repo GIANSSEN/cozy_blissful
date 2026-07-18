@@ -8,10 +8,13 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ClientController;
 use App\Http\Controllers\API\TherapistController;
 use App\Http\Controllers\API\StaffController;
+use App\Http\Controllers\API\SocialAuthController;
 
 // Public auth routes with custom rate limiting for enhanced security
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle.register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle.login');
+Route::post('/auth/google', [SocialAuthController::class, 'google'])->middleware('throttle.login');
+Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middleware('throttle.login');
 
 // Protected routes group
 Route::middleware('auth:sanctum')->group(function () {
