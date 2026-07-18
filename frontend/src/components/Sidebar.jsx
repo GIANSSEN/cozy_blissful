@@ -28,9 +28,9 @@ const MENU = [
     path: null,
     basePath: '/admin/appointments',
     subs: [
-      { label: 'Calendar', tab: 'calendar', path: '/admin/appointments' },
-      { label: 'Pending',  tab: 'pending',  path: '/admin/appointments' },
-      { label: 'Requests', tab: 'requests', path: '/admin/appointments' },
+      { label: 'Master Calendar View', tab: 'calendar', path: '/admin/appointments' },
+      { label: 'Pending Approvals', tab: 'Pending approvals', path: '/admin/appointments' },
+      { label: 'Cancellation & Reschedule', tab: 'requests', path: '/admin/appointments' },
     ],
   },
   {
@@ -39,9 +39,8 @@ const MENU = [
     path: null,
     basePath: '/admin/customers',
     subs: [
-      { label: 'Customer Profiles',          tab: 'profiles', path: '/admin/customers' },
-      { label: 'Reviews & Feedback',         tab: 'reviews',  path: '/admin/customers' },
-      { label: 'Medical & Allergy Records',  tab: 'medical',  path: '/admin/customers' },
+      { label: 'Customer Profiles', tab: 'profiles', path: '/admin/customers' },
+      { label: 'Reviews & Feedback', tab: 'reviews', path: '/admin/customers' },
     ],
   },
   {
@@ -51,8 +50,8 @@ const MENU = [
     basePath: '/admin/staff',
     subs: [
       { label: 'Attendance & Profiles', tab: 'profiles', path: '/admin/staff' },
-      { label: 'Therapist Queue',       tab: 'queue',    path: '/admin/staff' },
-      { label: 'System Permissions',    tab: 'rbac',     path: '/admin/staff' },
+      { label: 'Therapist Queue', tab: 'queue', path: '/admin/staff' },
+      { label: 'System Permissions', tab: 'rbac', path: '/admin/staff' },
     ],
   },
   {
@@ -61,8 +60,8 @@ const MENU = [
     path: null,
     basePath: '/admin/services',
     subs: [
-      { label: 'All Services', tab: 'all',        path: '/admin/services' },
-      { label: 'Categories',   tab: 'categories', path: '/admin/services' },
+      { label: 'All Services', tab: 'all', path: '/admin/services' },
+      { label: 'Categories', tab: 'categories', path: '/admin/services' },
     ],
   },
   {
@@ -72,7 +71,7 @@ const MENU = [
     basePath: '/admin/marketing',
     subs: [
       { label: 'Gift Cards & Vouchers', tab: 'giftcards', path: '/admin/marketing' },
-      { label: 'Promo Campaigns',       tab: 'promos',    path: '/admin/marketing' },
+      { label: 'Promo Campaigns', tab: 'promos', path: '/admin/marketing' },
     ],
   },
   {
@@ -81,8 +80,8 @@ const MENU = [
     path: null,
     basePath: '/admin/products',
     subs: [
-      { label: 'Product Catalog',    tab: 'retail',    path: '/admin/products' },
-      { label: 'Stock Control',      tab: 'stock',     path: '/admin/products' },
+      { label: 'Product Catalog', tab: 'retail', path: '/admin/products' },
+      { label: 'Stock Control', tab: 'stock', path: '/admin/products' },
       { label: 'Suppliers & Orders', tab: 'suppliers', path: '/admin/products' },
     ],
   },
@@ -92,9 +91,9 @@ const MENU = [
     path: null,
     basePath: '/admin/payments',
     subs: [
-      { label: 'Sales',                 tab: 'sales',    path: '/admin/payments' },
-      { label: 'Payroll & Commissions', tab: 'payroll',  path: '/admin/payments' },
-      { label: 'Expense Tracker',       tab: 'expenses', path: '/admin/payments' },
+      { label: 'Sales', tab: 'sales', path: '/admin/payments' },
+      { label: 'Payroll & Commissions', tab: 'payroll', path: '/admin/payments' },
+      { label: 'Expense Tracker', tab: 'expenses', path: '/admin/payments' },
     ],
   },
   {
@@ -114,13 +113,12 @@ const MENU = [
 ];
 
 const SUB_ICON = {
-  calendar: Calendar,   pending: Clock,        requests: AlertCircle,
-  profiles: UserCheck,  reviews: Star,         medical: HeartPulse,
-  queue: ListOrdered,   rbac: ShieldAlert,
-  all: ShoppingBag,     categories: Hourglass,
-  giftcards: Gift,      promos: Megaphone,
-  retail: Tags,         stock: Truck,          suppliers: Boxes,
-  sales: DollarSign,    payroll: Coins,        expenses: Wallet,
+  calendar: Calendar, pending: Clock, requests: AlertCircle,
+  queue: ListOrdered, rbac: ShieldAlert,
+  all: ShoppingBag, categories: Hourglass,
+  giftcards: Gift, promos: Megaphone,
+  retail: Tags, stock: Truck, suppliers: Boxes,
+  sales: DollarSign, payroll: Coins, expenses: Wallet,
 };
 
 /* ── Colour tokens ──────────────────────────────────────────────────── */
@@ -383,14 +381,14 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── User profile with clickable popover ── */}
         <div ref={profileRef} className="relative py-5 flex justify-center items-center flex-shrink-0" style={{ borderTop: `1px solid ${t.border}` }}>
-          <button 
+          <button
             type="button"
             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white cursor-pointer relative focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 10px rgba(6,44,34,0.3)' }}
           >
             {user?.name?.charAt(0)?.toUpperCase() || 'A'}
-            
+
             {/* Online Status Indicator Dot */}
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
           </button>
@@ -398,7 +396,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           {/* Clickable Menu Popover */}
           <AnimatePresence>
             {profileMenuOpen && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -410,12 +408,12 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">{user?.name}</p>
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
                 </div>
-                
+
                 <Link to="/" onClick={() => { setProfileMenuOpen(false); onClose?.(); }} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors mt-1" style={{ textDecoration: 'none' }}>
                   <Home className="w-4 h-4 text-slate-400" />
                   <span>Back to Landing</span>
                 </Link>
-                
+
                 <button onClick={() => { setProfileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors w-full text-left">
                   <LogOut className="w-4 h-4 text-red-400" />
                   <span>Sign Out</span>
