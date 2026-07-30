@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class AppointmentReminderMail extends Mailable implements ShouldQueue
+class AppointmentReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -21,6 +21,8 @@ class AppointmentReminderMail extends Mailable implements ShouldQueue
     public string $therapistName;
     public string $hoursUntil;
     public int $bookingId;
+    public string $totalPrice;
+    public string $salonAddress;
 
     public function __construct(Appointment $appointment, string $hoursUntil = '24')
     {
@@ -31,6 +33,8 @@ class AppointmentReminderMail extends Mailable implements ShouldQueue
         $this->therapistName   = $appointment->therapist?->name ?? 'Our Specialist';
         $this->hoursUntil      = $hoursUntil;
         $this->bookingId       = $appointment->id;
+        $this->totalPrice      = $appointment->service ? '₱' . number_format((float)$appointment->service->price, 2) : 'N/A';
+        $this->salonAddress    = config('app.salon_address', 'Cozy Blissful Spa & Wellness, Metro Manila');
     }
 
     public function envelope(): Envelope

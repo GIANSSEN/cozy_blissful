@@ -90,6 +90,14 @@
           <span class="value">{{ $appointmentTime }}</span>
         </div>
         <div class="booking-row">
+          <span class="label">Total Price</span>
+          <span class="value gold">{{ $totalPrice }}</span>
+        </div>
+        <div class="booking-row">
+          <span class="label">Location</span>
+          <span class="value">{{ $salonAddress }}</span>
+        </div>
+        <div class="booking-row">
           <span class="label">Therapist</span>
           <span class="value">{{ $therapistName }}</span>
         </div>

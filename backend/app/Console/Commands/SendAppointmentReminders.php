@@ -40,12 +40,12 @@ class SendAppointmentReminders extends Command
             if ($appointment->client && $appointment->client->email) {
                 try {
                     Mail::to($appointment->client->email)
-                        ->queue(new AppointmentReminderMail($appointment, '24'));
+                        ->send(new AppointmentReminderMail($appointment, '24'));
 
                     // Mark as sent so we don't send again
                     $appointment->update(['reminder_24h_sent_at' => now()]);
 
-                    $this->info("24h reminder queued for: {$appointment->client->email} (Booking #{$appointment->id})");
+                    $this->info("24h reminder sent to: {$appointment->client->email} (Booking #{$appointment->id})");
                     Log::info('24h reminder sent', [
                         'appointment_id' => $appointment->id,
                         'client_email'   => $appointment->client->email,
@@ -75,11 +75,11 @@ class SendAppointmentReminders extends Command
             if ($appointment->client && $appointment->client->email) {
                 try {
                     Mail::to($appointment->client->email)
-                        ->queue(new AppointmentReminderMail($appointment, '2'));
+                        ->send(new AppointmentReminderMail($appointment, '2'));
 
                     $appointment->update(['reminder_2h_sent_at' => now()]);
 
-                    $this->info("2h reminder queued for: {$appointment->client->email} (Booking #{$appointment->id})");
+                    $this->info("2h reminder sent to: {$appointment->client->email} (Booking #{$appointment->id})");
                     Log::info('2h reminder sent', [
                         'appointment_id' => $appointment->id,
                         'client_email'   => $appointment->client->email,

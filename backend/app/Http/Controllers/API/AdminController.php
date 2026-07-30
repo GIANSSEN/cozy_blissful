@@ -131,9 +131,9 @@ class AdminController extends Controller
 
         if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
             try {
-                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to queue booking approved email: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Failed to send booking approved email: ' . $e->getMessage());
             }
         }
 
@@ -170,9 +170,9 @@ class AdminController extends Controller
 
         if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
             try {
-                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to queue booking approved email in updateStatus: ' . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error('Failed to send booking approved email in updateStatus: ' . $e->getMessage());
             }
         }
 

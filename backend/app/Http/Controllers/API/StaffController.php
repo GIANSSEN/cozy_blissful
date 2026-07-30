@@ -22,7 +22,7 @@ class StaffController extends Controller
         $today = Carbon::today()->toDateString();
 
         $therapists = User::role('therapist')->with([
-            'availabilities' => fn($q) => $q->whereDate('date', $today)
+            'availabilities' => fn($q) => $q->where('date', $today)
         ])->get();
 
         $todayAppointments = Appointment::with(['client', 'therapist', 'service'])
@@ -33,7 +33,7 @@ class StaffController extends Controller
         $pendingCount   = $todayAppointments->where('status', 'Pending')->count();
         $confirmedCount = $todayAppointments->where('status', 'Confirmed')->count();
         $totalTherapists = $therapists->count();
-        $availableToday  = TherapistAvailability::whereDate('date', $today)->count();
+        $availableToday  = TherapistAvailability::where('date', $today)->count();
 
         return response()->json([
             'stats' => [
@@ -97,7 +97,7 @@ class StaffController extends Controller
         ]);
 
         $existing = TherapistAvailability::where('therapist_id', $request->therapist_id)
-            ->whereDate('date', $request->date)
+            ->where('date', $request->date)
             ->first();
 
         if ($existing) {
@@ -175,9 +175,9 @@ class StaffController extends Controller
 
         if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
             try {
-                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
             } catch (\Exception $e) {
-                Log::error('Failed to queue booking approved email: ' . $e->getMessage());
+                Log::error('Failed to send booking approved email: ' . $e->getMessage());
             }
         }
 
@@ -214,9 +214,9 @@ class StaffController extends Controller
 
         if ($oldStatus !== 'Confirmed' && $request->status === 'Confirmed' && $appt->client && $appt->client->email) {
             try {
-                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
             } catch (\Exception $e) {
-                Log::error('Failed to queue booking approved email: ' . $e->getMessage());
+                Log::error('Failed to send booking approved email: ' . $e->getMessage());
             }
         }
 

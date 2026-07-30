@@ -198,9 +198,9 @@ class ClientController extends Controller
 
         if ($user->email) {
             try {
-                Mail::to($user->email)->queue(new BookingConfirmationMail($appt));
+                Mail::to($user->email)->send(new BookingConfirmationMail($appt));
             } catch (\Exception $e) {
-                Log::error('Failed to queue booking confirmation email: ' . $e->getMessage());
+                Log::error('Failed to send booking confirmation email: ' . $e->getMessage());
             }
         }
 
