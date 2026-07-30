@@ -13,6 +13,8 @@ use App\Http\Controllers\API\SocialAuthController;
 // Public auth routes with custom rate limiting for enhanced security
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle.register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle.login');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/auth/google', [SocialAuthController::class, 'google'])->middleware('throttle.login');
 Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middleware('throttle.login');
 
@@ -63,11 +65,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/therapists',             [StaffController::class, 'getTherapists']);
         Route::post('/availability/toggle',   [StaffController::class, 'toggleAvailability']);
         Route::get('/appointments',           [StaffController::class, 'getAppointments']);
+        Route::post('/appointments/{id}/assign', [StaffController::class, 'assignTherapist']);
+        Route::post('/appointments/{id}/status', [StaffController::class, 'updateStatus']);
     });
 
     // Group 4: /booking/* -> Client only for booking management
     Route::middleware('role:client')->prefix('booking')->group(function () {
         Route::get('/dashboard', [ClientController::class, 'index']);
         Route::post('/store', [ClientController::class, 'store']);
+        Route::get('/available-slots', [ClientController::class, 'getAvailableSlots']);
     });
 });

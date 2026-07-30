@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { LogIn, Eye, EyeOff, AlertCircle, Clock, Mail, Lock, Sparkles, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -238,7 +238,7 @@ const RateLimitBanner = ({ retryAfter }) => {
 };
 
 // ─── Labeled input with leading icon ──────────────────────────────────────────
-const Input = ({ label, id, icon: Icon, error, rightEl, ...props }) => {
+const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
   const [focused, setFocused] = useState(false);
   return (
     <div>
@@ -246,7 +246,9 @@ const Input = ({ label, id, icon: Icon, error, rightEl, ...props }) => {
       <div className="relative">
         <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
           style={{ color: error ? '#dc2626' : BRAND.gold }} />
-        <input id={id} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        <input id={id}
+          onFocus={() => setFocused(true)}
+          onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
           className="w-full text-sm rounded-lg outline-none transition-all duration-150 bg-white"
           style={{
             border: error ? '1px solid rgba(220,38,38,0.55)' : focused ? `1px solid ${BRAND.gold}` : `1px solid ${BRAND.line}`,
@@ -270,33 +272,54 @@ const Input = ({ label, id, icon: Icon, error, rightEl, ...props }) => {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const Login = () => {
-  const [email, setEmail] = useState(() => localStorage.getItem('remember_email') || '');
+  const location = useLocation();
+  const [email, setEmail] = useState(() => location.state?.email || localStorage.getItem('remember_email') || '');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(() => !!localStorage.getItem('remember_email'));
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState(null);
-  const [notice, setNotice] = useState(null);
+  const [notice, setNotice] = useState(() => location.state?.notice || null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [rateLimit, setRateLimit] = useState(null);
 
-  const { login } = useAuth();
+  const { login, token, user, role } = useAuth();
   const navigate = useNavigate();
 
-  const redirect = useCallback((role) => {
-    if (role === 'admin') navigate('/admin/dashboard');
-    else if (role === 'therapist') navigate('/therapist/dashboard');
-    else if (role === 'staff') navigate('/staff/dashboard');
+  const redirect = useCallback((userRole) => {
+    if (userRole === 'admin') navigate('/admin/dashboard');
+    else if (userRole === 'therapist') navigate('/therapist/dashboard');
+    else if (userRole === 'staff') navigate('/staff/dashboard');
     else navigate('/booking/dashboard');
   }, [navigate]);
 
+  useEffect(() => {
+    if (token && user && role) {
+      redirect(role);
+    }
+  }, [token, user, role, redirect]);
+
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+  const validateField = useCallback((field, value) => {
+    let err = '';
+    if (field === 'email') {
+      if (!value.trim()) err = 'Email address is required.';
+      else if (!emailRegex.test(value.trim())) err = 'Please enter a valid email address.';
+    } else if (field === 'password') {
+      if (!value) err = 'Password is required.';
+      else if (value.length < 8) err = 'Password must be at least 8 characters.';
+    }
+    setFieldErrors(prev => ({ ...prev, [field]: err }));
+    return !err;
+  }, [emailRegex]);
+
   const validate = () => {
     const e = {};
-    const re = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (!email.trim()) e.email = 'Email is required.';
-    else if (!re.test(email.trim())) e.email = 'Enter a valid email.';
+    if (!email.trim()) e.email = 'Email address is required.';
+    else if (!emailRegex.test(email.trim())) e.email = 'Please enter a valid email address.';
     if (!password) e.password = 'Password is required.';
-    else if (password.length < 8) e.password = 'At least 8 characters.';
+    else if (password.length < 8) e.password = 'Password must be at least 8 characters.';
     setFieldErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -455,10 +478,12 @@ const Login = () => {
             <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
               <Input label="Email" id="login-email" type="email" autoComplete="email" required icon={Mail}
                 value={email} placeholder="Enter your email address" error={fieldErrors.email}
+                onBlur={() => validateField('email', email)}
                 onChange={e => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: '' })); }} />
 
               <Input label="Password" id="login-password" type={showPw ? 'text' : 'password'} autoComplete="current-password" required icon={Lock}
                 value={password} placeholder="••••••••" error={fieldErrors.password}
+                onBlur={() => validateField('password', password)}
                 onChange={e => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors(p => ({ ...p, password: '' })); }}
                 rightEl={
                   <button type="button" tabIndex={-1} onClick={() => setShowPw(v => !v)}
@@ -477,12 +502,11 @@ const Login = () => {
                     className="w-3.5 h-3.5 rounded cursor-pointer" style={{ accentColor: BRAND.gold }} />
                   Remember me
                 </label>
-                <button type="button"
+                <Link to="/forgot-password"
                   className="text-[11px] font-bold hover:underline underline-offset-2"
-                  style={{ color: BRAND.gold }}
-                  onClick={() => { setError(null); setNotice('Password reset is handled by our team for now — message us on Facebook or WhatsApp and we\'ll help you right away.'); }}>
-                  Reset Password!
-                </button>
+                  style={{ color: BRAND.gold }}>
+                  Forgot Password?
+                </Link>
               </div>
 
               <motion.button type="submit" id="login-submit" disabled={submitting || rateLimit > 0}

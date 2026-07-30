@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import API from '../../api/axios';
 import {
   Search, Info, Star, HeartPulse, MessageSquare,
-  ShieldAlert, AlertTriangle,
+  ShieldAlert, AlertTriangle, RefreshCw, UserCheck
 } from 'lucide-react';
 
-/* ── Mock customer registry ─────────────────────────────────────── */
+/* ── Mock customer registry fallback ─────────────────────────────── */
 const MOCK_CUSTOMERS = [
   { id: 1, name: 'Sarah Martinez', email: 'sarah@example.com', phone: '+63 917 123 4567', bookings: 12, notes: 'Prefers Swedish Massage with Lavender Oil, medium pressure.' },
   { id: 2, name: 'David Lim', email: 'david.lim@example.com', phone: '+63 918 987 6543', bookings: 5, notes: 'Requires Deep Tissue focus on lower back and neck.' },
@@ -33,10 +34,32 @@ const AdminCustomers = () => {
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'profiles';
   const [customerSearch, setCustomerSearch] = useState('');
+  const [dbCustomers, setDbCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredCustomers = MOCK_CUSTOMERS.filter(c =>
-    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    c.email.toLowerCase().includes(customerSearch.toLowerCase())
+  const fetchCustomers = async () => {
+    setLoading(true);
+    try {
+      const res = await API.get('/admin/customers');
+      if (res.data && res.data.customers) {
+        setDbCustomers(res.data.customers);
+      }
+    } catch (err) {
+      console.error('Failed to fetch admin customers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const displayCustomers = dbCustomers.length > 0 ? dbCustomers : MOCK_CUSTOMERS;
+
+  const filteredCustomers = displayCustomers.filter(c =>
+    (c.name || '').toLowerCase().includes(customerSearch.toLowerCase()) ||
+    (c.email || '').toLowerCase().includes(customerSearch.toLowerCase())
   );
 
   const getPageTitle = () => {

@@ -44,7 +44,7 @@ const MENU = [
     ],
   },
   {
-    title: 'Staff & Schedule',
+    title: 'User Maintenance',
     icon: UserCog,
     path: null,
     basePath: '/admin/staff',
@@ -55,13 +55,13 @@ const MENU = [
     ],
   },
   {
-    title: 'Services & Offers',
+    title: 'Service Maintenance',
     icon: ShoppingBag,
     path: null,
     basePath: '/admin/services',
     subs: [
-      { label: 'All Services', tab: 'all', path: '/admin/services' },
-      { label: 'Categories', tab: 'categories', path: '/admin/services' },
+      { label: 'Services', tab: 'services', path: '/admin/services' },
+      { label: 'Offers', tab: 'offers', path: '/admin/services' },
     ],
   },
   {
@@ -116,7 +116,7 @@ const SUB_ICON = {
   calendar: Calendar, pending: Clock, requests: AlertCircle,
   profiles: UserCheck, reviews: Star,
   queue: ListOrdered, rbac: ShieldAlert,
-  all: ShoppingBag, categories: Hourglass,
+  services: ShoppingBag, offers: Gift, categories: Hourglass,
   giftcards: Gift, promos: Megaphone,
   retail: Tags, stock: Truck, suppliers: Boxes,
   sales: DollarSign, payroll: Coins, expenses: Wallet,

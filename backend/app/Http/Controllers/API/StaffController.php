@@ -8,6 +8,9 @@ use App\Models\Appointment;
 use App\Models\TherapistAvailability;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BookingApprovedMail;
+use Illuminate\Support\Facades\Log;
 
 class StaffController extends Controller
 {
@@ -46,13 +49,14 @@ class StaffController extends Controller
                 'available_today' => $t->availabilities->isNotEmpty(),
             ]),
             'appointments' => $todayAppointments->map(fn($a) => [
-                'id'         => $a->id,
-                'client'     => $a->client?->name ?? 'Unknown',
-                'therapist'  => $a->therapist?->name ?? 'Unassigned',
-                'service'    => $a->service?->name ?? 'Unknown',
-                'datetime'   => $a->datetime,
-                'status'     => $a->status,
-                'notes'      => $a->notes,
+                'id'           => $a->id,
+                'client'       => $a->client?->name ?? 'Unknown',
+                'therapist'    => $a->therapist?->name ?? 'Unassigned',
+                'therapist_id' => $a->therapist_id,
+                'service'      => $a->service?->name ?? 'Unknown',
+                'datetime'     => $a->datetime,
+                'status'       => $a->status,
+                'notes'        => $a->notes,
             ]),
         ]);
     }
@@ -114,25 +118,120 @@ class StaffController extends Controller
     }
 
     /**
-     * Get today's + upcoming appointments (read-only view for staff).
+     * Get appointments with filter support (today, upcoming, or all).
      */
-    public function getAppointments()
+    public function getAppointments(Request $request)
     {
-        $appointments = Appointment::with(['client', 'therapist', 'service'])
-            ->where('datetime', '>=', Carbon::today())
-            ->orderBy('datetime')
-            ->limit(50)
+        $query = Appointment::with(['client', 'therapist', 'service']);
+        $filter = $request->query('filter');
+
+        if ($filter === 'today') {
+            $query->whereDate('datetime', Carbon::today());
+        } elseif ($filter === 'upcoming') {
+            $query->whereDate('datetime', '>', Carbon::today());
+        } else {
+            $query->where('datetime', '>=', Carbon::today());
+        }
+
+        $appointments = $query->orderBy('datetime')
+            ->limit(100)
             ->get()
             ->map(fn($a) => [
-                'id'        => $a->id,
-                'client'    => $a->client?->name ?? 'Unknown',
-                'therapist' => $a->therapist?->name ?? 'Unassigned',
-                'service'   => $a->service?->name ?? 'Unknown',
-                'datetime'  => $a->datetime,
-                'status'    => $a->status,
-                'notes'     => $a->notes,
+                'id'               => $a->id,
+                'client'           => $a->client?->name ?? 'Unknown',
+                'therapist'        => $a->therapist?->name ?? 'Unassigned',
+                'therapist_id'     => $a->therapist_id,
+                'service'          => $a->service?->name ?? 'Unknown',
+                'service_id'       => $a->service_id,
+                'service_price'    => $a->service ? (float)$a->service->price : null,
+                'service_duration' => $a->service ? (int)$a->service->duration : null,
+                'datetime'         => $a->datetime,
+                'status'           => $a->status,
+                'notes'            => $a->notes,
             ]);
 
         return response()->json(['appointments' => $appointments]);
+    }
+
+    /**
+     * Assign therapist to appointment.
+     */
+    public function assignTherapist(Request $request, $id)
+    {
+        $request->validate([
+            'therapist_id' => 'nullable|exists:users,id',
+        ]);
+
+        $appt = Appointment::findOrFail($id);
+        $oldStatus = $appt->status;
+        $appt->therapist_id = $request->therapist_id;
+
+        if ($request->therapist_id && $appt->status === 'Pending') {
+            $appt->status = 'Confirmed';
+        }
+
+        $appt->save();
+        $appt->load(['client', 'therapist', 'service']);
+
+        if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
+            try {
+                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+            } catch (\Exception $e) {
+                Log::error('Failed to queue booking approved email: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message' => 'Therapist assigned successfully',
+            'appointment' => [
+                'id'           => $appt->id,
+                'client'       => $appt->client?->name ?? 'Client',
+                'therapist'    => $appt->therapist?->name ?? 'Unassigned',
+                'therapist_id' => $appt->therapist_id,
+                'service'      => $appt->service?->name ?? 'Service',
+                'datetime'     => $appt->datetime,
+                'status'       => $appt->status,
+                'notes'        => $appt->notes,
+            ]
+        ]);
+    }
+
+    /**
+     * Update appointment status.
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:Pending,Confirmed,Completed,Cancelled',
+        ]);
+
+        $appt = Appointment::findOrFail($id);
+        $oldStatus = $appt->status;
+        $appt->status = $request->status;
+        $appt->save();
+
+        $appt->load(['client', 'therapist', 'service']);
+
+        if ($oldStatus !== 'Confirmed' && $request->status === 'Confirmed' && $appt->client && $appt->client->email) {
+            try {
+                Mail::to($appt->client->email)->queue(new BookingApprovedMail($appt));
+            } catch (\Exception $e) {
+                Log::error('Failed to queue booking approved email: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message' => 'Appointment status updated to ' . $request->status,
+            'appointment' => [
+                'id'           => $appt->id,
+                'client'       => $appt->client?->name ?? 'Client',
+                'therapist'    => $appt->therapist?->name ?? 'Unassigned',
+                'therapist_id' => $appt->therapist_id,
+                'service'      => $appt->service?->name ?? 'Service',
+                'datetime'     => $appt->datetime,
+                'status'       => $appt->status,
+                'notes'        => $appt->notes,
+            ]
+        ]);
     }
 }

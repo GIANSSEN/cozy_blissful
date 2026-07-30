@@ -74,7 +74,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
           }}
         >
           {/* Left: hamburger + page title */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
             <button
               onClick={() => setMobileSidebarOpen(true)}
               className="lg:hidden w-8 h-8 rounded-xl flex items-center justify-center transition-all"
@@ -87,9 +87,9 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
               <Menu className="w-4 h-4" />
             </button>
 
-            <div>
+            <div className="min-w-0">
               <h1
-                className="text-base lg:text-lg font-black tracking-tight leading-tight"
+                className="text-sm sm:text-base lg:text-lg font-black tracking-tight leading-tight truncate"
                 style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
               >
                 {title}
@@ -293,7 +293,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle }) => {
         </header>
 
         {/* ── Page content ── */}
-        <main className="flex-1 px-6 lg:px-8 py-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto">
           {children}
         </main>
       </div>

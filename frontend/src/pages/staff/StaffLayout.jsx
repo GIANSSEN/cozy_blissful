@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StaffSidebar from '../../components/StaffSidebar';
-import { Menu, Bell, Search, LogOut, Home, ChevronDown, X } from 'lucide-react';
+import { Menu, Bell, Search, LogOut, Home, ChevronDown, X, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,7 +22,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -118,6 +118,20 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle }) => {
               <Search className="w-3.5 h-3.5" />
               <span>Search anything…</span>
             </div>
+
+            {/* Theme toggle */}
+            <button
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              onClick={toggleTheme}
+              className="relative w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
+                color: isDark ? '#f59e0b' : '#0284c7',
+              }}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
 
             {/* Notification bell */}
             <div className="relative" ref={notifRef}>

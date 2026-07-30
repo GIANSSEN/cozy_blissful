@@ -12,6 +12,7 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\WelcomeMail;
+use App\Mail\ResetPasswordMail;
 
 class AuthController extends Controller
 {
@@ -190,21 +191,122 @@ class AuthController extends Controller
     }
 
     /**
-     * Revoke the user's token.
+     * Send a password reset link to the given email.
      */
-    public function logout(Request $request)
+    /**
+     * Send a password reset link to the given email.
+     */
+    public function sendResetLinkEmail(Request $request)
     {
-        // Revoke current access token
-        $request->user()->currentAccessToken()->delete();
-
-        // Log logout
-        Log::info('User logged out', [
-            'user_id' => $request->user()->id,
-            'ip' => $request->ip(),
+        $request->validate([
+            'email' => 'required|email',
         ]);
 
+        $email = strtolower(trim($request->email));
+        $user  = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'No account found with this email address. Please register or check your email.'
+            ], 404);
+        }
+
+        // Check if Gmail SMTP credentials are set in .env
+        $mailUsername = config('mail.mailers.smtp.username');
+        $mailPassword = config('mail.mailers.smtp.password');
+        if (empty($mailUsername) || str_contains($mailUsername, 'YOUR_GMAIL') || empty($mailPassword) || str_contains($mailPassword, 'YOUR_16_DIGIT')) {
+            return response()->json([
+                'message' => 'Please enter your 16-character Google App Password in backend/.env under MAIL_PASSWORD to enable email sending.'
+            ], 422);
+        }
+
+        try {
+            // Generate secure random token
+            $rawToken = \Illuminate\Support\Str::random(60);
+
+            // Store token in database
+            \Illuminate\Support\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $email],
+                [
+                    'email'      => $email,
+                    'token'      => \Illuminate\Support\Facades\Hash::make($rawToken),
+                    'created_at' => now(),
+                ]
+            );
+
+            // Send password reset email via SMTP
+            Mail::to($user->email)->send(new ResetPasswordMail($user, $rawToken));
+
+            Log::info('Password reset email sent successfully', ['email' => $email]);
+
+            return response()->json([
+                'message' => 'Password reset link sent to your email address!'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to send password reset email: ' . $e->getMessage());
+
+            return response()->json([
+                'message' => 'SMTP Error: Unable to send email. ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset the user's password.
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token'    => 'required|string',
+            'email'    => 'required|email',
+            'password' => [
+                'required',
+                'string',
+                'confirmed',
+                'min:8',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/',
+            ],
+        ], [
+            'password.regex'     => 'The password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).',
+            'password.confirmed' => 'Password confirmation does not match.',
+        ]);
+
+        $email = strtolower(trim($request->email));
+        $record = \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $email)->first();
+
+        if (!$record) {
+            return response()->json(['message' => 'Invalid or expired password reset link.'], 422);
+        }
+
+        // Check if token is older than 60 minutes
+        if (\Carbon\Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $email)->delete();
+            return response()->json(['message' => 'Password reset link has expired. Please request a new one.'], 422);
+        }
+
+        // Verify token hash
+        if (!\Illuminate\Support\Facades\Hash::check($request->token, $record->token)) {
+            return response()->json(['message' => 'Invalid password reset token.'], 422);
+        }
+
+        // Find user & update password
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        $user->password = \Illuminate\Support\Facades\Hash::make($request->password);
+        $user->save();
+
+        // Delete used token & revoke active tokens for security
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $email)->delete();
+        $user->tokens()->delete();
+
+        Log::info('Password successfully reset', ['user_id' => $user->id, 'email' => $email]);
+
         return response()->json([
-            'message' => 'Logged out successfully.'
+            'message' => 'Your password has been reset successfully! You can now log in with your new password.'
         ]);
     }
 }
+

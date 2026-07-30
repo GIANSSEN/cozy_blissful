@@ -121,9 +121,12 @@ export const AuthProvider = ({ children }) => {
           error: err.response?.data?.message || 'Too many registration attempts.',
         };
       }
+      const isNetworkError = !err.response;
       return {
         success: false,
-        error: err.response?.data?.message || 'Registration failed. Please try again.',
+        error: isNetworkError
+          ? 'Cannot connect to backend API server. Please verify the backend server is running on http://localhost:8000.'
+          : (err.response?.data?.message || 'Registration failed. Please check your information.'),
         errors: err.response?.data?.errors,
       };
     }

@@ -1,16 +1,30 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, Eye, EyeOff, AlertCircle, Clock, Check, X, ArrowRight, Sparkles, Shield, MapPin } from 'lucide-react';
+import { User, Mail, Lock, ShieldCheck, UserPlus, Eye, EyeOff, AlertCircle, Clock, Check, X, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// ─── Brand palette (LandingPage-inspired Green/Gold Theme) ────────────────────
+const BRAND = {
+  deep: '#041e16',
+  green: '#0a3d30',
+  gold: '#bfa15f',
+  goldLight: '#e8cc8a',
+  emerald: '#34d399',
+  ink: '#2c3e50',
+  inkSoft: '#7f8c8d',
+  line: '#ecf0f1',
+  field: '#f8f9fa',
+  white: '#ffffff',
+};
 
 // ─── Social links ─────────────────────────────────────────────────────────────
 const SOCIALS = [
-  { label: 'Facebook',  href: '#', color: '#1877F2', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
-  { label: 'Instagram', href: '#', color: '#E4405F', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> },
-  { label: 'TikTok',    href: '#', color: '#ffffff', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg> },
-  { label: 'YouTube',   href: '#', color: '#FF0000', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
-  { label: 'WhatsApp',  href: '#', color: '#25D366', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg> },
+  { label: 'Facebook',  href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
+  { label: 'Instagram', href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> },
+  { label: 'TikTok',    href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg> },
+  { label: 'YouTube',   href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
+  { label: 'WhatsApp',  href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg> },
 ];
 
 const STATS = [
@@ -70,16 +84,16 @@ const SocialTile = ({ label, onClick, disabled, pending, children }) => (
   <motion.button type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label}
     whileHover={{ scale: disabled ? 1 : 1.05, y: disabled ? 0 : -1 }} whileTap={{ scale: disabled ? 1 : 0.95 }}
     className="w-[68px] h-11 rounded-lg flex items-center justify-center bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-    style={{ border: '1px solid #ecf0f1', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+    style={{ border: `1px solid ${BRAND.line}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
     {pending
-      ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: '#bfa15f' }} />
+      ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
       : children}
   </motion.button>
 );
 
 const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   const { socialLogin } = useAuth();
-  const [pending, setPending] = useState(null); // 'google' | 'facebook' | null
+  const [pending, setPending] = useState(null);
   const [googleReady, setGoogleReady] = useState(false);
   const [fbReady, setFbReady] = useState(false);
   const googleBtnRef = useRef(null);
@@ -96,8 +110,6 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     else onError(res.error);
   }, [socialLogin, onSuccess, onError]);
 
-  // Google Identity Services — official script; the credential response
-  // carries a JWT ID token that is only trusted after backend verification.
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
     let cancelled = false;
@@ -117,7 +129,6 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     return () => { cancelled = true; };
   }, [finish, onError]);
 
-  // Meta JavaScript SDK — initialized with the app ID from env config only.
   useEffect(() => {
     if (!FACEBOOK_APP_ID) return;
     let cancelled = false;
@@ -143,21 +154,20 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
 
   return (
     <div>
-      <div className="flex items-center gap-3 my-4">
-        <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
-        <span className="text-[11px]" style={{ color: 'rgba(0,0,0,0.5)' }}>or</span>
-        <div className="flex-1 h-px" style={{ background: 'rgba(0,0,0,0.1)' }} />
+      <div className="flex items-center gap-3 my-3">
+        <div className="flex-1 h-px" style={{ background: BRAND.line }} />
+        <span className="text-[11px]" style={{ color: BRAND.inkSoft }}>or</span>
+        <div className="flex-1 h-px" style={{ background: BRAND.line }} />
       </div>
 
       <div className="flex items-center justify-center gap-3"
         style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
         {GOOGLE_CLIENT_ID && (
           <div className="relative w-[68px] h-11">
-            {/* Official Google-rendered icon button (brand compliant), stretched over the tile */}
             <div className="absolute inset-0 rounded-lg bg-white flex items-center justify-center pointer-events-none"
-              style={{ border: '1px solid #ecf0f1', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              style={{ border: `1px solid ${BRAND.line}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               {pending === 'google'
-                ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: '#041e16' }} />
+                ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
                 : <GoogleGlyph />}
             </div>
             <div ref={googleBtnRef} aria-label="Sign up with Google" title="Sign up with Google"
@@ -173,8 +183,7 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
           </SocialTile>
         )}
 
-        {/* Apple Sign-In Button */}
-        <SocialTile label="Sign up with Apple" onClick={() => { /* Apple OAuth coming soon */ }}
+        <SocialTile label="Sign up with Apple" onClick={() => {}}
           disabled={true} pending={false}>
           <AppleGlyph />
         </SocialTile>
@@ -183,6 +192,7 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   );
 };
 
+// ─── Password Strength Evaluator ─────────────────────────────────────────────
 const StrengthChecks = [
   { key: 'len', label: '8+ chars',     test: p => p.length >= 8 },
   { key: 'up',  label: 'Uppercase',    test: p => /[A-Z]/.test(p) },
@@ -191,36 +201,29 @@ const StrengthChecks = [
   { key: 'sp',  label: 'Special char', test: p => /[@$!%*?&]/.test(p) },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const FloatingOrb = ({ style, delay = 0, duration = 9 }) => (
-  <motion.div className="absolute rounded-full pointer-events-none blur-3xl" style={style}
-    animate={{ y: [0, -20, 0], x: [0, 8, 0], opacity: [0.18, 0.38, 0.18] }}
-    transition={{ duration, delay, repeat: Infinity, ease: 'easeInOut' }} />
-);
-
 const PasswordStrength = ({ password }) => {
   const results = StrengthChecks.map(c => ({ ...c, ok: c.test(password) }));
   const passed = results.filter(r => r.ok).length;
-  const barColor = ['#ef4444','#f97316','#eab308','#22c55e','#16a34a'][passed - 1] ?? 'rgba(255,255,255,0.08)';
+  const barColor = ['#ef4444','#f97316','#eab308','#22c55e','#16a34a'][passed - 1] ?? '#e2e8f0';
   const label = ['Very weak','Weak','Fair','Strong','Very strong'][passed - 1] ?? '';
   return (
     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.15 }}
-      className="overflow-hidden mt-1.5 space-y-1.5">
+      className="overflow-hidden mt-1.5 space-y-1.5 p-2 rounded-lg bg-gray-50 border border-gray-100">
       <div className="flex items-center gap-2">
-        <div className="flex gap-0.5 flex-1">
+        <div className="flex gap-1 flex-1">
           {[0,1,2,3,4].map(i => (
-            <div key={i} className="h-1 flex-1 rounded-full transition-all duration-200"
-              style={{ background: i < passed ? barColor : 'rgba(255,255,255,0.08)' }} />
+            <div key={i} className="h-1.5 flex-1 rounded-full transition-all duration-200"
+              style={{ background: i < passed ? barColor : '#e2e8f0' }} />
           ))}
         </div>
-        {label && <span className="text-[9px] font-semibold" style={{ color: barColor, minWidth: '4rem', textAlign: 'right' }}>{label}</span>}
+        {label && <span className="text-[10px] font-bold" style={{ color: barColor, minWidth: '4.5rem', textAlign: 'right' }}>{label}</span>}
       </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-0.5">
         {results.map(r => (
           <div key={r.key} className="flex items-center gap-1">
-            {r.ok ? <Check className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" /> : <X className="w-2.5 h-2.5 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.18)' }} />}
-            <span className="text-[9px]" style={{ color: r.ok ? 'rgba(52,201,158,0.8)' : 'rgba(255,255,255,0.28)' }}>{r.label}</span>
+            {r.ok ? <Check className="w-3 h-3 text-emerald-600 flex-shrink-0" /> : <X className="w-3 h-3 text-gray-400 flex-shrink-0" />}
+            <span className="text-[10px] font-medium" style={{ color: r.ok ? '#15803d' : '#64748b' }}>{r.label}</span>
           </div>
         ))}
       </div>
@@ -228,6 +231,24 @@ const PasswordStrength = ({ password }) => {
   );
 };
 
+// ─── Floating decorative orb ──────────────────────────────────────────────────
+const FloatingOrb = ({ style, delay = 0, duration = 9 }) => (
+  <motion.div className="absolute rounded-full pointer-events-none" style={style}
+    animate={{ y: [0, -14, 0], x: [0, 6, 0] }}
+    transition={{ duration, delay, repeat: Infinity, ease: 'easeInOut' }} />
+);
+
+// ─── Dot grid (decorative) ────────────────────────────────────────────────────
+const DotGrid = ({ rows = 4, cols = 9, className = '', style = {} }) => (
+  <div className={`grid gap-2 pointer-events-none ${className}`}
+    style={{ gridTemplateColumns: `repeat(${cols}, 4px)`, ...style }}>
+    {Array.from({ length: rows * cols }).map((_, i) => (
+      <span key={i} className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }} />
+    ))}
+  </div>
+);
+
+// ─── Rate limit banner ────────────────────────────────────────────────────────
 const RateLimitBanner = ({ retryAfter }) => {
   const [s, setS] = useState(retryAfter);
   useEffect(() => { setS(retryAfter); }, [retryAfter]);
@@ -240,9 +261,9 @@ const RateLimitBanner = ({ retryAfter }) => {
   return (
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-start gap-2 p-2.5 rounded-lg text-[11px]"
-      style={{ background: 'rgba(191,161,95,0.07)', border: '1px solid rgba(191,161,95,0.18)' }}>
-      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#bfa15f' }} />
-      <span style={{ color: 'rgba(167,146,97,0.85)' }}>
+      style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.35)' }}>
+      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
+      <span style={{ color: '#8b7a45' }}>
         <strong>Too many attempts.</strong>{' '}
         {s > 0 ? `Retry in ${m > 0 ? `${m}m ` : ''}${sec}s.` : 'You may try again.'}
       </span>
@@ -250,28 +271,31 @@ const RateLimitBanner = ({ retryAfter }) => {
   );
 };
 
-const Input = ({ label, id, error, rightEl, ...props }) => {
+// ─── Labeled input with leading icon ──────────────────────────────────────────
+const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
   const [focused, setFocused] = useState(false);
   return (
     <div>
-      <label htmlFor={id} className="block text-[10px] font-bold tracking-widest uppercase mb-1"
-        style={{ color: 'rgba(255,255,255,0.68)' }}>{label}</label>
+      <label htmlFor={id} className="block text-xs font-semibold mb-1" style={{ color: BRAND.ink }}>{label}</label>
       <div className="relative">
-        <input id={id} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-          className="w-full text-sm rounded-lg outline-none transition-all duration-150"
+        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+          style={{ color: error ? '#dc2626' : BRAND.gold }} />
+        <input id={id}
+          onFocus={() => setFocused(true)}
+          onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
+          className="w-full text-sm rounded-lg outline-none transition-all duration-150 bg-white"
           style={{
-            background: focused ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.05)',
-            border: error ? '1px solid rgba(191,161,95,0.6)' : focused ? '1px solid rgba(191,161,95,0.6)' : '1px solid rgba(255,255,255,0.1)',
-            color: '#fff', padding: rightEl ? '0.5rem 2.5rem 0.5rem 0.75rem' : '0.5rem 0.75rem',
-            boxShadow: focused && !error ? '0 0 0 3px rgba(191,161,95,0.1)' : 'none',
-            caretColor: '#bfa15f',
+            border: error ? '1px solid rgba(220,38,38,0.55)' : focused ? `1px solid ${BRAND.gold}` : `1px solid ${BRAND.line}`,
+            color: BRAND.ink, padding: rightEl ? '0.6rem 2.6rem 0.6rem 2.5rem' : '0.6rem 0.9rem 0.6rem 2.5rem',
+            boxShadow: focused && !error ? `0 0 0 3px rgba(191,161,95,0.12)` : '0 1px 2px rgba(0,0,0,0.04)',
+            caretColor: BRAND.gold,
           }} {...props} />
         {rightEl && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightEl}</div>}
       </div>
       <AnimatePresence>
         {error && (
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="mt-0.5 text-[11px] flex items-center gap-1" style={{ color: '#ff6b6b' }}>
+            className="mt-1 text-[11px] flex items-center gap-1 font-medium" style={{ color: '#dc2626' }}>
             <AlertCircle className="w-3 h-3 flex-shrink-0" />{error}
           </motion.p>
         )}
@@ -292,250 +316,406 @@ const Register = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [rateLimit, setRateLimit] = useState(null);
+  const [modalState, setModalState] = useState('idle'); // 'idle' | 'loading' | 'success'
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [registeredInfo, setRegisteredInfo] = useState({ name: '', email: '' });
+  const [registeredRole, setRegisteredRole] = useState('client');
 
-  const { register } = useAuth();
+  const { register, token, user, role, logout } = useAuth();
   const navigate = useNavigate();
 
-  const emailRe = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  const passRe  = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  // Navigation redirect callback
+  const redirect = useCallback((userRole) => {
+    if (userRole === 'admin') navigate('/admin/dashboard');
+    else if (userRole === 'therapist') navigate('/therapist/dashboard');
+    else if (userRole === 'staff') navigate('/staff/dashboard');
+    else navigate('/booking/dashboard');
+  }, [navigate]);
+
+  useEffect(() => {
+    if (token && user && role && !showSuccessModal) {
+      redirect(role);
+    }
+  }, [token, user, role, redirect, showSuccessModal]);
+
+  const nameRegex  = /^[a-zA-Z\s'-]+$/;
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  const passRegex  = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+  const validateField = useCallback((field, value, allValues = {}) => {
+    let err = '';
+    const currentPass = allValues.password !== undefined ? allValues.password : password;
+
+    if (field === 'name') {
+      if (!value.trim()) err = 'Full name is required.';
+      else if (value.trim().length < 2) err = 'Name must be at least 2 characters.';
+      else if (!nameRegex.test(value.trim())) err = 'Letters, spaces, hyphens, and apostrophes only.';
+    } else if (field === 'email') {
+      if (!value.trim()) err = 'Email address is required.';
+      else if (!emailRegex.test(value.trim())) err = 'Please enter a valid email address.';
+    } else if (field === 'password') {
+      if (!value) err = 'Password is required.';
+      else if (value.length < 8) err = 'Password must be at least 8 characters.';
+      else if (!passRegex.test(value)) err = 'Must include upper & lower letters, number & special char (@$!%*?&).';
+    } else if (field === 'confirmPassword') {
+      if (!value) err = 'Please confirm your password.';
+      else if (value !== currentPass) err = 'Passwords do not match.';
+    }
+
+    setFieldErrors(prev => ({ ...prev, [field]: err }));
+    return !err;
+  }, [nameRegex, emailRegex, passRegex, password]);
 
   const validate = () => {
     const e = {};
     if (!name.trim()) e.name = 'Full name is required.';
-    else if (name.trim().length < 2) e.name = 'At least 2 characters.';
-    else if (!/^[a-zA-Z\s'-]+$/.test(name.trim())) e.name = 'Letters, spaces, hyphens only.';
-    if (!email.trim()) e.email = 'Email is required.';
-    else if (!emailRe.test(email.trim())) e.email = 'Enter a valid email.';
+    else if (name.trim().length < 2) e.name = 'Name must be at least 2 characters.';
+    else if (!nameRegex.test(name.trim())) e.name = 'Letters, spaces, hyphens, and apostrophes only.';
+
+    if (!email.trim()) e.email = 'Email address is required.';
+    else if (!emailRegex.test(email.trim())) e.email = 'Please enter a valid email address.';
+
     if (!password) e.password = 'Password is required.';
-    else if (password.length < 8) e.password = 'At least 8 characters.';
-    else if (!passRe.test(password)) e.password = 'Must include upper, lower, number & special.';
+    else if (password.length < 8) e.password = 'Password must be at least 8 characters.';
+    else if (!passRegex.test(password)) e.password = 'Must include upper & lower letters, number & special char (@$!%*?&).';
+
     if (!confirmPw) e.confirmPassword = 'Please confirm your password.';
     else if (password !== confirmPw) e.confirmPassword = 'Passwords do not match.';
+
     setFieldErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const clear = key => setFieldErrors(p => ({ ...p, [key]: '' }));
+  const clearFieldError = (key) => {
+    setFieldErrors(prev => ({ ...prev, [key]: '' }));
+    if (error) setError(null);
+  };
 
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     setError(null); setFieldErrors({}); setRateLimit(null);
     if (!validate()) return;
     setSubmitting(true);
+    setModalState('loading');
+
     const res = await register(name.trim(), email.trim(), password, confirmPw);
     if (res.success) {
-      if (res.role === 'admin') navigate('/admin/dashboard');
-      else if (res.role === 'therapist') navigate('/therapist/dashboard');
-      else if (res.role === 'staff') navigate('/staff/dashboard');
-      else navigate('/booking/dashboard');
+      setModalState('success');
+      setRegisteredInfo({ name: name.trim(), email: email.trim() });
+      setRegisteredRole(res.role || 'client');
+      setShowSuccessModal(true);
+      localStorage.setItem('remember_email', email.trim());
+      setSubmitting(false);
       return;
     }
+
+    setModalState('idle');
+    setShowSuccessModal(false);
     if (res.rateLimited) setRateLimit(res.retryAfter || 3600);
     else if (res.errors) {
-      const m = {}; Object.keys(res.errors).forEach(k => { m[k === 'password_confirmation' ? 'confirmPassword' : k] = res.errors[k][0]; });
-      setFieldErrors(m); setError('Please fix the errors below.');
-    } else setError(res.error);
+      const m = {};
+      Object.keys(res.errors).forEach(k => {
+        const mappedKey = k === 'password_confirmation' ? 'confirmPassword' : k;
+        m[mappedKey] = res.errors[k][0];
+      });
+      setFieldErrors(m);
+      setError('Please fix the errors highlighted below.');
+    } else {
+      setError(res.error);
+    }
     setSubmitting(false);
   };
 
-  const eyeBtn = (show, toggle, label) => (
-    <button type="button" tabIndex={-1} onClick={toggle} aria-label={label}
-      className="transition-opacity" style={{ color: 'rgba(255,255,255,0.3)' }}
-      onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
-      onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}>
-      {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-    </button>
-  );
-
   return (
-    <div className="h-screen flex overflow-hidden select-none"
-      style={{ fontFamily: "'Inter', sans-serif", background: 'linear-gradient(135deg,#041e16 0%,#073328 55%,#0e4d38 100%)' }}>
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden select-none px-4 py-8"
+      style={{ fontFamily: "'Inter', sans-serif", background: '#f5f5f5' }}>
 
-      {/* ═══════════ LEFT BRANDING PANEL ═══════════ */}
-      <div className="hidden lg:flex flex-col h-full w-[52%] xl:w-[54%] relative overflow-hidden px-10 xl:px-14 py-8">
+      {/* ═══ Background brand shapes (green/gold theme - LandingPage style) ═══ */}
+      <div className="absolute left-0 top-0 h-full w-[42%] hidden md:block"
+        style={{ background: `linear-gradient(160deg, ${BRAND.deep} 0%, ${BRAND.green} 100%)` }} />
+      <div className="absolute rounded-full" style={{ width: 340, height: 340, right: -120, top: -140, background: BRAND.gold, opacity: 0.92 }} />
+      <div className="absolute rounded-full" style={{ width: 300, height: 300, right: -60, bottom: -150, border: `26px solid ${BRAND.gold}`, opacity: 0.9 }} />
+      <div className="absolute rounded-full" style={{ width: 120, height: 120, right: '14%', bottom: '6%', background: BRAND.goldLight, opacity: 0.25 }} />
 
-        <FloatingOrb style={{ width: 400, height: 400, right: '-10%', top: '8%', background: 'radial-gradient(circle,rgba(255,255,255,0.15) 0%,transparent 70%)' }} duration={13} />
-        <FloatingOrb style={{ width: 260, height: 260, left: '-4%', bottom: '12%', background: 'radial-gradient(circle,rgba(255,255,255,0.09) 0%,transparent 70%)' }} delay={4} duration={15} />
+      {/* ═══ Card ═══ */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-[980px] rounded-2xl overflow-hidden flex"
+        style={{ boxShadow: '0 24px 70px rgba(0,0,0,0.25)' }}>
 
-        <svg className="absolute right-0 bottom-0 pointer-events-none" width="420" height="420" viewBox="0 0 420 420" style={{ opacity: 0.045 }}>
-          <circle cx="360" cy="360" r="210" stroke="#ffffff" strokeWidth="1" fill="none"/>
-          <circle cx="360" cy="360" r="150" stroke="#fff" strokeWidth="0.6" fill="none"/>
-          <circle cx="360" cy="360" r="90"  stroke="#ffffff" strokeWidth="0.4" fill="none"/>
-        </svg>
+        {/* ─── Left brand panel (green/gold gradient - LandingPage style) ─── */}
+        <div className="hidden md:flex flex-col justify-center w-[46%] relative px-9 py-10"
+          style={{ background: `linear-gradient(150deg, ${BRAND.green} 0%, ${BRAND.deep} 90%)` }}>
 
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 z-10 mb-6 flex-shrink-0">
-          <div className="relative">
-            <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-full object-cover"
-              style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.4)', border: '2px solid rgba(255,255,255,0.5)' }} />
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2" style={{ borderColor: '#041e16' }} />
-          </div>
-          <div>
-            <p className="text-sm font-black tracking-wide text-white leading-none">Cozy Blissful</p>
-            <p className="text-[9px] font-bold tracking-widest uppercase mt-0.5" style={{ color: 'rgba(255,255,255,0.95)' }}>Home Service Spa</p>
-          </div>
-        </div>
+          {/* Decorative shapes - white circles */}
+          <div className="absolute rounded-full" style={{ width: 130, height: 130, left: 36, top: -46, border: '5px solid rgba(255,255,255,0.9)' }} />
+          <div className="absolute rounded-full bg-white" style={{ width: 94, height: 94, left: 54, top: -28 }} />
+          <div className="absolute rounded-full" style={{ width: 190, height: 190, right: -60, bottom: -70, border: '6px solid rgba(255,255,255,0.9)' }} />
+          <div className="absolute rounded-full bg-white" style={{ width: 130, height: 130, right: -30, bottom: -40 }} />
+          <FloatingOrb style={{ width: 22, height: 22, left: 40, bottom: 130, background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0.3))` }} duration={7} />
+          <FloatingOrb style={{ width: 14, height: 14, right: 70, top: 110, background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0.3))` }} delay={2} duration={9} />
+          <DotGrid rows={4} cols={9} className="absolute left-9 top-14" />
+          <DotGrid rows={3} cols={6} className="absolute left-9 bottom-10" />
 
-        {/* Badge + Headline */}
-        <div className="z-10 mb-5 flex-shrink-0">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold text-white mb-3"
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.3)' }}>
-            <Sparkles className="w-3 h-3" />
-            <span>Join 2,500+ Happy Clients Today</span>
-          </div>
-          <h2 className="text-3xl xl:text-4xl font-black text-white leading-tight tracking-tight mb-2">
-            Start Your<br />
-            <span style={{ WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundImage: 'linear-gradient(135deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0.8) 55%,rgba(255,255,255,0.9) 100%)', backgroundClip: 'text' }}>
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold mb-4"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', color: 'rgba(255,255,255,0.9)' }}>
+              <Sparkles className="w-3 h-3" />
+              <span>Join 2,500+ Happy Clients Today</span>
+            </div>
+
+            <h2 className="text-3xl font-black text-white leading-tight tracking-tight uppercase">
+              Start Your
+            </h2>
+            <h3 className="text-2xl font-bold tracking-tight mb-3"
+              style={{ WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundImage: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%)`, backgroundClip: 'text' }}>
               Wellness Journey.
-            </span>
-          </h2>
-          <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.68)', maxWidth: '24rem' }}>
-            Massage therapy &amp; nail care delivered to your home. 7 days a week, 6 AM – 11 PM.
-          </p>
-        </div>
+            </h3>
+            <p className="text-xs leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.75)', maxWidth: '20rem' }}>
+              Massage therapy &amp; nail care delivered to your home. 7 days a week, 6 AM – 11 PM.
+            </p>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2 mb-4 z-10 flex-shrink-0">
-          {STATS.map(s => (
-            <div key={s.label} className="rounded-lg px-2 py-2 text-center"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <p className="text-sm font-black leading-none mb-0.5" style={{ color: 'rgba(255,255,255,0.95)' }}>{s.value}</p>
-              <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Services */}
-        <div className="mb-4 z-10 flex-shrink-0">
-          <p className="text-[9px] font-bold tracking-widest uppercase mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Our Services</p>
-          <div className="flex flex-col gap-1.5">
-            {SERVICES.map(s => (
-              <div key={s.name} className="flex items-center justify-between rounded-lg px-3 py-2"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div className="flex items-center gap-2">
-                  <span className="text-base">{s.icon}</span>
-                  <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.78)' }}>{s.name}</span>
+            {/* Stats */}
+            <div className="grid grid-cols-4 gap-2 mb-5">
+              {STATS.map(s => (
+                <div key={s.label} className="rounded-lg px-1.5 py-2 text-center"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p className="text-[13px] font-black leading-none mb-0.5" style={{ color: 'rgba(255,255,255,0.95)' }}>{s.value}</p>
+                  <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>{s.label}</p>
                 </div>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,255,255,0.16)', color: 'rgba(255,255,255,0.95)' }}>{s.note}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Social links */}
-        <div className="z-10 flex-shrink-0">
-          <p className="text-[9px] font-bold tracking-widest uppercase mb-2" style={{ color: 'rgba(255,255,255,0.28)' }}>Follow &amp; Connect</p>
-          <div className="flex gap-2">
-            {SOCIALS.map(s => (
-              <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
-                className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.42)' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = s.color; e.currentTarget.style.borderColor = s.color + '66'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'rgba(255,255,255,0.42)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}>
-                <s.icon />
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ═══════════ RIGHT FORM PANEL ═══════════ */}
-      <div className="flex flex-1 h-full items-center justify-center px-5 sm:px-8 relative overflow-y-auto"
-        style={{ background: 'rgba(255,255,255,0.95)', borderLeft: '1px solid rgba(0,0,0,0.05)' }}>
-
-        {/* Mobile logo */}
-        <div className="lg:hidden absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <img src="/cb-logo.jpg" alt="" className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid rgba(220,53,69,0.3)' }} />
-          <div>
-            <p className="text-xs font-black text-gray-800 leading-none">Cozy Blissful</p>
-            <p className="text-[8px] font-bold tracking-widest uppercase mt-px" style={{ color: '#DC3545' }}>Home Service Spa</p>
-          </div>
-        </div>
-
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[320px] lg:max-w-[300px] xl:max-w-[320px] mt-16 lg:mt-0">
-
-          {/* Header */}
-          <div className="mb-4">
-            <h1 className="text-[1.4rem] font-black text-gray-800 tracking-tight leading-none">Create account</h1>
-            <p className="text-xs mt-1" style={{ color: 'rgba(0,0,0,0.55)' }}>Join Cozy Blissful — it's free</p>
-          </div>
-
-          {/* Alerts */}
-          <AnimatePresence>
-            {rateLimit !== null && <motion.div key="rl" className="mb-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><RateLimitBanner retryAfter={rateLimit} /></motion.div>}
-          </AnimatePresence>
-          <AnimatePresence>
-            {error && !rateLimit && (
-              <motion.div key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="flex items-start gap-2 p-2.5 rounded-lg text-[11px] mb-3"
-                style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.22)' }}>
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#dc2626' }} />
-                <span style={{ color: '#b91c1c' }}>{error}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-2.5">
-            <Input label="Full name" id="register-name" type="text" autoComplete="name" required
-              value={name} placeholder="Jane Smith" error={fieldErrors.name}
-              onChange={e => { setName(e.target.value); clear('name'); }} />
-
-            <Input label="Email address" id="register-email" type="email" autoComplete="email" required
-              value={email} placeholder="you@example.com" error={fieldErrors.email}
-              onChange={e => { setEmail(e.target.value); clear('email'); }} />
-
-            <div>
-              <Input label="Password" id="register-password" type={showPw ? 'text' : 'password'} autoComplete="new-password" required
-                value={password} placeholder="••••••••" error={fieldErrors.password}
-                onChange={e => { setPassword(e.target.value); clear('password'); }}
-                rightEl={eyeBtn(showPw, () => setShowPw(v => !v), showPw ? 'Hide' : 'Show')} />
-              <AnimatePresence>
-                {password && !fieldErrors.password && <PasswordStrength password={password} />}
-              </AnimatePresence>
+              ))}
             </div>
 
-            <Input label="Confirm password" id="register-confirm" type={showCPw ? 'text' : 'password'} autoComplete="new-password" required
-              value={confirmPw} placeholder="••••••••" error={fieldErrors.confirmPassword}
-              onChange={e => { setConfirmPw(e.target.value); clear('confirmPassword'); }}
-              rightEl={eyeBtn(showCPw, () => setShowCPw(v => !v), showCPw ? 'Hide' : 'Show')} />
+            {/* Services */}
+            <div className="flex flex-col gap-1.5 mb-6">
+              {SERVICES.map(s => (
+                <div key={s.name} className="flex items-center justify-between rounded-lg px-3 py-1.5"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{s.icon}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.82)' }}>{s.name}</span>
+                  </div>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.16)', color: 'rgba(255,255,255,0.95)' }}>{s.note}</span>
+                </div>
+              ))}
+            </div>
 
-            <motion.button type="submit" id="register-submit" disabled={submitting || rateLimit > 0}
-              whileHover={{ scale: submitting ? 1 : 1.015 }} whileTap={{ scale: submitting ? 1 : 0.975 }}
-              className="w-full flex justify-center items-center gap-2 py-2.5 rounded-lg text-sm font-bold mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg,#a89658,#bfa15f)', color: '#041e16', boxShadow: '0 5px 20px rgba(191,161,95,0.25)', letterSpacing: '0.015em' }}>
-              {submitting
-                ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: '#041e16' }} />
-                : <><UserPlus className="w-3.5 h-3.5" /><span>Create account</span></>}
-            </motion.button>
-          </form>
-
-          {/* Social quick signup */}
-          <SocialSignIn
-            disabled={submitting}
-            onSuccess={redirect}
-            onError={(msg) => { setRateLimit(null); setError(msg); }}
-          />
-
-          <p className="text-center text-[11px] mt-5" style={{ color: 'rgba(0,0,0,0.65)' }}>
-            Have an account?{' '}
-            <Link to="/login" className="font-bold hover:underline underline-offset-2" style={{ color: '#bfa15f' }}>
-              Sign in
-            </Link>
-          </p>
-          <div className="mt-2.5 text-center">
-            <Link to="/" className="inline-flex items-center gap-1 text-[11px] transition-colors"
-              style={{ color: 'rgba(0,0,0,0.35)' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'rgba(0,0,0,0.65)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'rgba(0,0,0,0.35)'}>
-              ← Back to home
-            </Link>
+            {/* Social links */}
+            <div className="flex gap-2">
+              {SOCIALS.map(s => (
+                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
+                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}>
+                  <s.icon />
+                </a>
+              ))}
+            </div>
           </div>
-        </motion.div>
-      </div>
+        </div>
+
+        {/* ─── Right form panel ─── */}
+        <div className="flex-1 flex items-center justify-center px-6 sm:px-10 py-8" style={{ background: '#ffffff' }}>
+          <div className="w-full max-w-[340px]">
+
+            {/* Logo + heading */}
+            <div className="flex flex-col items-center mb-5">
+              <div className="w-13 h-13 rounded-2xl bg-white flex items-center justify-center mb-2.5 p-1.5"
+                style={{ boxShadow: `0 6px 20px rgba(191,161,95,0.15)`, border: `1px solid ${BRAND.line}` }}>
+                <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-xl object-cover" />
+              </div>
+              <h1 className="text-xl font-black tracking-tight" style={{ color: BRAND.ink }}>Create Account</h1>
+              <p className="text-[11px] mt-0.5" style={{ color: BRAND.inkSoft }}>Join Cozy Blissful — it's free</p>
+            </div>
+
+            {/* Alerts */}
+            <AnimatePresence>
+              {rateLimit !== null && <motion.div key="rl" className="mb-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><RateLimitBanner retryAfter={rateLimit} /></motion.div>}
+            </AnimatePresence>
+            <AnimatePresence>
+              {error && !rateLimit && (
+                <motion.div key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="flex items-start gap-2 p-2.5 rounded-lg text-[11px] mb-3"
+                  style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.22)' }}>
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#dc2626' }} />
+                  <span style={{ color: '#b91c1c' }}>{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} noValidate className="space-y-3">
+              <Input label="Full Name" id="register-name" type="text" autoComplete="name" required icon={User}
+                value={name} placeholder="Jane Smith" error={fieldErrors.name}
+                onBlur={() => validateField('name', name)}
+                onChange={e => { setName(e.target.value); clearFieldError('name'); }} />
+
+              <Input label="Email Address" id="register-email" type="email" autoComplete="email" required icon={Mail}
+                value={email} placeholder="you@example.com" error={fieldErrors.email}
+                onBlur={() => validateField('email', email)}
+                onChange={e => { setEmail(e.target.value); clearFieldError('email'); }} />
+
+              <div>
+                <Input label="Password" id="register-password" type={showPw ? 'text' : 'password'} autoComplete="new-password" required icon={Lock}
+                  value={password} placeholder="••••••••" error={fieldErrors.password}
+                  onBlur={() => validateField('password', password)}
+                  onChange={e => { setPassword(e.target.value); clearFieldError('password'); if (confirmPw) validateField('confirmPassword', confirmPw, { password: e.target.value }); }}
+                  rightEl={
+                    <button type="button" tabIndex={-1} onClick={() => setShowPw(v => !v)}
+                      aria-label={showPw ? 'Hide password' : 'Show password'}
+                      className="transition-colors" style={{ color: 'rgba(44,62,80,0.35)' }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'rgba(44,62,80,0.7)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'rgba(44,62,80,0.35)'}>
+                      {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  } />
+                <AnimatePresence>
+                  {password && <PasswordStrength password={password} />}
+                </AnimatePresence>
+              </div>
+
+              <Input label="Confirm Password" id="register-confirm" type={showCPw ? 'text' : 'password'} autoComplete="new-password" required icon={ShieldCheck}
+                value={confirmPw} placeholder="••••••••" error={fieldErrors.confirmPassword}
+                onBlur={() => validateField('confirmPassword', confirmPw)}
+                onChange={e => { setConfirmPw(e.target.value); clearFieldError('confirmPassword'); }}
+                rightEl={
+                  <button type="button" tabIndex={-1} onClick={() => setShowCPw(v => !v)}
+                    aria-label={showCPw ? 'Hide password' : 'Show password'}
+                    className="transition-colors" style={{ color: 'rgba(44,62,80,0.35)' }}
+                    onMouseEnter={e => e.currentTarget.style.color = 'rgba(44,62,80,0.7)'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(44,62,80,0.35)'}>
+                    {showCPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                } />
+
+              <motion.button type="submit" id="register-submit" disabled={submitting || rateLimit > 0}
+                whileHover={{ scale: submitting ? 1 : 1.015 }} whileTap={{ scale: submitting ? 1 : 0.975 }}
+                className="w-full flex justify-center items-center gap-2 py-2.5 rounded-lg text-sm font-bold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: `linear-gradient(135deg,${BRAND.goldLight},${BRAND.gold})`, color: '#041e16', boxShadow: `0 6px 18px ${BRAND.gold}55`, letterSpacing: '0.015em' }}>
+                {submitting
+                  ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(191,161,95,0.2)', borderTopColor: BRAND.deep }} />
+                  : <><UserPlus className="w-3.5 h-3.5" /><span>Create Account</span></>}
+              </motion.button>
+            </form>
+
+            {/* Social quick signup */}
+            <SocialSignIn
+              disabled={submitting}
+              onSuccess={redirect}
+              onError={(msg) => { setRateLimit(null); setError(msg); }}
+            />
+
+            <p className="text-center text-[11px] mt-4" style={{ color: BRAND.inkSoft }}>
+              Already have an account?{' '}
+              <Link to="/login" className="font-bold hover:underline underline-offset-2" style={{ color: BRAND.gold }}>
+                Sign in
+              </Link>
+            </p>
+            <div className="mt-2 text-center">
+              <Link to="/" className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                style={{ color: 'rgba(44,62,80,0.35)' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'rgba(44,62,80,0.7)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(44,62,80,0.35)'}>
+                ← Back to home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ═══ REGISTRATION SUCCESS POPUP MODAL ═══ */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(4, 30, 22, 0.72)', backdropFilter: 'blur(8px)' }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.88, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-sm rounded-2xl bg-white overflow-hidden text-center p-6"
+              style={{ boxShadow: '0 30px 70px rgba(0,0,0,0.35)', border: `1px solid ${BRAND.line}` }}>
+
+              {/* Decorative top background header */}
+              <div className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
+                style={{ background: `linear-gradient(135deg, ${BRAND.deep} 0%, ${BRAND.green} 100%)` }}>
+                <div className="absolute rounded-full" style={{ width: 90, height: 90, right: -15, top: -25, background: BRAND.gold, opacity: 0.2 }} />
+                <div className="absolute rounded-full" style={{ width: 70, height: 70, left: -15, bottom: -15, border: `10px solid ${BRAND.goldLight}`, opacity: 0.15 }} />
+              </div>
+
+              {/* Icon badge */}
+              <div className="relative z-10 mx-auto mt-2 mb-3 w-16 h-16 rounded-full bg-white flex items-center justify-center p-1"
+                style={{ boxShadow: '0 8px 25px rgba(52,211,153,0.35)', border: `3px solid ${BRAND.emerald}` }}>
+                <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: 'rgba(52,211,153,0.12)' }}>
+                  <CheckCircle2 className="w-8 h-8" style={{ color: '#059669' }} />
+                </div>
+              </div>
+
+              {/* Title & Body */}
+              <div className="relative z-10 space-y-1.5">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest"
+                  style={{ background: 'rgba(191,161,95,0.15)', color: BRAND.gold }}>
+                  <Sparkles className="w-3 h-3" /> Account Created
+                </span>
+                <h3 className="text-xl font-black tracking-tight" style={{ color: BRAND.ink }}>
+                  Registration Successful!
+                </h3>
+                <p className="text-xs text-gray-500 max-w-xs mx-auto leading-relaxed">
+                  Your Cozy Blissful account has been created. Please proceed to the login page to sign in to your account.
+                </p>
+              </div>
+
+              {/* User details summary card */}
+              <div className="my-4 p-3 rounded-xl text-left text-xs space-y-1.5 border"
+                style={{ background: '#f8fafc', borderColor: BRAND.line }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 font-medium">Name:</span>
+                  <span className="font-bold" style={{ color: BRAND.ink }}>{registeredInfo.name}</span>
+                </div>
+                <div className="h-px bg-gray-200" />
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 font-medium">Email:</span>
+                  <span className="font-bold truncate max-w-[190px]" style={{ color: BRAND.gold }}>{registeredInfo.email}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 pt-1">
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    redirect(registeredRole);
+                  }}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
+                  style={{
+                    background: `linear-gradient(135deg, ${BRAND.goldLight}, ${BRAND.gold})`,
+                    color: '#041e16',
+                    boxShadow: `0 6px 20px ${BRAND.gold}44`,
+                    letterSpacing: '0.015em'
+                  }}>
+                  <span>Go to Booking Dashboard</span>
+                  <ArrowRight className="w-4 h-4" />
+                </motion.button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await logout();
+                    localStorage.setItem('remember_email', registeredInfo.email);
+                    navigate('/login', { state: { email: registeredInfo.email, notice: 'Account created! Please sign in with your credentials.' } });
+                  }}
+                  className="w-full py-1.5 text-xs font-semibold hover:underline cursor-pointer"
+                  style={{ color: BRAND.inkSoft }}>
+                  Sign in with another account
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\TherapistAvailability;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
@@ -25,6 +26,39 @@ class DatabaseSeeder extends Seeder
         $therapistRole = Role::firstOrCreate(['name' => 'therapist', 'guard_name' => 'web']);
         $clientRole    = Role::firstOrCreate(['name' => 'client',    'guard_name' => 'web']);
         $staffRole     = Role::firstOrCreate(['name' => 'staff',     'guard_name' => 'web']);
+
+        // Create RBAC permissions
+        $permissions = [
+            'view-dashboard',
+            'manage-appointments',
+            'manage-therapists',
+            'manage-availability',
+            'manage-customers',
+            'manage-services',
+            'manage-staff',
+            'view-reports',
+        ];
+
+        foreach ($permissions as $perm) {
+            Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
+        }
+
+        // Assign RBAC permissions to roles
+        $adminRole->syncPermissions(Permission::all());
+        $staffRole->syncPermissions([
+            'view-dashboard',
+            'manage-appointments',
+            'manage-therapists',
+            'manage-availability',
+            'manage-customers',
+        ]);
+        $therapistRole->syncPermissions([
+            'view-dashboard',
+            'manage-availability',
+        ]);
+        $clientRole->syncPermissions([
+            'view-dashboard',
+        ]);
 
         // Create Admin User
         $admin = User::firstOrCreate(

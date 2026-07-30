@@ -87,14 +87,18 @@ class AdminController extends Controller
             ->get()
             ->map(function ($appt) {
                 return [
-                    'id' => $appt->id,
-                    'client_name' => $appt->client ? $appt->client->name : 'Client',
-                    'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
-                    'therapist_id' => $appt->therapist_id,
-                    'service' => $appt->service ? $appt->service->name : 'Massage Service',
-                    'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
-                    'status' => $appt->status,
-                    'notes' => $appt->notes ?? '',
+                    'id'               => $appt->id,
+                    'client_name'      => $appt->client ? $appt->client->name : 'Client',
+                    'client_email'     => $appt->client ? $appt->client->email : '',
+                    'therapist_name'   => $appt->therapist ? $appt->therapist->name : 'Unassigned',
+                    'therapist_id'     => $appt->therapist_id,
+                    'service'          => $appt->service ? $appt->service->name : 'Massage Service',
+                    'service_id'       => $appt->service_id,
+                    'service_price'    => $appt->service ? (float)$appt->service->price : null,
+                    'service_duration' => $appt->service ? (int)$appt->service->duration : null,
+                    'datetime'         => $appt->datetime->format('Y-m-d H:i:s'),
+                    'status'           => $appt->status,
+                    'notes'            => $appt->notes ?? '',
                 ];
             });
 
