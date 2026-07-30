@@ -8,7 +8,8 @@ import {
   Calendar, Clock, CheckCircle, AlertCircle,
   LogOut, Heart, Plus, ChevronRight, ChevronLeft,
   Sparkles, Award, Gift, Send, UserCheck, Star, X,
-  Tag, Zap, MessageSquare, Scissors,
+  Tag, Zap, MessageSquare, Scissors, XCircle, RefreshCw,
+  CalendarX, CalendarCheck, Ban, Info,
 } from 'lucide-react';
 
 // ─── Design system helpers ─────────────────────────────────────────────────
@@ -368,6 +369,291 @@ const ConfirmationStep = ({ booking, onDone }) => (
   </div>
 );
 
+// ─── CANCEL MODAL ────────────────────────────────────────────────────────────
+
+const CancelModal = ({ booking, onClose, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCancel = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await API.post(`/booking/${booking.id}/cancel`);
+      onSuccess('Appointment cancelled successfully.');
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Cancellation failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fmtDate = (dt) => {
+    const d = new Date(dt);
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  };
+  const fmtTime = (dt) => {
+    const d = new Date(dt);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 24 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 24 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+        className="w-full max-w-md rounded-[2rem] overflow-hidden"
+        style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.8)' }}
+      >
+        {/* Red danger header */}
+        <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg,#7f1d1d,#991b1b)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
+              <CalendarX className="w-6 h-6 text-red-200" />
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-red-200 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.1)' }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <h2 className="text-white font-black text-lg">Cancel Appointment</h2>
+          <p className="text-red-200/70 text-xs mt-0.5">This action cannot be undone</p>
+        </div>
+
+        <div className="p-7 space-y-5">
+          {/* Booking Summary */}
+          <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(127,29,29,0.05)', border: '1px solid rgba(127,29,29,0.12)' }}>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Appointment to Cancel</p>
+            <p className="font-black text-slate-800 text-sm">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <Calendar className="w-3.5 h-3.5 text-red-400" />
+              <span>{fmtDate(booking.datetime)}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <Clock className="w-3.5 h-3.5 text-red-400" />
+              <span>{fmtTime(booking.datetime)}</span>
+            </div>
+          </div>
+
+          {/* Warning note */}
+          <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+            <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-600 leading-relaxed">
+              <span className="font-bold text-amber-600">Note:</span> Once cancelled, your time slot will be released. To re-book, you'll need to schedule a new appointment.
+            </p>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl text-xs text-red-700" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 transition hover:bg-slate-100"
+              style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
+              Keep Appointment
+            </button>
+            <button onClick={handleCancel} disabled={loading}
+              className="flex-1 py-3 rounded-2xl text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 6px 18px rgba(220,38,38,0.3)' }}>
+              {loading
+                ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cancelling…</>
+                : <><XCircle className="w-4 h-4" /> Yes, Cancel</>
+              }
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ─── RESCHEDULE MODAL ─────────────────────────────────────────────────────────
+
+const RescheduleModal = ({ booking, onClose, onSuccess }) => {
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [slots, setSlots] = useState({ available_slots: [], booked_slots: [], all_slots: [] });
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (!selectedDate || !booking.service_id) return;
+    setLoadingSlots(true);
+    setSelectedTime('');
+    API.get('/booking/available-slots', { params: { date: selectedDate, service_id: booking.service_id } })
+      .then((r) => setSlots(r.data))
+      .catch(() => setSlots({ available_slots: [], booked_slots: [], all_slots: [] }))
+      .finally(() => setLoadingSlots(false));
+  }, [selectedDate]);
+
+  const handleReschedule = async () => {
+    if (!selectedDate || !selectedTime) { setError('Please select a date and time.'); return; }
+    setSubmitting(true);
+    setError('');
+    try {
+      await API.post(`/booking/${booking.id}/reschedule`, {
+        datetime: `${selectedDate}T${selectedTime}:00`,
+      });
+      onSuccess('Appointment rescheduled! You will receive a fresh reminder email.');
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Rescheduling failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatSlot = (slot) => {
+    const [h, m] = slot.split(':');
+    const hr = parseInt(h);
+    return `${hr > 12 ? hr - 12 : hr === 0 ? 12 : hr}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 24 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 24 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+        className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-[2rem]"
+        style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.8)' }}
+      >
+        {/* Header */}
+        <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
+              <CalendarCheck className="w-6 h-6 text-emerald-300" />
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-emerald-200 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.1)' }}>
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <h2 className="text-white font-black text-lg">Reschedule Appointment</h2>
+          <p className="text-emerald-200/70 text-xs mt-0.5">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
+        </div>
+
+        <div className="p-7 space-y-5">
+          {/* Current booking info */}
+          <div className="rounded-2xl p-4 space-y-1.5" style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Schedule</p>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="font-semibold text-slate-700">{new Date(booking.datetime).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true })}</span>
+            </div>
+          </div>
+
+          {/* Date Picker */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-700" /> Pick New Date
+            </label>
+            <input
+              type="date"
+              min={todayStr}
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full px-4 py-3 rounded-2xl text-sm text-slate-700 outline-none"
+              style={{ background: 'linear-gradient(145deg,#f5f0e8,#ece8e0)', boxShadow: 'inset 3px 3px 6px #e0dbd3, inset -3px -3px 6px #ffffff', border: 'none' }}
+            />
+          </div>
+
+          {/* Time Slots */}
+          {selectedDate && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-emerald-700" /> Choose New Time
+              </label>
+              {loadingSlots ? (
+                <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+                  Loading available slots…
+                </div>
+              ) : slots.available_slots.length === 0 ? (
+                <div className="py-4 rounded-2xl text-center text-xs text-slate-400" style={{ background: 'rgba(0,0,0,0.03)', border: '1px dashed rgba(0,0,0,0.1)' }}>
+                  No available slots on this date. Try a different day.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                  {slots.all_slots.map((slot) => {
+                    const isAvailable = slots.available_slots.includes(slot);
+                    const isSelected = selectedTime === slot;
+                    return (
+                      <button key={slot} disabled={!isAvailable} onClick={() => setSelectedTime(slot)}
+                        className="py-2.5 rounded-xl text-xs font-bold transition-all"
+                        style={{
+                          background: isSelected
+                            ? 'linear-gradient(135deg,#062c22,#0a3d30)'
+                            : isAvailable
+                              ? 'linear-gradient(145deg,#f5f0e8,#ece8e0)'
+                              : 'rgba(0,0,0,0.03)',
+                          color: isSelected ? '#fff' : isAvailable ? '#374151' : '#cbd5e1',
+                          boxShadow: isSelected ? '0 4px 12px rgba(6,44,34,0.25)' : isAvailable ? '3px 3px 6px #e0dbd3,-3px -3px 6px #fff' : 'none',
+                          cursor: isAvailable ? 'pointer' : 'not-allowed',
+                          border: isSelected ? '1px solid transparent' : '1px solid rgba(0,0,0,0.04)',
+                          textDecoration: !isAvailable ? 'line-through' : 'none',
+                          scale: isSelected ? '1.04' : '1',
+                        }}>
+                        {formatSlot(slot)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reminder notice */}
+          <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
+            <Info className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-600 leading-relaxed">
+              <span className="font-bold text-emerald-800">Reminder emails</span> will be automatically sent for your new schedule — 24 hours and 2 hours before your session.
+            </p>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl text-xs text-red-700" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 transition hover:bg-slate-100"
+              style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
+              Cancel
+            </button>
+            <button onClick={handleReschedule} disabled={submitting || !selectedDate || !selectedTime}
+              className="flex-1 py-3 rounded-2xl text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+              style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 6px 18px rgba(6,44,34,0.28)' }}>
+              {submitting
+                ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Rescheduling…</>
+                : <><RefreshCw className="w-4 h-4" /> Confirm Reschedule</>
+              }
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 // ─── BOOKING MODAL ───────────────────────────────────────────────────────────
 
 const BookingWizard = ({ data, onClose, onSuccess }) => {
@@ -559,9 +845,11 @@ const ClientDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState({ text: '', type: 'success' });
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
 
-  const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 4000); };
+  const showToast = (msg, type = 'success') => { setToastMsg({ text: msg, type }); setTimeout(() => setToastMsg({ text: '', type: 'success' }), 4500); };
 
   // Therapist chat
   const [chatInput, setChatInput] = useState('');
@@ -719,7 +1007,7 @@ const ClientDashboard = () => {
               {/* My Bookings */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-emerald-800" /> My Booking History
+                  <Calendar className="w-4 h-4 text-emerald-800" /> My Appointments &amp; Cancellations
                 </h3>
                 {data?.bookings?.length === 0 ? (
                   <div className="rounded-3xl p-8 text-center"
@@ -737,29 +1025,62 @@ const ClientDashboard = () => {
                   <div className="space-y-3">
                     {data.bookings.map((b, i) => {
                       const ss = statusStyle(b.status);
+                      const canManage = b.status === 'Pending' || b.status === 'Confirmed';
                       return (
-                        <div key={b.id || i} className="rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition hover:scale-[1.005]"
+                        <div key={b.id || i} className="rounded-3xl p-5 flex flex-col gap-4 transition hover:scale-[1.005]"
                           style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '10px 10px 24px #eae6df, -10px -10px 24px #ffffff', border: '1px solid rgba(255,255,255,0.8)' }}>
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-                              style={{ background: b.status === 'Confirmed' || b.status === 'Completed' ? '#062c2210' : '#bfa15f15' }}>
-                              <Calendar className="w-5 h-5" style={{ color: b.status === 'Confirmed' || b.status === 'Completed' ? '#062c22' : '#bfa15f' }} />
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-800 text-sm leading-snug">{b.service}</p>
-                              <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-400">
-                                <span>with <strong className="text-slate-600">{b.therapist_name}</strong></span>
-                                <span>·</span>
-                                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {b.datetime}</span>
-                                {b.service_duration && <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500" /> {b.service_duration} min</span>}
+                          {/* Booking info row */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                                style={{ background: b.status === 'Confirmed' || b.status === 'Completed' ? '#062c2210' : b.status === 'Cancelled' ? 'rgba(239,68,68,0.07)' : '#bfa15f15' }}>
+                                {b.status === 'Cancelled'
+                                  ? <Ban className="w-5 h-5 text-red-400" />
+                                  : <Calendar className="w-5 h-5" style={{ color: b.status === 'Confirmed' || b.status === 'Completed' ? '#062c22' : '#bfa15f' }} />}
                               </div>
-                              {b.notes && <p className="text-[10px] text-slate-400 italic mt-1">📋 {b.notes}</p>}
+                              <div>
+                                <p className="font-bold text-slate-800 text-sm leading-snug">{b.service}</p>
+                                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-400">
+                                  <span className="font-mono text-[10px] text-slate-400">#{String(b.id).padStart(5,'0')}</span>
+                                  <span>·</span>
+                                  <span>with <strong className="text-slate-600">{b.therapist_name}</strong></span>
+                                  <span>·</span>
+                                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {new Date(b.datetime).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true})}</span>
+                                  {b.service_duration && <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500" /> {b.service_duration} min</span>}
+                                </div>
+                                {b.notes && <p className="text-[10px] text-slate-400 italic mt-1">📋 {b.notes}</p>}
+                              </div>
                             </div>
+                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 self-start sm:self-auto border whitespace-nowrap"
+                              style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
+                              {ss.icon} {b.status}
+                            </span>
                           </div>
-                          <span className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 self-start sm:self-center border"
-                            style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
-                            {ss.icon} {b.status}
-                          </span>
+
+                          {/* Action buttons — only for Pending or Confirmed */}
+                          {canManage && (
+                            <div className="flex gap-2 pt-1 border-t border-black/[0.04]">
+                              <button
+                                onClick={() => setRescheduleTarget(b)}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-emerald-800 transition-all hover:scale-[1.03] active:scale-95"
+                                style={{ background: 'linear-gradient(145deg,rgba(6,44,34,0.07),rgba(6,44,34,0.04))', border: '1px solid rgba(6,44,34,0.1)', boxShadow: '2px 2px 6px rgba(6,44,34,0.06)' }}>
+                                <RefreshCw className="w-3.5 h-3.5" /> Reschedule
+                              </button>
+                              <button
+                                onClick={() => setCancelTarget(b)}
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-red-600 transition-all hover:scale-[1.03] active:scale-95"
+                                style={{ background: 'linear-gradient(145deg,rgba(220,38,38,0.06),rgba(220,38,38,0.03))', border: '1px solid rgba(220,38,38,0.12)', boxShadow: '2px 2px 6px rgba(220,38,38,0.06)' }}>
+                                <XCircle className="w-3.5 h-3.5" /> Cancel
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Completed/Cancelled notice */}
+                          {!canManage && b.status !== 'Completed' && (
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 pt-1 border-t border-black/[0.04]">
+                              <Ban className="w-3 h-3" /> This appointment has been cancelled and cannot be modified.
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -860,18 +1181,50 @@ const ClientDashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* ═══ CANCEL MODAL ════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {cancelTarget && (
+          <CancelModal
+            booking={cancelTarget}
+            onClose={() => setCancelTarget(null)}
+            onSuccess={(msg) => { fetchDashboardData(); showToast(msg, 'error'); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ═══ RESCHEDULE MODAL ═══════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {rescheduleTarget && (
+          <RescheduleModal
+            booking={rescheduleTarget}
+            onClose={() => setRescheduleTarget(null)}
+            onSuccess={(msg) => { fetchDashboardData(); showToast(msg, 'success'); }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ═══ TOAST ════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
-        {toastMsg && (
+        {toastMsg.text && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.25 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-bold text-white shadow-xl flex items-center gap-2"
-            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 8px 24px rgba(6,44,34,0.25)', whiteSpace: 'nowrap' }}>
-            <CheckCircle className="w-4 h-4 text-emerald-300" />
-            {toastMsg}
+            style={{
+              background: toastMsg.type === 'error'
+                ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
+                : 'linear-gradient(135deg,#062c22,#0f5040)',
+              boxShadow: toastMsg.type === 'error'
+                ? '0 8px 24px rgba(220,38,38,0.25)'
+                : '0 8px 24px rgba(6,44,34,0.25)',
+              whiteSpace: 'nowrap'
+            }}>
+            {toastMsg.type === 'error'
+              ? <XCircle className="w-4 h-4 text-red-200" />
+              : <CheckCircle className="w-4 h-4 text-emerald-300" />}
+            {toastMsg.text}
           </motion.div>
         )}
       </AnimatePresence>

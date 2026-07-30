@@ -74,5 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [ClientController::class, 'index']);
         Route::post('/store', [ClientController::class, 'store']);
         Route::get('/available-slots', [ClientController::class, 'getAvailableSlots']);
+        Route::post('/{id}/cancel', [ClientController::class, 'cancel']);
+        Route::post('/{id}/reschedule', [ClientController::class, 'reschedule']);
     });
 });

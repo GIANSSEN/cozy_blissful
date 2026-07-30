@@ -7,7 +7,8 @@ import API from '../../api/axios';
 import {
   Briefcase, Star, Clock, MapPin, Calendar,
   CheckCircle, LogOut, TrendingUp, ChevronRight,
-  UserCheck, Sparkles, Heart, AlertCircle, Bell, Plus, Check
+  UserCheck, Sparkles, Heart, AlertCircle, Bell, Plus, Check,
+  Lock, Phone, User, Hash, Ban, Info,
 } from 'lucide-react';
 
 // ─── Design system helpers ──────────────────────────────────────────────────
@@ -206,11 +207,11 @@ const TherapistDashboard = () => {
 
                 {data?.appointments?.length === 0 ? (
                   <ClayCard className="p-10 text-center">
-                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
-                      <Calendar className="w-6 h-6" />
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg,#062c2210,#0a3d3015)' }}>
+                      <Calendar className="w-7 h-7 text-emerald-700" />
                     </div>
-                    <p className="font-bold text-slate-700 text-sm">No sessions scheduled</p>
-                    <p className="text-xs text-slate-400 mt-1">Make yourself available on the calendar to get assigned to clients!</p>
+                    <p className="font-bold text-slate-700 text-sm">No sessions assigned yet</p>
+                    <p className="text-xs text-slate-400 mt-1.5 max-w-xs mx-auto">Mark yourself as available on the calendar. Admin will assign you to matching client bookings.</p>
                   </ClayCard>
                 ) : (
                   <div className="space-y-3">
@@ -221,28 +222,19 @@ const TherapistDashboard = () => {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.08 + 0.2 }}
                       >
-                        <ClayCard className="p-5">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-4">
-                              <div
-                                className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                                style={{ background: appt.status === 'Confirmed' ? '#062c2210' : '#bfa15f15' }}
-                              >
+                        <ClayCard className="p-5 space-y-4">
+                          {/* Top row: service + status badge */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                              <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                                style={{ background: appt.status === 'Confirmed' ? 'linear-gradient(135deg,#062c2212,#0a3d3018)' : 'linear-gradient(135deg,#bfa15f14,#d4b87a10)' }}>
                                 <UserCheck className="w-5 h-5" style={{ color: appt.status === 'Confirmed' ? '#062c22' : '#bfa15f' }} />
                               </div>
-                              <div className="space-y-0.5">
-                                <p className="font-bold text-slate-800 text-sm leading-snug">{appt.service}</p>
-                                <p className="text-xs text-slate-400">Client: <span className="font-semibold text-slate-600">{appt.client_name}</span></p>
-                                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                                  <Clock className="w-3.5 h-3.5" />
-                                  <span>{appt.datetime}</span>
-                                </div>
-                                {appt.notes && (
-                                  <p className="text-[10px] text-slate-400 italic bg-slate-50 rounded-lg px-2.5 py-1 mt-1 border border-slate-100">📝 {appt.notes}</p>
-                                )}
+                              <div>
+                                <p className="font-black text-slate-800 text-sm leading-snug">{appt.service}</p>
+                                <span className="text-[9px] font-mono text-slate-400">Booking #{String(appt.id).padStart(5, '0')}</span>
                               </div>
                             </div>
-
                             <span
                               className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 border whitespace-nowrap flex-shrink-0"
                               style={
@@ -254,6 +246,43 @@ const TherapistDashboard = () => {
                               {appt.status === 'Confirmed' ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
                               {appt.status}
                             </span>
+                          </div>
+
+                          {/* Client + datetime detail panel */}
+                          <div className="rounded-2xl p-3.5 space-y-2.5" style={{ background: 'linear-gradient(135deg,#062c2208,#0a3d3005)', border: '1px solid rgba(6,44,34,0.08)' }}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}>
+                                <User className="w-3.5 h-3.5 text-emerald-300" />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Client</p>
+                                <p className="text-sm font-black text-slate-800 leading-tight">{appt.client_name}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(191,161,95,0.12)', border: '1px solid rgba(191,161,95,0.15)' }}>
+                                <Clock className="w-3.5 h-3.5" style={{ color: '#bfa15f' }} />
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Scheduled Date &amp; Time</p>
+                                <p className="text-sm font-bold text-slate-700 leading-tight">
+                                  {new Date(appt.datetime).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
+                                </p>
+                              </div>
+                            </div>
+                            {appt.notes && (
+                              <div className="rounded-xl px-3 py-2 text-[10px] text-slate-500 italic" style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.05)' }}>
+                                📝 {appt.notes}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Locked cancellation policy notice */}
+                          <div className="flex items-start gap-2.5 rounded-xl px-3 py-2.5" style={{ background: 'rgba(220,38,38,0.04)', border: '1px solid rgba(220,38,38,0.1)' }}>
+                            <Lock className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-red-600/80 leading-relaxed">
+                              <span className="font-bold text-red-600">Policy:</span> Therapists cannot cancel or reschedule sessions. If you have an emergency, please contact your <span className="font-bold">Admin or Staff</span> immediately.
+                            </p>
                           </div>
                         </ClayCard>
                       </motion.div>

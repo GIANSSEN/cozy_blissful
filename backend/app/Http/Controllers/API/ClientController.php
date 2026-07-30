@@ -218,4 +218,101 @@ class ClientController extends Controller
             ],
         ], 201);
     }
+
+    /**
+     * Client cancels their own appointment.
+     * Only Pending or Confirmed appointments can be cancelled.
+     */
+    public function cancel(Request $request, $id)
+    {
+        $user = $request->user();
+        $appt = Appointment::where('id', $id)
+            ->where('client_id', $user->id)
+            ->firstOrFail();
+
+        if (in_array($appt->status, ['Cancelled', 'Completed'])) {
+            return response()->json([
+                'message' => "This appointment is already {$appt->status} and cannot be cancelled.",
+            ], 422);
+        }
+
+        $appt->status = 'Cancelled';
+        $appt->save();
+
+        return response()->json([
+            'message' => 'Appointment cancelled successfully.',
+            'booking' => [
+                'id'     => $appt->id,
+                'status' => $appt->status,
+            ],
+        ]);
+    }
+
+    /**
+     * Client reschedules their own appointment to a new datetime.
+     * Resets reminder flags so fresh emails are sent for the new time.
+     */
+    public function reschedule(Request $request, $id)
+    {
+        $request->validate([
+            'datetime' => 'required|date|after:now',
+        ]);
+
+        $user = $request->user();
+        $appt = Appointment::with('service')
+            ->where('id', $id)
+            ->where('client_id', $user->id)
+            ->firstOrFail();
+
+        if (in_array($appt->status, ['Cancelled', 'Completed'])) {
+            return response()->json([
+                'message' => "This appointment is {$appt->status} and cannot be rescheduled.",
+            ], 422);
+        }
+
+        try {
+            $parsedDatetime = Carbon::parse($request->datetime);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Invalid date time format.'], 422);
+        }
+
+        // Server-side conflict check (exclude the current appointment itself)
+        $duration = $appt->service ? (int)$appt->service->duration : 60;
+        $newStart = $parsedDatetime->copy();
+        $newEnd   = $parsedDatetime->copy()->addMinutes($duration);
+
+        $conflict = Appointment::with('service')
+            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->where('id', '!=', $appt->id)
+            ->whereDate('datetime', $parsedDatetime->toDateString())
+            ->get()
+            ->first(function ($other) use ($newStart, $newEnd) {
+                $otherDur   = $other->service ? (int)$other->service->duration : 60;
+                $otherStart = $other->datetime;
+                $otherEnd   = $otherStart->copy()->addMinutes($otherDur);
+                return $newStart->lt($otherEnd) && $newEnd->gt($otherStart);
+            });
+
+        if ($conflict) {
+            return response()->json([
+                'message' => 'This time slot is already booked. Please choose a different time.',
+                'errors'  => ['datetime' => ['Time slot conflict — another appointment overlaps this window.']],
+            ], 422);
+        }
+
+        // Update datetime and reset reminder flags so client gets fresh reminders
+        $appt->datetime           = $parsedDatetime;
+        $appt->reminder_24h_sent_at = null;
+        $appt->reminder_2h_sent_at  = null;
+        $appt->save();
+
+        return response()->json([
+            'message' => 'Appointment rescheduled successfully!',
+            'booking' => [
+                'id'       => $appt->id,
+                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'status'   => $appt->status,
+            ],
+        ]);
+    }
 }
