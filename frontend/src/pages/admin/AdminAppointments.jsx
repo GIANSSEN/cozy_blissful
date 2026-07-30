@@ -227,9 +227,356 @@ const CalendarView = ({ appointments, selectedDate, onDateChange, therapists, on
   );
 };
 
+// ─── ACCEPT & ASSIGN THERAPIST MODAL ─────────────────────────────────────────
+
+const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
+  const [selectedTherapistId, setSelectedTherapistId] = useState(appt.therapist_id || '');
+  const [submitting, setSubmitting] = useState(false);
+
+  const apptDateStr = appt.datetime
+    ? appt.datetime.split(' ')[0] || new Date(appt.datetime).toISOString().split('T')[0]
+    : '';
+
+  const availableTherapists = therapists.filter((t) =>
+    t.availabilities && Array.isArray(t.availabilities) && t.availabilities.includes(apptDateStr)
+  );
+
+  const unavailableTherapists = therapists.filter((t) =>
+    !t.availabilities || !Array.isArray(t.availabilities) || !t.availabilities.includes(apptDateStr)
+  );
+
+  useEffect(() => {
+    if (!selectedTherapistId && availableTherapists.length > 0) {
+      setSelectedTherapistId(availableTherapists[0].id);
+    }
+  }, [availableTherapists]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedTherapistId) return;
+    setSubmitting(true);
+    await onConfirmAssign(appt.id, selectedTherapistId);
+    setSubmitting(false);
+    onClose();
+  };
+
+  const fmtFullDate = appt.datetime
+    ? new Date(appt.datetime).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    : '';
+  const fmtTime = appt.datetime
+    ? new Date(appt.datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    : '';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.93, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.93, y: 20, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden max-h-[92vh] flex flex-col"
+        style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', border: '1px solid rgba(255,255,255,0.8)' }}
+      >
+        <div className="p-6 pb-5 flex-shrink-0" style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-emerald-500/20 border border-emerald-400/20 text-emerald-300">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300/70">Accept Booking &amp; Assign</span>
+                <h3 className="text-white font-black text-lg leading-tight mt-0.5">{appt.service}</h3>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 text-left">
+          <div className="rounded-2xl p-4 space-y-2.5" style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Requested Session</span>
+              <span className="text-[10px] font-mono text-slate-400">#{String(appt.id).padStart(5, '0')}</span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <p className="font-black text-slate-800 text-sm">{appt.client_name || appt.client}</p>
+                {appt.client_email && <p className="text-xs text-slate-500">{appt.client_email}</p>}
+              </div>
+              <div className="text-left sm:text-right">
+                <p className="text-xs font-bold text-slate-700">{fmtFullDate}</p>
+                <p className="text-xs text-emerald-800 font-semibold">{fmtTime} ({appt.service_duration || 60} min)</p>
+              </div>
+            </div>
+            {appt.notes && (
+              <p className="text-[11px] text-slate-500 italic bg-white/60 p-2 rounded-xl border border-slate-100 mt-1">
+                📋 Notes: {appt.notes}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-emerald-800" /> Select Therapist for this Session
+              </label>
+              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Matched for {apptDateStr}
+              </span>
+            </div>
+
+            {availableTherapists.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3 text-emerald-600" /> Available on {apptDateStr} Schedule ({availableTherapists.length})
+                </p>
+                <div className="grid gap-2">
+                  {availableTherapists.map((t) => {
+                    const isSelected = String(selectedTherapistId) === String(t.id);
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setSelectedTherapistId(t.id)}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-emerald-950 text-white shadow-lg shadow-emerald-950/20 border-transparent scale-[1.01]'
+                            : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {t.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs">{t.name}</p>
+                            <p className={`text-[10px] ${isSelected ? 'text-emerald-200' : 'text-slate-400'}`}>{t.specialty || 'Spa Specialist'}</p>
+                          </div>
+                        </div>
+                        <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full border ${
+                          isSelected
+                            ? 'bg-emerald-800/80 text-emerald-200 border-emerald-700'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        }`}>
+                          ✦ On Shift &amp; Available
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+                <span>No therapists have set their schedule availability for <strong>{apptDateStr}</strong> in their calendar. You can still select an off-shift therapist below.</span>
+              </div>
+            )}
+
+            {unavailableTherapists.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 text-slate-400" /> Other Therapists (Not Scheduled on Date)
+                </p>
+                <div className="grid gap-2 opacity-80">
+                  {unavailableTherapists.map((t) => {
+                    const isSelected = String(selectedTherapistId) === String(t.id);
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setSelectedTherapistId(t.id)}
+                        className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-slate-800 text-white border-transparent'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">
+                            {t.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs">{t.name}</p>
+                            <p className="text-[10px] text-slate-400">{t.specialty || 'Therapist'}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">
+                          Off Shift
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-black/5 bg-slate-50/50 flex items-center gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-2xl text-xs font-bold text-slate-500 transition hover:bg-slate-200/60"
+            style={{ background: 'rgba(0,0,0,0.04)' }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!selectedTherapistId || submitting}
+            onClick={handleSubmit}
+            className="flex-1 py-3 rounded-2xl text-xs font-black text-white transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 6px 18px rgba(6,44,34,0.25)' }}
+          >
+            {submitting ? (
+              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Confirming…</>
+            ) : (
+              <><CheckCircle className="w-4 h-4 text-emerald-300" /> Confirm &amp; Assign</>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ─── REJECT MODAL ─────────────────────────────────────────────────────────────
+
+const RejectModal = ({ appt, onClose, onConfirmReject }) => {
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const presets = [
+    'Therapist fully booked for this slot',
+    'Outside salon operating hours',
+    'Client requested cancellation',
+    'Specialist unavailable on requested date',
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    await onConfirmReject(appt.id, reason);
+    setSubmitting(false);
+    onClose();
+  };
+
+  const fmtFullDate = appt.datetime
+    ? new Date(appt.datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+  const fmtTime = appt.datetime
+    ? new Date(appt.datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    : '';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.93, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.93, y: 20, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+        className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col text-left"
+        style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', border: '1px solid rgba(255,255,255,0.8)' }}
+      >
+        <div className="p-6 pb-5 flex-shrink-0" style={{ background: 'linear-gradient(135deg,#7f1d1d,#991b1b)' }}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center bg-red-500/20 border border-red-400/20 text-red-200">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-red-200/70">Reject Booking Request</span>
+                <h3 className="text-white font-black text-lg leading-tight mt-0.5">{appt.service}</h3>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="rounded-2xl p-4 space-y-1" style={{ background: 'rgba(127,29,29,0.04)', border: '1px solid rgba(127,29,29,0.1)' }}>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Client &amp; Schedule</p>
+            <p className="font-black text-slate-800 text-sm">{appt.client_name || appt.client}</p>
+            <p className="text-xs text-slate-600">{fmtFullDate} at {fmtTime}</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+              Reason for Rejection / Note
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="State the reason for declining this appointment request..."
+              rows={3}
+              className="w-full p-3 rounded-2xl text-xs text-slate-700 outline-none resize-none"
+              style={{ background: 'linear-gradient(145deg,#f5f0e8,#ece8e0)', boxShadow: 'inset 3px 3px 6px #e0dbd3, inset -3px -3px 6px #ffffff' }}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Presets</p>
+            <div className="flex flex-wrap gap-1.5">
+              {presets.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setReason(p)}
+                  className="text-[10px] font-semibold px-2.5 py-1 rounded-xl transition-all"
+                  style={{ background: reason === p ? '#7f1d1d' : 'rgba(0,0,0,0.05)', color: reason === p ? '#fff' : '#64748b' }}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-black/5 bg-slate-50/50 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-2xl text-xs font-bold text-slate-500 transition hover:bg-slate-200/60"
+            style={{ background: 'rgba(0,0,0,0.04)' }}
+          >
+            Keep Pending
+          </button>
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={handleSubmit}
+            className="flex-1 py-3 rounded-2xl text-xs font-black text-white transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+            style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 6px 18px rgba(220,38,38,0.25)' }}
+          >
+            {submitting ? (
+              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Rejecting…</>
+            ) : (
+              <><XCircle className="w-4 h-4" /> Confirm Rejection</>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 // ─── PENDING APPROVALS ────────────────────────────────────────────────────────
 
-const PendingTab = ({ appointments, therapists, onAssign, onStatus, onSelectAppt }) => {
+const PendingTab = ({ appointments, therapists, onOpenAccept, onOpenReject, onSelectAppt }) => {
   const pending = appointments.filter((a) => a.status === 'Pending');
 
   return (
@@ -248,7 +595,7 @@ const PendingTab = ({ appointments, therapists, onAssign, onStatus, onSelectAppt
         <div className="grid gap-4">
           {pending.map((appt) => (
             <div key={appt.id} className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm hover:shadow-md transition">
-              <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 {/* Left: Info */}
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
@@ -281,43 +628,30 @@ const PendingTab = ({ appointments, therapists, onAssign, onStatus, onSelectAppt
                   </div>
                 </div>
 
-                {/* Right: Actions */}
-                <div className="flex flex-col gap-2 flex-shrink-0">
-                  {/* Quick therapist assign */}
-                  <select
-                    defaultValue={appt.therapist_id || ''}
-                    onChange={(e) => onAssign(appt.id, e.target.value || null)}
-                    className="px-3 py-1.5 rounded-xl border text-xs font-semibold text-slate-700 outline-none cursor-pointer"
-                    style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}
+                {/* Right: Clean Accept / Reject actions */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => onOpenAccept(appt)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95"
+                    style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 4px 12px rgba(22,163,74,0.25)' }}
                   >
-                    <option value="">Assign Therapist…</option>
-                    {therapists.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                  </select>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onStatus(appt.id, 'Confirmed')}
-                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold text-white transition hover:scale-105"
-                      style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 3px 10px rgba(22,163,74,0.25)' }}
-                    >
-                      <Check className="w-3.5 h-3.5" /> Confirm
-                    </button>
-                    <button
-                      onClick={() => onStatus(appt.id, 'Cancelled')}
-                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold text-red-600 transition hover:scale-105"
-                      style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
-                    >
-                      <X className="w-3.5 h-3.5" /> Reject
-                    </button>
-                    <button
-                      onClick={() => onSelectAppt(appt)}
-                      className="p-2 rounded-xl text-slate-500 transition hover:scale-105"
-                      style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
-                      title="View details"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                    <Check className="w-4 h-4" /> Accept
+                  </button>
+                  <button
+                    onClick={() => onOpenReject(appt)}
+                    className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-red-600 transition-all hover:scale-105 active:scale-95"
+                    style={{ background: '#fef2f2', border: '1px solid #fecaca' }}
+                  >
+                    <X className="w-4 h-4" /> Reject
+                  </button>
+                  <button
+                    onClick={() => onSelectAppt(appt)}
+                    className="p-2.5 rounded-2xl text-slate-500 transition hover:scale-105"
+                    style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}
+                    title="View details"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -388,6 +722,9 @@ const AdminAppointments = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedAppt, setSelectedAppt] = useState(null);
 
+  const [acceptTarget, setAcceptTarget] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
+
   const showToast = (msg, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3500); };
 
   const loadData = async () => {
@@ -420,12 +757,12 @@ const AdminAppointments = () => {
     }
   };
 
-  const handleUpdateStatus = async (apptId, newStatus) => {
+  const handleUpdateStatus = async (apptId, newStatus, reason = '') => {
     try {
-      const res = await API.post(`/admin/appointments/${apptId}/status`, { status: newStatus });
+      const res = await API.post(`/admin/appointments/${apptId}/status`, { status: newStatus, reason });
       showToast(res.data.message);
-      setAppointments((prev) => prev.map((a) => a.id === apptId ? { ...a, status: newStatus } : a));
-      if (selectedAppt?.id === apptId) setSelectedAppt((prev) => ({ ...prev, status: newStatus }));
+      setAppointments((prev) => prev.map((a) => a.id === apptId ? { ...a, status: newStatus, notes: res.data.appointment.notes } : a));
+      if (selectedAppt?.id === apptId) setSelectedAppt((prev) => ({ ...prev, status: newStatus, notes: res.data.appointment.notes }));
     } catch {
       showToast('Failed to update status', 'error');
     }
@@ -493,8 +830,8 @@ const AdminAppointments = () => {
               <PendingTab
                 appointments={appointments}
                 therapists={therapists}
-                onAssign={handleAssignTherapist}
-                onStatus={handleUpdateStatus}
+                onOpenAccept={(appt) => setAcceptTarget(appt)}
+                onOpenReject={(appt) => setRejectTarget(appt)}
                 onSelectAppt={setSelectedAppt}
               />
             )}
@@ -509,6 +846,35 @@ const AdminAppointments = () => {
             )}
           </>
         )}
+
+        {/* Accept & Assign Modal */}
+        <AnimatePresence>
+          {acceptTarget && (
+            <AcceptAssignModal
+              appt={acceptTarget}
+              therapists={therapists}
+              onClose={() => setAcceptTarget(null)}
+              onConfirmAssign={async (id, tid) => {
+                await handleAssignTherapist(id, tid);
+                setAcceptTarget(null);
+              }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Reject Modal */}
+        <AnimatePresence>
+          {rejectTarget && (
+            <RejectModal
+              appt={rejectTarget}
+              onClose={() => setRejectTarget(null)}
+              onConfirmReject={async (id, reason) => {
+                await handleUpdateStatus(id, 'Cancelled', reason);
+                setRejectTarget(null);
+              }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Detail Modal */}
         <AnimatePresence>

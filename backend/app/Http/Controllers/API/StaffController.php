@@ -203,11 +203,18 @@ class StaffController extends Controller
     {
         $request->validate([
             'status' => 'required|in:Pending,Confirmed,Completed,Cancelled',
+            'reason' => 'nullable|string',
         ]);
 
         $appt = Appointment::findOrFail($id);
         $oldStatus = $appt->status;
         $appt->status = $request->status;
+
+        if ($request->filled('reason')) {
+            $reasonText = 'Rejection Reason: ' . trim($request->reason);
+            $appt->notes = $appt->notes ? $appt->notes . ' | ' . $reasonText : $reasonText;
+        }
+
         $appt->save();
 
         $appt->load(['client', 'therapist', 'service']);
