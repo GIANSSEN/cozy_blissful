@@ -6,51 +6,57 @@ import Lenis from "lenis";
 import gsap from "gsap";
 
 /* ── Social Icons ─────────────────────────────────────────────────── */
-const FacebookIcon  = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>;
-const InstagramIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>;
-const TikTokIcon    = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>;
-const TwitterXIcon  = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>;
-const YouTubeIcon   = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>;
-const WhatsAppIcon  = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>;
+const FacebookIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>;
+const InstagramIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>;
+const TikTokIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" /></svg>;
+const TwitterXIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>;
+const YouTubeIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>;
+const WhatsAppIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" /></svg>;
 
 /* ── Service Data ─────────────────────────────────────────────────── */
 const SVCS = {
-  massage: { label:"Massage Therapy", icon:"💆", note:"Prices start at ₱749", color:{bg:"#0a3d30",glow:"rgba(10,61,48,0.38)",badge:"rgba(255,255,255,0.15)"}, list:[
-    {name:"Swedish Massage",price:749,dur:"1 hr",img:"https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&q=80",desc:"Classic relaxing full-body massage with long, gliding strokes to relieve tension."},
-    {name:"Deep Tissue Massage",price:849,dur:"1 hr",img:"https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80",desc:"Firm pressure targeting deep muscle layers and chronic muscle tightness."},
-    {name:"Hilot Massage",price:749,dur:"1 hr",img:"https://images.unsplash.com/photo-1519823551278-64ac928349d2?auto=format&fit=crop&w=800&q=80",desc:"Traditional Filipino healing massage using coconut oil and warm banana leaves."},
-    {name:"Traditional Massage",price:749,dur:"1 hr",img:"https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",desc:"Standard restoration and relaxation massage utilizing moderate pressure."},
-    {name:"Thai Massage",price:849,dur:"1 hr",img:"https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80",desc:"Dynamic assisted stretching and targeted acupressure to restore flow and flexibility."},
-    {name:"Post Natal Massage",price:899,dur:"1 hr",img:"https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80",desc:"Restorative full-body therapy to support mothers in their healing after childbirth."},
-    {name:"Hard Massage",price:849,dur:"1 hr",img:"https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=800&q=80",desc:"Deep, intense localized pressure focused on severe stiffness and knots."},
-    {name:"Combination Swedish & Hilot",price:899,dur:"1 hr",img:"https://images.unsplash.com/photo-1611078489935-0cb964de46d6?auto=format&fit=crop&w=800&q=80",desc:"A premium blend of Swedish relaxation strokes and traditional Hilot healing."},
-    {name:"Ventosa w/ Massage",price:999,dur:"1 hr",img:"https://images.unsplash.com/photo-1519824206182-41622907f7e3?auto=format&fit=crop&w=800&q=80",desc:"Cupping therapy combined with a standard relaxation massage to draw out body toxins."},
-    {name:"Lymphatic Massage",price:999,dur:"1 hr",img:"https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=800&q=80",desc:"Gentle drainage to boost lymphatic circulation and reduce physical inflammation."},
-    {name:"Pre-Natal Massage",price:899,dur:"1 hr",img:"https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",desc:"Gentle, specialized positioning to alleviate back tension for expecting mothers."},
-    {name:"Body Scrub / Massage",price:999,dur:"1.5 hrs",img:"https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=800&q=80",desc:"Invigorating exfoliating scrub followed by a deep full-body relaxation massage."},
-    {name:"Couple Massage",price:999,dur:"1 hr",img:"https://images.unsplash.com/photo-1519823551278-64ac928349d2?auto=format&fit=crop&w=800&q=80",desc:"Synchronized relaxation therapy for two in the same home-spa setting."},
-  ]},
-  nails: { label:"Nail Care", icon:"💅", note:"Prices from ₱299", color:{bg:"#6b5a2e",glow:"rgba(107,90,46,0.38)",badge:"rgba(255,255,255,0.15)"}, list:[
-    {name:"Manicure",price:299,dur:"30 min",img:"https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80",desc:"Professional manicure including shape refining, cuticle care, and choice polish."},
-    {name:"Pedicure",price:299,dur:"30 min",img:"https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80",desc:"Relaxing pedicure soak, salt scrub exfoliation, shaping, and polish."},
-    {name:"Regular Nails (Mani & Pedi)",price:399,dur:"1 hr",img:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80",desc:"Comprehensive classic manicure and pedicure service package."},
-    {name:"Manigel",price:699,dur:"1 hr",img:"https://images.unsplash.com/photo-1632345031435-8797b2d58045?auto=format&fit=crop&w=800&q=80",desc:"Long-lasting gel manicure cured with UV/LED light for a shiny finish."},
-    {name:"Pedigel",price:699,dur:"1 hr",img:"https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80",desc:"Extended-wear gel pedicure designed to look fresh for weeks."},
-    {name:"Gel Nails (Mani & Pedi)",price:1199,dur:"1.5 hrs",img:"https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80",desc:"Premium full gel manicure and pedicure combination package."},
-    {name:"ManePedi Foot Spa",price:799,dur:"1 hr",img:"https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80",desc:"Manicure, pedicure, and deeply soothing therapeutic foot spa."},
-    {name:"Nails Extension",price:1499,dur:"2 hrs",img:"https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80",desc:"Full set extension using durable tips or forms for a natural, elegant look."},
-    {name:"Nails Extension with Design",price:1699,dur:"2.5 hrs",img:"https://images.unsplash.com/photo-1607779097040-26e80aa78e66?auto=format&fit=crop&w=800&q=80",desc:"Nail extensions featuring custom hand-painted art or nail accents."},
-    {name:"Nails Extension Package",price:1999,dur:"3 hrs",img:"https://images.unsplash.com/photo-1632345031435-8797b2d58045?auto=format&fit=crop&w=800&q=80",desc:"All-inclusive package covering extensions, custom art, and cuticle hydration."},
-  ]},
-  other: { label:"Other Services", icon:"✨", note:"Ask for pricing", color:{bg:"#1e3a5f",glow:"rgba(30,58,95,0.38)",badge:"rgba(255,255,255,0.15)"}, list:[
-    {name:"Ear Wax Candling",price:null,dur:"30 min",img:"https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",desc:"Relaxing ear wax candling to promote warmth and inner ear pressure balance."},
-    {name:"Eyebrow Threading",price:null,dur:"15 min",img:"https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80",desc:"Precise hair threading to groom and define natural eyebrow arches."},
-    {name:"Under Arm Waxing",price:null,dur:"20 min",img:"https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=800&q=80",desc:"Smooth hair removal for underarms using premium honey wax."},
-    {name:"Foot Spa",price:null,dur:"45 min",img:"https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80",desc:"Indulgent foot soak, scrub exfoliation, and moisturizing butter wrap."},
-    {name:"Eyelash Extensions",price:null,dur:"1.5 hrs",img:"https://images.unsplash.com/photo-1583001931096-959e9a1a6223?auto=format&fit=crop&w=800&q=80",desc:"Lightweight individual extensions for long, voluminous, beautiful lashes."},
-    {name:"Legs Waxing (Half or Full)",price:null,dur:"30 min",img:"https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=800&q=80",desc:"Complete or half-leg hair removal leaving skin smooth and soft."},
-    {name:"Paraffin Treatment (Hand & Foot)",price:null,dur:"45 min",img:"https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80",desc:"Warm soothing paraffin dip to deeply hydrate dry hands or tired feet."},
-  ]},
+  massage: {
+    label: "Massage Therapy", icon: "💆", note: "Prices start at ₱749", color: { bg: "#0a3d30", glow: "rgba(10,61,48,0.38)", badge: "rgba(255,255,255,0.15)" }, list: [
+      { name: "Swedish Massage", price: 749, dur: "1 hr", img: "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&q=80", desc: "Classic relaxing full-body massage with long, gliding strokes to relieve tension." },
+      { name: "Deep Tissue Massage", price: 849, dur: "1 hr", img: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80", desc: "Firm pressure targeting deep muscle layers and chronic muscle tightness." },
+      { name: "Hilot Massage", price: 749, dur: "1 hr", img: "https://images.unsplash.com/photo-1519823551278-64ac928349d2?auto=format&fit=crop&w=800&q=80", desc: "Traditional Filipino healing massage using coconut oil and warm banana leaves." },
+      { name: "Traditional Massage", price: 749, dur: "1 hr", img: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80", desc: "Standard restoration and relaxation massage utilizing moderate pressure." },
+      { name: "Thai Massage", price: 849, dur: "1 hr", img: "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80", desc: "Dynamic assisted stretching and targeted acupressure to restore flow and flexibility." },
+      { name: "Post Natal Massage", price: 899, dur: "1 hr", img: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=800&q=80", desc: "Restorative full-body therapy to support mothers in their healing after childbirth." },
+      { name: "Hard Massage", price: 849, dur: "1 hr", img: "https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&w=800&q=80", desc: "Deep, intense localized pressure focused on severe stiffness and knots." },
+      { name: "Combination Swedish & Hilot", price: 899, dur: "1 hr", img: "https://images.unsplash.com/photo-1611078489935-0cb964de46d6?auto=format&fit=crop&w=800&q=80", desc: "A premium blend of Swedish relaxation strokes and traditional Hilot healing." },
+      { name: "Ventosa w/ Massage", price: 999, dur: "1 hr", img: "https://images.unsplash.com/photo-1519824206182-41622907f7e3?auto=format&fit=crop&w=800&q=80", desc: "Cupping therapy combined with a standard relaxation massage to draw out body toxins." },
+      { name: "Lymphatic Massage", price: 999, dur: "1 hr", img: "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=800&q=80", desc: "Gentle drainage to boost lymphatic circulation and reduce physical inflammation." },
+      { name: "Pre-Natal Massage", price: 899, dur: "1 hr", img: "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80", desc: "Gentle, specialized positioning to alleviate back tension for expecting mothers." },
+      { name: "Body Scrub / Massage", price: 999, dur: "1.5 hrs", img: "https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=800&q=80", desc: "Invigorating exfoliating scrub followed by a deep full-body relaxation massage." },
+      { name: "Couple Massage", price: 999, dur: "1 hr", img: "https://images.unsplash.com/photo-1519823551278-64ac928349d2?auto=format&fit=crop&w=800&q=80", desc: "Synchronized relaxation therapy for two in the same home-spa setting." },
+    ]
+  },
+  nails: {
+    label: "Nail Care", icon: "💅", note: "Prices from ₱299", color: { bg: "#6b5a2e", glow: "rgba(107,90,46,0.38)", badge: "rgba(255,255,255,0.15)" }, list: [
+      { name: "Manicure", price: 299, dur: "30 min", img: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80", desc: "Professional manicure including shape refining, cuticle care, and choice polish." },
+      { name: "Pedicure", price: 299, dur: "30 min", img: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80", desc: "Relaxing pedicure soak, salt scrub exfoliation, shaping, and polish." },
+      { name: "Regular Nails (Mani & Pedi)", price: 399, dur: "1 hr", img: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80", desc: "Comprehensive classic manicure and pedicure service package." },
+      { name: "Manigel", price: 699, dur: "1 hr", img: "https://images.unsplash.com/photo-1632345031435-8797b2d58045?auto=format&fit=crop&w=800&q=80", desc: "Long-lasting gel manicure cured with UV/LED light for a shiny finish." },
+      { name: "Pedigel", price: 699, dur: "1 hr", img: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80", desc: "Extended-wear gel pedicure designed to look fresh for weeks." },
+      { name: "Gel Nails (Mani & Pedi)", price: 1199, dur: "1.5 hrs", img: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80", desc: "Premium full gel manicure and pedicure combination package." },
+      { name: "ManePedi Foot Spa", price: 799, dur: "1 hr", img: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80", desc: "Manicure, pedicure, and deeply soothing therapeutic foot spa." },
+      { name: "Nails Extension", price: 1499, dur: "2 hrs", img: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80", desc: "Full set extension using durable tips or forms for a natural, elegant look." },
+      { name: "Nails Extension with Design", price: 1699, dur: "2.5 hrs", img: "https://images.unsplash.com/photo-1607779097040-26e80aa78e66?auto=format&fit=crop&w=800&q=80", desc: "Nail extensions featuring custom hand-painted art or nail accents." },
+      { name: "Nails Extension Package", price: 1999, dur: "3 hrs", img: "https://images.unsplash.com/photo-1632345031435-8797b2d58045?auto=format&fit=crop&w=800&q=80", desc: "All-inclusive package covering extensions, custom art, and cuticle hydration." },
+    ]
+  },
+  other: {
+    label: "Other Services", icon: "✨", note: "Ask for pricing", color: { bg: "#1e3a5f", glow: "rgba(30,58,95,0.38)", badge: "rgba(255,255,255,0.15)" }, list: [
+      { name: "Ear Wax Candling", price: null, dur: "30 min", img: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80", desc: "Relaxing ear wax candling to promote warmth and inner ear pressure balance." },
+      { name: "Eyebrow Threading", price: null, dur: "15 min", img: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=800&q=80", desc: "Precise hair threading to groom and define natural eyebrow arches." },
+      { name: "Under Arm Waxing", price: null, dur: "20 min", img: "https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=800&q=80", desc: "Smooth hair removal for underarms using premium honey wax." },
+      { name: "Foot Spa", price: null, dur: "45 min", img: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80", desc: "Indulgent foot soak, scrub exfoliation, and moisturizing butter wrap." },
+      { name: "Eyelash Extensions", price: null, dur: "1.5 hrs", img: "https://images.unsplash.com/photo-1583001931096-959e9a1a6223?auto=format&fit=crop&w=800&q=80", desc: "Lightweight individual extensions for long, voluminous, beautiful lashes." },
+      { name: "Legs Waxing (Half or Full)", price: null, dur: "30 min", img: "https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=800&q=80", desc: "Complete or half-leg hair removal leaving skin smooth and soft." },
+      { name: "Paraffin Treatment (Hand & Foot)", price: null, dur: "45 min", img: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80", desc: "Warm soothing paraffin dip to deeply hydrate dry hands or tired feet." },
+    ]
+  },
 };
 
 const EASE = [0.22, 1, 0.36, 1];
@@ -225,7 +231,7 @@ export default function LandingPage() {
         />
         <div className="max-w-7xl mx-auto px-5 lg:px-10">
           <div className="flex items-center justify-between py-3.5 lg:py-4">
-            
+
             {/* Brand Logo & Name */}
             <Link to="/" className="flex items-center gap-3 group">
               <div className="relative flex-shrink-0">
@@ -332,7 +338,7 @@ export default function LandingPage() {
             <motion.div initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1.3, delay: 0.25, ease: EASE }} style={{ y: hIY }} className="hidden lg:flex flex-1 justify-center relative z-10">
               <div className="relative w-[440px] xl:w-[480px]">
                 <div className="absolute inset-0 rounded-full blur-3xl opacity-20" style={{ background: "radial-gradient(circle,#bfa15f 0%,transparent 65%)" }} />
-                
+
                 {/* Main Hero Card - Professional Spa Setup */}
                 <motion.div animate={{ y: [0, -12, 0] }} transition={{ duration: 6, ease: "easeInOut", repeat: Infinity }}
                   className="w-full h-[460px] xl:h-[500px] rounded-[36px] overflow-hidden relative shadow-2xl"
@@ -340,7 +346,7 @@ export default function LandingPage() {
                   <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1000&q=80"
                     alt="Cozy Blissful Salon Spa Ambience" className="w-full h-full object-cover" />
                   <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(4,30,22,0.85) 0%, rgba(4,30,22,0.2) 50%, transparent 100%)" }} />
-                  
+
                   <div className="absolute bottom-6 left-6 right-6 text-left">
                     <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-300 bg-amber-400/15 border border-amber-400/30 backdrop-blur-md mb-2">
                       Premium Salon & Spa
@@ -417,7 +423,7 @@ export default function LandingPage() {
         <Orb style={{ width: 420, height: 420, left: "-5%", bottom: "5%", background: "radial-gradient(circle,rgba(10,61,48,0.08) 0%,transparent 70%)" }} delay={3} dur={13} />
 
         <div className="max-w-6xl mx-auto relative z-10">
-          
+
           {/* Section Badge & Title */}
           <Reveal className="text-center mb-16">
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 mb-4 shadow-sm">
@@ -437,7 +443,7 @@ export default function LandingPage() {
 
           {/* Main Grid: Overlapping Visual Story Composition + Interactive Narrative */}
           <div className="grid lg:grid-cols-12 gap-12 items-center mb-20">
-            
+
             {/* Left Image Composition (7 columns) */}
             <Reveal dir="left" className="lg:col-span-7">
               <div className="relative">
@@ -448,7 +454,7 @@ export default function LandingPage() {
                   <img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1200&q=80"
                     alt="Cozy Blissful Story Spa Amblance" className="w-full h-[400px] sm:h-[480px] object-cover" />
                   <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(4,30,22,0.85) 0%, rgba(4,30,22,0.2) 60%, transparent 100%)" }} />
-                  
+
                   {/* Photo Caption */}
                   <div className="absolute bottom-6 left-6 right-6 text-white text-left">
                     <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-300 bg-amber-400/20 border border-amber-400/30 backdrop-blur-md mb-2">
@@ -632,7 +638,7 @@ export default function LandingPage() {
             <Reveal className="text-center mt-10">
               <motion.button onClick={() => setShowAll(v => !v)} className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-sm hover:scale-105 transition-all duration-300"
                 style={{ background: "linear-gradient(145deg,#fdfdfc,#f4ede1)", color: cat.color.bg, border: "1.5px solid " + cat.color.bg + "30", boxShadow: "6px 6px 18px #e6dfd5,-4px -4px 12px #fff" }}
-                whileHover={{ y:-3 }} whileTap={{ scale: 0.97 }}>
+                whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}>
                 <motion.span animate={{ rotate: showAll ? 180 : 0 }} transition={{ duration: 0.3 }}><ChevronDown className="w-4 h-4" /></motion.span>
                 {showAll ? "Show Less" : "View All " + cat.list.length + " " + cat.label + " Services"}
               </motion.button>

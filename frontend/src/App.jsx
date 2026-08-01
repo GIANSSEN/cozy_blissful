@@ -20,6 +20,7 @@ import AdminServices from './pages/admin/AdminServices';
 import AdminMarketing from './pages/admin/AdminMarketing';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminStaff from './pages/admin/AdminStaff';
+import AdminUserMaintenance from './pages/admin/AdminUserMaintenance';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminAuditLogs from './pages/admin/AdminAuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
@@ -66,6 +67,7 @@ function AnimatedRoutes() {
         <Route path="/admin/marketing" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminMarketing /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/payments" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminPayments /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminStaff /></PageTransition></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminUserMaintenance /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminProducts /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminAuditLogs /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminSettings /></PageTransition></ProtectedRoute>} />

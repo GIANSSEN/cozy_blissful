@@ -9,29 +9,27 @@ import {
   LogOut, Search, ChevronLeft,
   Moon, Sun, X, Home,
   DollarSign, Clock, AlertCircle,
-  UserCheck, ShieldAlert, Gift, Hourglass, Tags, Truck,
+  UserCheck, ShieldCheck, Gift, Hourglass, Tags, Truck,
   FileText, Coins, Wallet, UserCog, Megaphone, Boxes,
-  History, Star, ListOrdered,
+  History, Star, ListOrdered, CalendarDays, Shield,
 } from 'lucide-react';
 
-/* ── Menu: Dashboard has NO submenus — it is a direct link ─────────── */
+/* ─────────────────────────────────────────────────────────────────── */
+/*  MENU CONFIG                                                         */
+/* ─────────────────────────────────────────────────────────────────── */
 const MENU = [
   {
     title: 'Dashboard',
     icon: LayoutDashboard,
-    path: '/admin/dashboard',   // direct link, no subs
+    path: '/admin/dashboard',
     subs: [],
   },
   {
     title: 'Appointments',
     icon: Calendar,
-    path: null,
+    path: '/admin/appointments',
     basePath: '/admin/appointments',
-    subs: [
-      { label: 'Master Calendar View', tab: 'calendar', path: '/admin/appointments' },
-      { label: 'Pending Approvals', tab: 'pending', path: '/admin/appointments' },
-      { label: 'Cancellation & Reschedule', tab: 'requests', path: '/admin/appointments' },
-    ],
+    subs: [],
   },
   {
     title: 'Customers',
@@ -44,14 +42,15 @@ const MENU = [
     ],
   },
   {
-    title: 'User Maintenance',
+    title: 'User Management',
     icon: UserCog,
     path: null,
-    basePath: '/admin/staff',
+    basePath: '/admin/users',
     subs: [
-      { label: 'Attendance & Profiles', tab: 'profiles', path: '/admin/staff' },
-      { label: 'Therapist Queue', tab: 'queue', path: '/admin/staff' },
-      { label: 'System Permissions', tab: 'rbac', path: '/admin/staff' },
+      { label: 'User Profiles',   tab: 'profiles',  path: '/admin/users', accent: '#3b55e6' },
+      { label: 'Work Schedules',  tab: 'schedules', path: '/admin/users', accent: '#b45309' },
+      { label: 'Therapist Queue', tab: 'queue',     path: '/admin/users', accent: '#0891b2' },
+      { label: 'Permissions',     tab: 'rbac',      path: '/admin/users', accent: '#0a3d30' },
     ],
   },
   {
@@ -61,7 +60,7 @@ const MENU = [
     basePath: '/admin/services',
     subs: [
       { label: 'Services', tab: 'services', path: '/admin/services' },
-      { label: 'Offers', tab: 'offers', path: '/admin/services' },
+      { label: 'Offers',   tab: 'offers',   path: '/admin/services' },
     ],
   },
   {
@@ -71,7 +70,7 @@ const MENU = [
     basePath: '/admin/marketing',
     subs: [
       { label: 'Gift Cards & Vouchers', tab: 'giftcards', path: '/admin/marketing' },
-      { label: 'Promo Campaigns', tab: 'promos', path: '/admin/marketing' },
+      { label: 'Promo Campaigns',       tab: 'promos',    path: '/admin/marketing' },
     ],
   },
   {
@@ -80,8 +79,8 @@ const MENU = [
     path: null,
     basePath: '/admin/products',
     subs: [
-      { label: 'Product Catalog', tab: 'retail', path: '/admin/products' },
-      { label: 'Stock Control', tab: 'stock', path: '/admin/products' },
+      { label: 'Product Catalog',    tab: 'retail',    path: '/admin/products' },
+      { label: 'Stock Control',      tab: 'stock',     path: '/admin/products' },
       { label: 'Suppliers & Orders', tab: 'suppliers', path: '/admin/products' },
     ],
   },
@@ -91,9 +90,9 @@ const MENU = [
     path: null,
     basePath: '/admin/payments',
     subs: [
-      { label: 'Sales', tab: 'sales', path: '/admin/payments' },
-      { label: 'Payroll & Commissions', tab: 'payroll', path: '/admin/payments' },
-      { label: 'Expense Tracker', tab: 'expenses', path: '/admin/payments' },
+      { label: 'Sales',                 tab: 'sales',    path: '/admin/payments' },
+      { label: 'Payroll & Commissions', tab: 'payroll',  path: '/admin/payments' },
+      { label: 'Expense Tracker',       tab: 'expenses', path: '/admin/payments' },
     ],
   },
   {
@@ -112,65 +111,74 @@ const MENU = [
   },
 ];
 
+/* ─────────────────────────────────────────────────────────────────── */
+/*  SUB-ICON MAP                                                        */
+/* ─────────────────────────────────────────────────────────────────── */
 const SUB_ICON = {
-  calendar: Calendar, pending: Clock, requests: AlertCircle,
-  profiles: UserCheck, reviews: Star,
-  queue: ListOrdered, rbac: ShieldAlert,
-  services: ShoppingBag, offers: Gift, categories: Hourglass,
-  giftcards: Gift, promos: Megaphone,
-  retail: Tags, stock: Truck, suppliers: Boxes,
-  sales: DollarSign, payroll: Coins, expenses: Wallet,
+  calendar:  Calendar,    pending:  Clock,       requests:  AlertCircle,
+  profiles:  UserCheck,   reviews:  Star,
+  schedules: CalendarDays, queue:   ListOrdered, rbac:     Shield,
+  services:  ShoppingBag, offers:   Gift,        categories:Hourglass,
+  giftcards: Gift,        promos:   Megaphone,
+  retail:    Tags,        stock:    Truck,        suppliers: Boxes,
+  sales:     DollarSign,  payroll:  Coins,        expenses:  Wallet,
 };
 
-/* ── Colour tokens ──────────────────────────────────────────────────── */
-const L = {
-  bg: '#ffffff', sidebar: '#ffffff',
-  hover: '#f5f7fa', activeParent: '#f0f4ff', activeSub: '#eef2ff',
-  activeSubTxt: '#3b55e6', accent: '#0a3d30', gold: '#bfa15f',
+/* ─────────────────────────────────────────────────────────────────── */
+/*  COLOUR TOKENS                                                       */
+/* ─────────────────────────────────────────────────────────────────── */
+const LIGHT = {
+  sidebar: '#ffffff', hover: '#f5f7fa',
+  activeParent: '#f0f4ff',
   border: 'rgba(0,0,0,0.07)',
   txt: '#1a1d23', txtMuted: '#8a9199', txtSub: '#4a5260',
+  accent: '#0a3d30', gold: '#bfa15f',
+  defaultSubActive: '#3b55e6',
 };
-const D = {
-  bg: '#12161e', sidebar: '#161b26',
-  hover: '#1e2535', activeParent: '#1c2840', activeSub: '#1a2c45',
-  activeSubTxt: '#7aadff', accent: '#34d399', gold: '#d4b87a',
+const DARK = {
+  sidebar: '#161b26', hover: '#1e2535',
+  activeParent: '#1c2840',
   border: 'rgba(255,255,255,0.07)',
   txt: '#dde3ef', txtMuted: '#4e5a70', txtSub: '#8a9ab0',
+  accent: '#34d399', gold: '#d4b87a',
+  defaultSubActive: '#7aadff',
 };
 
+/* ─────────────────────────────────────────────────────────────────── */
+/*  COMPONENT                                                           */
+/* ─────────────────────────────────────────────────────────────────── */
 const Sidebar = ({ isOpen, onClose }) => {
-  const { logout } = useAuth();
+  const { logout }         = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || '';
-  const [search, setSearch] = useState('');
-
-  /* ── Accordion: only ONE item expanded at a time ── */
+  const location           = useLocation();
+  const navigate           = useNavigate();
+  const [searchParams]     = useSearchParams();
+  const activeTab          = searchParams.get('tab') || '';
+  const [search, setSearch]       = useState('');
   const [openTitle, setOpenTitle] = useState(null);
 
-  const t = theme === 'dark' ? D : L;
+  const t      = theme === 'dark' ? DARK : LIGHT;
   const isDark = theme === 'dark';
 
-  /* Auto-open the section matching the current URL */
+  /* Auto-expand the section matching current URL */
   useEffect(() => {
     const found = MENU.find(m => m.basePath && location.pathname.startsWith(m.basePath));
     setOpenTitle(found ? found.title : null);
   }, [location.pathname]);
 
-  /* Accordion toggle — closes current if same, closes old & opens new if different */
-  const handleToggle = (title) => {
-    setOpenTitle(prev => (prev === title ? null : title));
-  };
+  const handleToggle = (title) => setOpenTitle(prev => prev === title ? null : title);
 
-  const handleLogout = async () => { await logout(); onClose?.(); navigate('/login'); };
+  const handleLogout = async () => {
+    await logout();
+    if (onClose) onClose();
+    navigate('/login');
+  };
 
   /* Search filter */
   const filtered = MENU.map(cat => {
     const q = search.toLowerCase();
     if (!q) return cat;
-    const subHits = cat.subs.filter(s => s.label.toLowerCase().includes(q));
+    const subHits  = cat.subs.filter(s => s.label.toLowerCase().includes(q));
     const parentHit = cat.title.toLowerCase().includes(q);
     if (parentHit || subHits.length > 0) {
       return { ...cat, subs: parentHit ? cat.subs : subHits, forceOpen: true };
@@ -178,13 +186,14 @@ const Sidebar = ({ isOpen, onClose }) => {
     return null;
   }).filter(Boolean);
 
-  const isSubActive = sub => {
+  const isSubActive = (sub) => {
     if (location.pathname !== sub.path) return false;
     if (activeTab) return activeTab === sub.tab;
-    const parentCat = MENU.find(m => m.basePath === sub.path);
-    return parentCat?.subs?.[0]?.tab === sub.tab;
+    const parent = MENU.find(m => m.basePath === sub.path);
+    return parent && parent.subs[0] && parent.subs[0].tab === sub.tab;
   };
 
+  /* ─────────────────────────────────────────────────────────────── */
   return (
     <>
       {/* Mobile backdrop */}
@@ -200,11 +209,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       </AnimatePresence>
 
       <aside
-        className={`
-          fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased
-          transition-transform duration-300 lg:translate-x-0
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className={`fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{
           width: 272, minWidth: 272,
           background: t.sidebar,
@@ -215,7 +220,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* ── Brand ── */}
         <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${t.border}` }}>
-          <button onClick={() => { navigate('/admin/dashboard'); onClose?.(); }}
+          <button
+            onClick={() => { navigate('/admin/dashboard'); if (onClose) onClose(); }}
             className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
             <div className="w-9 h-9 rounded-2xl overflow-hidden flex-shrink-0"
               style={{ boxShadow: '0 4px 14px rgba(10,61,48,0.35)' }}>
@@ -225,8 +231,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               <p className="text-[13px] font-black leading-tight truncate" style={{ color: t.txt }}>
                 Cozy Blissful
               </p>
-              <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-0.5 truncate"
-                style={{ color: t.gold }}>
+              <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-0.5 truncate" style={{ color: t.gold }}>
                 Home Service Spa
               </p>
             </div>
@@ -234,13 +239,14 @@ const Sidebar = ({ isOpen, onClose }) => {
 
           <div className="flex items-center gap-1 ml-2 flex-shrink-0">
             <button onClick={toggleTheme}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
               style={{ background: t.hover, color: t.txtMuted }}
               title={isDark ? 'Switch to Light' : 'Switch to Dark'}>
               {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
             <button className="lg:hidden w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: t.hover, color: t.txtMuted }} onClick={onClose}>
+              style={{ background: t.hover, color: t.txtMuted }}
+              onClick={onClose}>
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -251,10 +257,13 @@ const Sidebar = ({ isOpen, onClose }) => {
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
             style={{ background: t.hover, border: `1px solid ${t.border}` }}>
             <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: t.txtMuted }} />
-            <input value={search} onChange={e => setSearch(e.target.value)}
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               placeholder="Search menus…"
               className="flex-1 bg-transparent text-[12px] outline-none min-w-0"
-              style={{ color: t.txt }} />
+              style={{ color: t.txt }}
+            />
             {search && (
               <button onClick={() => setSearch('')} style={{ color: t.txtMuted }}>
                 <X className="w-3 h-3" />
@@ -275,54 +284,59 @@ const Sidebar = ({ isOpen, onClose }) => {
           {filtered.map(cat => {
             const Icon = cat.icon;
 
-            /* Dashboard: direct link, no accordion */
+            /* Direct link — no accordion */
             if (cat.path && cat.subs.length === 0) {
-              const active = location.pathname === cat.path || (cat.basePath && location.pathname.startsWith(cat.basePath));
+              const active = location.pathname === cat.path
+                || (cat.basePath && location.pathname.startsWith(cat.basePath));
               return (
-                <Link key={cat.title} to={cat.path} onClick={onClose}
-                  className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full active:scale-[0.98]"
-                  style={{
-                    background: active ? t.activeParent : 'transparent',
-                    textDecoration: 'none',
-                  }}
+                <Link
+                  key={cat.title}
+                  to={cat.path}
+                  onClick={onClose}
+                  className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all w-full active:scale-[0.98]"
+                  style={{ background: active ? t.activeParent : 'transparent', textDecoration: 'none' }}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeParent : 'transparent'; }}>
-                  <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
+                  <Icon className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform"
                     style={{ color: active ? t.accent : t.txtMuted }} />
                   <span className="text-[12.5px] font-semibold leading-tight flex-1"
                     style={{ color: active ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
                   {active && (
-                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}
+                    <motion.span
+                      initial={{ scale: 0 }} animate={{ scale: 1 }}
                       transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ background: t.accent }} />
+                      style={{ background: t.accent }}
+                    />
                   )}
                 </Link>
               );
             }
 
-            /* Other menu items: accordion */
-            const basePath = cat.basePath || '';
-            const isActive = location.pathname.startsWith(basePath);
-            const isOpenNow = (openTitle === cat.title) || (search.length > 0 && cat.forceOpen);
+            /* Accordion */
+            const basePath  = cat.basePath || '';
+            const isActive  = location.pathname.startsWith(basePath);
+            const isOpenNow = openTitle === cat.title || (search.length > 0 && cat.forceOpen);
 
             return (
               <div key={cat.title}>
                 <button
                   onClick={() => handleToggle(cat.title)}
-                  className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98]"
+                  className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all active:scale-[0.98]"
                   style={{ background: isActive ? t.activeParent : 'transparent' }}
                   onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = t.hover; }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? t.activeParent : 'transparent'; }}>
-                  <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
+                  <Icon className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform"
                     style={{ color: isActive ? t.accent : t.txtMuted }} />
                   <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight truncate"
                     style={{ color: isActive ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
-                  <motion.span animate={{ rotate: isOpenNow ? 180 : 0 }} transition={{ duration: 0.2 }}
+                  <motion.span
+                    animate={{ rotate: isOpenNow ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
                     className="flex-shrink-0">
                     <ChevronDown className="w-3.5 h-3.5" style={{ color: t.txtMuted }} />
                   </motion.span>
@@ -331,36 +345,66 @@ const Sidebar = ({ isOpen, onClose }) => {
                 {/* Sub-drawer */}
                 <AnimatePresence initial={false}>
                   {isOpenNow && (
-                    <motion.div key="sub"
+                    <motion.div
+                      key="sub"
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       style={{ overflow: 'hidden' }}>
-                      <div className="ml-4 pl-3 py-1 space-y-0.5"
+                      <div
+                        className="ml-4 pl-3 py-1 space-y-0.5"
                         style={{ borderLeft: `1.5px solid ${t.border}` }}>
                         {cat.subs.map((sub, idx) => {
-                          const active = isSubActive(sub);
-                          const SubIcon = SUB_ICON[sub.tab] || FileText;
+                          const active    = isSubActive(sub);
+                          const SubIcon   = SUB_ICON[sub.tab] || FileText;
+                          const subAccent = sub.accent || t.defaultSubActive;
                           return (
-                            <motion.div key={sub.label}
+                            <motion.div
+                              key={sub.label}
                               initial={{ opacity: 0, x: -8 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.18, delay: idx * 0.04, ease: 'easeOut' }}>
-                              <Link to={`${sub.path}?tab=${sub.tab}`} onClick={onClose}
-                                className="group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150 active:scale-[0.98]"
+                              <Link
+                                to={`${sub.path}?tab=${sub.tab}`}
+                                onClick={onClose}
+                                className="group flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all active:scale-[0.98]"
                                 style={{
-                                  background: active ? t.activeSub : 'transparent',
+                                  background: active ? `${subAccent}12` : 'transparent',
                                   textDecoration: 'none',
                                 }}
                                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
-                                onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeSub : 'transparent'; }}>
-                                <SubIcon className="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
-                                  style={{ color: active ? t.activeSubTxt : t.txtMuted }} />
-                                <span className="text-[11.5px] font-medium leading-tight truncate transition-transform duration-150 group-hover:translate-x-0.5"
-                                  style={{ color: active ? t.activeSubTxt : t.txtSub, letterSpacing: '-0.005em' }}>
+                                onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? `${subAccent}12` : 'transparent'; }}>
+                                {/* Icon chip */}
+                                <span
+                                  className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
+                                  style={{
+                                    background: active
+                                      ? `${subAccent}20`
+                                      : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                  }}>
+                                  <SubIcon
+                                    className="w-3 h-3"
+                                    style={{ color: active ? subAccent : t.txtMuted }}
+                                  />
+                                </span>
+                                <span
+                                  className="text-[11.5px] leading-tight flex-1 truncate"
+                                  style={{
+                                    color: active ? subAccent : t.txtSub,
+                                    fontWeight: active ? 700 : 500,
+                                    letterSpacing: '-0.005em',
+                                  }}>
                                   {sub.label}
                                 </span>
+                                {active && (
+                                  <motion.span
+                                    initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                    style={{ background: subAccent }}
+                                  />
+                                )}
                               </Link>
                             </motion.div>
                           );
@@ -374,29 +418,33 @@ const Sidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* ── Footer actions ── */}
+        {/* ── Footer ── */}
         <div className="px-3 py-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}` }}>
-          <Link to="/" onClick={onClose}
-            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
+          <Link
+            to="/"
+            onClick={onClose}
+            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all"
             style={{ background: 'transparent', textDecoration: 'none' }}
             onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-            <Home className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:-translate-x-0.5"
+            <Home className="w-4 h-4 flex-shrink-0 group-hover:-translate-x-0.5 transition-transform"
               style={{ color: t.txtMuted }} />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
               style={{ color: t.txtSub, letterSpacing: '-0.01em' }}>
               Back to Landing
             </span>
-            <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0"
+            <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all"
               style={{ color: t.txtMuted }} />
           </Link>
 
-          <button type="button" onClick={handleLogout}
-            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all"
             style={{ background: 'transparent' }}
             onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
-            <LogOut className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+            <LogOut className="w-4 h-4 flex-shrink-0 group-hover:translate-x-0.5 transition-transform"
               style={{ color: '#ef4444' }} />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
               style={{ color: '#ef4444', letterSpacing: '-0.01em' }}>
