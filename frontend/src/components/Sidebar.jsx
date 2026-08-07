@@ -34,12 +34,9 @@ const MENU = [
   {
     title: 'Customers',
     icon: Users,
-    path: null,
+    path: '/admin/customers',
     basePath: '/admin/customers',
-    subs: [
-      { label: 'Customer Profiles', tab: 'profiles', path: '/admin/customers' },
-      { label: 'Reviews & Feedback', tab: 'reviews', path: '/admin/customers' },
-    ],
+    subs: [],
   },
   {
     title: 'User Management',
