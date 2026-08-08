@@ -36,7 +36,7 @@ class SocialAuthController extends Controller
 
         $payload = false;
 
-        if (class_exists(\Google\Client::class)) {
+        if (class_exists(GoogleClient::class)) {
             try {
                 $client = new GoogleClient(['client_id' => $clientId]);
                 $payload = $client->verifyIdToken($validated['credential']);
