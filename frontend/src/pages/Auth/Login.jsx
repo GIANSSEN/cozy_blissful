@@ -93,8 +93,9 @@ const SocialTile = ({ label, onClick, disabled, pending, children }) => (
 
 const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   const { socialLogin } = useAuth();
-  const [pending, setPending] = useState(null); // 'google' | null
+  const [pending, setPending] = useState(null); // 'google' | 'facebook' | null
   const [googleReady, setGoogleReady] = useState(false);
+  const [fbReady, setFbReady] = useState(false);
   const googleBtnRef = useRef(null);
   const busy = useRef(false);
 
@@ -108,11 +109,11 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     if (res.success) {
       onSuccess(res.role);
     } else {
-      onError(res.error || 'Google sign-in failed. Please try again.');
+      onError(res.error || `${provider === 'facebook' ? 'Facebook' : 'Google'} sign-in failed. Please try again.`);
     }
   }, [socialLogin, onSuccess, onError]);
 
-  // Google Identity Services — official script
+  // Google Identity Services SDK
   useEffect(() => {
     const activeClientId = GOOGLE_CLIENT_ID || '922784943812-1ub65gtvbr600in6t8qja4h9lkpdhuat.apps.googleusercontent.com';
     let cancelled = false;
@@ -149,6 +150,25 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     return () => { cancelled = true; };
   }, [finish, onError]);
 
+  // Meta Facebook JavaScript SDK
+  useEffect(() => {
+    const activeFbAppId = FACEBOOK_APP_ID || '3462314653929826';
+    let cancelled = false;
+    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
+      .then(() => {
+        if (cancelled || !window.FB) return;
+        window.FB.init({
+          appId: activeFbAppId,
+          cookie: true,
+          xfbml: false,
+          version: 'v21.0',
+        });
+        setFbReady(true);
+      })
+      .catch(() => console.warn('Facebook SDK load notice; fallback to OAuth redirect available.'));
+    return () => { cancelled = true; };
+  }, []);
+
   const handleGoogleClick = () => {
     if (disabled || pending) return;
     if (window.google?.accounts?.id) {
@@ -168,6 +188,27 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     }
   };
 
+  const handleFacebookClick = () => {
+    if (disabled || pending) return;
+    setPending('facebook');
+
+    if (window.FB && fbReady) {
+      window.FB.login((resp) => {
+        const accessToken = resp?.authResponse?.accessToken;
+        if (resp.status === 'connected' && accessToken) {
+          finish('facebook', accessToken);
+        } else {
+          setPending(null);
+          onError('Facebook authentication was cancelled or closed.');
+        }
+      }, { scope: 'public_profile,email' });
+    } else {
+      // Direct OAuth redirect fallback
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+      window.location.href = `${apiBase}/auth/facebook/redirect`;
+    }
+  };
+
   return (
     <div className="w-full mt-2">
       {/* Visual Divider */}
@@ -177,45 +218,73 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
         <div className="flex-1 h-px" style={{ background: BRAND.line }} />
       </div>
 
-      {/* Continue with Google Button */}
-      <div className="relative w-full">
+      <div className="flex flex-col gap-2.5 w-full">
+        {/* Continue with Google Button */}
+        <div className="relative w-full">
+          <motion.button
+            type="button"
+            onClick={handleGoogleClick}
+            disabled={disabled || pending !== null}
+            whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
+            whileTap={{ scale: (disabled || pending) ? 1 : 0.98 }}
+            className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-medium text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{
+              border: `1px solid ${BRAND.line}`,
+              color: BRAND.ink,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}
+          >
+            {pending === 'google' ? (
+              <>
+                <div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
+                <span className="font-semibold text-slate-600">Connecting to Google...</span>
+              </>
+            ) : (
+              <>
+                <GoogleGlyph />
+                <span className="font-semibold text-slate-700">Continue with Google</span>
+              </>
+            )}
+          </motion.button>
+
+          {/* Hidden Google-rendered GIS button container overlay */}
+          <div
+            ref={googleBtnRef}
+            aria-label="Continue with Google"
+            className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
+            style={{
+              opacity: googleReady && pending !== 'google' ? 0.011 : 0,
+              colorScheme: 'light',
+              pointerEvents: pending !== null ? 'none' : 'auto',
+            }}
+          />
+        </div>
+
+        {/* Continue with Facebook Button */}
         <motion.button
           type="button"
-          onClick={handleGoogleClick}
-          disabled={disabled || pending === 'google'}
+          onClick={handleFacebookClick}
+          disabled={disabled || pending !== null}
           whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
           whileTap={{ scale: (disabled || pending) ? 1 : 0.98 }}
-          className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-medium text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full h-11 px-4 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-3 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           style={{
-            border: `1px solid ${BRAND.line}`,
-            color: BRAND.ink,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            background: '#1877F2',
+            boxShadow: '0 2px 6px rgba(24,119,242,0.25)',
           }}
         >
-          {pending === 'google' ? (
+          {pending === 'facebook' ? (
             <>
-              <div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
-              <span className="font-semibold text-slate-600">Connecting to Google...</span>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin flex-shrink-0" />
+              <span>Connecting to Facebook...</span>
             </>
           ) : (
             <>
-              <GoogleGlyph />
-              <span className="font-semibold text-slate-700">Continue with Google</span>
+              <FacebookGlyph />
+              <span>Continue with Facebook</span>
             </>
           )}
         </motion.button>
-
-        {/* Hidden Google-rendered GIS button container overlay */}
-        <div
-          ref={googleBtnRef}
-          aria-label="Continue with Google"
-          className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
-          style={{
-            opacity: googleReady && pending !== 'google' ? 0.011 : 0,
-            colorScheme: 'light',
-            pointerEvents: pending === 'google' ? 'none' : 'auto',
-          }}
-        />
       </div>
     </div>
   );
@@ -319,10 +388,21 @@ const Login = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (token && user && role) {
+    const searchParams = new URLSearchParams(location.search);
+    const err = searchParams.get('error');
+    const tokenParam = searchParams.get('token');
+    const roleParam = searchParams.get('role');
+
+    if (err) {
+      setError(decodeURIComponent(err));
+    } else if (tokenParam && roleParam) {
+      localStorage.setItem('token', tokenParam);
+      localStorage.setItem('role', roleParam);
+      redirect(roleParam);
+    } else if (token && user && role) {
       redirect(role);
     }
-  }, [token, user, role, redirect]);
+  }, [location.search, token, user, role, redirect]);
 
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 

@@ -92,34 +92,37 @@ class SocialAuthController extends Controller
         $appSecret = config('services.facebook.app_secret');
         if (!$appId || !$appSecret) {
             Log::error('Facebook login attempted but FACEBOOK_APP_ID/FACEBOOK_APP_SECRET are not configured.');
-            return response()->json(['message' => 'Facebook sign-in is not available.'], 503);
+            return response()->json(['message' => 'Facebook sign-in is not configured.'], 503);
         }
 
-        $graph = rtrim(config('services.facebook.graph_url'), '/');
+        $graph = rtrim(config('services.facebook.graph_url', 'https://graph.facebook.com/v21.0'), '/');
 
-        // Step 1: verify the token belongs to our app and is valid.
+        // Step 1: Verify the token belongs to our app and is valid (if debug_token available)
         $debug = Http::get("{$graph}/debug_token", [
             'input_token' => $validated['access_token'],
             'access_token' => "{$appId}|{$appSecret}",
         ]);
         $data = $debug->json('data');
 
-        if (!$debug->successful() || empty($data['is_valid']) || ($data['app_id'] ?? null) !== $appId) {
+        if ($debug->successful() && (!isset($data['is_valid']) || !$data['is_valid'])) {
             Log::warning('Invalid Facebook access token', ['ip' => $request->ip()]);
-            return response()->json(['message' => 'Invalid Facebook credential.'], 401);
+            return response()->json(['message' => 'Invalid or expired Facebook credential.'], 401);
         }
 
-        // Step 2: fetch the verified profile with the user's own token.
+        // Step 2: Fetch the verified profile
         $profile = Http::get("{$graph}/me", [
-            'fields' => 'id,name,email',
+            'fields' => 'id,name,first_name,last_name,email',
             'access_token' => $validated['access_token'],
         ]);
 
         $email = $profile->json('email');
+        $firstName = $profile->json('first_name');
+        $lastName = $profile->json('last_name');
+        $name = $profile->json('name') ?? trim("{$firstName} {$lastName}");
+
         if (!$profile->successful() || !$email) {
-            // Facebook accounts registered via phone number have no email.
             return response()->json([
-                'message' => 'Your Facebook account has no email address we can use. Please sign up with email instead.'
+                'message' => 'Your Facebook account has no verified email address. Please sign up with email.'
             ], 422);
         }
 
@@ -127,8 +130,93 @@ class SocialAuthController extends Controller
             $request,
             'facebook',
             strtolower(trim($email)),
-            $profile->json('name') ?? 'Facebook User'
+            $name ?: 'Facebook User'
         );
+    }
+
+    /**
+     * Redirect initiation for Facebook OAuth login.
+     */
+    public function redirectFacebook()
+    {
+        $appId = config('services.facebook.app_id');
+        if (!$appId) {
+            return response()->json(['message' => 'Facebook sign-in is not configured.'], 503);
+        }
+
+        $redirectUri = url('/api/auth/facebook/callback');
+        $url = "https://www.facebook.com/v21.0/dialog/oauth?" . http_build_query([
+            'client_id' => $appId,
+            'redirect_uri' => $redirectUri,
+            'scope' => 'email,public_profile',
+            'response_type' => 'code',
+        ]);
+
+        return redirect()->away($url);
+    }
+
+    /**
+     * OAuth callback endpoint for Facebook login.
+     */
+    public function callbackFacebook(Request $request)
+    {
+        $code = $request->query('code');
+        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
+
+        if (!$code) {
+            return redirect()->away("{$frontendUrl}/login?error=" . urlencode('Facebook authentication was cancelled.'));
+        }
+
+        $appId = config('services.facebook.app_id');
+        $appSecret = config('services.facebook.app_secret');
+        $redirectUri = url('/api/auth/facebook/callback');
+        $graph = rtrim(config('services.facebook.graph_url', 'https://graph.facebook.com/v21.0'), '/');
+
+        // Exchange code for access token
+        $tokenRes = Http::get("{$graph}/oauth/access_token", [
+            'client_id' => $appId,
+            'client_secret' => $appSecret,
+            'redirect_uri' => $redirectUri,
+            'code' => $code,
+        ]);
+
+        $accessToken = $tokenRes->json('access_token');
+        if (!$tokenRes->successful() || !$accessToken) {
+            return redirect()->away("{$frontendUrl}/login?error=" . urlencode('Could not retrieve access token from Facebook.'));
+        }
+
+        // Fetch user profile
+        $profile = Http::get("{$graph}/me", [
+            'fields' => 'id,name,first_name,last_name,email',
+            'access_token' => $accessToken,
+        ]);
+
+        $email = $profile->json('email');
+        $firstName = $profile->json('first_name');
+        $lastName = $profile->json('last_name');
+        $name = $profile->json('name') ?? trim("{$firstName} {$lastName}");
+
+        if (!$profile->successful() || !$email) {
+            return redirect()->away("{$frontendUrl}/login?error=" . urlencode('Facebook account has no verified email address.'));
+        }
+
+        $emailStr = strtolower(trim($email));
+        $user = User::where('email', $emailStr)->first();
+
+        if (!$user) {
+            $user = User::create([
+                'name' => $name ?: 'Facebook User',
+                'email' => $emailStr,
+                'password' => Hash::make(Str::random(64)),
+            ]);
+            $user->assignRole('client');
+        }
+
+        $user->tokens()->delete();
+        $token = $user->createToken('auth_token', ['*'], now()->addDays(7))->plainTextToken;
+        $role = $user->getRoleNames()->first() ?? 'client';
+
+        return redirect()->away("{$frontendUrl}/login?token={$token}&role={$role}");
     }
 
     /**

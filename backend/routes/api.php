@@ -18,6 +18,9 @@ Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/auth/google', [SocialAuthController::class, 'google'])->middleware('throttle.login');
 Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middleware('throttle.login');
+Route::get('/auth/facebook/redirect', [SocialAuthController::class, 'redirectFacebook']);
+Route::get('/auth/facebook/callback', [SocialAuthController::class, 'callbackFacebook']);
+
 
 // Protected routes group
 Route::middleware('auth:sanctum')->group(function () {
