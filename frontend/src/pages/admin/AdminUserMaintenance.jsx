@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
+import { useTheme } from '../../context/ThemeContext';
 import {
   Users, Calendar, Shield, Lock, Save,
   CheckCircle2, Crown, Stethoscope, UserCog, User,
@@ -9,7 +10,7 @@ import {
   CalendarDays, Star, Clock,
   ChevronUp, ChevronDown,
   BadgeCheck, TrendingUp, Activity, SlidersHorizontal,
-  RotateCcw, CheckCheck, Plus, Eye, EyeOff,
+  RotateCcw, CheckCheck, Plus, Eye, EyeOff, AlertCircle, Check,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -174,13 +175,13 @@ function validateUserForm(form, isNew = false, allUsers = []) {
   else if (form.name.trim().length < 2) e.name = 'Name must be at least 2 characters';
 
   if (!form.email.trim()) e.email = 'Email address is required';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email (e.g. user@cozy.spa)';
-  else if (isNew && allUsers.find(u => u.email.toLowerCase() === form.email.toLowerCase())) {
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = 'Enter a valid email (e.g. user@cozy.spa)';
+  else if (isNew && allUsers.find(u => u.email.toLowerCase() === form.email.trim().toLowerCase())) {
     e.email = 'This email is already registered';
   }
 
   if (!form.phone.trim()) e.phone = 'Phone number is required';
-  else if (!/^[+\d\s\-()]{7,}$/.test(form.phone)) e.phone = 'Enter a valid phone number';
+  else if (!/^[+\d\s\-()]{7,}$/.test(form.phone.trim())) e.phone = 'Enter a valid phone number';
 
   if (!form.specialty.trim()) e.specialty = 'Specialization / position is required';
 
@@ -206,14 +207,16 @@ function validateUserForm(form, isNew = false, allUsers = []) {
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/*  ADD USER MODAL                                                  */
+/*  ADD USER MODAL (RESPONSIVE & THEMED)                            */
 /* ═══════════════════════════════════════════════════════════════ */
 function AddUserModal({ onClose, onAdd, allUsers }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [form,   setForm]   = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [showPw, setShowPw] = useState(false);
   const [showCf, setShowCf] = useState(false);
-  const [step,   setStep]   = useState(1); // 1 = basic info, 2 = account setup
+  const [step,   setStep]   = useState(1);
 
   const set = (key, val) => {
     setForm(p => ({ ...p, [key]: val }));
@@ -226,8 +229,12 @@ function AddUserModal({ onClose, onAdd, allUsers }) {
     stepFields.forEach(f => {
       if (!form[f].trim()) partial[f] = `${f.charAt(0).toUpperCase() + f.slice(1)} is required`;
     });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) partial.email = 'Enter a valid email';
-    if (allUsers.find(u => u.email.toLowerCase() === form.email.toLowerCase())) partial.email = 'Email already registered';
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      partial.email = 'Enter a valid email (e.g. maria@cozy.spa)';
+    }
+    if (form.email.trim() && allUsers.find(u => u.email.toLowerCase() === form.email.trim().toLowerCase())) {
+      partial.email = 'This email is already registered';
+    }
     if (Object.keys(partial).length) { setErrors(partial); return; }
     setStep(2);
   };
@@ -250,7 +257,7 @@ function AddUserModal({ onClose, onAdd, allUsers }) {
 
   const Field = ({ label, fkey, type = 'text', placeholder = '', hint = '' }) => (
     <div className="space-y-1">
-      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">
+      <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
         {label}
       </label>
       <input
@@ -258,32 +265,32 @@ function AddUserModal({ onClose, onAdd, allUsers }) {
         value={form[fkey]}
         onChange={e => set(fkey, e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 rounded-xl text-[12.5px] font-medium outline-none transition-all"
+        className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold outline-none transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
         style={{
-          background: '#f8fafc',
-          border: `1.5px solid ${errors[fkey] ? '#ef4444' : '#e2e8f0'}`,
-          color: '#1a1d23',
+          background: isDark ? '#0f1420' : '#f8fafc',
+          border: `1.5px solid ${errors[fkey] ? '#ef4444' : isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+          color: isDark ? '#f8fafc' : '#0f172a',
         }}
       />
-      {hint && !errors[fkey] && <p className="text-[9px] text-slate-400">{hint}</p>}
-      {errors[fkey] && <p className="text-[10px] text-red-500 font-medium">{errors[fkey]}</p>}
+      {hint && !errors[fkey] && <p className="text-[10px] text-slate-400">{hint}</p>}
+      {errors[fkey] && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1"><AlertCircle className="w-3 h-3 flex-shrink-0" /> {errors[fkey]}</p>}
     </div>
   );
 
   const PasswordField = ({ label, fkey, show, toggleShow }) => (
     <div className="space-y-1">
-      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</label>
+      <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">{label}</label>
       <div className="relative">
         <input
           type={show ? 'text' : 'password'}
           value={form[fkey]}
           onChange={e => set(fkey, e.target.value)}
           placeholder="••••••••"
-          className="w-full px-3.5 py-2.5 pr-10 rounded-xl text-[12.5px] font-medium outline-none transition-all"
+          className="w-full px-3.5 py-2.5 pr-10 rounded-xl text-xs font-semibold outline-none transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
           style={{
-            background: '#f8fafc',
-            border: `1.5px solid ${errors[fkey] ? '#ef4444' : '#e2e8f0'}`,
-            color: '#1a1d23',
+            background: isDark ? '#0f1420' : '#f8fafc',
+            border: `1.5px solid ${errors[fkey] ? '#ef4444' : isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+            color: isDark ? '#f8fafc' : '#0f172a',
           }}
         />
         <button type="button" onClick={toggleShow}
@@ -291,95 +298,97 @@ function AddUserModal({ onClose, onAdd, allUsers }) {
           {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
       </div>
-      {errors[fkey] && <p className="text-[10px] text-red-500 font-medium">{errors[fkey]}</p>}
+      {errors[fkey] && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1"><AlertCircle className="w-3 h-3 flex-shrink-0" /> {errors[fkey]}</p>}
     </div>
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
 
       <motion.div
-        initial={{ opacity: 0, y: 60 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 60 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
-        style={{ maxHeight: '92vh', boxShadow: '0 24px 80px rgba(0,0,0,0.2)' }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col my-auto max-h-[85vh]"
+        style={{
+          background: isDark ? '#141927' : '#ffffff',
+          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <div className="px-5 sm:px-6 py-4 flex-shrink-0 flex items-center justify-between bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 text-white border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg,#0a3d30,#062c22)' }}>
-              <Plus className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+              <Plus className="w-4 h-4" />
             </div>
             <div>
-              <p className="font-black text-slate-800 text-sm">Add New User</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">
+              <p className="font-black text-white text-sm">Add New User</p>
+              <p className="text-[10px] text-emerald-200/80 mt-0.5">
                 Step {step} of 2 — {step === 1 ? 'Basic Information' : 'Account Setup'}
               </p>
             </div>
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors">
-            <X className="w-4 h-4 text-slate-500" />
+            className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/10 hover:bg-white/20 text-white transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Step indicator */}
-        <div className="flex items-center gap-2 px-5 sm:px-6 pt-4 flex-shrink-0">
+        <div className="px-5 sm:px-6 pt-4 flex-shrink-0 flex items-center gap-2 border-b pb-3" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}>
           {[1, 2].map(s => (
             <React.Fragment key={s}>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all"
                   style={{
-                    background: s <= step ? 'linear-gradient(135deg,#0a3d30,#062c22)' : '#f1f5f9',
+                    background: s <= step ? 'linear-gradient(135deg,#059669,#0a3d30)' : isDark ? '#1e293b' : '#f1f5f9',
                     color: s <= step ? '#fff' : '#94a3b8',
                   }}>
                   {s < step ? <CheckCheck className="w-3 h-3" /> : s}
                 </div>
                 <span className="text-[10px] font-bold hidden sm:block"
-                  style={{ color: s <= step ? '#0a3d30' : '#94a3b8' }}>
+                  style={{ color: s <= step ? (isDark ? '#34d399' : '#0a3d30') : '#94a3b8' }}>
                   {s === 1 ? 'Basic Info' : 'Account Setup'}
                 </span>
               </div>
-              {s < 2 && <div className="flex-1 h-px bg-slate-200" />}
+              {s < 2 && <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />}
             </React.Fragment>
           ))}
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
+        {/* Body Container with min-h-0 overflow-y-auto */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
           <AnimatePresence mode="wait">
             {step === 1 ? (
-              <motion.div key="step1" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 16 }} transition={{ duration: 0.2 }} className="space-y-4">
+              <motion.div key="step1" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.15 }} className="space-y-4">
                 <Field label="Full Name *" fkey="name" placeholder="e.g. Maria Santos" />
                 <Field label="Email Address *" fkey="email" type="email" placeholder="e.g. maria@cozy.spa" />
                 <Field label="Phone Number *" fkey="phone" type="tel" placeholder="e.g. +63 917 123 4567" />
                 <Field label="Specialization / Position *" fkey="specialty" placeholder="e.g. Deep Tissue Therapist" />
-                {/* Role */}
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Role *</label>
+                
+                {/* Role selection */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">Role *</label>
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(ROLE_META).filter(([k]) => k !== 'admin').map(([k, v]) => {
                       const Ic = v.icon;
+                      const isSelected = form.role === k;
                       return (
                         <button key={k} type="button" onClick={() => set('role', k)}
-                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-left transition-all"
+                          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-left transition-all cursor-pointer"
                           style={{
-                            background: form.role === k ? `${v.color}08` : '#f8fafc',
-                            borderColor: form.role === k ? v.color : '#e2e8f0',
+                            background: isSelected ? `${v.color}15` : isDark ? '#0f1420' : '#f8fafc',
+                            borderColor: isSelected ? v.color : isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
                           }}>
-                          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
-                            style={{ background: form.role === k ? v.grad : '#f1f5f9' }}>
-                            <Ic className="w-3.5 h-3.5" style={{ color: form.role === k ? '#fff' : '#94a3b8' }} />
+                          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                            style={{ background: isSelected ? v.grad : isDark ? '#1e293b' : '#f1f5f9' }}>
+                            <Ic className="w-3.5 h-3.5 text-white" />
                           </div>
-                          <span className="text-[11px] font-bold" style={{ color: form.role === k ? v.color : '#64748b' }}>
+                          <span className="text-xs font-bold" style={{ color: isSelected ? v.color : isDark ? '#cbd5e1' : '#64748b' }}>
                             {v.label}
                           </span>
                         </button>
@@ -387,70 +396,71 @@ function AddUserModal({ onClose, onAdd, allUsers }) {
                     })}
                   </div>
                 </div>
-                {/* Commission — therapist only */}
+
+                {/* Commission Rate */}
                 {form.role === 'therapist' && (
                   <div className="space-y-1">
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
                       Commission Rate (%) *
                     </label>
                     <input type="number" min="0" max="100"
                       value={form.commRate}
                       onChange={e => set('commRate', e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl text-[12.5px] font-medium outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold outline-none transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                       style={{
-                        background: '#f8fafc',
-                        border: `1.5px solid ${errors.commRate ? '#ef4444' : '#e2e8f0'}`,
-                        color: '#1a1d23',
+                        background: isDark ? '#0f1420' : '#f8fafc',
+                        border: `1.5px solid ${errors.commRate ? '#ef4444' : isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                        color: isDark ? '#f8fafc' : '#0f172a',
                       }}
                     />
-                    {errors.commRate && <p className="text-[10px] text-red-500 font-medium">{errors.commRate}</p>}
+                    {errors.commRate && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1"><AlertCircle className="w-3 h-3 flex-shrink-0" /> {errors.commRate}</p>}
                   </div>
                 )}
               </motion.div>
             ) : (
-              <motion.div key="step2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.2 }} className="space-y-4">
-                {/* Summary card */}
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+              <motion.div key="step2" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.15 }} className="space-y-4">
+                {/* User Summary Card */}
+                <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
                   <Avatar name={form.name} gradient={ROLE_META[form.role]?.grad} size={42} />
-                  <div className="min-w-0">
-                    <p className="font-black text-slate-800 text-sm truncate">{form.name || 'New User'}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{form.email}</p>
-                    <RolePill role={form.role} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-extrabold text-slate-900 dark:text-slate-100 text-sm truncate">{form.name || 'New User'}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{form.email}</p>
+                    <div className="mt-1">
+                      <RolePill role={form.role} />
+                    </div>
                   </div>
                 </div>
 
                 <PasswordField label="Password *" fkey="password"
                   show={showPw} toggleShow={() => setShowPw(p => !p)} />
-                <div className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-100">
-                  <p className="text-[10px] text-blue-700 font-medium">
-                    Password requirements: 8+ characters, 1 uppercase letter, 1 number.
-                  </p>
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs font-medium text-blue-700 dark:text-blue-300">
+                  Password requirements: 8+ characters, 1 uppercase letter, 1 number.
                 </div>
                 <PasswordField label="Confirm Password *" fkey="confirmPassword"
                   show={showCf} toggleShow={() => setShowCf(p => !p)} />
 
-                {/* Status */}
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                {/* Status Toggle */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">
                     Account Status
                   </label>
                   <div className="flex gap-2">
                     {['active', 'inactive'].map(s => (
                       <button key={s} type="button" onClick={() => set('status', s)}
-                        className="flex-1 py-2.5 rounded-xl text-[11px] font-bold border-2 transition-all"
+                        className="flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all cursor-pointer"
                         style={{
                           background: form.status === s
-                            ? (s === 'active' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)')
-                            : '#f8fafc',
+                            ? (s === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)')
+                            : isDark ? '#0f1420' : '#f8fafc',
                           borderColor: form.status === s
                             ? (s === 'active' ? '#10b981' : '#ef4444')
-                            : '#e2e8f0',
+                            : isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
                           color: form.status === s
-                            ? (s === 'active' ? '#065f46' : '#dc2626')
+                            ? (s === 'active' ? (isDark ? '#34d399' : '#065f46') : (isDark ? '#f87171' : '#dc2626'))
                             : '#94a3b8',
                         }}>
-                        {s === 'active' ? '✓ Active' : '✕ Inactive'}
+                        {s === 'active' ? '✓ Active Account' : '✕ Inactive Account'}
                       </button>
                     ))}
                   </div>
@@ -460,30 +470,28 @@ function AddUserModal({ onClose, onAdd, allUsers }) {
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-2.5 px-5 sm:px-6 py-4 flex-shrink-0"
-          style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        {/* Modal Footer (Flex-shrink-0) */}
+        <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 flex-shrink-0 border-t bg-slate-50/50 dark:bg-slate-900/50"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
           {step === 1 ? (
             <>
               <button onClick={onClose}
-                className="flex-1 py-2.5 rounded-xl text-[12px] font-bold border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+                className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 Cancel
               </button>
               <button onClick={handleNext}
-                className="flex-1 py-2.5 rounded-xl text-[12px] font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
-                style={{ background: 'linear-gradient(135deg,#0a3d30,#062c22)', boxShadow: '0 4px 12px rgba(10,61,48,0.25)' }}>
+                className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 active:scale-95 transition-all shadow-md">
                 Next →
               </button>
             </>
           ) : (
             <>
               <button onClick={() => setStep(1)}
-                className="flex-1 py-2.5 rounded-xl text-[12px] font-bold border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+                className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 ← Back
               </button>
               <button onClick={handleSubmit}
-                className="flex-1 py-2.5 rounded-xl text-[12px] font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
-                style={{ background: 'linear-gradient(135deg,#0a3d30,#062c22)', boxShadow: '0 4px 12px rgba(10,61,48,0.25)' }}>
+                className="px-5 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 active:scale-95 transition-all shadow-md">
                 Add User
               </button>
             </>
@@ -495,9 +503,11 @@ function AddUserModal({ onClose, onAdd, allUsers }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/*  EDIT USER MODAL                                                 */
+/*  EDIT USER MODAL (RESPONSIVE & THEMED)                           */
 /* ═══════════════════════════════════════════════════════════════ */
 function EditUserModal({ user, onClose, onSave, allUsers }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [form, setForm] = useState({
     name: user.name || '', email: user.email || '', phone: user.phone || '',
     specialty: user.specialty || '', role: user.role || 'staff',
@@ -519,70 +529,76 @@ function EditUserModal({ user, onClose, onSave, allUsers }) {
 
   const Field = ({ label, fkey, type = 'text', placeholder = '' }) => (
     <div className="space-y-1">
-      <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</label>
+      <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">{label}</label>
       <input type={type} value={form[fkey]}
         onChange={e => set(fkey, e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 rounded-xl text-[12.5px] font-medium outline-none transition-all"
-        style={{ background: '#f8fafc', border: `1.5px solid ${errors[fkey] ? '#ef4444' : '#e2e8f0'}`, color: '#1a1d23' }}
+        className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold outline-none transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+        style={{
+          background: isDark ? '#0f1420' : '#f8fafc',
+          border: `1.5px solid ${errors[fkey] ? '#ef4444' : isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+          color: isDark ? '#f8fafc' : '#0f172a',
+        }}
       />
-      {errors[fkey] && <p className="text-[10px] text-red-500 font-medium">{errors[fkey]}</p>}
+      {errors[fkey] && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1"><AlertCircle className="w-3 h-3 flex-shrink-0" /> {errors[fkey]}</p>}
     </div>
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
 
       <motion.div
-        initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 60 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col"
-        style={{ maxHeight: '92vh', boxShadow: '0 24px 80px rgba(0,0,0,0.2)' }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }} transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden flex flex-col my-auto max-h-[85vh]"
+        style={{
+          background: isDark ? '#141927' : '#ffffff',
+          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+        }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 flex-shrink-0 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 text-white border-b border-white/10">
           <div className="flex items-center gap-3">
             <Avatar name={form.name} gradient={ROLE_META[form.role]?.grad} size={38} />
             <div>
-              <p className="font-black text-slate-800 text-sm">Edit Profile</p>
-              <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[180px]">{user.email}</p>
+              <p className="font-black text-white text-sm">Edit User Profile</p>
+              <p className="text-[10px] text-emerald-200/80 mt-0.5 truncate max-w-[180px]">{user.email}</p>
             </div>
           </div>
           <button onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors">
-            <X className="w-4 h-4 text-slate-500" />
+            className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/10 hover:bg-white/20 text-white transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
+        {/* Body Container with min-h-0 overflow-y-auto */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-6 py-4 space-y-4">
           <Field label="Full Name *" fkey="name" />
           <Field label="Email Address *" fkey="email" type="email" />
           <Field label="Phone Number *" fkey="phone" type="tel" />
           <Field label="Specialization / Position *" fkey="specialty" />
 
           {/* Role */}
-          <div className="space-y-1">
-            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Role</label>
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">Role</label>
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(ROLE_META).map(([k, v]) => {
                 const Ic = v.icon;
+                const isSelected = form.role === k;
                 return (
                   <button key={k} type="button" onClick={() => set('role', k)}
-                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all"
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-left transition-all cursor-pointer"
                     style={{
-                      background: form.role === k ? `${v.color}08` : '#f8fafc',
-                      borderColor: form.role === k ? v.color : '#e2e8f0',
+                      background: isSelected ? `${v.color}15` : isDark ? '#0f1420' : '#f8fafc',
+                      borderColor: isSelected ? v.color : isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
                     }}>
                     <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: form.role === k ? v.grad : '#f1f5f9' }}>
-                      <Ic className="w-3 h-3" style={{ color: form.role === k ? '#fff' : '#94a3b8' }} />
+                      style={{ background: isSelected ? v.grad : isDark ? '#1e293b' : '#f1f5f9' }}>
+                      <Ic className="w-3 h-3 text-white" />
                     </div>
-                    <span className="text-[11px] font-bold truncate" style={{ color: form.role === k ? v.color : '#64748b' }}>
+                    <span className="text-xs font-bold truncate" style={{ color: isSelected ? v.color : isDark ? '#cbd5e1' : '#64748b' }}>
                       {v.label}
                     </span>
                   </button>
@@ -593,29 +609,33 @@ function EditUserModal({ user, onClose, onSave, allUsers }) {
 
           {form.role === 'therapist' && (
             <div className="space-y-1">
-              <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Commission Rate (%)</label>
+              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">Commission Rate (%)</label>
               <input type="number" min="0" max="100" value={form.commRate}
                 onChange={e => set('commRate', e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl text-[12.5px] font-medium outline-none"
-                style={{ background: '#f8fafc', border: `1.5px solid ${errors.commRate ? '#ef4444' : '#e2e8f0'}`, color: '#1a1d23' }}
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold outline-none transition-all focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                style={{
+                  background: isDark ? '#0f1420' : '#f8fafc',
+                  border: `1.5px solid ${errors.commRate ? '#ef4444' : isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`,
+                  color: isDark ? '#f8fafc' : '#0f172a',
+                }}
               />
-              {errors.commRate && <p className="text-[10px] text-red-500 font-medium">{errors.commRate}</p>}
+              {errors.commRate && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1"><AlertCircle className="w-3 h-3 flex-shrink-0" /> {errors.commRate}</p>}
             </div>
           )}
 
           {/* Status */}
-          <div className="space-y-2">
-            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Account Status</label>
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-400">Account Status</label>
             <div className="flex gap-2">
               {['active', 'inactive'].map(s => (
                 <button key={s} type="button" onClick={() => set('status', s)}
-                  className="flex-1 py-2.5 rounded-xl text-[11px] font-bold border-2 transition-all"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all cursor-pointer"
                   style={{
-                    background: form.status === s ? (s === 'active' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)') : '#f8fafc',
-                    borderColor: form.status === s ? (s === 'active' ? '#10b981' : '#ef4444') : '#e2e8f0',
-                    color: form.status === s ? (s === 'active' ? '#065f46' : '#dc2626') : '#94a3b8',
+                    background: form.status === s ? (s === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)') : isDark ? '#0f1420' : '#f8fafc',
+                    borderColor: form.status === s ? (s === 'active' ? '#10b981' : '#ef4444') : isDark ? 'rgba(255,255,255,0.08)' : '#e2e8f0',
+                    color: form.status === s ? (s === 'active' ? (isDark ? '#34d399' : '#065f46') : (isDark ? '#f87171' : '#dc2626')) : '#94a3b8',
                   }}>
-                  {s === 'active' ? '✓ Active' : '✕ Inactive'}
+                  {s === 'active' ? '✓ Active Account' : '✕ Inactive Account'}
                 </button>
               ))}
             </div>
