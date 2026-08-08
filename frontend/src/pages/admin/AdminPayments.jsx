@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
-import { DollarSign, CheckCircle, Clock, Plus, Landmark, FileText, ArrowUpRight } from 'lucide-react';
+import { DollarSign, CheckCircle, Clock, Plus, Landmark, FileText, ArrowUpRight, CreditCard } from 'lucide-react';
 
 const AdminPayments = () => {
   const [searchParams] = useSearchParams();
@@ -55,7 +55,7 @@ const AdminPayments = () => {
   ];
 
   return (
-    <AdminLayout title="Financials" subtitle={getPageTitle()}>
+    <AdminLayout title="Financials" subtitle={getPageTitle()} icon={CreditCard}>
       <div className="space-y-6">
         
         {/* Toast Notification */}

@@ -155,7 +155,7 @@ const AdminStaff = () => {
   };
 
   return (
-    <AdminLayout title="Staff & Schedule" subtitle={getPageTitle()}>
+    <AdminLayout title="Staff & Schedule" subtitle={getPageTitle()} icon={UserCheck}>
       <div className="space-y-6">
 
         {/* ── Therapist Profiles Tab ── */}

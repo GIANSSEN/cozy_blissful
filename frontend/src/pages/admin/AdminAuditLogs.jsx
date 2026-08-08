@@ -304,7 +304,7 @@ const AdminAuditLogs = () => {
   }));
 
   return (
-    <AdminLayout title="Audit Logs" subtitle="System-wide activity trail for accountability & security">
+    <AdminLayout title="Audit Logs" subtitle="System-wide activity trail for accountability & security" icon={History}>
       <LogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} t={t} isDark={isDark} />
 
       {/* Export toast */}

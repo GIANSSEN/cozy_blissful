@@ -6,7 +6,7 @@ import StaffLayout from './StaffLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import {
   Users, Calendar, Clock, CheckCircle, Activity,
-  UserCheck, Check, RefreshCw, CalendarDays
+  UserCheck, Check, RefreshCw, CalendarDays, LayoutDashboard
 } from 'lucide-react';
 
 /* ── Design tokens ───────────────────────────────────────────────── */
@@ -106,7 +106,7 @@ const StaffDashboard = () => {
   const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <StaffLayout title="Dashboard" subtitle="Coordinator Overview">
+    <StaffLayout title="Dashboard" subtitle="Coordinator Overview" icon={LayoutDashboard}>
       <div className="space-y-8">
         {/* ── Portal Greeting ── */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}

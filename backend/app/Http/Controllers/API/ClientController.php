@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Notification;
 use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
@@ -203,6 +204,14 @@ class ClientController extends Controller
                 Log::error('Failed to send booking confirmation email: ' . $e->getMessage());
             }
         }
+
+        // Create admin notification for new booking
+        Notification::create([
+            'type'           => 'new_booking',
+            'title'          => 'New Booking Received',
+            'description'    => $user->name . ' — ' . $service->name . ' on ' . $parsedDatetime->format('M d, g:i A'),
+            'appointment_id' => $appt->id,
+        ]);
 
         return response()->json([
             'message' => 'Booking created successfully!',

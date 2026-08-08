@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 /* ── Staff Search Index ──────────────────────────────────────────── */
 const STAFF_SEARCH_INDEX = [
   { label: 'Staff Dashboard', desc: 'Daily Overview & Operations', path: '/staff/dashboard', category: 'Pages' },
-  { label: 'Manage Appointments', desc: 'Bookings & Client Scheduling', path: '/staff/appointments', category: 'Pages' },
+  { label: 'Manage Bookings', desc: 'Bookings & Client Scheduling', path: '/staff/appointments', category: 'Pages' },
   { label: 'Therapist Schedules', desc: 'Availability & Roster Management', path: '/staff/therapists', category: 'Pages' },
 ];
 
@@ -17,7 +17,7 @@ const STAFF_SEARCH_INDEX = [
  * StaffLayout — layout shell for staff portal pages.
  * Features functional search, keyboard shortcuts (Ctrl+K), and enhanced user avatar dropdown.
  */
-const StaffLayout = ({ children, title = 'Staff Portal', subtitle }) => {
+const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIcon }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,7 +108,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle }) => {
             boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 16px rgba(0,0,0,0.03)',
           }}
         >
-          {/* Left: Hamburger + Page Title */}
+          {/* Left: Hamburger + Page Icon + Page Title */}
           <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
             <button
               onClick={() => setMobileSidebarOpen(true)}
@@ -121,6 +121,19 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle }) => {
             >
               <Menu className="w-4 h-4" />
             </button>
+
+            {/* Per-page icon chip — desktop only */}
+            <div
+              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0"
+              style={{
+                background: 'linear-gradient(135deg,#041e16 0%,#0c4a36 60%,#bfa15f 100%)',
+                boxShadow: '0 2px 12px rgba(10,61,48,0.35)',
+              }}
+            >
+              {PageIcon
+                ? <PageIcon className="w-4 h-4 text-amber-300" />
+                : <Sparkles className="w-4 h-4 text-amber-300" />}
+            </div>
 
             <div className="min-w-0">
               <h1

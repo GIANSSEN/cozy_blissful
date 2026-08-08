@@ -1086,7 +1086,7 @@ const AdminServices = () => {
   const accentColor = isDark ? '#34d399' : '#0a3d30';
 
   return (
-    <AdminLayout title="Service Maintenance" subtitle="Manage services and promotional offers">
+    <AdminLayout title="Service Maintenance" subtitle="Manage services and promotional offers" icon={ShoppingBag}>
       <div className="space-y-5 pb-6">
 
         {/* Tab bar */}

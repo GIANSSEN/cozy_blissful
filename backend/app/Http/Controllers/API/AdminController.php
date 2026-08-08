@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Notification;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\TherapistAvailability;
@@ -129,12 +130,22 @@ class AdminController extends Controller
 
         $appt->load(['client', 'therapist', 'service']);
 
-        if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
-            try {
-                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to send booking approved email: ' . $e->getMessage());
+        if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed') {
+            // Send email
+            if ($appt->client && $appt->client->email) {
+                try {
+                    Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send booking approved email: ' . $e->getMessage());
+                }
             }
+            // Create notification
+            Notification::create([
+                'type'           => 'confirmed',
+                'title'          => 'Booking Confirmed',
+                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'appointment_id' => $appt->id,
+            ]);
         }
 
         return response()->json([
@@ -175,12 +186,38 @@ class AdminController extends Controller
 
         $appt->load(['client', 'therapist', 'service']);
 
-        if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
-            try {
-                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to send booking approved email in updateStatus: ' . $e->getMessage());
+        if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed') {
+            if ($appt->client && $appt->client->email) {
+                try {
+                    Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to send booking approved email in updateStatus: ' . $e->getMessage());
+                }
             }
+            Notification::create([
+                'type'           => 'confirmed',
+                'title'          => 'Booking Confirmed',
+                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'appointment_id' => $appt->id,
+            ]);
+        }
+
+        if ($oldStatus !== 'Completed' && $appt->status === 'Completed') {
+            Notification::create([
+                'type'           => 'completed',
+                'title'          => 'Session Completed',
+                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'appointment_id' => $appt->id,
+            ]);
+        }
+
+        if ($oldStatus !== 'Cancelled' && $appt->status === 'Cancelled') {
+            Notification::create([
+                'type'           => 'cancelled',
+                'title'          => 'Booking Cancelled',
+                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'appointment_id' => $appt->id,
+            ]);
         }
 
         return response()->json([

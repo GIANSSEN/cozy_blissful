@@ -298,7 +298,7 @@ const AdminCustomers = () => {
   };
 
   return (
-    <AdminLayout title="Customers" subtitle="Unified Client Registry, Feedback & Health Safety Records">
+    <AdminLayout title="Customers" subtitle="Unified Client Registry, Feedback & Health Safety Records" icon={Users}>
       
       {/* Toast Alert */}
       <AnimatePresence>

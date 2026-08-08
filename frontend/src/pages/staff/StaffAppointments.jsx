@@ -8,7 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   Clock, UserCheck, Calendar, CheckCircle, AlertCircle,
   Search, RefreshCw, UserPlus, ChevronDown, ChevronUp,
-  Tag, Zap, FileText, X, Check,
+  Tag, Zap, FileText, X, Check, CalendarCheck,
 } from 'lucide-react';
 
 // ─── ClayCard ─────────────────────────────────────────────────────────────────
@@ -663,7 +663,7 @@ const StaffAppointments = () => {
   const countByStatus = (s) => appointments.filter((a) => a.status === s).length;
 
   return (
-    <StaffLayout title="Bookings Overview" subtitle={TABS.find((t) => t.id === activeTab)?.label}>
+    <StaffLayout title="Bookings Overview" subtitle={TABS.find((t) => t.id === activeTab)?.label} icon={CalendarCheck}>
       <div className="space-y-6">
 
         {/* Toast */}

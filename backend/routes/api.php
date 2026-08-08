@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ClientController;
+use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\TherapistController;
 use App\Http\Controllers\API\StaffController;
 use App\Http\Controllers\API\SocialAuthController;
@@ -50,6 +51,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/services', [AdminController::class, 'storeService']);
         Route::put('/services/{id}', [AdminController::class, 'updateService']);
         Route::delete('/services/{id}', [AdminController::class, 'deleteService']);
+
+        // Notifications
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
     });
 
     // Group 2: /therapist/* -> Therapist only

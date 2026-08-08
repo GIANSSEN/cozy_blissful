@@ -46,7 +46,7 @@ const AdminMarketing = () => {
   };
 
   return (
-    <AdminLayout title="Marketing & Loyalty" subtitle={getPageTitle()}>
+    <AdminLayout title="Marketing & Loyalty" subtitle={getPageTitle()} icon={Megaphone}>
       <div className="space-y-6">
 
         {toast && (

@@ -876,7 +876,7 @@ const AdminSettings = () => {
   }`;
 
   return (
-    <AdminLayout title="System Settings" subtitle="Configure operating profile, staff access control, landing page copy & notification triggers">
+    <AdminLayout title="System Settings" subtitle="Configure operating profile, staff access control, landing page copy & notification triggers" icon={Sliders}>
       <div className="space-y-6">
         {/* Toast Alert */}
         <AnimatePresence>

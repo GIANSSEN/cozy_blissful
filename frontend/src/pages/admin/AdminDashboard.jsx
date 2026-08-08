@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from './AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -8,74 +8,275 @@ import {
   DollarSign, Calendar, Users, Activity,
   Clock, MapPin, ArrowUpRight, ArrowDownRight, Zap,
   ChevronRight, Target, X, RefreshCw, Eye,
-  UserCheck, Award, Flame,
+  UserCheck, Award, Flame, TrendingUp, Star,
+  CheckCircle2, AlertCircle, Wifi, LayoutDashboard,
 } from 'lucide-react';
 
 /* ─── animation presets ──────────────────────────────────────────── */
 const fadeUp = (delay = 0, dur = 0.45) => ({
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
+  initial:    { opacity: 0, y: 24 },
+  animate:    { opacity: 1, y: 0  },
   transition: { duration: dur, delay, ease: [0.22, 1, 0.36, 1] },
 });
 
 /* ─── theme tokens ────────────────────────────────────────────────── */
 const TOKENS = {
   light: {
-    canvas:      '#f5f3ee',
-    card:        'rgba(255,255,255,0.96)',
-    cardShadow:  '0 2px 20px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)',
-    cardBorder:  '1px solid rgba(0,0,0,0.07)',
-    inner:       '#faf8f4',
-    innerBorder: '1px solid rgba(0,0,0,0.06)',
-    txt:         '#14181f',
-    txtMuted:    '#8e97a4',
-    txtSub:      '#4a5568',
-    bar:         '#e5e8ef',
-    accent:      '#0a3d30',
-    accentBright:'#0f5f4a',
-    gold:        '#bfa15f',
-    progressBg:  '#e9edf4',
-    tag:         'rgba(0,0,0,0.05)',
-    tagTxt:      '#4a5568',
-    divider:     'rgba(0,0,0,0.07)',
-    hover:       'rgba(0,0,0,0.03)',
-    success:     '#10b981',
-    warning:     '#f59e0b',
-    danger:      '#ef4444',
-    info:        '#6366f1',
-    pink:        '#ec4899',
+    canvas:       '#f2f4f7',
+    card:         'rgba(255,255,255,0.98)',
+    cardShadow:   '0 1px 3px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.06)',
+    cardBorder:   '1px solid rgba(0,0,0,0.07)',
+    cardGlow:     '0 0 0 1px rgba(10,61,48,0.04)',
+    inner:        '#f8f9fb',
+    innerBorder:  '1px solid rgba(0,0,0,0.06)',
+    txt:          '#0d1117',
+    txtMuted:     '#94a3b8',
+    txtSub:       '#4a5568',
+    bar:          '#e8edf4',
+    accent:       '#0a3d30',
+    accentBright: '#0f5f4a',
+    accentAlpha:  'rgba(10,61,48,0.1)',
+    gold:         '#bfa15f',
+    goldAlpha:    'rgba(191,161,95,0.12)',
+    progressBg:   '#e9edf4',
+    tag:          'rgba(0,0,0,0.05)',
+    tagTxt:       '#4a5568',
+    divider:      'rgba(0,0,0,0.06)',
+    hover:        'rgba(0,0,0,0.02)',
+    success:      '#10b981',
+    warning:      '#f59e0b',
+    danger:       '#ef4444',
+    info:         '#6366f1',
+    pink:         '#ec4899',
+    tableStripe:  'rgba(0,0,0,0.015)',
+    chartLine:    '#0a3d30',
+    chartFill:    'rgba(10,61,48,0.06)',
   },
   dark: {
-    canvas:      '#0e1320',
-    card:        '#161d2c',
-    cardShadow:  '0 4px 28px rgba(0,0,0,0.4)',
-    cardBorder:  '1px solid rgba(255,255,255,0.07)',
-    inner:       '#111827',
-    innerBorder: '1px solid rgba(255,255,255,0.06)',
-    txt:         '#dde6f0',
-    txtMuted:    '#4e5e72',
-    txtSub:      '#7b8da4',
-    bar:         'rgba(255,255,255,0.07)',
-    accent:      '#34d399',
-    accentBright:'#6ee7b7',
-    gold:        '#d4b87a',
-    progressBg:  'rgba(255,255,255,0.07)',
-    tag:         'rgba(255,255,255,0.08)',
-    tagTxt:      '#7b8da4',
-    divider:     'rgba(255,255,255,0.07)',
-    hover:       'rgba(255,255,255,0.03)',
-    success:     '#34d399',
-    warning:     '#fbbf24',
-    danger:      '#f87171',
-    info:        '#818cf8',
-    pink:        '#f472b6',
+    canvas:       '#0b0f1a',
+    card:         '#131b2a',
+    cardShadow:   '0 4px 32px rgba(0,0,0,0.45)',
+    cardBorder:   '1px solid rgba(255,255,255,0.07)',
+    cardGlow:     '0 0 0 1px rgba(52,211,153,0.04)',
+    inner:        '#0f1623',
+    innerBorder:  '1px solid rgba(255,255,255,0.06)',
+    txt:          '#dde6f0',
+    txtMuted:     '#3d5166',
+    txtSub:       '#6b7fa0',
+    bar:          'rgba(255,255,255,0.07)',
+    accent:       '#34d399',
+    accentBright: '#6ee7b7',
+    accentAlpha:  'rgba(52,211,153,0.1)',
+    gold:         '#d4b87a',
+    goldAlpha:    'rgba(212,184,122,0.1)',
+    progressBg:   'rgba(255,255,255,0.07)',
+    tag:          'rgba(255,255,255,0.07)',
+    tagTxt:       '#6b7fa0',
+    divider:      'rgba(255,255,255,0.06)',
+    hover:        'rgba(255,255,255,0.02)',
+    success:      '#34d399',
+    warning:      '#fbbf24',
+    danger:       '#f87171',
+    info:         '#818cf8',
+    pink:         '#f472b6',
+    tableStripe:  'rgba(255,255,255,0.016)',
+    chartLine:    '#34d399',
+    chartFill:    'rgba(52,211,153,0.06)',
   },
 };
 
-/* ─── reusable card ───────────────────────────────────────────────── */
+/* ─── STATUS_MAP ──────────────────────────────────────────────────── */
+const STATUS_MAP = {
+  'In Progress': { color: '#10b981', bg: 'rgba(16,185,129,0.12)',  dot: '#10b981' },
+  'Starting':    { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  dot: '#f59e0b' },
+  'Confirmed':   { color: '#6366f1', bg: 'rgba(99,102,241,0.12)', dot: '#6366f1' },
+  'Pending':     { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  dot: '#f59e0b' },
+  'Completed':   { color: '#34d399', bg: 'rgba(52,211,153,0.12)', dot: '#34d399' },
+  'Cancelled':   { color: '#ef4444', bg: 'rgba(239,68,68,0.12)',   dot: '#ef4444' },
+};
+
+/* ─── Badge ───────────────────────────────────────────────────────── */
+const Badge = ({ status }) => {
+  const s = STATUS_MAP[status] || { color: '#8e97a4', bg: 'rgba(142,151,164,0.1)', dot: '#8e97a4' };
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap"
+      style={{ background: s.bg, color: s.color }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
+      {status}
+    </span>
+  );
+};
+
+/* ─── Sparkline SVG ───────────────────────────────────────────────── */
+const Sparkline = ({ data, color, width = 80, height = 32 }) => {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  });
+  const polyline = pts.join(' ');
+  const areaPath = `M ${pts[0]} ${pts.join(' L ')} L ${width},${height} L 0,${height} Z`;
+
+  return (
+    <svg width={width} height={height} style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={`sg-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#sg-${color.replace('#','')})`} />
+      <polyline points={polyline} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1].split(',')[0]} cy={pts[pts.length - 1].split(',')[1]} r="2.5" fill={color} />
+    </svg>
+  );
+};
+
+/* ─── Circular Progress Ring ──────────────────────────────────────── */
+const Ring = ({ pct, color, size = 56, stroke = 5 }) => {
+  const r  = (size - stroke * 2) / 2;
+  const c  = 2 * Math.PI * r;
+  const dash = (pct / 100) * c;
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
+      <motion.circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={c}
+        initial={{ strokeDashoffset: c }}
+        animate={{ strokeDashoffset: c - dash }}
+        transition={{ duration: 1.1, ease: 'easeOut', delay: 0.2 }}
+      />
+    </svg>
+  );
+};
+
+/* ─── Donut Chart ─────────────────────────────────────────────────── */
+const Donut = ({ segments, size = 120, stroke = 16 }) => {
+  const r = (size - stroke * 2) / 2;
+  const c = 2 * Math.PI * r;
+  let offset = 0;
+  const gap = 0.015;
+
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={stroke} />
+      {segments.map((seg, i) => {
+        const dashLen = ((seg.pct / 100) * (1 - gap * segments.length)) * c;
+        const current = offset;
+        offset += (seg.pct / 100) * c;
+        return (
+          <motion.circle
+            key={i}
+            cx={size / 2} cy={size / 2} r={r}
+            fill="none" stroke={seg.color} strokeWidth={stroke}
+            strokeLinecap="round" strokeDasharray={c}
+            initial={{ strokeDashoffset: c }}
+            animate={{ strokeDashoffset: c - dashLen }}
+            transition={{ duration: 1, delay: i * 0.15 + 0.1, ease: 'easeOut' }}
+            style={{ strokeDashoffset: c - dashLen, strokeDasharray: `${dashLen} ${c - dashLen}`, transform: `rotate(${(current / c) * 360}deg)`, transformOrigin: '50% 50%' }}
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
+/* ─── Area Chart (Revenue) ────────────────────────────────────────── */
+const AreaChart = ({ data, color, fillColor, width = '100%', height = 100 }) => {
+  const containerRef = useRef(null);
+  const [w, setW] = useState(260);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (const e of entries) setW(e.contentRect.width);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  const max = Math.max(...data.map(d => d.val));
+  const min = 0;
+  const range = max - min || 1;
+  const pad = 4;
+  const pts = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * (w - pad * 2) + pad;
+    const y = height - ((d.val - min) / range) * (height - pad * 2) - pad;
+    return { x, y, ...d };
+  });
+  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`).join(' ');
+  const areaD = `${pathD} L ${pts[pts.length - 1].x},${height} L ${pts[0].x},${height} Z`;
+  const gradId = `ag-${Math.random().toString(36).slice(2,7)}`;
+
+  return (
+    <div ref={containerRef} style={{ width, position: 'relative', height }}>
+      <svg width={w} height={height} style={{ overflow: 'visible', display: 'block' }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0"    />
+          </linearGradient>
+        </defs>
+        {/* Grid lines */}
+        {[0.25, 0.5, 0.75].map((f, i) => (
+          <line key={i}
+            x1={pad} y1={height * f}
+            x2={w - pad} y2={height * f}
+            stroke="rgba(255,255,255,0.04)" strokeWidth="1"
+          />
+        ))}
+        <path d={areaD} fill={`url(#${gradId})`} />
+        <motion.path
+          d={pathD} fill="none" stroke={color} strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round"
+          initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+          transition={{ duration: 1.2, ease: 'easeInOut' }}
+        />
+        {pts.map((p, i) => (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r="3" fill={color} opacity="0.85" />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+/* ─── Animated Counter ────────────────────────────────────────────── */
+const Counter = ({ value, prefix = '', suffix = '', duration = 1.2 }) => {
+  const [count, setCount] = useState(0);
+  const numericValue = parseFloat(String(value).replace(/[^0-9.]/g, '')) || 0;
+
+  useEffect(() => {
+    let start = 0;
+    const end = numericValue;
+    if (end === 0) return;
+    const step = end / (duration * 60);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= end) { setCount(end); clearInterval(timer); }
+      else setCount(Math.floor(start));
+    }, 1000 / 60);
+    return () => clearInterval(timer);
+  }, [numericValue, duration]);
+
+  const display = typeof value === 'string' && isNaN(Number(value.replace(/[^0-9.]/g, '')))
+    ? value
+    : `${prefix}${count.toLocaleString()}${suffix}`;
+  return <span>{display}</span>;
+};
+
+/* ─── Card ────────────────────────────────────────────────────────── */
 const Card = ({ children, className = '', style = {}, t, onClick, hoverable = false }) => (
   <div
-    className={`rounded-2xl overflow-hidden ${hoverable ? 'cursor-pointer transition-transform duration-200 active:scale-[0.99] hover:-translate-y-0.5' : ''} ${className}`}
+    className={`rounded-2xl overflow-hidden ${hoverable ? 'cursor-pointer transition-all duration-200 active:scale-[0.98] hover:-translate-y-0.5' : ''} ${className}`}
     style={{ background: t.card, boxShadow: t.cardShadow, border: t.cardBorder, ...style }}
     onClick={onClick}
   >
@@ -83,111 +284,143 @@ const Card = ({ children, className = '', style = {}, t, onClick, hoverable = fa
   </div>
 );
 
-/* ─── KPI card ────────────────────────────────────────────────────── */
-const KPI = ({ icon: Icon, label, value, sub, color, trend, trendUp, delay, t, onClick }) => (
+/* ─── KPI Card with Sparkline ─────────────────────────────────────── */
+const KPI = ({ icon: Icon, label, value, sub, color, trend, trendUp, delay, t, onClick, sparkData }) => (
   <motion.div {...fadeUp(delay)} className="cursor-pointer group" onClick={onClick}>
-    <Card t={t} hoverable className="p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-5 blur-2xl pointer-events-none"
-        style={{ background: color, transform: 'translate(30%,-30%)' }} />
+    <Card t={t} hoverable
+      className="p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden"
+      style={{
+        background: t.card,
+        boxShadow: t.cardShadow,
+        border: t.cardBorder,
+      }}
+    >
+      {/* Background glow blob */}
+      <div
+        className="absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none"
+        style={{
+          background: color,
+          opacity: 0.04,
+          filter: 'blur(32px)',
+          transform: 'translate(40%,-40%)',
+        }}
+      />
+
+      {/* Top row: icon + trend badge */}
       <div className="flex items-start justify-between">
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
-          style={{ background: `${color}1a`, border: `1px solid ${color}30` }}>
-          <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color }} />
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+          style={{ background: `${color}18`, border: `1px solid ${color}28` }}
+        >
+          <Icon className="w-5 h-5" style={{ color }} />
         </div>
         {trend && (
-          <span className="flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-1 rounded-lg"
-            style={{ background: trendUp ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', color: trendUp ? t.success : t.danger }}>
+          <span
+            className="flex items-center gap-0.5 text-[10px] font-black px-2 py-1 rounded-lg"
+            style={{
+              background: trendUp ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+              color: trendUp ? '#10b981' : '#ef4444',
+            }}
+          >
             {trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            <span className="hidden xs:inline">{trend}</span>
+            {trend}
           </span>
         )}
       </div>
+
+      {/* Value */}
       <div>
-        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>{label}</p>
-        <p className="text-xl sm:text-2xl font-black mt-0.5 leading-tight" style={{ color: t.txt }}>{value}</p>
-        {sub && <p className="text-[10px] sm:text-[11px] mt-1 font-medium" style={{ color: t.txtMuted }}>{sub}</p>}
+        <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: t.txtMuted }}>{label}</p>
+        <p className="text-2xl font-black mt-0.5 leading-none tabular-nums" style={{ color: t.txt }}>
+          <Counter value={value} />
+        </p>
+        {sub && <p className="text-[10px] mt-1 font-medium" style={{ color: t.txtMuted }}>{sub}</p>}
       </div>
+
+      {/* Sparkline */}
+      {sparkData && (
+        <div className="pt-1 mt-auto">
+          <Sparkline data={sparkData} color={color} width={100} height={28} />
+        </div>
+      )}
     </Card>
   </motion.div>
 );
 
-/* ─── section label ───────────────────────────────────────────────── */
-const SectionLabel = ({ children, t, action }) => (
-  <div className="flex items-center justify-between mb-3">
-    <p className="text-[9px] font-black tracking-[0.25em] uppercase" style={{ color: t.txtMuted }}>{children}</p>
+/* ─── Section Header ──────────────────────────────────────────────── */
+const SectionHeader = ({ title, action, actionLabel = 'View all', t, icon: Icon }) => (
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-2">
+      {Icon && (
+        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: t.accentAlpha }}>
+          <Icon className="w-3.5 h-3.5" style={{ color: t.accent }} />
+        </div>
+      )}
+      <h3 className="text-sm font-black" style={{ color: t.txt }}>{title}</h3>
+    </div>
     {action && (
-      <button className="text-[10px] font-bold flex items-center gap-1 hover:opacity-70 transition-opacity"
-        style={{ color: t.accent }}>
-        {action} <ChevronRight className="w-3 h-3" />
+      <button
+        onClick={action}
+        className="flex items-center gap-1 text-[10px] font-bold hover:opacity-70 transition-opacity"
+        style={{ color: t.accent }}
+      >
+        {actionLabel} <ChevronRight className="w-3 h-3" />
       </button>
     )}
   </div>
 );
 
-/* ─── progress bar ────────────────────────────────────────────────── */
-const Bar = ({ pct, color, t }) => (
-  <div className="h-1.5 rounded-full w-full overflow-hidden" style={{ background: t.progressBg }}>
-    <motion.div className="h-full rounded-full" style={{ background: color }}
-      initial={{ width: 0 }} animate={{ width: `${pct}%` }}
-      transition={{ duration: 0.9, ease: 'easeOut' }} />
+/* ─── Progress Bar ────────────────────────────────────────────────── */
+const Bar = ({ pct, color, t, height = 6 }) => (
+  <div
+    className="w-full rounded-full overflow-hidden"
+    style={{ background: t.progressBg, height }}
+  >
+    <motion.div
+      className="h-full rounded-full"
+      style={{ background: color }}
+      initial={{ width: 0 }}
+      animate={{ width: `${pct}%` }}
+      transition={{ duration: 0.9, ease: 'easeOut' }}
+    />
   </div>
 );
 
-/* ─── status badge ────────────────────────────────────────────────── */
-const STATUS_MAP = {
-  'In Progress': { color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  'Starting':    { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  'Confirmed':   { color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
-  'Pending':     { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  'Completed':   { color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
-  'Cancelled':   { color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-};
-
-const Badge = ({ status }) => {
-  const s = STATUS_MAP[status] || { color: '#8e97a4', bg: 'rgba(142,151,164,0.1)' };
-  return (
-    <span className="text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-1 rounded-lg whitespace-nowrap"
-      style={{ background: s.bg, color: s.color }}>
-      {status}
-    </span>
-  );
-};
-
-/* ─── modal wrapper — scrollable, safe on all screen sizes ───────── */
+/* ─── Modal Wrapper ───────────────────────────────────────────────── */
 const ModalWrap = ({ children, onClose }) => (
   <AnimatePresence>
     <motion.div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={onClose}
-      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(5px)' }}>
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+    >
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 40 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.95, opacity: 0, y: 40 }}
+        animate={{ scale: 1,    opacity: 1, y: 0  }}
+        exit={{ scale: 0.95,    opacity: 0, y: 40 }}
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl shadow-2xl"
-        onClick={e => e.stopPropagation()}>
+        onClick={e => e.stopPropagation()}
+      >
         {children}
       </motion.div>
     </motion.div>
   </AnimatePresence>
 );
 
-/* ─── KPI detail modal ────────────────────────────────────────────── */
+/* ─── KPI Detail Modal ────────────────────────────────────────────── */
 const KPIModal = ({ modal, onClose, t }) => {
   if (!modal) return null;
   return (
     <ModalWrap onClose={onClose}>
       <div style={{ background: t.card, border: t.cardBorder }} className="rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
-        {/* Handle bar for mobile */}
         <div className="w-10 h-1 bg-current opacity-20 rounded-full mx-auto mb-4 sm:hidden" style={{ color: t.txtMuted }} />
-
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center"
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
               style={{ background: `${modal.color}18`, border: `1px solid ${modal.color}30` }}>
-              <modal.icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: modal.color }} />
+              <modal.icon className="w-5 h-5" style={{ color: modal.color }} />
             </div>
             <div>
               <h3 className="font-black text-sm" style={{ color: t.txt }}>{modal.title}</h3>
@@ -195,15 +428,15 @@ const KPIModal = ({ modal, onClose, t }) => {
             </div>
           </div>
           <button onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center active:opacity-50 hover:opacity-70 transition-opacity"
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:opacity-70 transition-opacity"
             style={{ background: t.inner, border: t.innerBorder, color: t.txtMuted }}>
             <X className="w-4 h-4" />
           </button>
         </div>
-
-        <div className="text-3xl sm:text-4xl font-black mb-1" style={{ color: modal.color }}>{modal.value}</div>
+        <div className="text-4xl font-black mb-1" style={{ color: modal.color }}>
+          <Counter value={modal.value} />
+        </div>
         <p className="text-xs mb-5" style={{ color: t.txtMuted }}>{modal.description}</p>
-
         <div className="space-y-3">
           {modal.breakdown.map(b => (
             <div key={b.label}>
@@ -220,44 +453,39 @@ const KPIModal = ({ modal, onClose, t }) => {
   );
 };
 
-/* ─── Appointment detail modal ────────────────────────────────────── */
+/* ─── Appointment Detail Modal ────────────────────────────────────── */
 const AppointmentModal = ({ row, onClose, t }) => {
   if (!row) return null;
   return (
     <ModalWrap onClose={onClose}>
       <div style={{ background: t.card, border: t.cardBorder }} className="rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
-        {/* Handle bar for mobile */}
         <div className="w-10 h-1 bg-current opacity-20 rounded-full mx-auto mb-4 sm:hidden" style={{ color: t.txtMuted }} />
-
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-black text-sm" style={{ color: t.txt }}>Appointment Detail</h3>
           <button onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center active:opacity-50 hover:opacity-70 transition-opacity"
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:opacity-70 transition-opacity"
             style={{ background: t.inner, border: t.innerBorder, color: t.txtMuted }}>
             <X className="w-4 h-4" />
           </button>
         </div>
-
-        {/* Client avatar row */}
         <div className="flex items-center gap-3 mb-5 p-4 rounded-2xl" style={{ background: t.inner, border: t.innerBorder }}>
-          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-base sm:text-lg font-black text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg,#041e16,#0f5040)' }}>
             {row.client.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-black text-sm truncate" style={{ color: t.txt }}>{row.client}</p>
-            <p className="text-[10px] truncate" style={{ color: t.txtMuted }}>{row.service}</p>
+            <p className="text-[11px] truncate" style={{ color: t.txtMuted }}>{row.service}</p>
           </div>
           <div className="flex-shrink-0"><Badge status={row.status} /></div>
         </div>
-
         <div className="space-y-2.5">
           {[
             { label: 'Therapist', value: row.therapist, icon: UserCheck },
-            { label: 'Time',      value: row.time,      icon: Clock },
-            { label: 'Location',  value: row.loc,       icon: MapPin },
+            { label: 'Time',      value: row.time,      icon: Clock     },
+            { label: 'Location',  value: row.loc,        icon: MapPin   },
           ].map(item => (
-            <div key={item.label} className="flex items-center gap-3 p-3 sm:p-3.5 rounded-xl"
+            <div key={item.label} className="flex items-center gap-3 p-3.5 rounded-xl"
               style={{ background: t.inner, border: t.innerBorder }}>
               <item.icon className="w-4 h-4 flex-shrink-0" style={{ color: t.accent }} />
               <div className="min-w-0">
@@ -267,10 +495,8 @@ const AppointmentModal = ({ row, onClose, t }) => {
             </div>
           ))}
         </div>
-
-        {/* Close button on mobile bottom */}
         <button onClick={onClose}
-          className="w-full mt-5 py-3 rounded-2xl text-sm font-bold sm:hidden active:opacity-70"
+          className="w-full mt-5 py-3 rounded-2xl text-sm font-bold sm:hidden"
           style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
           Close
         </button>
@@ -279,48 +505,64 @@ const AppointmentModal = ({ row, onClose, t }) => {
   );
 };
 
-/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════════════ */
 const AdminDashboard = () => {
   const { theme } = useTheme();
-  const t = TOKENS[theme] || TOKENS.light;
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [kpiModal, setKpiModal]   = useState(null);
-  const [apptModal, setApptModal] = useState(null);
+  const t         = TOKENS[theme] || TOKENS.light;
+  const isDark    = theme === 'dark';
+
+  const [data,       setData]       = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [kpiModal,   setKpiModal]   = useState(null);
+  const [apptModal,  setApptModal]  = useState(null);
   const [hoveredBar, setHoveredBar] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [mobileView, setMobileView] = useState('cards'); // 'cards' | 'table' for recent appointments
+  const [mobileView, setMobileView] = useState('cards');
+  const [now,        setNow]        = useState(new Date());
+
+  /* live clock tick */
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
-    try {
-      const r = await API.get('/admin/dashboard');
-      setData(r.data);
-    } catch (e) { console.error(e); }
+    try { const r = await API.get('/admin/dashboard'); setData(r.data); }
+    catch (e) { console.error(e); }
     finally { setLoading(false); setRefreshing(false); }
   };
-
   useEffect(() => { load(); }, []);
 
   if (loading) {
     return (
-      <AdminLayout title="Dashboard" subtitle="Full operational overview">
+      <AdminLayout title="Dashboard" subtitle="Full operational overview" icon={LayoutDashboard}>
         <LoadingSpinner />
       </AdminLayout>
     );
   }
 
-  /* ── data helpers ── */
-  const stats        = data?.stats || {};
-  const therapistCount = stats.active_therapists  || 0;
-  const totalBookings  = stats.total_bookings      || 0;
-  const clients        = stats.registered_clients  || 0;
-  const revenue        = stats.total_revenue       || 0;
+  /* ── data ── */
+  const stats          = data?.stats || {};
+  const therapistCount = stats.active_therapists || 0;
+  const totalBookings  = stats.total_bookings    || 0;
+  const clients        = stats.registered_clients|| 0;
+  const revenue        = stats.total_revenue     || 0;
+
+  /* sparkline mock data */
+  const SPARK = {
+    therapists: [18, 20, 17, 22, 21, 20, 22],
+    sessions:   [2,  3,  4,  3,  5,  4,  4],
+    bookings:   [80, 95, 88, 102,110,98, 112],
+    revenue:    [6200,7400,8100,7600,9200,8400,9800],
+  };
 
   const sessions = [
-    { id: 1, client: 'Sarah Martinez', therapist: 'Maria Santos', service: 'Swedish Massage',  duration: '60 min', start: '9:00 PM',  end: '10:00 PM', pct: 75, location: 'Makati City', status: 'In Progress' },
-    { id: 2, client: 'David Lim',      therapist: 'John Doe',     service: 'Swedish & Hilot',  duration: '90 min', start: '9:15 PM',  end: '10:45 PM', pct: 50, location: 'Quezon City', status: 'In Progress' },
-    { id: 3, client: 'Patricia Go',    therapist: 'Anna Reyes',   service: 'Mani & Pedi',      duration: '60 min', start: '9:30 PM',  end: '10:30 PM', pct: 20, location: 'BGC, Taguig', status: 'Starting' },
+    { id: 1, client: 'Sarah Martinez', therapist: 'Maria Santos', service: 'Swedish Massage', duration: '60 min', start: '9:00 PM',  end: '10:00 PM', pct: 75, location: 'Makati City',  status: 'In Progress' },
+    { id: 2, client: 'David Lim',      therapist: 'John Doe',     service: 'Swedish & Hilot', duration: '90 min', start: '9:15 PM',  end: '10:45 PM', pct: 50, location: 'Quezon City', status: 'In Progress' },
+    { id: 3, client: 'Patricia Go',    therapist: 'Anna Reyes',   service: 'Mani & Pedi',     duration: '60 min', start: '9:30 PM',  end: '10:30 PM', pct: 20, location: 'BGC, Taguig',  status: 'Starting'    },
   ];
 
   const chartBars = [
@@ -334,24 +576,16 @@ const AdminDashboard = () => {
   ];
   const maxVal = Math.max(...chartBars.map(b => b.val));
 
-  const funnelSteps = [
-    { step: 'Page Visits',         count: '10,240', pct: 100 },
-    { step: 'Service Clicks',      count: '4,850',  pct: 47  },
-    { step: 'Bookings Requested',  count: '1,240',  pct: 25  },
-    { step: 'Bookings Confirmed',  count: '1,120',  pct: 22  },
-    { step: 'Completed Treatment', count: '1,032',  pct: 20  },
-  ];
-
   const therapistStatus = [
-    { label: 'On Duty & Available',   count: 18, color: t.success, pct: 60 },
-    { label: 'In Treatment',          count: 4,  color: t.warning, pct: 13 },
-    { label: 'Break / Offline',       count: 8,  color: t.txtMuted, pct: 27 },
+    { label: 'On Duty & Available', count: 18, color: t.success, pct: 60 },
+    { label: 'In Treatment',        count: 4,  color: t.warning, pct: 13 },
+    { label: 'Break / Offline',     count: 8,  color: t.txtMuted,pct: 27 },
   ];
 
   const bookingBreakdown = [
-    { label: 'Confirmed', count: 940, pct: 84, color: '#0a3d30' },
-    { label: 'Pending',   count: 124, pct: 11, color: t.warning  },
-    { label: 'Cancelled', count: 56,  pct: 5,  color: t.danger   },
+    { label: 'Confirmed', count: 940, pct: 84, color: isDark ? '#34d399' : '#0a3d30' },
+    { label: 'Pending',   count: 124, pct: 11, color: t.warning },
+    { label: 'Cancelled', count: 56,  pct: 5,  color: t.danger  },
   ];
 
   const serviceRev = [
@@ -360,14 +594,39 @@ const AdminDashboard = () => {
     { label: 'Other Services',  value: '₱9,800',  pct: 11, color: t.info   },
   ];
 
+  const funnelSteps = [
+    { step: 'Page Visits',         count: '10,240', pct: 100 },
+    { step: 'Service Clicks',      count: '4,850',  pct: 47  },
+    { step: 'Bookings Requested',  count: '1,240',  pct: 25  },
+    { step: 'Bookings Confirmed',  count: '1,120',  pct: 22  },
+    { step: 'Completed Treatment', count: '1,032',  pct: 20  },
+  ];
+
+  const activityFeed = [
+    { icon: CheckCircle2, color: '#10b981', text: 'Sarah Martinez session completed',          time: '2m ago'  },
+    { icon: Calendar,     color: '#6366f1', text: 'Carlos Reyes booked Deep Tissue — 11 PM',  time: '8m ago'  },
+    { icon: AlertCircle,  color: '#f59e0b', text: 'Alicia Santos session starting in 5 min',  time: '12m ago' },
+    { icon: DollarSign,   color: '#d4b87a', text: '₱850 payment received from David Lim',    time: '25m ago' },
+    { icon: Users,        color: '#ec4899', text: 'New client registered: Maria Cruz',         time: '1h ago'  },
+    { icon: Star,         color: '#f59e0b', text: '5-star review from Patricia Go',            time: '2h ago'  },
+  ];
+
+  const topPerformers = [
+    { name: 'Maria Santos', role: 'Lead Therapist', sessions: 12, revenue: '₱9,400', rating: 4.9, pct: 92 },
+    { name: 'John Doe',     role: 'Senior Therapist',sessions: 9, revenue: '₱7,200', rating: 4.7, pct: 75 },
+    { name: 'Anna Reyes',   role: 'Nail Specialist', sessions: 7, revenue: '₱4,800', rating: 4.8, pct: 58 },
+  ];
+
   const recentRows = data?.recent_appointments?.length
     ? data.recent_appointments.map(a => ({
         client:    a.client_name    || 'Client',
         service:   a.service        || 'Service',
         therapist: a.therapist_name || 'Unassigned',
-        time:      a.datetime ? new Date(a.datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
-        loc:       'Manila',
-        status:    a.status || 'Pending',
+        time:      a.datetime
+          ? new Date(a.datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          : '—',
+        loc:    'Manila',
+        status: a.status || 'Pending',
       }))
     : [
         { client: 'Sarah Martinez', service: 'Swedish Massage',    therapist: 'Maria Santos', time: '9:00 PM',  loc: 'Makati',       status: 'In Progress' },
@@ -379,13 +638,13 @@ const AdminDashboard = () => {
 
   const KPI_MODALS = {
     therapists: {
-      icon: Users, color: '#0a3d30', title: 'Therapist Overview', subtitle: "Today's workforce breakdown",
-      value: therapistCount, description: 'Total registered therapists active and available today.',
+      icon: Users, color: isDark ? '#34d399' : '#0a3d30', title: 'Therapist Overview', subtitle: "Today's workforce",
+      value: therapistCount, description: 'Total registered therapists active today.',
       breakdown: therapistStatus.map(s => ({ label: s.label, value: s.count, pct: s.pct })),
     },
     sessions: {
-      icon: Activity, color: t.warning, title: 'Live Sessions', subtitle: 'Current ongoing treatments',
-      value: '4 Live', description: 'Real-time tracking of sessions currently in progress.',
+      icon: Activity, color: t.warning, title: 'Live Sessions', subtitle: 'Active treatments',
+      value: '4 Live', description: 'Real-time tracking of sessions in progress.',
       breakdown: [
         { label: 'Swedish Massage (Makati)', value: '75% done', pct: 75 },
         { label: 'Swedish & Hilot (QC)',     value: '50% done', pct: 50 },
@@ -393,132 +652,145 @@ const AdminDashboard = () => {
       ],
     },
     bookings: {
-      icon: Calendar, color: t.info, title: 'Booking Summary', subtitle: 'Total bookings breakdown',
-      value: totalBookings, description: 'All appointments scheduled across all therapists.',
+      icon: Calendar, color: t.info, title: 'Booking Summary', subtitle: 'All appointments',
+      value: totalBookings, description: 'Scheduled across all therapists.',
       breakdown: bookingBreakdown.map(b => ({ label: b.label, value: b.count.toLocaleString(), pct: b.pct })),
     },
     revenue: {
-      icon: DollarSign, color: t.gold, title: 'Revenue Breakdown', subtitle: "Today's earnings by service",
-      value: `₱${revenue.toLocaleString()}`, description: 'Gross revenue from all completed and confirmed sessions.',
+      icon: DollarSign, color: t.gold, title: 'Revenue Breakdown', subtitle: "Today's earnings",
+      value: `₱${revenue.toLocaleString()}`, description: 'Gross revenue from all sessions.',
       breakdown: serviceRev.map(s => ({ label: s.label, value: s.value, pct: s.pct })),
     },
   };
 
+  /* ─────────────────────────────────────────────────────────────── */
   return (
-    <AdminLayout title="Dashboard" subtitle="Full operational overview">
-      <KPIModal modal={kpiModal} onClose={() => setKpiModal(null)} t={t} />
-      <AppointmentModal row={apptModal} onClose={() => setApptModal(null)} t={t} />
+    <AdminLayout title="Dashboard" subtitle="Full operational overview" icon={LayoutDashboard}>
+      <KPIModal        modal={kpiModal}  onClose={() => setKpiModal(null)}  t={t} />
+      <AppointmentModal row={apptModal}  onClose={() => setApptModal(null)} t={t} />
 
-      <div className="space-y-4 sm:space-y-6 pb-6">
+      <div className="space-y-5 pb-8">
 
-        {/* ── Refresh bar ── */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-            <span className="text-[10px] sm:text-[11px] font-semibold" style={{ color: t.txtMuted }}>Live data — updates every 30s</span>
+        {/* ══ TOP STATUS BAR ════════════════════════════════════════ */}
+        <motion.div {...fadeUp(0)} className="flex items-center justify-between flex-wrap gap-3">
+          {/* Live status indicator */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+              style={{ background: isDark ? 'rgba(52,211,153,0.08)' : 'rgba(10,61,48,0.06)', border: `1px solid ${isDark ? 'rgba(52,211,153,0.2)' : 'rgba(10,61,48,0.12)'}` }}>
+              <div className="relative">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: t.success, display: 'block' }} />
+                <span className="absolute inset-0 w-2 h-2 rounded-full animate-ping" style={{ background: t.success, opacity: 0.4 }} />
+              </div>
+              <span className="text-[10px] font-bold" style={{ color: t.success }}>Systems Live</span>
+            </div>
+            <span className="hidden sm:block text-[10px] font-medium" style={{ color: t.txtMuted }}>
+              {now.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
           </div>
+
+          {/* Refresh */}
           <button
             onClick={() => load(true)}
             disabled={refreshing}
-            className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl transition-all hover:opacity-80 active:opacity-60 cursor-pointer min-h-[36px]"
-            style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            className="flex items-center gap-2 text-[11px] font-bold px-4 py-2 rounded-xl transition-all hover:opacity-80 active:scale-95 cursor-pointer"
+            style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} style={{ color: t.accent }} />
             Refresh
           </button>
-        </div>
+        </motion.div>
 
-        {/* ── Row 1: KPI strip — 2 cols on mobile, 4 on lg ── */}
+        {/* ══ ROW 1: KPI CARDS ══════════════════════════════════════ */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KPI icon={Users}      label="Active Therapists" value={therapistCount}               sub="On duty today"          color="#0a3d30" trend="+2"       trendUp delay={0.00} t={t} onClick={() => setKpiModal(KPI_MODALS.therapists)} />
-          <KPI icon={Activity}   label="Live Sessions"     value="4 Active"                     sub="In-home right now"      color={t.warning} trend="Live"   trendUp delay={0.06} t={t} onClick={() => setKpiModal(KPI_MODALS.sessions)} />
-          <KPI icon={Calendar}   label="Total Bookings"    value={totalBookings}                sub="All scheduled sessions" color={t.info}  trend="+12"      trendUp delay={0.12} t={t} onClick={() => setKpiModal(KPI_MODALS.bookings)} />
-          <KPI icon={DollarSign} label="Today's Revenue"   value={`₱${revenue.toLocaleString()}`} sub="All invoices today"  color={t.gold}  trend="+8.4%"    trendUp delay={0.18} t={t} onClick={() => setKpiModal(KPI_MODALS.revenue)} />
+          <KPI icon={Users}      label="Active Therapists" value={therapistCount || 22}       sub="On duty today"         color={isDark ? '#34d399' : '#0a3d30'} trend="+2"    trendUp sparkData={SPARK.therapists} delay={0.04} t={t} onClick={() => setKpiModal(KPI_MODALS.therapists)} />
+          <KPI icon={Activity}   label="Live Sessions"     value="4"                          sub="In-home right now"     color={t.warning}                       trend="Live"  trendUp sparkData={SPARK.sessions}   delay={0.08} t={t} onClick={() => setKpiModal(KPI_MODALS.sessions)}   />
+          <KPI icon={Calendar}   label="Total Bookings"    value={totalBookings || 1120}      sub="All scheduled"         color={t.info}                          trend="+12"   trendUp sparkData={SPARK.bookings}   delay={0.12} t={t} onClick={() => setKpiModal(KPI_MODALS.bookings)}   />
+          <KPI icon={DollarSign} label="Today's Revenue"   value={revenue || 90490}           sub="All invoices today"    color={t.gold}                          trend="+8.4%" trendUp sparkData={SPARK.revenue}    delay={0.16} t={t} onClick={() => setKpiModal(KPI_MODALS.revenue)}    />
         </div>
 
-        {/* ── Insight strip — 2 cols mobile, 4 on md ── */}
-        <motion.div {...fadeUp(0.2)} className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+        {/* ══ ROW 2: INSIGHT STRIP ══════════════════════════════════ */}
+        <motion.div {...fadeUp(0.2)} className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
           {[
-            { icon: Flame,  label: 'Conversion',      value: '68.4%', color: t.danger,  sub: '+3.2% vs last week' },
-            { icon: Award,  label: 'Completion',      value: '92.1%', color: t.success, sub: 'Excellent' },
-            { icon: Target, label: 'Cancellation',    value: '4.8%',  color: t.warning, sub: '-0.5% this week' },
-            { icon: Zap,    label: 'Avg Session Time', value: '72 min', color: t.info,  sub: 'All services' },
-          ].map(ins => (
-            <div key={ins.label}
-              className="p-3 rounded-2xl flex items-center gap-2 sm:gap-3 hover:scale-[1.02] transition-transform cursor-default"
-              style={{ background: t.inner, border: t.innerBorder }}>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: `${ins.color}18`, border: `1px solid ${ins.color}28` }}>
-                <ins.icon className="w-4 h-4" style={{ color: ins.color }} />
+            { icon: Flame,        label: 'Conversion',      value: '68.4%', color: t.danger,  sub: '+3.2% vs last week', up: true  },
+            { icon: Award,        label: 'Completion',      value: '92.1%', color: t.success, sub: 'Excellent rate',      up: true  },
+            { icon: Target,       label: 'Cancellation',    value: '4.8%',  color: t.warning, sub: '-0.5% this week',    up: false },
+            { icon: Zap,          label: 'Avg Session',     value: '72 min',color: t.info,    sub: 'Across all services', up: true  },
+          ].map((ins, i) => (
+            <motion.div
+              key={ins.label}
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + i * 0.06, duration: 0.4 }}
+              className="p-3 sm:p-4 rounded-2xl hover:-translate-y-0.5 transition-transform cursor-default"
+              style={{ background: t.card, border: t.cardBorder, boxShadow: t.cardShadow }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+                  style={{ background: `${ins.color}18`, border: `1px solid ${ins.color}28` }}>
+                  <ins.icon className="w-4 h-4" style={{ color: ins.color }} />
+                </div>
+                <span
+                  className="text-[9px] font-bold flex items-center gap-0.5"
+                  style={{ color: ins.up ? t.success : t.danger }}
+                >
+                  {ins.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                </span>
               </div>
-              <div className="min-w-0">
-                <p className="text-[8px] sm:text-[9px] uppercase font-bold tracking-wider truncate" style={{ color: t.txtMuted }}>{ins.label}</p>
-                <p className="text-sm font-black" style={{ color: ins.color }}>{ins.value}</p>
-                <p className="text-[8px] sm:text-[9px] hidden sm:block" style={{ color: t.txtMuted }}>{ins.sub}</p>
-              </div>
-            </div>
+              <p className="text-[9px] uppercase font-black tracking-wider" style={{ color: t.txtMuted }}>{ins.label}</p>
+              <p className="text-base sm:text-lg font-black" style={{ color: ins.color }}>{ins.value}</p>
+              <p className="text-[9px] mt-0.5 hidden sm:block" style={{ color: t.txtMuted }}>{ins.sub}</p>
+            </motion.div>
           ))}
         </motion.div>
 
-        {/* ── Row 2: Live Sessions + Therapist Status ── */}
+        {/* ══ ROW 3: LIVE SESSIONS + THERAPIST STATUS + ACTIVITY ═══ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 
-          {/* Live sessions */}
+          {/* Live Sessions — 2 cols */}
           <motion.div {...fadeUp(0.24)} className="lg:col-span-2">
             <Card t={t} className="p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-4"
-                style={{ borderBottom: `1px solid ${t.divider}`, paddingBottom: '0.75rem' }}>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <h3 className="text-sm font-bold" style={{ color: t.txt }}>Active Sessions</h3>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-1 rounded-lg"
-                  style={{ background: 'rgba(16,185,129,0.12)', color: t.success }}>
-                  Live Tracking
-                </span>
-              </div>
+              <SectionHeader title="Active Sessions" icon={Wifi} t={t} />
               <div className="space-y-3">
                 {sessions.map(s => {
-                  const pctColor = s.pct > 60 ? t.accent : t.warning;
+                  const pctColor = s.pct > 60 ? t.accent : s.pct > 30 ? t.warning : t.danger;
                   return (
-                    <div key={s.id} className="p-3 sm:p-4 rounded-2xl space-y-2.5 hover:shadow-sm transition-all"
-                      style={{ background: t.inner, border: t.innerBorder }}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black text-white flex-shrink-0"
-                              style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
-                              {s.client.charAt(0)}
-                            </div>
-                            <p className="text-[11px] sm:text-[12px] font-bold truncate" style={{ color: t.txt }}>
-                              {s.service} <span className="font-normal opacity-60">· {s.duration}</span>
-                            </p>
+                    <div key={s.id}
+                      className="p-4 rounded-2xl transition-all hover:shadow-md"
+                      style={{ background: t.inner, border: t.innerBorder }}
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        {/* Circular ring */}
+                        <div className="relative flex-shrink-0">
+                          <Ring pct={s.pct} color={pctColor} size={52} stroke={5} />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-[10px] font-black" style={{ color: pctColor }}>{s.pct}%</span>
                           </div>
-                          <p className="text-[10px] mt-1 ml-8" style={{ color: t.txtMuted }}>
-                            <span style={{ color: t.txtSub, fontWeight: 600 }}>{s.client}</span>
-                            {' · '}
-                            <span style={{ color: t.accent, fontWeight: 700 }}>{s.therapist}</span>
-                          </p>
                         </div>
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1"
-                            style={{ background: t.tag, color: t.tagTxt }}>
-                            <MapPin className="w-2.5 h-2.5" />
-                            <span className="hidden xs:inline">{s.location}</span>
-                          </span>
-                          <span className="text-[9px] font-semibold" style={{ color: t.txtMuted }}>
-                            {s.start}–{s.end}
-                          </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-[12px] font-bold" style={{ color: t.txt }}>
+                                {s.service}
+                                <span className="font-normal ml-1.5 text-[10px]" style={{ color: t.txtMuted }}>· {s.duration}</span>
+                              </p>
+                              <p className="text-[10px] mt-0.5" style={{ color: t.txtSub }}>
+                                <span style={{ fontWeight: 600 }}>{s.client}</span>
+                                <span style={{ color: t.txtMuted }}> · </span>
+                                <span style={{ color: t.accent, fontWeight: 700 }}>{s.therapist}</span>
+                              </p>
+                            </div>
+                            <Badge status={s.status} />
+                          </div>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-[9px] font-semibold flex items-center gap-1" style={{ color: t.txtMuted }}>
+                              <MapPin className="w-2.5 h-2.5" />{s.location}
+                            </span>
+                            <span className="text-[9px] font-semibold" style={{ color: t.txtMuted }}>
+                              {s.start} – {s.end}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: t.progressBg }}>
-                          <motion.div className="h-full rounded-full" style={{ background: pctColor }}
-                            initial={{ width: 0 }} animate={{ width: `${s.pct}%` }}
-                            transition={{ duration: 0.9, ease: 'easeOut' }} />
-                        </div>
-                        <span className="text-[10px] font-black flex-shrink-0" style={{ color: pctColor }}>{s.pct}%</span>
-                        <Badge status={s.status} />
-                      </div>
+                      <Bar pct={s.pct} color={pctColor} t={t} height={4} />
                     </div>
                   );
                 })}
@@ -526,167 +798,135 @@ const AdminDashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Therapist status */}
+          {/* Activity Feed */}
           <motion.div {...fadeUp(0.28)}>
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col">
-              <SectionLabel t={t} action="View all">Therapist Status</SectionLabel>
-              <div className="space-y-2.5 flex-1">
-                {therapistStatus.map(s => (
-                  <div key={s.label} className="p-3 rounded-xl hover:scale-[1.01] transition-transform"
-                    style={{ background: t.inner, border: t.innerBorder }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                        <span className="text-[11px] font-medium" style={{ color: t.txtSub }}>{s.label}</span>
-                      </div>
-                      <span className="text-sm font-black" style={{ color: t.txt }}>{s.count}</span>
+              <SectionHeader title="Live Activity" icon={Activity} t={t} />
+              <div className="flex-1 space-y-1 overflow-hidden">
+                {activityFeed.map((item, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                    className="flex items-start gap-3 py-2 px-2.5 rounded-xl hover:opacity-80 transition-opacity cursor-default"
+                    style={{ background: i % 2 === 0 ? t.tableStripe : 'transparent' }}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: `${item.color}18` }}
+                    >
+                      <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} />
                     </div>
-                    <Bar pct={s.pct} color={s.color} t={t} />
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-medium leading-snug" style={{ color: t.txtSub }}>{item.text}</p>
+                      <p className="text-[9px] mt-0.5 font-semibold" style={{ color: t.txtMuted }}>{item.time}</p>
+                    </div>
+                  </motion.div>
                 ))}
-              </div>
-              <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${t.divider}` }}>
-                <SectionLabel t={t}>Quick Metrics</SectionLabel>
-                <div className="space-y-2.5">
-                  {[
-                    { label: 'Avg Ticket',  value: '₱850',     color: t.warning },
-                    { label: 'Commissions', value: '₱12,450',  color: t.info },
-                    { label: 'New Clients', value: `${clients}`, color: t.pink },
-                  ].map(r => (
-                    <div key={r.label} className="flex items-center justify-between">
-                      <span className="text-[11px]" style={{ color: t.txtSub }}>{r.label}</span>
-                      <span className="text-[12px] font-black" style={{ color: r.color }}>{r.value}</span>
-                    </div>
-                  ))}
-                </div>
               </div>
             </Card>
           </motion.div>
         </div>
 
-        {/* ── Row 3: Revenue Chart + Booking Status + Funnel — stack on mobile ── */}
+        {/* ══ ROW 4: REVENUE CHART + BOOKING DONUT + FUNNEL ════════ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
 
-          {/* Bar chart */}
+          {/* Area Chart — Revenue */}
           <motion.div {...fadeUp(0.32)} className="sm:col-span-2 xl:col-span-1">
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-bold" style={{ color: t.txt }}>Revenue — Last 7 Days</h3>
-                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: t.txtMuted }}>PHP</span>
+              <SectionHeader title="Revenue — 7 Days" icon={TrendingUp} t={t} />
+              <div className="mb-1">
+                <span className="text-2xl font-black" style={{ color: t.txt }}>₱84,240</span>
+                <span className="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(16,185,129,0.12)', color: t.success }}>+14.2% ↑</span>
               </div>
-              <p className="text-[10px] mb-4" style={{ color: t.txtMuted }}>Tap / hover a bar to see value</p>
+              <p className="text-[10px] mb-3" style={{ color: t.txtMuted }}>vs. last week</p>
 
-              <div className="flex items-end justify-between gap-1 sm:gap-1.5 flex-1" style={{ minHeight: 90 }}>
-                {chartBars.map((b, i) => {
-                  const heightPct = (b.val / maxVal) * 100;
-                  const isMax = b.val === maxVal;
-                  const isHov = hoveredBar === b.day;
-                  return (
-                    <div key={b.day} className="flex-1 flex flex-col items-center gap-1 relative"
-                      onMouseEnter={() => setHoveredBar(b.day)}
-                      onMouseLeave={() => setHoveredBar(null)}
-                      onTouchStart={() => setHoveredBar(b.day)}
-                      onTouchEnd={() => setTimeout(() => setHoveredBar(null), 800)}>
-                      <AnimatePresence>
-                        {isHov && (
-                          <motion.span
-                            initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                            className="absolute -top-7 text-[9px] font-bold whitespace-nowrap px-1.5 py-0.5 rounded-lg z-10"
-                            style={{ background: t.accent, color: '#fff' }}>
-                            ₱{b.val.toLocaleString()}
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                      <motion.div
-                        className="w-full rounded-t-md cursor-pointer"
-                        style={{
-                          background: isMax
-                            ? `linear-gradient(180deg,${t.accentBright},${t.accent})`
-                            : isHov ? t.accent : t.bar,
-                          height: `${heightPct}%`,
-                          minHeight: 6,
-                        }}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${heightPct}%` }}
-                        transition={{ duration: 0.7, delay: i * 0.07, ease: 'easeOut' }}
-                      />
-                      <span className="text-[8px] sm:text-[9px] font-bold" style={{ color: isHov ? t.accent : t.txtMuted }}>{b.day}</span>
-                    </div>
-                  );
-                })}
+              {/* Area Chart */}
+              <div className="flex-1 mt-2">
+                <AreaChart data={chartBars} color={t.chartLine} fillColor={t.chartFill} height={90} />
+                {/* Day labels */}
+                <div className="flex justify-between mt-1 px-1">
+                  {chartBars.map(b => (
+                    <span key={b.day} className="text-[8px] font-bold" style={{ color: t.txtMuted }}>{b.day}</span>
+                  ))}
+                </div>
               </div>
 
+              {/* By category */}
               <div className="mt-4 pt-4 space-y-2.5" style={{ borderTop: `1px solid ${t.divider}` }}>
-                <SectionLabel t={t}>By Category</SectionLabel>
+                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: t.txtMuted }}>By Category</p>
                 {serviceRev.map(s => (
                   <div key={s.label}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[11px]" style={{ color: t.txtSub }}>{s.label}</span>
                       <span className="text-[11px] font-bold" style={{ color: t.txt }}>{s.value}</span>
                     </div>
-                    <Bar pct={s.pct} color={s.color} t={t} />
+                    <Bar pct={s.pct} color={s.color} t={t} height={5} />
                   </div>
                 ))}
               </div>
             </Card>
           </motion.div>
 
-          {/* Booking status */}
+          {/* Donut Chart — Booking Status */}
           <motion.div {...fadeUp(0.36)}>
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col">
-              <h3 className="text-sm font-bold mb-4" style={{ color: t.txt }}>Appointment Status</h3>
-              <div className="h-6 w-full rounded-xl flex overflow-hidden mb-2" style={{ border: t.innerBorder }}>
-                {bookingBreakdown.map(b => (
-                  <motion.div key={b.label}
-                    className="h-full flex items-center justify-center"
-                    title={`${b.label}: ${b.count}`}
-                    style={{ width: `${b.pct}%`, background: b.color }}
-                    initial={{ width: 0 }} animate={{ width: `${b.pct}%` }}
-                    transition={{ duration: 0.9, ease: 'easeOut' }}>
-                    {b.pct > 10 && <span className="text-[9px] font-black text-white">{b.pct}%</span>}
-                  </motion.div>
-                ))}
+              <SectionHeader title="Appointment Status" icon={Calendar} t={t} />
+
+              {/* Donut */}
+              <div className="flex items-center justify-center my-2 relative">
+                <Donut segments={bookingBreakdown} size={130} stroke={18} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-xl font-black" style={{ color: t.txt }}>
+                    {(totalBookings || 1120).toLocaleString()}
+                  </span>
+                  <span className="text-[9px] font-bold" style={{ color: t.txtMuted }}>Total</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
+
+              {/* Legend */}
+              <div className="space-y-2 mt-2 flex-1">
                 {bookingBreakdown.map(b => (
-                  <div key={b.label} className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full" style={{ background: b.color }} />
-                    <span className="text-[9px]" style={{ color: t.txtMuted }}>{b.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-2 flex-1">
-                {bookingBreakdown.map(b => (
-                  <div key={b.label} className="flex items-center justify-between p-3 rounded-xl hover:scale-[1.01] transition-transform"
-                    style={{ background: t.inner, border: t.innerBorder }}>
+                  <div key={b.label}
+                    className="flex items-center justify-between p-2.5 rounded-xl"
+                    style={{ background: t.inner, border: t.innerBorder }}
+                  >
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: b.color }} />
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: b.color }} />
                       <span className="text-[11px]" style={{ color: t.txtSub }}>{b.label}</span>
                     </div>
-                    <span className="text-[12px] font-black" style={{ color: t.txt }}>{b.count.toLocaleString()}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px]" style={{ color: t.txtMuted }}>{b.pct}%</span>
+                      <span className="text-[12px] font-black" style={{ color: t.txt }}>{b.count.toLocaleString()}</span>
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {/* Quick stats */}
               <div className="mt-4 pt-4 grid grid-cols-2 gap-2" style={{ borderTop: `1px solid ${t.divider}` }}>
                 {[
-                  { label: 'Avg Ticket',  value: '₱850',       color: t.warning },
-                  { label: 'Commissions', value: '₱12,450',    color: t.info },
-                  { label: 'Clients',     value: clients,       color: t.pink },
-                  { label: 'Total',       value: totalBookings, color: t.success },
+                  { label: 'Avg Ticket',  value: '₱850',          color: t.warning },
+                  { label: 'Commissions', value: '₱12,450',        color: t.info    },
+                  { label: 'Clients',     value: clients || 320,    color: t.pink    },
+                  { label: 'Total',       value: totalBookings || 1120, color: t.success },
                 ].map(s => (
                   <div key={s.label} className="p-3 rounded-xl text-center" style={{ background: t.inner, border: t.innerBorder }}>
-                    <p className="text-[9px] font-bold uppercase tracking-wide" style={{ color: t.txtMuted }}>{s.label}</p>
-                    <p className="text-sm font-black mt-0.5" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-wide" style={{ color: t.txtMuted }}>{s.label}</p>
+                    <p className="text-sm font-black mt-0.5" style={{ color: s.color }}>
+                      {typeof s.value === 'number' ? s.value.toLocaleString() : s.value}
+                    </p>
                   </div>
                 ))}
               </div>
             </Card>
           </motion.div>
 
-          {/* Funnel */}
+          {/* Funnel + Top Performers */}
           <motion.div {...fadeUp(0.40)}>
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col">
-              <h3 className="text-sm font-bold mb-4" style={{ color: t.txt }}>Customer Funnel</h3>
+              <SectionHeader title="Customer Funnel" icon={Target} t={t} />
               <div className="space-y-3 flex-1">
                 {funnelSteps.map((f, i) => {
                   const fColor = i === 0 ? t.accent : i < 2 ? t.gold : i < 4 ? t.info : t.success;
@@ -696,69 +936,169 @@ const AdminDashboard = () => {
                         <span className="text-[11px] font-medium" style={{ color: t.txtSub }}>{f.step}</span>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] font-black" style={{ color: t.txt }}>{f.count}</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
-                            style={{ background: `${fColor}18`, color: fColor }}>
-                            {f.pct}%
-                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: `${fColor}18`, color: fColor }}>{f.pct}%</span>
                         </div>
                       </div>
-                      <Bar pct={f.pct} color={fColor} t={t} />
+                      <Bar pct={f.pct} color={fColor} t={t} height={5} />
                     </div>
                   );
                 })}
               </div>
+
+              {/* Top Performers */}
               <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${t.divider}` }}>
-                <SectionLabel t={t}>Top Services</SectionLabel>
-                {[
-                  { name: 'Swedish Massage', pct: 38, bookings: 412 },
-                  { name: 'Deep Tissue',     pct: 24, bookings: 260 },
-                  { name: 'Mani & Pedi',     pct: 18, bookings: 195 },
-                ].map((s, i) => {
-                  const sColor = i === 0 ? t.accent : i === 1 ? t.gold : t.info;
-                  return (
-                    <div key={s.name} className="flex items-center gap-2 mb-2.5 last:mb-0">
-                      <div className="w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-black text-white flex-shrink-0"
-                        style={{ background: sColor }}>
-                        {i + 1}
+                <p className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: t.txtMuted }}>Top Performers</p>
+                <div className="space-y-2">
+                  {topPerformers.map((p, i) => (
+                    <div key={p.name}
+                      className="flex items-center gap-2.5 p-2.5 rounded-xl"
+                      style={{ background: t.inner, border: t.innerBorder }}
+                    >
+                      <div className="relative flex-shrink-0">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black text-white"
+                          style={{ background: i === 0 ? 'linear-gradient(135deg,#bfa15f,#d4b87a)' : i === 1 ? 'linear-gradient(135deg,#8aa0b8,#a0b4c8)' : 'linear-gradient(135deg,#b87333,#d4925a)' }}
+                        >
+                          {p.name.charAt(0)}
+                        </div>
+                        {i === 0 && (
+                          <span className="absolute -top-1 -right-1 text-[8px]">⭐</span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-medium truncate" style={{ color: t.txtSub }}>{s.name}</span>
-                          <span className="text-[10px] font-bold" style={{ color: t.txt }}>{s.bookings}</span>
-                        </div>
-                        <Bar pct={s.pct} color={sColor} t={t} />
+                        <p className="text-[11px] font-bold truncate" style={{ color: t.txt }}>{p.name}</p>
+                        <p className="text-[9px]" style={{ color: t.txtMuted }}>{p.sessions} sessions · {p.revenue}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-[10px] font-black" style={{ color: t.gold }}>★{p.rating}</p>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             </Card>
           </motion.div>
         </div>
 
-        {/* ── Row 4: Recent Appointments ── */}
-        <motion.div {...fadeUp(0.44)}>
+        {/* ══ ROW 5: THERAPIST STATUS + QUICK METRICS ══════════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+
+          {/* Therapist status */}
+          <motion.div {...fadeUp(0.42)}>
+            <Card t={t} className="p-4 sm:p-5 h-full flex flex-col">
+              <SectionHeader title="Therapist Status" icon={Users} t={t} />
+              <div className="space-y-3 flex-1">
+                {therapistStatus.map(s => (
+                  <div key={s.label}
+                    className="p-3 rounded-xl"
+                    style={{ background: t.inner, border: t.innerBorder }}
+                  >
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                        <span className="text-[11px] font-medium" style={{ color: t.txtSub }}>{s.label}</span>
+                      </div>
+                      <span className="text-sm font-black" style={{ color: t.txt }}>{s.count}</span>
+                    </div>
+                    <Bar pct={s.pct} color={s.color} t={t} height={5} />
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-4 space-y-2.5" style={{ borderTop: `1px solid ${t.divider}` }}>
+                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: t.txtMuted }}>Quick Metrics</p>
+                {[
+                  { label: 'Avg Ticket',  value: '₱850',     color: t.warning },
+                  { label: 'Commissions', value: '₱12,450',  color: t.info    },
+                  { label: 'New Clients', value: clients || 42, color: t.pink  },
+                ].map(r => (
+                  <div key={r.label} className="flex items-center justify-between py-1">
+                    <span className="text-[11px]" style={{ color: t.txtSub }}>{r.label}</span>
+                    <span className="text-[12px] font-black" style={{ color: r.color }}>
+                      {typeof r.value === 'number' ? r.value.toLocaleString() : r.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Therapist performance bars */}
+          <motion.div {...fadeUp(0.44)} className="lg:col-span-2">
+            <Card t={t} className="p-4 sm:p-5 h-full">
+              <SectionHeader title="Staff Performance" icon={Award} t={t} />
+              <div className="space-y-4">
+                {[
+                  { name: 'Maria Santos', role: 'Lead Therapist',   sessions: 12, revenue: 9400,  rating: 4.9, pct: 94, color: t.accent },
+                  { name: 'John Doe',     role: 'Senior Therapist',  sessions: 9,  revenue: 7200,  rating: 4.7, pct: 76, color: t.info   },
+                  { name: 'Anna Reyes',   role: 'Nail Specialist',   sessions: 7,  revenue: 4800,  rating: 4.8, pct: 58, color: t.gold   },
+                  { name: 'Ben Torres',   role: 'Therapist',         sessions: 5,  revenue: 3500,  rating: 4.5, pct: 40, color: t.pink   },
+                ].map((p, i) => (
+                  <div key={p.name} className="flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black text-white flex-shrink-0"
+                      style={{ background: `${p.color}22`, border: `1px solid ${p.color}30`, color: p.color }}
+                    >
+                      {p.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <div>
+                          <span className="text-[12px] font-bold" style={{ color: t.txt }}>{p.name}</span>
+                          <span className="text-[10px] ml-2" style={{ color: t.txtMuted }}>{p.role}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-[10px] font-bold" style={{ color: t.gold }}>★{p.rating}</span>
+                          <span className="text-[10px]" style={{ color: t.txtMuted }}>{p.sessions} sessions</span>
+                          <span className="text-[11px] font-black" style={{ color: p.color }}>₱{p.revenue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <Bar pct={p.pct} color={p.color} t={t} height={6} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </motion.div>
+        </div>
+
+        {/* ══ ROW 6: RECENT APPOINTMENTS TABLE ═════════════════════ */}
+        <motion.div {...fadeUp(0.48)}>
           <Card t={t} className="overflow-hidden">
-            <div className="flex items-center justify-between px-4 sm:px-5 py-4"
-              style={{ borderBottom: `1px solid ${t.divider}` }}>
-              <h3 className="text-sm font-bold" style={{ color: t.txt }}>Recent Appointments</h3>
-              <div className="flex items-center gap-2 sm:gap-3">
-                {/* Mobile view toggle */}
-                <div className="flex sm:hidden items-center rounded-lg overflow-hidden" style={{ border: t.innerBorder }}>
+            <div
+              className="flex items-center justify-between px-4 sm:px-6 py-4"
+              style={{ borderBottom: `1px solid ${t.divider}` }}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: t.accentAlpha }}>
+                  <Calendar className="w-4 h-4" style={{ color: t.accent }} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black" style={{ color: t.txt }}>Recent Appointments</h3>
+                  <p className="text-[10px]" style={{ color: t.txtMuted }}>Today's schedule</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Mobile toggle */}
+                <div className="flex sm:hidden items-center rounded-xl overflow-hidden" style={{ border: t.innerBorder }}>
                   {['cards', 'table'].map(v => (
                     <button key={v} onClick={() => setMobileView(v)}
-                      className="px-2.5 py-1.5 text-[9px] font-bold capitalize"
+                      className="px-3 py-1.5 text-[9px] font-bold capitalize transition-all"
                       style={{
                         background: mobileView === v ? t.accent : t.inner,
                         color: mobileView === v ? '#fff' : t.txtMuted,
-                      }}>
+                      }}
+                    >
                       {v}
                     </button>
                   ))}
                 </div>
-                <span className="text-[10px] font-semibold hidden sm:inline" style={{ color: t.txtMuted }}>Today's schedule</span>
-                <button className="flex items-center gap-1 text-[10px] font-bold hover:opacity-70 transition-opacity"
-                  style={{ color: t.accent }}>
+
+                <button
+                  className="flex items-center gap-1 text-[10px] font-bold hover:opacity-70 transition-opacity"
+                  style={{ color: t.accent }}
+                >
                   View all <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
@@ -772,11 +1112,12 @@ const AdminDashboard = () => {
                     <div key={i}
                       onClick={() => setApptModal(row)}
                       className="p-3.5 rounded-2xl cursor-pointer active:scale-[0.98] transition-transform"
-                      style={{ background: t.inner, border: t.innerBorder }}>
+                      style={{ background: i % 2 === 0 ? t.inner : t.tableStripe, border: t.innerBorder }}
+                    >
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
+                            style={{ background: 'linear-gradient(135deg,#041e16,#0f5040)' }}>
                             {row.client.charAt(0)}
                           </div>
                           <span className="text-[12px] font-bold truncate" style={{ color: t.txt }}>{row.client}</span>
@@ -795,10 +1136,10 @@ const AdminDashboard = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left min-w-[480px]">
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${t.divider}` }}>
+                      <tr style={{ borderBottom: `1px solid ${t.divider}`, background: t.inner }}>
                         {['Client', 'Service', 'Time', 'Status'].map(h => (
-                          <th key={h} className="px-3 py-2.5 text-[9px] font-black uppercase tracking-wider"
-                            style={{ color: t.txtMuted, background: t.inner }}>
+                          <th key={h} className="px-4 py-3 text-[9px] font-black uppercase tracking-wider"
+                            style={{ color: t.txtMuted }}>
                             {h}
                           </th>
                         ))}
@@ -806,12 +1147,18 @@ const AdminDashboard = () => {
                     </thead>
                     <tbody>
                       {recentRows.map((row, i) => (
-                        <tr key={i} className="cursor-pointer" style={{ borderBottom: `1px solid ${t.divider}` }}
-                          onClick={() => setApptModal(row)}>
-                          <td className="px-3 py-3 text-[11px] font-semibold" style={{ color: t.txt }}>{row.client}</td>
-                          <td className="px-3 py-3 text-[10px]" style={{ color: t.txtSub }}>{row.service}</td>
-                          <td className="px-3 py-3 text-[10px]" style={{ color: t.txtMuted }}>{row.time}</td>
-                          <td className="px-3 py-3"><Badge status={row.status} /></td>
+                        <tr key={i}
+                          className="cursor-pointer"
+                          style={{
+                            borderBottom: `1px solid ${t.divider}`,
+                            background: i % 2 === 1 ? t.tableStripe : 'transparent',
+                          }}
+                          onClick={() => setApptModal(row)}
+                        >
+                          <td className="px-4 py-3 text-[11px] font-semibold" style={{ color: t.txt }}>{row.client}</td>
+                          <td className="px-4 py-3 text-[10px]" style={{ color: t.txtSub }}>{row.service}</td>
+                          <td className="px-4 py-3 text-[10px]" style={{ color: t.txtMuted }}>{row.time}</td>
+                          <td className="px-4 py-3"><Badge status={row.status} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -824,45 +1171,59 @@ const AdminDashboard = () => {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr style={{ borderBottom: `1px solid ${t.divider}` }}>
+                  <tr style={{ borderBottom: `1px solid ${t.divider}`, background: t.inner }}>
                     {['Client', 'Service', 'Therapist', 'Time', 'Location', 'Status', ''].map(h => (
-                      <th key={h} className="px-5 py-3 text-[10px] font-black uppercase tracking-wider"
-                        style={{ color: t.txtMuted, whiteSpace: 'nowrap', background: t.inner }}>
+                      <th key={h}
+                        className="px-5 py-3.5 text-[10px] font-black uppercase tracking-wider"
+                        style={{ color: t.txtMuted, whiteSpace: 'nowrap' }}
+                      >
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {recentRows.map((row, i) => (
-                    <tr key={i}
-                      className="cursor-pointer transition-colors"
-                      style={{ borderBottom: `1px solid ${t.divider}` }}
-                      onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                      onClick={() => setApptModal(row)}>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
-                            {row.client.charAt(0)}
+                  {recentRows.map((row, i) => {
+                    const s = STATUS_MAP[row.status] || {};
+                    return (
+                      <tr key={i}
+                        className="cursor-pointer transition-colors group"
+                        style={{
+                          borderBottom: `1px solid ${t.divider}`,
+                          background: i % 2 === 1 ? t.tableStripe : 'transparent',
+                          borderLeft: `3px solid ${s.dot || 'transparent'}`,
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = i % 2 === 1 ? t.tableStripe : 'transparent'; }}
+                        onClick={() => setApptModal(row)}
+                      >
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                              style={{ background: 'linear-gradient(135deg,#041e16,#0f5040)' }}
+                            >
+                              {row.client.charAt(0)}
+                            </div>
+                            <span className="text-[12px] font-semibold whitespace-nowrap" style={{ color: t.txt }}>{row.client}</span>
                           </div>
-                          <span className="text-[12px] font-semibold whitespace-nowrap" style={{ color: t.txt }}>{row.client}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-[12px] whitespace-nowrap" style={{ color: t.txtSub }}>{row.service}</td>
-                      <td className="px-5 py-3.5 text-[12px] font-semibold whitespace-nowrap" style={{ color: t.accent }}>{row.therapist}</td>
-                      <td className="px-5 py-3.5 text-[11px] whitespace-nowrap" style={{ color: t.txtMuted }}>{row.time}</td>
-                      <td className="px-5 py-3.5 text-[11px] whitespace-nowrap" style={{ color: t.txtMuted }}>{row.loc}</td>
-                      <td className="px-5 py-3.5"><Badge status={row.status} /></td>
-                      <td className="px-5 py-3.5">
-                        <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:opacity-70 transition-opacity"
-                          style={{ background: t.inner, border: t.innerBorder, color: t.txtMuted }}>
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-5 py-4 text-[12px] whitespace-nowrap" style={{ color: t.txtSub }}>{row.service}</td>
+                        <td className="px-5 py-4 text-[12px] font-semibold whitespace-nowrap" style={{ color: t.accent }}>{row.therapist}</td>
+                        <td className="px-5 py-4 text-[11px] whitespace-nowrap" style={{ color: t.txtMuted }}>{row.time}</td>
+                        <td className="px-5 py-4 text-[11px] whitespace-nowrap" style={{ color: t.txtMuted }}>{row.loc}</td>
+                        <td className="px-5 py-4"><Badge status={row.status} /></td>
+                        <td className="px-5 py-4">
+                          <button
+                            className="w-7 h-7 rounded-lg flex items-center justify-center hover:opacity-70 transition-opacity"
+                            style={{ background: t.inner, border: t.innerBorder, color: t.txtMuted }}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

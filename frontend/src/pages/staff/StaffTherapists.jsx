@@ -102,6 +102,7 @@ const StaffTherapists = () => {
     <StaffLayout
       title="Therapist Management"
       subtitle={TABS.find(t => t.id === activeTab)?.label}
+      icon={Users}
     >
       <div className="space-y-6">
         {/* Tab switcher */}

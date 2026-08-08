@@ -1435,7 +1435,7 @@ export default function AdminUserMaintenance() {
   };
 
   return (
-    <AdminLayout title="User Management" subtitle={subMap[activeTab] || 'User Management'}>
+    <AdminLayout title="User Management" subtitle={subMap[activeTab] || 'User Management'} icon={UserCog}>
       <AnimatePresence mode="wait">
         {activeTab === 'profiles' && (
           <motion.div key="profiles"

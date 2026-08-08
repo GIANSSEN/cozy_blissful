@@ -25,7 +25,7 @@ const MENU = [
     subs: [],
   },
   {
-    title: 'Appointments',
+    title: 'Bookings',
     icon: Calendar,
     path: '/admin/appointments',
     basePath: '/admin/appointments',

@@ -83,7 +83,7 @@ const AdminProducts = () => {
   };
 
   return (
-    <AdminLayout title="Inventory" subtitle={getPageTitle()}>
+    <AdminLayout title="Inventory" subtitle={getPageTitle()} icon={Package}>
       <div className="space-y-6">
 
         {/* ── Tab Content: Product Catalog ── */}

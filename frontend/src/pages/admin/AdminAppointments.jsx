@@ -10,7 +10,7 @@ import {
   XCircle, Check, X, RefreshCw, ChevronLeft, ChevronRight, UserCheck,
   Tag, Zap, Mail, FileText, Eye, ChevronDown, CalendarDays,
   Filter, Search, AlertTriangle, RotateCcw, CheckCircle2,
-  Sparkles, ArrowRight, CalendarRange
+  Sparkles, ArrowRight, CalendarRange, CalendarCheck
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -1657,8 +1657,9 @@ const AdminAppointments = () => {
 
   return (
     <AdminLayout
-      title="Bookings & Appointments"
+      title="Bookings"
       subtitle="Master appointment scheduling, therapist assignment, request approvals & reschedule workflow"
+      icon={CalendarCheck}
       searchData={searchData}
       onSearchSelect={(item) => item.onSelect && item.onSelect()}
     >

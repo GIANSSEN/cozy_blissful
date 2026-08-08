@@ -34,8 +34,8 @@ const MENU = [
     path: null,
     basePath: '/staff/appointments',
     subs: [
-      { label: "Today's Appointments", tab: 'today',    path: '/staff/appointments' },
-      { label: 'Upcoming Sessions',     tab: 'upcoming', path: '/staff/appointments' },
+      { label: "Today's Bookings",   tab: 'today',    path: '/staff/appointments' },
+      { label: 'Upcoming Bookings',  tab: 'upcoming', path: '/staff/appointments' },
     ],
   },
 ];
