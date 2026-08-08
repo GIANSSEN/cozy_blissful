@@ -210,17 +210,17 @@ const AdminCustomers = () => {
 
   /* Color Palette System */
   const C = {
-    cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    textPrimary:   isDark ? '#f1f5f9' : '#0f172a',
+    cardBg: isDark ? '#141927' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    textPrimary: isDark ? '#f1f5f9' : '#0f172a',
     textSecondary: isDark ? '#cbd5e1' : '#334155',
-    textMuted:     isDark ? '#64748b' : '#94a3b8',
-    inputBg:       isDark ? '#0f1420' : '#f8fafc',
-    pillActiveBg:  isDark ? '#059669' : '#0a3d30',
+    textMuted: isDark ? '#64748b' : '#94a3b8',
+    inputBg: isDark ? '#0f1420' : '#f8fafc',
+    pillActiveBg: isDark ? '#059669' : '#0a3d30',
     pillActiveTxt: '#ffffff',
-    badgeVipBg:    isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7',
-    badgeVipTxt:   isDark ? '#fbbf24' : '#b45309',
-    badgeVipBorder:isDark ? 'rgba(245,158,11,0.3)' : '#fde68a',
+    badgeVipBg: isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7',
+    badgeVipTxt: isDark ? '#fbbf24' : '#b45309',
+    badgeVipBorder: isDark ? 'rgba(245,158,11,0.3)' : '#fde68a',
   };
 
   /* Calculated Metrics */
@@ -299,7 +299,7 @@ const AdminCustomers = () => {
 
   return (
     <AdminLayout title="Customers" subtitle="Unified Client Registry, Feedback & Health Safety Records" icon={Users}>
-      
+
       {/* Toast Alert */}
       <AnimatePresence>
         {toast && (
@@ -406,27 +406,24 @@ const AdminCustomers = () => {
           <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900/80 p-1.5 rounded-2xl w-full md:w-auto">
             <button
               onClick={() => setActiveTab('registry')}
-              className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'registry' ? 'shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
+              className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${activeTab === 'registry' ? 'shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                }`}
               style={activeTab === 'registry' ? { background: C.pillActiveBg, color: C.pillActiveTxt } : {}}
             >
               <Users className="w-3.5 h-3.5" /> Client Registry
             </button>
             <button
               onClick={() => setActiveTab('reviews')}
-              className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'reviews' ? 'shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
+              className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${activeTab === 'reviews' ? 'shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                }`}
               style={activeTab === 'reviews' ? { background: C.pillActiveBg, color: C.pillActiveTxt } : {}}
             >
               <Star className="w-3.5 h-3.5" /> Reviews & Feedback
             </button>
             <button
               onClick={() => setActiveTab('medical')}
-              className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'medical' ? 'shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
+              className={`flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${activeTab === 'medical' ? 'shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
+                }`}
               style={activeTab === 'medical' ? { background: C.pillActiveBg, color: C.pillActiveTxt } : {}}
             >
               <HeartPulse className="w-3.5 h-3.5" /> Health & Allergy Records
@@ -660,9 +657,8 @@ const AdminCustomers = () => {
                   style={{ background: C.cardBg, borderColor: C.cardBorder }}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold ${
-                      cust.flagged ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 font-bold ${cust.flagged ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'
+                      }`}>
                       <HeartPulse className="w-5 h-5" />
                     </div>
 
@@ -687,11 +683,10 @@ const AdminCustomers = () => {
 
                   <button
                     onClick={() => handleToggleHealthFlag(cust.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex-shrink-0 ${
-                      cust.flagged
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex-shrink-0 ${cust.flagged
                         ? 'bg-red-500 text-white border-red-600 hover:bg-red-600'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-                    }`}
+                      }`}
                   >
                     {cust.flagged ? 'Clear Flag' : '+ Flag Health Note'}
                   </button>
@@ -829,9 +824,8 @@ const AddCustomerModal = ({ onClose, onSubmit, theme }) => {
               placeholder="e.g. Sarah Martinez"
               value={formData.name}
               onChange={e => { setFormData({ ...formData, name: e.target.value }); setErrors({ ...errors, name: null }); }}
-              className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
-                errors.name ? 'border-red-500 bg-red-500/5' : ''
-              }`}
+              className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${errors.name ? 'border-red-500 bg-red-500/5' : ''
+                }`}
               style={{ background: isDark ? '#0f1420' : '#f8fafc', color: isDark ? '#f1f5f9' : '#0f172a' }}
             />
             {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.name}</p>}
@@ -848,9 +842,8 @@ const AddCustomerModal = ({ onClose, onSubmit, theme }) => {
                 placeholder="sarah@example.com"
                 value={formData.email}
                 onChange={e => { setFormData({ ...formData, email: e.target.value }); setErrors({ ...errors, email: null }); }}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
-                  errors.email ? 'border-red-500 bg-red-500/5' : ''
-                }`}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${errors.email ? 'border-red-500 bg-red-500/5' : ''
+                  }`}
                 style={{ background: isDark ? '#0f1420' : '#f8fafc', color: isDark ? '#f1f5f9' : '#0f172a' }}
               />
               {errors.email && <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.email}</p>}
@@ -865,9 +858,8 @@ const AddCustomerModal = ({ onClose, onSubmit, theme }) => {
                 placeholder="+63 917 123 4567"
                 value={formData.phone}
                 onChange={e => { setFormData({ ...formData, phone: e.target.value }); setErrors({ ...errors, phone: null }); }}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
-                  errors.phone ? 'border-red-500 bg-red-500/5' : ''
-                }`}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${errors.phone ? 'border-red-500 bg-red-500/5' : ''
+                  }`}
                 style={{ background: isDark ? '#0f1420' : '#f8fafc', color: isDark ? '#f1f5f9' : '#0f172a' }}
               />
               {errors.phone && <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.phone}</p>}
@@ -1156,3 +1148,4 @@ const ReplyReviewModal = ({ review, onClose, onSubmit, theme }) => {
 };
 
 export default AdminCustomers;
+
