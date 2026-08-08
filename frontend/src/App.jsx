@@ -83,6 +83,7 @@ function AnimatedRoutes() {
 
         {/* ── Client ──────────────────────────────────── */}
         <Route path="/booking/dashboard" element={<ProtectedRoute allowedRoles={['client']}><PageTransition><ClientDashboard /></PageTransition></ProtectedRoute>} />
+        <Route path="/client/dashboard" element={<ProtectedRoute allowedRoles={['client']}><PageTransition><ClientDashboard /></PageTransition></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

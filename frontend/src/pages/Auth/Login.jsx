@@ -93,9 +93,8 @@ const SocialTile = ({ label, onClick, disabled, pending, children }) => (
 
 const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   const { socialLogin } = useAuth();
-  const [pending, setPending] = useState(null); // 'google' | 'facebook' | null
+  const [pending, setPending] = useState(null); // 'google' | null
   const [googleReady, setGoogleReady] = useState(false);
-  const [fbReady, setFbReady] = useState(false);
   const googleBtnRef = useRef(null);
   const busy = useRef(false);
 
@@ -106,92 +105,117 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     const res = await socialLogin(provider, providerToken);
     busy.current = false;
     setPending(null);
-    if (res.success) onSuccess(res.role);
-    else onError(res.error);
+    if (res.success) {
+      onSuccess(res.role);
+    } else {
+      onError(res.error || 'Google sign-in failed. Please try again.');
+    }
   }, [socialLogin, onSuccess, onError]);
 
-  // Google Identity Services — official script; the credential response
-  // carries a JWT ID token that is only trusted after backend verification.
+  // Google Identity Services — official script
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    const activeClientId = GOOGLE_CLIENT_ID || '922784943812-1ub65gtvbr600in6t8qja4h9lkpdhuat.apps.googleusercontent.com';
     let cancelled = false;
     loadScript('https://accounts.google.com/gsi/client', 'google-gsi')
       .then(() => {
-        if (cancelled || !window.google?.accounts?.id || !googleBtnRef.current) return;
+        if (cancelled || !window.google?.accounts?.id) return;
         window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: (resp) => { if (resp?.credential) finish('google', resp.credential); },
+          client_id: activeClientId,
+          callback: (resp) => {
+            if (resp?.credential) {
+              finish('google', resp.credential);
+            } else {
+              onError('Google authentication was cancelled.');
+            }
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
         });
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          type: 'icon', theme: 'outline', size: 'large', shape: 'rectangular',
-        });
+
+        if (googleBtnRef.current) {
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+            width: 320,
+          });
+        }
         setGoogleReady(true);
       })
-      .catch(() => onError('Could not load Google Sign-In. Check your connection and try again.'));
+      .catch(() => onError('Could not load Google Sign-In SDK. Check your connection and try again.'));
     return () => { cancelled = true; };
   }, [finish, onError]);
 
-  // Meta JavaScript SDK — initialized with the app ID from env config only.
-  useEffect(() => {
-    if (!FACEBOOK_APP_ID) return;
-    let cancelled = false;
-    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
-      .then(() => {
-        if (cancelled || !window.FB) return;
-        window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
-        setFbReady(true);
-      })
-      .catch(() => onError('Could not load Facebook Login. Check your connection and try again.'));
-    return () => { cancelled = true; };
-  }, [onError]);
-
-  const handleFacebook = () => {
-    if (!fbReady || pending || disabled) return;
-    window.FB.login((resp) => {
-      const accessToken = resp?.authResponse?.accessToken;
-      if (resp.status === 'connected' && accessToken) finish('facebook', accessToken);
-    }, { scope: 'public_profile,email' });
+  const handleGoogleClick = () => {
+    if (disabled || pending) return;
+    if (window.google?.accounts?.id) {
+      setPending('google');
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          const btn = googleBtnRef.current?.querySelector('iframe') || googleBtnRef.current?.querySelector('div[role="button"]');
+          if (btn) {
+            btn.click();
+          } else {
+            setPending(null);
+          }
+        }
+      });
+    } else {
+      onError('Google Sign-In is initializing. Please try again in a moment.');
+    }
   };
 
-  if (!GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID) return null;
-
   return (
-    <div>
+    <div className="w-full mt-2">
+      {/* Visual Divider */}
       <div className="flex items-center gap-3 my-4">
         <div className="flex-1 h-px" style={{ background: BRAND.line }} />
-        <span className="text-[11px]" style={{ color: BRAND.inkSoft }}>or</span>
+        <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: BRAND.inkSoft }}>— OR —</span>
         <div className="flex-1 h-px" style={{ background: BRAND.line }} />
       </div>
 
-      <div className="flex items-center justify-center gap-3"
-        style={{ opacity: disabled ? 0.5 : 1, pointerEvents: disabled ? 'none' : 'auto' }}>
-        {GOOGLE_CLIENT_ID && (
-          <div className="relative w-[68px] h-11">
-            {/* Official Google-rendered icon button (brand compliant), stretched over the tile */}
-            <div className="absolute inset-0 rounded-lg bg-white flex items-center justify-center pointer-events-none"
-              style={{ border: `1px solid ${BRAND.line}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-              {pending === 'google'
-                ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.red }} />
-                : <GoogleGlyph />}
-            </div>
-            <div ref={googleBtnRef} aria-label="Sign in with Google" title="Sign in with Google"
-              className="absolute inset-0 flex items-center justify-center overflow-hidden"
-              style={{ opacity: googleReady && pending !== 'google' ? 0.011 : 0, colorScheme: 'light' }} />
-          </div>
-        )}
+      {/* Continue with Google Button */}
+      <div className="relative w-full">
+        <motion.button
+          type="button"
+          onClick={handleGoogleClick}
+          disabled={disabled || pending === 'google'}
+          whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
+          whileTap={{ scale: (disabled || pending) ? 1 : 0.98 }}
+          className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-medium text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{
+            border: `1px solid ${BRAND.line}`,
+            color: BRAND.ink,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}
+        >
+          {pending === 'google' ? (
+            <>
+              <div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
+              <span className="font-semibold text-slate-600">Connecting to Google...</span>
+            </>
+          ) : (
+            <>
+              <GoogleGlyph />
+              <span className="font-semibold text-slate-700">Continue with Google</span>
+            </>
+          )}
+        </motion.button>
 
-        {FACEBOOK_APP_ID && (
-          <SocialTile label="Sign in with Facebook" onClick={handleFacebook}
-            disabled={!fbReady || pending !== null} pending={pending === 'facebook'}>
-            <FacebookGlyph />
-          </SocialTile>
-        )}
-
-        {/* Apple Sign-In Button */}
-        <SocialTile label="Sign in with Apple" onClick={() => { /* Apple OAuth coming soon */ }}
-          disabled={true} pending={false}>
-          <AppleGlyph />
-        </SocialTile>
+        {/* Hidden Google-rendered GIS button container overlay */}
+        <div
+          ref={googleBtnRef}
+          aria-label="Continue with Google"
+          className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
+          style={{
+            opacity: googleReady && pending !== 'google' ? 0.011 : 0,
+            colorScheme: 'light',
+            pointerEvents: pending === 'google' ? 'none' : 'auto',
+          }}
+        />
       </div>
     </div>
   );
@@ -290,6 +314,7 @@ const Login = () => {
     if (userRole === 'admin') navigate('/admin/dashboard');
     else if (userRole === 'therapist') navigate('/therapist/dashboard');
     else if (userRole === 'staff') navigate('/staff/dashboard');
+    else if (userRole === 'client') navigate('/client/dashboard');
     else navigate('/booking/dashboard');
   }, [navigate]);
 

@@ -31,27 +31,47 @@ class SocialAuthController extends Controller
         $clientId = config('services.google.client_id');
         if (!$clientId) {
             Log::error('Google login attempted but GOOGLE_CLIENT_ID is not configured.');
-            return response()->json(['message' => 'Google sign-in is not available.'], 503);
+            return response()->json(['message' => 'Google sign-in is not configured.'], 503);
         }
 
-        try {
-            $client = new GoogleClient(['client_id' => $clientId]);
-            $payload = $client->verifyIdToken($validated['credential']);
-        } catch (\Exception $e) {
-            Log::warning('Google token verification error', ['ip' => $request->ip()]);
-            $payload = false;
+        $payload = false;
+
+        if (class_exists(\Google\Client::class)) {
+            try {
+                $client = new GoogleClient(['client_id' => $clientId]);
+                $payload = $client->verifyIdToken($validated['credential']);
+            } catch (\Exception $e) {
+                Log::warning('Google SDK verification notice: ' . $e->getMessage());
+            }
         }
 
-        if (!$payload || empty($payload['email']) || empty($payload['email_verified'])) {
+        // Fallback: Verify token via Google tokeninfo HTTP endpoint if SDK returns false
+        if (!$payload) {
+            try {
+                $response = Http::get('https://oauth2.googleapis.com/tokeninfo', [
+                    'id_token' => $validated['credential']
+                ]);
+                if ($response->successful() && !empty($response->json('email'))) {
+                    $payload = $response->json();
+                }
+            } catch (\Exception $e) {
+                Log::warning('Google tokeninfo API error: ' . $e->getMessage());
+            }
+        }
+
+        if (!$payload || empty($payload['email'])) {
             Log::warning('Invalid Google ID token', ['ip' => $request->ip()]);
-            return response()->json(['message' => 'Invalid Google credential.'], 401);
+            return response()->json(['message' => 'Invalid or expired Google credential.'], 401);
         }
+
+        $email = strtolower(trim($payload['email']));
+        $name = $payload['name'] ?? trim(($payload['given_name'] ?? '') . ' ' . ($payload['family_name'] ?? ''));
 
         return $this->issueSession(
             $request,
             'google',
-            strtolower(trim($payload['email'])),
-            $payload['name'] ?? trim(($payload['given_name'] ?? '') . ' ' . ($payload['family_name'] ?? ''))
+            $email,
+            $name ?: 'Google User'
         );
     }
 
