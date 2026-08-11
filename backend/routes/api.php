@@ -48,6 +48,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/appointments/{id}/status', [AdminController::class, 'updateStatus']);
         Route::get('/therapists', [AdminController::class, 'getTherapists']);
         Route::get('/customers', [AdminController::class, 'getCustomers']);
+        Route::post('/customers', [AdminController::class, 'storeCustomer']);
+        Route::put('/customers/{id}', [AdminController::class, 'updateCustomer']);
 
         // Services CRUD
         Route::get('/services', [AdminController::class, 'getServices']);

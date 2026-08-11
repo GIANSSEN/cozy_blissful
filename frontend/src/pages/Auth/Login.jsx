@@ -210,12 +210,12 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   };
 
   return (
-    <div className="w-full mt-2">
+    <div className="w-full mt-1">
       {/* Visual Divider */}
       <div className="flex items-center gap-3 my-4">
-        <div className="flex-1 h-px" style={{ background: BRAND.line }} />
-        <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: BRAND.inkSoft }}>— OR —</span>
-        <div className="flex-1 h-px" style={{ background: BRAND.line }} />
+        <div className="flex-1 h-px bg-slate-200" />
+        <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">OR</span>
+        <div className="flex-1 h-px bg-slate-200" />
       </div>
 
       <div className="flex flex-col gap-2.5 w-full">
@@ -226,12 +226,12 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
             onClick={handleGoogleClick}
             disabled={disabled || pending !== null}
             whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
-            whileTap={{ scale: (disabled || pending) ? 1 : 0.98 }}
-            className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-medium text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
+            className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-semibold text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-50/80"
             style={{
               border: `1px solid ${BRAND.line}`,
               color: BRAND.ink,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             }}
           >
             {pending === 'google' ? (
@@ -266,22 +266,23 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
           onClick={handleFacebookClick}
           disabled={disabled || pending !== null}
           whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
-          whileTap={{ scale: (disabled || pending) ? 1 : 0.98 }}
-          className="w-full h-11 px-4 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-3 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
+          className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-semibold text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-50/80"
           style={{
-            background: '#1877F2',
-            boxShadow: '0 2px 6px rgba(24,119,242,0.25)',
+            border: `1px solid ${BRAND.line}`,
+            color: BRAND.ink,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}
         >
           {pending === 'facebook' ? (
             <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin flex-shrink-0" />
-              <span>Connecting to Facebook...</span>
+              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin flex-shrink-0" />
+              <span className="font-semibold text-slate-600">Connecting to Facebook...</span>
             </>
           ) : (
             <>
               <FacebookGlyph />
-              <span>Continue with Facebook</span>
+              <span className="font-semibold text-slate-700">Continue with Facebook</span>
             </>
           )}
         </motion.button>
@@ -545,12 +546,12 @@ const Login = () => {
           <div className="w-full max-w-[340px]">
 
             {/* Logo + heading */}
-            <div className="flex flex-col items-center mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-3"
-                style={{ boxShadow: `0 6px 20px rgba(191,161,95,0.15)`, border: `1px solid ${BRAND.line}` }}>
+            <div className="flex flex-col items-center mb-6 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-3 shadow-md border border-slate-100"
+                style={{ boxShadow: `0 6px 20px rgba(191,161,95,0.15)` }}>
                 <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-xl object-cover" />
               </div>
-              <h1 className="text-xl font-black tracking-tight" style={{ color: BRAND.ink }}>Welcome Back !</h1>
+              <h1 className="text-xl font-black tracking-tight" style={{ color: BRAND.ink }}>Welcome Back!</h1>
               <p className="text-[11px] mt-0.5" style={{ color: BRAND.inkSoft }}>Sign in to your Cozy Blissful account</p>
             </div>
 
@@ -601,23 +602,23 @@ const Login = () => {
                 } />
 
               {/* Remember me + reset */}
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-medium" style={{ color: BRAND.ink }}>
+              <div className="flex items-center justify-between py-0.5">
+                <label className="inline-flex items-center gap-2 cursor-pointer text-[11px] font-medium text-slate-700 select-none leading-none">
                   <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded cursor-pointer" style={{ accentColor: BRAND.gold }} />
-                  Remember me
+                    className="w-3.5 h-3.5 rounded border-slate-300 cursor-pointer shrink-0" style={{ accentColor: BRAND.gold }} />
+                  <span>Remember me</span>
                 </label>
                 <Link to="/forgot-password"
-                  className="text-[11px] font-bold hover:underline underline-offset-2"
+                  className="text-[11px] font-bold transition-colors leading-none hover:underline underline-offset-2"
                   style={{ color: BRAND.gold }}>
                   Forgot Password?
                 </Link>
               </div>
 
               <motion.button type="submit" id="login-submit" disabled={submitting || rateLimit > 0}
-                whileHover={{ scale: submitting ? 1 : 1.015 }} whileTap={{ scale: submitting ? 1 : 0.975 }}
-                className="w-full flex justify-center items-center gap-2 py-2.5 rounded-lg text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: `linear-gradient(135deg,${BRAND.goldLight},${BRAND.gold})`, color: '#041e16', boxShadow: `0 6px 18px ${BRAND.gold}55`, letterSpacing: '0.015em' }}>
+                whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.985 }}
+                className="w-full h-11 flex justify-center items-center gap-2 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all duration-150 cursor-pointer"
+                style={{ background: `linear-gradient(135deg,${BRAND.goldLight},${BRAND.gold})`, color: '#041e16', boxShadow: `0 4px 14px rgba(191,161,95,0.35)`, letterSpacing: '0.015em' }}>
                 {submitting
                   ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(191,161,95,0.2)', borderTopColor: BRAND.deep }} />
                   : <><LogIn className="w-3.5 h-3.5" /><span>Login</span></>}

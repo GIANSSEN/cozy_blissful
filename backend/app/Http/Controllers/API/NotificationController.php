@@ -65,13 +65,17 @@ class NotificationController extends Controller
     private function humanTime($date)
     {
         if (!$date) return '';
-        $diff = Carbon::now()->diffInSeconds($date);
 
-        if ($diff < 60)                        return $diff . 's ago';
-        if ($diff < 3600)                      return intval($diff / 60) . 'm ago';
-        if ($diff < 86400)                     return intval($diff / 3600) . 'h ago';
-        if ($diff < 604800)                    return intval($diff / 86400) . 'd ago';
-        return Carbon::parse($date)->format('M d');
+        $cDate   = Carbon::parse($date);
+        $seconds = intval(abs(Carbon::now()->diffInSeconds($cDate)));
+
+        if ($seconds < 10)     return 'Just now';
+        if ($seconds < 60)     return $seconds . 's ago';
+        if ($seconds < 3600)   return intval($seconds / 60) . 'm ago';
+        if ($seconds < 86400)  return intval($seconds / 3600) . 'h ago';
+        if ($seconds < 604800) return intval($seconds / 86400) . 'd ago';
+
+        return $cDate->format('M d');
     }
 
     private function iconForType($type)

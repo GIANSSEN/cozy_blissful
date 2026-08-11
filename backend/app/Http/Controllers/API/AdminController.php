@@ -323,21 +323,53 @@ class AdminController extends Controller
     }
 
     /**
-     * Get all customers.
+     * Get all registered client customers with full profile data.
      */
     public function getCustomers()
     {
         $clients = User::role('client')
+            ->with([
+                'appointments' => function ($q) {
+                    $q->with(['service', 'therapist'])
+                      ->orderBy('datetime', 'desc');
+                }
+            ])
             ->withCount('appointments')
+            ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($c) {
+                // Total spent: sum of service prices for Completed appointments
+                $totalSpent = $c->appointments
+                    ->where('status', 'Completed')
+                    ->sum(fn ($a) => $a->service ? (float) $a->service->price : 0);
+
+                // Auto-tier: VIP if >= 5 bookings, else use stored tier
+                $tier = $c->tier ?? 'Regular';
+                if ($c->appointments_count >= 5 && $tier === 'Regular') {
+                    $tier = 'VIP';
+                }
+
+                // Build history array (last 10 appointments)
+                $history = $c->appointments->take(10)->map(fn ($a) => [
+                    'id'        => 'b' . $a->id,
+                    'service'   => $a->service ? $a->service->name : 'Service',
+                    'date'      => $a->datetime->format('Y-m-d'),
+                    'therapist' => $a->therapist ? $a->therapist->name : 'Unassigned',
+                    'status'    => $a->status,
+                    'amount'    => $a->service ? (float) $a->service->price : 0,
+                ])->values()->toArray();
+
                 return [
-                    'id' => $c->id,
-                    'name' => $c->name,
-                    'email' => $c->email,
-                    'phone' => $c->phone ?? 'N/A',
-                    'bookings' => $c->appointments_count,
-                    'notes' => $c->notes ?? 'No special notes'
+                    'id'          => $c->id,
+                    'name'        => $c->name,
+                    'email'       => $c->email,
+                    'phone'       => $c->phone ?? '',
+                    'tier'        => $tier,
+                    'bookings'    => $c->appointments_count,
+                    'totalSpent'  => $totalSpent,
+                    'notes'       => $c->notes ?? '',
+                    'created_at'  => $c->created_at->format('Y-m-d'),
+                    'history'     => $history,
                 ];
             });
 
@@ -345,4 +377,66 @@ class AdminController extends Controller
             'customers' => $clients
         ]);
     }
+
+    /**
+     * Register a new customer (client role user).
+     */
+    public function storeCustomer(Request $request)
+    {
+        $validated = $request->validate([
+            'name'  => 'required|string|min:2|max:100',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'tier'  => 'nullable|in:Regular,VIP',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $user = User::create([
+            'name'     => $validated['name'],
+            'email'    => $validated['email'],
+            'phone'    => $validated['phone'] ?? null,
+            'tier'     => $validated['tier'] ?? 'Regular',
+            'notes'    => $validated['notes'] ?? null,
+            'password' => bcrypt('Temp@' . rand(10000, 99999)), // temp password
+        ]);
+
+        $user->assignRole('client');
+
+        return response()->json([
+            'message'  => 'Customer registered successfully',
+            'customer' => [
+                'id'         => $user->id,
+                'name'       => $user->name,
+                'email'      => $user->email,
+                'phone'      => $user->phone ?? '',
+                'tier'       => $user->tier,
+                'bookings'   => 0,
+                'totalSpent' => 0,
+                'notes'      => $user->notes ?? '',
+                'created_at' => $user->created_at->format('Y-m-d'),
+                'history'    => [],
+            ]
+        ], 201);
+    }
+
+    /**
+     * Update customer notes/tier.
+     */
+    public function updateCustomer(Request $request, $id)
+    {
+        $user = User::role('client')->findOrFail($id);
+
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:1000',
+            'tier'  => 'nullable|in:Regular,VIP',
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'message' => 'Customer updated successfully'
+        ]);
+    }
 }
+

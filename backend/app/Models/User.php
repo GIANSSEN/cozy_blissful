@@ -27,7 +27,18 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
+        'notes',
+        'tier',
     ];
+
+    /**
+     * Appointments as a client.
+     */
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class, 'client_id');
+    }
 
     /**
      * The attributes that should be hidden for serialization.
