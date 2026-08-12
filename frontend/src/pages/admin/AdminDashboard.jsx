@@ -388,25 +388,26 @@ const Bar = ({ pct, color, t, height = 6 }) => (
 
 /* ─── Modal Wrapper ───────────────────────────────────────────────── */
 const ModalWrap = ({ children, onClose }) => (
-  <AnimatePresence>
+  <motion.div
+    className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    transition={{ duration: 0.18 }}
+    onClick={onClose}
+    style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)' }}
+  >
     <motion.div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      onClick={onClose}
-      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}
+      initial={{ scale: 0.94, opacity: 0, y: 16 }}
+      animate={{ scale: 1,    opacity: 1, y: 0  }}
+      exit={{ scale: 0.94,    opacity: 0, y: 16 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+      className="w-full max-w-sm sm:max-w-md max-h-[85vh] my-auto overflow-y-auto rounded-2xl sm:rounded-3xl shadow-2xl border flex flex-col relative"
+      onClick={e => e.stopPropagation()}
     >
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0, y: 40 }}
-        animate={{ scale: 1,    opacity: 1, y: 0  }}
-        exit={{ scale: 0.95,    opacity: 0, y: 40 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-        className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        {children}
-      </motion.div>
+      {children}
     </motion.div>
-  </AnimatePresence>
+  </motion.div>
 );
 
 /* ─── KPI Detail Modal ────────────────────────────────────────────── */
@@ -414,39 +415,56 @@ const KPIModal = ({ modal, onClose, t }) => {
   if (!modal) return null;
   return (
     <ModalWrap onClose={onClose}>
-      <div style={{ background: t.card, border: t.cardBorder }} className="rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
-        <div className="w-10 h-1 bg-current opacity-20 rounded-full mx-auto mb-4 sm:hidden" style={{ color: t.txtMuted }} />
-        <div className="flex items-center justify-between mb-5">
+      <div style={{ background: t.card, borderColor: t.cardBorder }} className="p-4 sm:p-5 flex flex-col space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: `${modal.color}18`, border: `1px solid ${modal.color}30` }}>
-              <modal.icon className="w-5 h-5" style={{ color: modal.color }} />
+              <modal.icon className="w-4 h-4" style={{ color: modal.color }} />
             </div>
             <div>
-              <h3 className="font-black text-sm" style={{ color: t.txt }}>{modal.title}</h3>
-              <p className="text-[10px]" style={{ color: t.txtMuted }}>{modal.subtitle}</p>
+              <h3 className="font-extrabold text-sm" style={{ color: t.txt }}>{modal.title}</h3>
+              <p className="text-[10px] font-medium" style={{ color: t.txtMuted }}>{modal.subtitle}</p>
             </div>
           </div>
           <button onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center hover:opacity-70 transition-opacity"
+            aria-label="Close modal"
+            className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80 active:scale-95 transition-all"
             style={{ background: t.inner, border: t.innerBorder, color: t.txtMuted }}>
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="text-4xl font-black mb-1" style={{ color: modal.color }}>
-          <Counter value={modal.value} />
+
+        {/* Value */}
+        <div className="pt-1">
+          <div className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: modal.color }}>
+            <Counter value={modal.value} />
+          </div>
+          <p className="text-xs mt-1 font-medium leading-relaxed" style={{ color: t.txtMuted }}>{modal.description}</p>
         </div>
-        <p className="text-xs mb-5" style={{ color: t.txtMuted }}>{modal.description}</p>
-        <div className="space-y-3">
+
+        {/* Breakdown */}
+        <div className="space-y-3 pt-2">
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Breakdown</p>
           {modal.breakdown.map(b => (
-            <div key={b.label}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px]" style={{ color: t.txtSub }}>{b.label}</span>
-                <span className="text-[11px] font-bold" style={{ color: t.txt }}>{b.value}</span>
+            <div key={b.label} className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span style={{ color: t.txtSub }}>{b.label}</span>
+                <span className="font-bold" style={{ color: t.txt }}>{b.value}</span>
               </div>
-              <Bar pct={b.pct} color={modal.color} t={t} />
+              <Bar pct={b.pct} color={modal.color} t={t} height={5} />
             </div>
           ))}
+        </div>
+
+        {/* Footer action */}
+        <div className="pt-2 flex justify-end">
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+            style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
+            Close
+          </button>
         </div>
       </div>
     </ModalWrap>
@@ -458,48 +476,57 @@ const AppointmentModal = ({ row, onClose, t }) => {
   if (!row) return null;
   return (
     <ModalWrap onClose={onClose}>
-      <div style={{ background: t.card, border: t.cardBorder }} className="rounded-t-3xl sm:rounded-3xl p-5 sm:p-6">
-        <div className="w-10 h-1 bg-current opacity-20 rounded-full mx-auto mb-4 sm:hidden" style={{ color: t.txtMuted }} />
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="font-black text-sm" style={{ color: t.txt }}>Appointment Detail</h3>
+      <div style={{ background: t.card, borderColor: t.cardBorder }} className="p-4 sm:p-5 flex flex-col space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h3 className="font-extrabold text-sm" style={{ color: t.txt }}>Appointment Details</h3>
           <button onClick={onClose}
-            className="w-9 h-9 rounded-xl flex items-center justify-center hover:opacity-70 transition-opacity"
+            aria-label="Close modal"
+            className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80 active:scale-95 transition-all"
             style={{ background: t.inner, border: t.innerBorder, color: t.txtMuted }}>
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex items-center gap-3 mb-5 p-4 rounded-2xl" style={{ background: t.inner, border: t.innerBorder }}>
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white flex-shrink-0"
+
+        {/* Client card */}
+        <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: t.inner, border: t.innerBorder }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white flex-shrink-0"
             style={{ background: 'linear-gradient(135deg,#041e16,#0f5040)' }}>
             {row.client.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-black text-sm truncate" style={{ color: t.txt }}>{row.client}</p>
-            <p className="text-[11px] truncate" style={{ color: t.txtMuted }}>{row.service}</p>
+            <p className="font-extrabold text-xs truncate" style={{ color: t.txt }}>{row.client}</p>
+            <p className="text-[11px] truncate font-medium mt-0.5" style={{ color: t.txtMuted }}>{row.service}</p>
           </div>
           <div className="flex-shrink-0"><Badge status={row.status} /></div>
         </div>
-        <div className="space-y-2.5">
+
+        {/* Details list */}
+        <div className="space-y-2">
           {[
             { label: 'Therapist', value: row.therapist, icon: UserCheck },
             { label: 'Time',      value: row.time,      icon: Clock     },
             { label: 'Location',  value: row.loc,        icon: MapPin   },
           ].map(item => (
-            <div key={item.label} className="flex items-center gap-3 p-3.5 rounded-xl"
+            <div key={item.label} className="flex items-center gap-3 p-3 rounded-xl"
               style={{ background: t.inner, border: t.innerBorder }}>
-              <item.icon className="w-4 h-4 flex-shrink-0" style={{ color: t.accent }} />
-              <div className="min-w-0">
+              <item.icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: t.accent }} />
+              <div className="min-w-0 flex-1">
                 <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>{item.label}</p>
-                <p className="text-[12px] font-semibold truncate" style={{ color: t.txt }}>{item.value}</p>
+                <p className="text-[11px] font-bold truncate mt-0.5" style={{ color: t.txt }}>{item.value}</p>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={onClose}
-          className="w-full mt-5 py-3 rounded-2xl text-sm font-bold sm:hidden"
-          style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
-          Close
-        </button>
+
+        {/* Footer */}
+        <div className="pt-1 flex justify-end">
+          <button onClick={onClose}
+            className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 text-center"
+            style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
+            Close
+          </button>
+        </div>
       </div>
     </ModalWrap>
   );
@@ -526,6 +553,18 @@ const AdminDashboard = () => {
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  /* escape key listener to close active modals */
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key === 'Escape') {
+        setKpiModal(null);
+        setApptModal(null);
+      }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
   }, []);
 
   const load = async (silent = false) => {
@@ -666,8 +705,12 @@ const AdminDashboard = () => {
   /* ─────────────────────────────────────────────────────────────── */
   return (
     <AdminLayout title="Dashboard" subtitle="Full operational overview" icon={LayoutDashboard}>
-      <KPIModal        modal={kpiModal}  onClose={() => setKpiModal(null)}  t={t} />
-      <AppointmentModal row={apptModal}  onClose={() => setApptModal(null)} t={t} />
+      <AnimatePresence>
+        {kpiModal && <KPIModal key="kpi-modal" modal={kpiModal} onClose={() => setKpiModal(null)} t={t} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {apptModal && <AppointmentModal key="appt-modal" row={apptModal} onClose={() => setApptModal(null)} t={t} />}
+      </AnimatePresence>
 
       <div className="space-y-5 pb-8">
 

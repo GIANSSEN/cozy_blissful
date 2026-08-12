@@ -4,26 +4,24 @@ import { useAuth } from '../../context/AuthContext';
 import { LogIn, Eye, EyeOff, AlertCircle, Clock, Mail, Lock, Sparkles, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ─── Brand palette (LandingPage-inspired Green/Gold Theme) ────────────────────
-const BRAND = {
-  deep: '#041e16',
-  green: '#0a3d30',
-  gold: '#bfa15f',
+// ─── Brand palette ─────────────────────────────────────────────────────────────
+const B = {
+  deep:      '#041e16',
+  green:     '#0a3d30',
+  mid:       '#0f5c47',
+  gold:      '#bfa15f',
   goldLight: '#e8cc8a',
-  emerald: '#34d399',
-  ink: '#2c3e50',
-  inkSoft: '#7f8c8d',
-  line: '#ecf0f1',
-  field: '#f8f9fa',
-  white: '#ffffff',
+  ink:       '#1a2332',
+  inkSoft:   '#64748b',
+  line:      '#e2e8f0',
+  white:     '#ffffff',
 };
 
-// ─── Social links (update hrefs when ready) ───────────────────────────────────
+// ─── Social links ─────────────────────────────────────────────────────────────
 const SOCIALS = [
   { label: 'Facebook',  href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
   { label: 'Instagram', href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> },
   { label: 'TikTok',    href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg> },
-  { label: 'YouTube',   href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
   { label: 'WhatsApp',  href: '#', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg> },
 ];
 
@@ -36,13 +34,13 @@ const STATS = [
 
 const SERVICES = [
   { icon: '💆', name: 'Massage Therapy', note: 'From ₱749' },
-  { icon: '💅', name: 'Nail Care',       note: 'From ₱299' },
+  { icon: '💅', name: 'Nail Care', note: 'From ₱299' },
   { icon: '✨', name: 'Beauty & Wellness', note: 'Ask for price' },
 ];
 
-// ─── Social sign-in (OAuth 2.0) ───────────────────────────────────────────────
+// ─── OAuth config ─────────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
+const FACEBOOK_APP_ID  = import.meta.env.VITE_FACEBOOK_APP_ID;
 
 const loadScript = (src, id) => new Promise((resolve, reject) => {
   const existing = document.getElementById(id);
@@ -60,7 +58,7 @@ const loadScript = (src, id) => new Promise((resolve, reject) => {
 });
 
 const GoogleGlyph = () => (
-  <svg viewBox="0 0 48 48" className="w-5 h-5" aria-hidden="true">
+  <svg viewBox="0 0 48 48" className="w-4.5 h-4.5 shrink-0" aria-hidden="true">
     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
     <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
@@ -69,31 +67,87 @@ const GoogleGlyph = () => (
 );
 
 const FacebookGlyph = () => (
-  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-5 h-5" aria-hidden="true">
+  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-4.5 h-4.5 shrink-0" aria-hidden="true">
     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
   </svg>
 );
 
-const AppleGlyph = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true" style={{ color: '#000' }}>
-    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.08 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.48-2.53 3.23l-.07-.04c-.98.95-2.05.8-3.08.38-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.38C2.79 15.25 3.51 7.59 9.05 7.31c1.35.08 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.48-2.53 3.23l-.07-.04zM12.03 7.25c-.15-2.23-2.04-4.05-4.2-3.95-2.05 1.51-2.08 3.72-.04 5.25.44-.35.88-.64 1.37-.79.49-.15 1.02-.2 1.56-.1.35.07.69.18 1.02.32.41-.44.74-.91.99-1.4.15-.28.27-.57.3-.33z"/>
-  </svg>
+const Particle = ({ style, delay = 0, duration = 9 }) => (
+  <motion.div className="absolute rounded-full pointer-events-none" style={style}
+    animate={{ y: [0, -18, 0], x: [0, 8, 0], opacity: [0.4, 0.8, 0.4] }}
+    transition={{ duration, delay, repeat: Infinity, ease: 'easeInOut' }} />
 );
 
-const SocialTile = ({ label, onClick, disabled, pending, children }) => (
-  <motion.button type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label}
-    whileHover={{ scale: disabled ? 1 : 1.05, y: disabled ? 0 : -1 }} whileTap={{ scale: disabled ? 1 : 0.95 }}
-    className="w-[68px] h-11 rounded-lg flex items-center justify-center bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-    style={{ border: `1px solid ${BRAND.line}`, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-    {pending
-      ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
-      : children}
-  </motion.button>
+const DotGrid = ({ rows = 4, cols = 8, className = '' }) => (
+  <div className={`grid gap-[7px] pointer-events-none ${className}`}
+    style={{ gridTemplateColumns: `repeat(${cols}, 4px)` }}>
+    {Array.from({ length: rows * cols }).map((_, i) => (
+      <span key={i} className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.22)' }} />
+    ))}
+  </div>
 );
+
+const RateLimitBanner = ({ retryAfter }) => {
+  const [s, setS] = useState(retryAfter);
+  useEffect(() => { setS(retryAfter); }, [retryAfter]);
+  useEffect(() => {
+    if (s <= 0) return;
+    const id = setInterval(() => setS(v => Math.max(0, v - 1)), 1000);
+    return () => clearInterval(id);
+  }, [s]);
+  const m = Math.floor(s / 60), sec = s % 60;
+  return (
+    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+      className="flex items-start gap-2 p-3 rounded-xl text-xs"
+      style={{ background: 'rgba(191,161,95,0.08)', border: '1px solid rgba(191,161,95,0.3)' }}>
+      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
+      <span style={{ color: '#8b7a45' }}>
+        <strong>Too many attempts.</strong>{' '}
+        {s > 0 ? `Retry in ${m > 0 ? `${m}m ` : ''}${sec}s.` : 'You may try again.'}
+      </span>
+    </motion.div>
+  );
+};
+
+const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div className="w-full">
+      <label htmlFor={id} className="block text-xs font-semibold mb-1 sm:mb-1.5" style={{ color: B.ink }}>
+        {label}
+      </label>
+      <div className="relative w-full">
+        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors duration-150 shrink-0"
+          style={{ color: error ? '#dc2626' : focused ? B.gold : '#94a3b8' }} />
+        <input id={id}
+          onFocus={() => setFocused(true)}
+          onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
+          className="w-full text-xs sm:text-sm rounded-xl outline-none transition-all duration-200 bg-white"
+          style={{
+            border: error ? '1.5px solid rgba(220,38,38,0.55)' : focused ? `1.5px solid ${B.gold}` : `1.5px solid ${B.line}`,
+            color: B.ink,
+            padding: rightEl ? '0.65rem 2.6rem 0.65rem 2.6rem' : '0.65rem 0.9rem 0.65rem 2.6rem',
+            boxShadow: focused && !error ? `0 0 0 4px rgba(191,161,95,0.1)` : error ? `0 0 0 4px rgba(220,38,38,0.06)` : 'none',
+            caretColor: B.gold,
+          }} {...props} />
+        {rightEl && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">{rightEl}</div>}
+      </div>
+      <AnimatePresence>
+        {error && (
+          <motion.p initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="mt-1 text-[11px] flex items-center gap-1 font-medium" style={{ color: '#dc2626' }}>
+            <AlertCircle className="w-3 h-3 flex-shrink-0" />{error}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   const { socialLogin } = useAuth();
-  const [pending, setPending] = useState(null); // 'google' | 'facebook' | null
+  const navigate = useNavigate();
+  const [pending, setPending] = useState(null);
   const [googleReady, setGoogleReady] = useState(false);
   const [fbReady, setFbReady] = useState(false);
   const googleBtnRef = useRef(null);
@@ -108,64 +162,46 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     setPending(null);
     if (res.success) {
       onSuccess(res.role);
+    } else if (res.needsRegistration) {
+      navigate(`/register?prefill_email=${encodeURIComponent(res.email)}&prefill_name=${encodeURIComponent(res.suggestedName || '')}&provider=${encodeURIComponent(res.provider || '')}`);
     } else {
-      onError(res.error || `${provider === 'facebook' ? 'Facebook' : 'Google'} sign-in failed. Please try again.`);
+      onError(res.error || `${provider === 'facebook' ? 'Facebook' : 'Google'} sign-in failed.`);
     }
-  }, [socialLogin, onSuccess, onError]);
+  }, [socialLogin, onSuccess, onError, navigate]);
 
-  // Google Identity Services SDK
   useEffect(() => {
-    const activeClientId = GOOGLE_CLIENT_ID || '922784943812-1ub65gtvbr600in6t8qja4h9lkpdhuat.apps.googleusercontent.com';
+    const clientId = GOOGLE_CLIENT_ID || '922784943812-1ub65gtvbr600in6t8qja4h9lkpdhuat.apps.googleusercontent.com';
     let cancelled = false;
     loadScript('https://accounts.google.com/gsi/client', 'google-gsi')
       .then(() => {
         if (cancelled || !window.google?.accounts?.id) return;
         window.google.accounts.id.initialize({
-          client_id: activeClientId,
-          callback: (resp) => {
-            if (resp?.credential) {
-              finish('google', resp.credential);
-            } else {
-              onError('Google authentication was cancelled.');
-            }
-          },
-          auto_select: false,
-          cancel_on_tap_outside: true,
+          client_id: clientId,
+          callback: (resp) => resp?.credential ? finish('google', resp.credential) : onError('Google auth was cancelled.'),
+          auto_select: false, cancel_on_tap_outside: true,
         });
-
         if (googleBtnRef.current) {
           window.google.accounts.id.renderButton(googleBtnRef.current, {
-            type: 'standard',
-            theme: 'outline',
-            size: 'large',
-            text: 'continue_with',
-            shape: 'rectangular',
-            logo_alignment: 'left',
-            width: 320,
+            type: 'standard', theme: 'outline', size: 'large',
+            text: 'continue_with', shape: 'rectangular', logo_alignment: 'left', width: 320,
           });
         }
         setGoogleReady(true);
       })
-      .catch(() => onError('Could not load Google Sign-In SDK. Check your connection and try again.'));
+      .catch(() => onError('Could not load Google Sign-In SDK.'));
     return () => { cancelled = true; };
   }, [finish, onError]);
 
-  // Meta Facebook JavaScript SDK
   useEffect(() => {
-    const activeFbAppId = FACEBOOK_APP_ID || '3462314653929826';
+    const appId = FACEBOOK_APP_ID || '3462314653929826';
     let cancelled = false;
     loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
       .then(() => {
         if (cancelled || !window.FB) return;
-        window.FB.init({
-          appId: activeFbAppId,
-          cookie: true,
-          xfbml: false,
-          version: 'v21.0',
-        });
+        window.FB.init({ appId, cookie: true, xfbml: false, version: 'v21.0' });
         setFbReady(true);
       })
-      .catch(() => console.warn('Facebook SDK load notice; fallback to OAuth redirect available.'));
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -173,252 +209,107 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     if (disabled || pending) return;
     if (window.google?.accounts?.id) {
       setPending('google');
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      window.google.accounts.id.prompt((n) => {
+        if (n.isNotDisplayed() || n.isSkippedMoment()) {
           const btn = googleBtnRef.current?.querySelector('iframe') || googleBtnRef.current?.querySelector('div[role="button"]');
-          if (btn) {
-            btn.click();
-          } else {
-            setPending(null);
-          }
+          if (btn) btn.click(); else setPending(null);
         }
       });
     } else {
-      onError('Google Sign-In is initializing. Please try again in a moment.');
+      onError('Google Sign-In is initializing. Please try again.');
     }
   };
 
   const handleFacebookClick = () => {
     if (disabled || pending) return;
     setPending('facebook');
-
     if (window.FB && fbReady) {
       window.FB.login((resp) => {
-        const accessToken = resp?.authResponse?.accessToken;
-        if (resp.status === 'connected' && accessToken) {
-          finish('facebook', accessToken);
+        if (resp.status === 'connected' && resp?.authResponse?.accessToken) {
+          finish('facebook', resp.authResponse.accessToken);
         } else {
           setPending(null);
-          onError('Facebook authentication was cancelled or closed.');
+          onError('Facebook auth was cancelled.');
         }
       }, { scope: 'public_profile,email' });
     } else {
-      // Direct OAuth redirect fallback
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
       window.location.href = `${apiBase}/auth/facebook/redirect`;
     }
   };
 
+  const btnBase = "w-full h-10 sm:h-11 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 sm:gap-2.5 font-semibold text-xs sm:text-[13px] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border";
+
   return (
     <div className="w-full mt-1">
-      {/* Visual Divider */}
-      <div className="flex items-center gap-3 my-4">
-        <div className="flex-1 h-px bg-slate-200" />
-        <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">OR</span>
-        <div className="flex-1 h-px bg-slate-200" />
+      <div className="flex items-center gap-2 sm:gap-3 my-3 sm:my-4">
+        <div className="flex-1 h-px" style={{ background: B.line }} />
+        <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: B.inkSoft }}>or continue with</span>
+        <div className="flex-1 h-px" style={{ background: B.line }} />
       </div>
 
-      <div className="flex flex-col gap-2.5 w-full">
-        {/* Continue with Google Button */}
+      <div className="flex flex-col gap-2 w-full">
+        {/* Google */}
         <div className="relative w-full">
-          <motion.button
-            type="button"
-            onClick={handleGoogleClick}
-            disabled={disabled || pending !== null}
-            whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
-            whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
-            className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-semibold text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-50/80"
-            style={{
-              border: `1px solid ${BRAND.line}`,
-              color: BRAND.ink,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-            }}
-          >
-            {pending === 'google' ? (
-              <>
-                <div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.15)', borderTopColor: BRAND.gold }} />
-                <span className="font-semibold text-slate-600">Connecting to Google...</span>
-              </>
-            ) : (
-              <>
-                <GoogleGlyph />
-                <span className="font-semibold text-slate-700">Continue with Google</span>
-              </>
-            )}
+          <motion.button type="button" onClick={handleGoogleClick} disabled={disabled || pending !== null}
+            whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }} whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
+            className={btnBase}
+            style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            {pending === 'google'
+              ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
+              : <><GoogleGlyph /><span className="truncate">Continue with Google</span></>}
           </motion.button>
-
-          {/* Hidden Google-rendered GIS button container overlay */}
-          <div
-            ref={googleBtnRef}
-            aria-label="Continue with Google"
+          <div ref={googleBtnRef} aria-label="Continue with Google"
             className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
-            style={{
-              opacity: googleReady && pending !== 'google' ? 0.011 : 0,
-              colorScheme: 'light',
-              pointerEvents: pending !== null ? 'none' : 'auto',
-            }}
-          />
+            style={{ opacity: googleReady && pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }} />
         </div>
 
-        {/* Continue with Facebook Button */}
-        <motion.button
-          type="button"
-          onClick={handleFacebookClick}
-          disabled={disabled || pending !== null}
-          whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
-          whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
-          className="w-full h-11 px-4 rounded-xl bg-white border flex items-center justify-center gap-3 font-semibold text-xs text-slate-700 shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed hover:bg-slate-50/80"
-          style={{
-            border: `1px solid ${BRAND.line}`,
-            color: BRAND.ink,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          }}
-        >
-          {pending === 'facebook' ? (
-            <>
-              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin flex-shrink-0" />
-              <span className="font-semibold text-slate-600">Connecting to Facebook...</span>
-            </>
-          ) : (
-            <>
-              <FacebookGlyph />
-              <span className="font-semibold text-slate-700">Continue with Facebook</span>
-            </>
-          )}
+        {/* Facebook */}
+        <motion.button type="button" onClick={handleFacebookClick} disabled={disabled || pending !== null}
+          whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }} whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
+          className={btnBase}
+          style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          {pending === 'facebook'
+            ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1877F2' }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
+            : <><FacebookGlyph /><span className="truncate">Continue with Facebook</span></>}
         </motion.button>
       </div>
     </div>
   );
 };
 
-// ─── Floating orb ─────────────────────────────────────────────────────────────
-const FloatingOrb = ({ style, delay = 0, duration = 9 }) => (
-  <motion.div className="absolute rounded-full pointer-events-none" style={style}
-    animate={{ y: [0, -14, 0], x: [0, 6, 0] }}
-    transition={{ duration, delay, repeat: Infinity, ease: 'easeInOut' }} />
-);
-
-// ─── Dot grid (decorative) ────────────────────────────────────────────────────
-const DotGrid = ({ rows = 4, cols = 9, className = '', style = {} }) => (
-  <div className={`grid gap-2 pointer-events-none ${className}`}
-    style={{ gridTemplateColumns: `repeat(${cols}, 4px)`, ...style }}>
-    {Array.from({ length: rows * cols }).map((_, i) => (
-      <span key={i} className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.35)' }} />
-    ))}
-  </div>
-);
-
-// ─── Rate limit banner ────────────────────────────────────────────────────────
-const RateLimitBanner = ({ retryAfter }) => {
-  const [s, setS] = useState(retryAfter);
-  useEffect(() => { setS(retryAfter); }, [retryAfter]);
-  useEffect(() => {
-    if (s <= 0) return;
-    const id = setInterval(() => setS(v => Math.max(0, v - 1)), 1000);
-    return () => clearInterval(id);
-  }, [s]);
-  const m = Math.floor(s / 60), sec = s % 60;
-  return (
-    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-      className="flex items-start gap-2 p-2.5 rounded-lg text-[11px]"
-      style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.35)' }}>
-      <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
-      <span style={{ color: '#8b7a45' }}>
-        <strong>Too many attempts.</strong>{' '}
-        {s > 0 ? `Retry in ${m > 0 ? `${m}m ` : ''}${sec}s.` : 'You may try again.'}
-      </span>
-    </motion.div>
-  );
-};
-
-// ─── Labeled input with leading icon ──────────────────────────────────────────
-const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
-  const [focused, setFocused] = useState(false);
-  return (
-    <div>
-      <label htmlFor={id} className="block text-xs font-semibold mb-1.5" style={{ color: BRAND.ink }}>{label}</label>
-      <div className="relative">
-        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-          style={{ color: error ? '#dc2626' : BRAND.gold }} />
-        <input id={id}
-          onFocus={() => setFocused(true)}
-          onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
-          className="w-full text-sm rounded-lg outline-none transition-all duration-150 bg-white"
-          style={{
-            border: error ? '1px solid rgba(220,38,38,0.55)' : focused ? `1px solid ${BRAND.gold}` : `1px solid ${BRAND.line}`,
-            color: BRAND.ink, padding: rightEl ? '0.65rem 2.6rem 0.65rem 2.5rem' : '0.65rem 0.9rem 0.65rem 2.5rem',
-            boxShadow: focused && !error ? `0 0 0 3px rgba(191,161,95,0.12)` : '0 1px 2px rgba(0,0,0,0.04)',
-            caretColor: BRAND.gold,
-          }} {...props} />
-        {rightEl && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightEl}</div>}
-      </div>
-      <AnimatePresence>
-        {error && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="mt-1 text-[11px] flex items-center gap-1" style={{ color: '#dc2626' }}>
-            <AlertCircle className="w-3 h-3 flex-shrink-0" />{error}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
 const Login = () => {
-  const location = useLocation();
-  const [email, setEmail] = useState(() => location.state?.email || localStorage.getItem('remember_email') || '');
+  const location  = useLocation();
+  const [email, setEmail]     = useState(() => location.state?.email || localStorage.getItem('remember_email') || '');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(() => !!localStorage.getItem('remember_email'));
-  const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState(null);
-  const [notice, setNotice] = useState(() => location.state?.notice || null);
+  const [showPw, setShowPw]   = useState(false);
+  const [error, setError]     = useState(null);
+  const [notice, setNotice]   = useState(() => location.state?.notice || null);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [rateLimit, setRateLimit] = useState(null);
+  const [submitting, setSubmitting]   = useState(false);
+  const [rateLimit, setRateLimit]     = useState(null);
 
   const { login, token, user, role } = useAuth();
   const navigate = useNavigate();
 
   const redirect = useCallback((userRole) => {
-    if (userRole === 'admin') navigate('/admin/dashboard');
+    if (userRole === 'admin')          navigate('/admin/dashboard');
     else if (userRole === 'therapist') navigate('/therapist/dashboard');
-    else if (userRole === 'staff') navigate('/staff/dashboard');
-    else if (userRole === 'client') navigate('/client/dashboard');
+    else if (userRole === 'staff')     navigate('/staff/dashboard');
+    else if (userRole === 'client')    navigate('/client/dashboard');
     else navigate('/booking/dashboard');
   }, [navigate]);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const err = searchParams.get('error');
-    const tokenParam = searchParams.get('token');
-    const roleParam = searchParams.get('role');
-
-    if (err) {
-      setError(decodeURIComponent(err));
-    } else if (tokenParam && roleParam) {
-      localStorage.setItem('token', tokenParam);
-      localStorage.setItem('role', roleParam);
-      redirect(roleParam);
-    } else if (token && user && role) {
-      redirect(role);
-    }
+    const params = new URLSearchParams(location.search);
+    const err = params.get('error'), tkn = params.get('token'), r = params.get('role');
+    if (err) { setError(decodeURIComponent(err)); }
+    else if (tkn && r) { localStorage.setItem('token', tkn); localStorage.setItem('role', r); redirect(r); }
+    else if (token && user && role) { redirect(role); }
   }, [location.search, token, user, role, redirect]);
 
   const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-
-  const validateField = useCallback((field, value) => {
-    let err = '';
-    if (field === 'email') {
-      if (!value.trim()) err = 'Email address is required.';
-      else if (!emailRegex.test(value.trim())) err = 'Please enter a valid email address.';
-    } else if (field === 'password') {
-      if (!value) err = 'Password is required.';
-      else if (value.length < 8) err = 'Password must be at least 8 characters.';
-    }
-    setFieldErrors(prev => ({ ...prev, [field]: err }));
-    return !err;
-  }, [emailRegex]);
 
   const validate = () => {
     const e = {};
@@ -430,83 +321,73 @@ const Login = () => {
     return Object.keys(e).length === 0;
   };
 
-  const persistRemember = () => {
-    if (remember) localStorage.setItem('remember_email', email.trim());
-    else localStorage.removeItem('remember_email');
-  };
-
   const handleSubmit = async (ev) => {
     ev.preventDefault();
     setError(null); setNotice(null); setFieldErrors({}); setRateLimit(null);
     if (!validate()) return;
     setSubmitting(true);
-    persistRemember();
+    if (remember) localStorage.setItem('remember_email', email.trim());
+    else localStorage.removeItem('remember_email');
     const res = await login(email.trim(), password);
     if (res.success) { redirect(res.role); return; }
     if (res.rateLimited) setRateLimit(res.retryAfter || 900);
     else if (res.errors) {
-      const m = {}; Object.keys(res.errors).forEach(k => { m[k] = res.errors[k][0]; });
+      const m = {};
+      Object.keys(res.errors).forEach(k => { m[k] = res.errors[k][0]; });
       setFieldErrors(m); setError('Please fix the errors below.');
     } else setError(res.error);
     setSubmitting(false);
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center overflow-hidden select-none px-4 py-8"
-      style={{ fontFamily: "'Inter', sans-serif", background: '#f5f5f5' }}>
+    <div className="min-h-[100dvh] w-full relative flex items-center justify-center overflow-x-hidden px-3 sm:px-6 py-6 sm:py-10"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif", background: 'linear-gradient(135deg,#f0f4f8 0%,#e8edf3 100%)' }}>
 
-      {/* ═══ Background brand shapes (green/gold theme - LandingPage style) ═══ */}
-      <div className="absolute left-0 top-0 h-full w-[42%] hidden md:block"
-        style={{ background: `linear-gradient(160deg, ${BRAND.deep} 0%, ${BRAND.green} 100%)` }} />
-      <div className="absolute rounded-full" style={{ width: 340, height: 340, right: -120, top: -140, background: BRAND.gold, opacity: 0.92 }} />
-      <div className="absolute rounded-full" style={{ width: 300, height: 300, right: -60, bottom: -150, border: `26px solid ${BRAND.gold}`, opacity: 0.9 }} />
-      <div className="absolute rounded-full" style={{ width: 120, height: 120, right: '14%', bottom: '6%', background: BRAND.goldLight, opacity: 0.25 }} />
+      {/* Ambient background blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute rounded-full" style={{ width: '50vw', maxWidth: 600, height: '50vw', maxHeight: 600, left: '-15vw', top: '-15vw', background: `radial-gradient(circle, rgba(10,61,48,0.12) 0%, transparent 70%)` }} />
+        <div className="absolute rounded-full" style={{ width: '45vw', maxWidth: 500, height: '45vw', maxHeight: 500, right: '-12vw', bottom: '-12vw', background: `radial-gradient(circle, rgba(191,161,95,0.1) 0%, transparent 70%)` }} />
+      </div>
 
-      {/* ═══ Card ═══ */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-[980px] rounded-2xl overflow-hidden flex"
-        style={{ boxShadow: '0 24px 70px rgba(0,0,0,0.25)' }}>
+      {/* Main card */}
+      <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-[960px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row my-auto shadow-2xl"
+        style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.06)' }}>
 
-        {/* ─── Left brand panel (green/gold gradient - LandingPage style) ─── */}
-        <div className="hidden md:flex flex-col justify-center w-[46%] relative px-9 py-10"
-          style={{ background: `linear-gradient(150deg, ${BRAND.green} 0%, ${BRAND.deep} 90%)` }}>
+        {/* ─── Left brand panel (Desktop/Tablet landscape) ─── */}
+        <div className="hidden md:flex flex-col justify-between w-[44%] relative px-8 py-10 overflow-hidden flex-shrink-0"
+          style={{ background: `linear-gradient(155deg, ${B.mid} 0%, ${B.green} 45%, ${B.deep} 100%)` }}>
 
-          {/* Decorative shapes - white circles */}
-          <div className="absolute rounded-full" style={{ width: 130, height: 130, left: 36, top: -46, border: '5px solid rgba(255,255,255,0.9)' }} />
-          <div className="absolute rounded-full bg-white" style={{ width: 94, height: 94, left: 54, top: -28 }} />
-          <div className="absolute rounded-full" style={{ width: 190, height: 190, right: -60, bottom: -70, border: '6px solid rgba(255,255,255,0.9)' }} />
-          <div className="absolute rounded-full bg-white" style={{ width: 130, height: 130, right: -30, bottom: -40 }} />
-          <FloatingOrb style={{ width: 22, height: 22, left: 40, bottom: 130, background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0.3))` }} duration={7} />
-          <FloatingOrb style={{ width: 14, height: 14, right: 70, top: 110, background: `radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0.3))` }} delay={2} duration={9} />
-          <DotGrid rows={4} cols={9} className="absolute left-9 top-14" />
-          <DotGrid rows={3} cols={6} className="absolute left-9 bottom-10" />
+          {/* Decorative elements */}
+          <div className="absolute rounded-full" style={{ width: 220, height: 220, right: -80, top: -80, border: '40px solid rgba(255,255,255,0.05)' }} />
+          <div className="absolute rounded-full" style={{ width: 160, height: 160, left: -50, bottom: -50, background: 'rgba(191,161,95,0.12)', border: '1px solid rgba(191,161,95,0.2)' }} />
+          <Particle style={{ width: 18, height: 18, left: 30, top: '35%', background: 'rgba(255,255,255,0.2)' }} delay={0} duration={7} />
+          <Particle style={{ width: 10, height: 10, right: 50, top: '25%', background: 'rgba(191,161,95,0.5)' }} delay={2} duration={9} />
+          <Particle style={{ width: 14, height: 14, right: 30, bottom: '30%', background: 'rgba(255,255,255,0.15)' }} delay={1.5} duration={8} />
+          <DotGrid rows={5} cols={8} className="absolute right-8 top-16 opacity-60" />
+          <DotGrid rows={3} cols={5} className="absolute left-8 bottom-16 opacity-40" />
 
+          {/* Top section */}
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold mb-4"
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', color: 'rgba(255,255,255,0.9)' }}>
-              <Sparkles className="w-3 h-3" />
-              <span>Premium Home Service Spa &amp; Wellness</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold mb-5"
+              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em' }}>
+              <Sparkles className="w-3 h-3" style={{ color: B.goldLight }} />
+              <span>Premium Home Service Spa & Wellness</span>
             </div>
-
-            <h2 className="text-3xl font-black text-white leading-tight tracking-tight uppercase">
-              Relax. Recharge.
-            </h2>
-            <h3 className="text-2xl font-bold tracking-tight mb-3"
-              style={{ WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text', backgroundImage: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%)`, backgroundClip: 'text' }}>
-              Spa-Quality At Your Door.
-            </h3>
-            <p className="text-xs leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.75)', maxWidth: '20rem' }}>
-              Massage therapy &amp; nail care delivered to your home. 7 days a week, 6 AM – 11 PM.
+            <h2 className="text-[2rem] font-black text-white leading-tight tracking-tight mb-1">Relax. Recharge.</h2>
+            <h3 className="text-xl font-bold mb-3" style={{ color: B.goldLight }}>Spa-Quality At Your Door.</h3>
+            <p className="text-xs leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '18rem' }}>
+              Massage therapy & nail care delivered to your home — 7 days a week, 6 AM – 11 PM.
             </p>
 
-            {/* Stats */}
+            {/* Stats grid */}
             <div className="grid grid-cols-4 gap-2 mb-5">
               {STATS.map(s => (
-                <div key={s.label} className="rounded-lg px-1.5 py-2 text-center"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[13px] font-black leading-none mb-0.5" style={{ color: 'rgba(255,255,255,0.95)' }}>{s.value}</p>
-                  <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>{s.label}</p>
+                <div key={s.label} className="rounded-xl px-1 py-2.5 text-center"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <p className="text-sm font-black leading-none mb-0.5" style={{ color: B.goldLight }}>{s.value}</p>
+                  <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{s.label}</p>
                 </div>
               ))}
             </div>
@@ -514,26 +395,28 @@ const Login = () => {
             {/* Services */}
             <div className="flex flex-col gap-1.5 mb-6">
               {SERVICES.map(s => (
-                <div key={s.name} className="flex items-center justify-between rounded-lg px-3 py-1.5"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div key={s.name} className="flex items-center justify-between rounded-xl px-3 py-2"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">{s.icon}</span>
+                    <span className="text-base">{s.icon}</span>
                     <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.82)' }}>{s.name}</span>
                   </div>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={{ background: 'rgba(255,255,255,0.16)', color: 'rgba(255,255,255,0.95)' }}>{s.note}</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(191,161,95,0.2)', color: B.goldLight }}>{s.note}</span>
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* Social links */}
+          {/* Bottom section — social */}
+          <div className="relative z-10">
             <div className="flex gap-2">
               {SOCIALS.map(s => (
                 <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
                   className="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}>
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; }}>
                   <s.icon />
                 </a>
               ))}
@@ -542,109 +425,128 @@ const Login = () => {
         </div>
 
         {/* ─── Right form panel ─── */}
-        <div className="flex-1 flex items-center justify-center px-6 sm:px-10 py-10" style={{ background: '#ffffff' }}>
-          <div className="w-full max-w-[340px]">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-6 sm:py-8 md:py-10" style={{ background: B.white }}>
+          <div className="w-full max-w-[360px] mx-auto">
 
             {/* Logo + heading */}
-            <div className="flex flex-col items-center mb-6 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-3 shadow-md border border-slate-100"
-                style={{ boxShadow: `0 6px 20px rgba(191,161,95,0.15)` }}>
-                <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-xl object-cover" />
-              </div>
-              <h1 className="text-xl font-black tracking-tight" style={{ color: BRAND.ink }}>Welcome Back!</h1>
-              <p className="text-[11px] mt-0.5" style={{ color: BRAND.inkSoft }}>Sign in to your Cozy Blissful account</p>
+            <div className="flex flex-col items-center mb-5 sm:mb-6 text-center">
+              <motion.div className="relative mb-3 sm:mb-4"
+                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.1, duration: 0.3 }}>
+                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl flex items-center justify-center"
+                  style={{ boxShadow: `0 8px 24px rgba(191,161,95,0.2), 0 2px 8px rgba(0,0,0,0.08)`, background: B.white, border: `1.5px solid ${B.line}` }}>
+                  <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl object-cover" />
+                </div>
+                {/* Online indicator */}
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
+                  style={{ background: '#22c55e' }} />
+              </motion.div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-1" style={{ color: B.ink }}>Welcome Back!</h1>
+              <p className="text-xs" style={{ color: B.inkSoft }}>Sign in to your Cozy Blissful account</p>
             </div>
 
-            {/* Alerts */}
-            <AnimatePresence>
-              {rateLimit !== null && <motion.div key="rl" className="mb-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><RateLimitBanner retryAfter={rateLimit} /></motion.div>}
-            </AnimatePresence>
-            <AnimatePresence>
-              {error && !rateLimit && (
-                <motion.div key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="flex items-start gap-2 p-2.5 rounded-lg text-[11px] mb-3"
-                  style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.22)' }}>
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#dc2626' }} />
-                  <span style={{ color: '#b91c1c' }}>{error}</span>
+            {/* Alert banners */}
+            <AnimatePresence mode="wait">
+              {rateLimit !== null && (
+                <motion.div key="rl" className="mb-3 sm:mb-4" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                  <RateLimitBanner retryAfter={rateLimit} />
                 </motion.div>
               )}
             </AnimatePresence>
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
+              {error && !rateLimit && (
+                <motion.div key="err" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-xl text-xs mb-3 sm:mb-4"
+                  style={{ background: 'rgba(220,38,38,0.05)', border: '1.5px solid rgba(220,38,38,0.2)' }}>
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" style={{ color: '#dc2626' }} />
+                  <span style={{ color: '#b91c1c', fontWeight: 500 }}>{error}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
               {notice && (
-                <motion.div key="note" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="flex items-start gap-2 p-2.5 rounded-lg text-[11px] mb-3"
-                  style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.3)' }}>
-                  <Info className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
-                  <span style={{ color: '#8b7a45' }}>{notice}</span>
+                <motion.div key="note" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-xl text-xs mb-3 sm:mb-4"
+                  style={{ background: 'rgba(191,161,95,0.08)', border: '1.5px solid rgba(191,161,95,0.28)' }}>
+                  <Info className="w-4 h-4 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
+                  <span style={{ color: '#8b7a45', fontWeight: 500 }}>{notice}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
-              <Input label="Email" id="login-email" type="email" autoComplete="email" required icon={Mail}
-                value={email} placeholder="Enter your email address" error={fieldErrors.email}
-                onBlur={() => validateField('email', email)}
+            <form onSubmit={handleSubmit} noValidate className="space-y-3 sm:space-y-4">
+              <Input label="Email Address" id="login-email" type="email" autoComplete="email" required icon={Mail}
+                value={email} placeholder="you@example.com" error={fieldErrors.email}
+                onBlur={() => {
+                  if (!email.trim()) setFieldErrors(p => ({ ...p, email: 'Email address is required.' }));
+                  else if (!emailRegex.test(email.trim())) setFieldErrors(p => ({ ...p, email: 'Please enter a valid email address.' }));
+                }}
                 onChange={e => { setEmail(e.target.value); if (fieldErrors.email) setFieldErrors(p => ({ ...p, email: '' })); }} />
 
               <Input label="Password" id="login-password" type={showPw ? 'text' : 'password'} autoComplete="current-password" required icon={Lock}
-                value={password} placeholder="••••••••" error={fieldErrors.password}
-                onBlur={() => validateField('password', password)}
+                value={password} placeholder="Enter your password" error={fieldErrors.password}
+                onBlur={() => {
+                  if (!password) setFieldErrors(p => ({ ...p, password: 'Password is required.' }));
+                  else if (password.length < 8) setFieldErrors(p => ({ ...p, password: 'Password must be at least 8 characters.' }));
+                }}
                 onChange={e => { setPassword(e.target.value); if (fieldErrors.password) setFieldErrors(p => ({ ...p, password: '' })); }}
                 rightEl={
                   <button type="button" tabIndex={-1} onClick={() => setShowPw(v => !v)}
                     aria-label={showPw ? 'Hide password' : 'Show password'}
-                    className="transition-colors" style={{ color: 'rgba(44,62,80,0.35)' }}
-                    onMouseEnter={e => e.currentTarget.style.color = 'rgba(44,62,80,0.7)'}
-                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(44,62,80,0.35)'}>
-                    {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    className="transition-colors p-1 rounded cursor-pointer"
+                    style={{ color: '#94a3b8' }}
+                    onMouseEnter={e => e.currentTarget.style.color = B.ink}
+                    onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}>
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 } />
 
-              {/* Remember me + reset */}
-              <div className="flex items-center justify-between py-0.5">
-                <label className="inline-flex items-center gap-2 cursor-pointer text-[11px] font-medium text-slate-700 select-none leading-none">
+              {/* Remember + Forgot */}
+              <div className="flex items-center justify-between text-xs py-0.5">
+                <label className="inline-flex items-center gap-1.5 sm:gap-2 cursor-pointer select-none">
                   <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-300 cursor-pointer shrink-0" style={{ accentColor: BRAND.gold }} />
-                  <span>Remember me</span>
+                    className="w-3.5 h-3.5 rounded cursor-pointer shrink-0" style={{ accentColor: B.gold }} />
+                  <span className="font-medium text-[11px] sm:text-xs" style={{ color: B.inkSoft }}>Remember me</span>
                 </label>
                 <Link to="/forgot-password"
-                  className="text-[11px] font-bold transition-colors leading-none hover:underline underline-offset-2"
-                  style={{ color: BRAND.gold }}>
-                  Forgot Password?
+                  className="font-semibold text-[11px] sm:text-xs transition-colors hover:underline underline-offset-2 shrink-0"
+                  style={{ color: B.gold }}>
+                  Forgot password?
                 </Link>
               </div>
 
+              {/* Submit */}
               <motion.button type="submit" id="login-submit" disabled={submitting || rateLimit > 0}
-                whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.985 }}
-                className="w-full h-11 flex justify-center items-center gap-2 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all duration-150 cursor-pointer"
-                style={{ background: `linear-gradient(135deg,${BRAND.goldLight},${BRAND.gold})`, color: '#041e16', boxShadow: `0 4px 14px rgba(191,161,95,0.35)`, letterSpacing: '0.015em' }}>
+                whileHover={{ scale: submitting ? 1 : 1.015, boxShadow: submitting ? undefined : `0 8px 24px rgba(191,161,95,0.4)` }}
+                whileTap={{ scale: submitting ? 1 : 0.985 }}
+                className="w-full h-11 sm:h-12 flex justify-center items-center gap-2 rounded-xl text-xs sm:text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                style={{ background: `linear-gradient(135deg, ${B.goldLight} 0%, ${B.gold} 100%)`, color: B.deep, boxShadow: `0 4px 16px rgba(191,161,95,0.3)`, letterSpacing: '0.02em' }}>
                 {submitting
-                  ? <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(191,161,95,0.2)', borderTopColor: BRAND.deep }} />
-                  : <><LogIn className="w-3.5 h-3.5" /><span>Login</span></>}
+                  ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(4,30,22,0.2)', borderTopColor: B.deep }} />
+                  : <><LogIn className="w-4 h-4" /><span>Sign In</span></>}
               </motion.button>
             </form>
 
-            {/* Social quick login */}
-            <SocialSignIn
-              disabled={submitting}
-              onSuccess={redirect}
-              onError={(msg) => { setRateLimit(null); setNotice(null); setError(msg); }}
-            />
+            {/* Social login */}
+            <SocialSignIn disabled={submitting} onSuccess={redirect}
+              onError={(msg) => { setRateLimit(null); setNotice(null); setError(msg); }} />
 
-            <p className="text-center text-[11px] mt-5" style={{ color: BRAND.inkSoft }}>
-              Don&apos;t have an account?{' '}
-              <Link to="/register" className="font-bold hover:underline underline-offset-2" style={{ color: BRAND.gold }}>
-                Create Account
-              </Link>
-            </p>
-            <div className="mt-2 text-center">
-              <Link to="/" className="inline-flex items-center gap-1 text-[11px] transition-colors"
-                style={{ color: 'rgba(44,62,80,0.35)' }}
-                onMouseEnter={e => e.currentTarget.style.color = 'rgba(44,62,80,0.7)'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(44,62,80,0.35)'}>
-                ← Back to home
-              </Link>
+            {/* Footer links */}
+            <div className="mt-4 sm:mt-5 text-center space-y-2">
+              <p className="text-xs" style={{ color: B.inkSoft }}>
+                Don&apos;t have an account?{' '}
+                <Link to="/register" className="font-bold hover:underline underline-offset-2 transition-colors" style={{ color: B.gold }}>
+                  Create Account
+                </Link>
+              </p>
+              <div>
+                <Link to="/" className="inline-flex items-center gap-1 text-xs transition-colors"
+                  style={{ color: '#cbd5e1' }}
+                  onMouseEnter={e => e.currentTarget.style.color = B.inkSoft}
+                  onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}>
+                  ← Back to home
+                </Link>
+              </div>
             </div>
           </div>
         </div>

@@ -204,12 +204,8 @@ class SocialAuthController extends Controller
         $user = User::where('email', $emailStr)->first();
 
         if (!$user) {
-            $user = User::create([
-                'name' => $name ?: 'Facebook User',
-                'email' => $emailStr,
-                'password' => Hash::make(Str::random(64)),
-            ]);
-            $user->assignRole('client');
+            // New user — send them to the register page to set their name & password
+            return redirect()->away("{$frontendUrl}/register?prefill_email=" . urlencode($emailStr) . '&prefill_name=' . urlencode($name ?: '') . '&provider=facebook');
         }
 
         $user->tokens()->delete();
@@ -226,54 +222,45 @@ class SocialAuthController extends Controller
     private function issueSession(Request $request, string $provider, string $email, string $name)
     {
         $user = User::where('email', $email)->first();
-        $isNew = false;
 
         if (!$user) {
-            $isNew = true;
-            $user = User::create([
-                'name' => trim($name) !== '' ? trim(strip_tags($name)) : 'New Customer',
-                'email' => $email,
-                // Social accounts get an unguessable random password; they can
-                // set a real one later via password reset.
-                'password' => Hash::make(Str::random(64)),
-            ]);
-            $user->assignRole('client');
-
-            Log::info('New user registered via social login', [
-                'user_id' => $user->id,
+            // New social user — do NOT auto-create; return 202 so the frontend
+            // redirects them to the Register page to choose their name & password.
+            Log::info('Social sign-in: new user needs registration', [
                 'provider' => $provider,
-                'ip' => $request->ip(),
+                'ip'       => $request->ip(),
             ]);
 
-            try {
-                Mail::to($user->email)->queue(new WelcomeMail($user->name));
-            } catch (\Exception $e) {
-                Log::error('Failed to queue welcome email: ' . $e->getMessage());
-            }
+            return response()->json([
+                'needs_registration' => true,
+                'email'              => $email,
+                'suggested_name'     => $name ?: '',
+                'provider'           => $provider,
+            ], 202);
         }
 
-        // Revoke all previous tokens for security
+        // Existing user — revoke old tokens and issue a fresh session.
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token', ['*'], now()->addDays(7))->plainTextToken;
-        $role = $user->getRoleNames()->first() ?? 'client';
+        $role  = $user->getRoleNames()->first() ?? 'client';
 
         Log::info('Successful social login', [
-            'user_id' => $user->id,
+            'user_id'  => $user->id,
             'provider' => $provider,
-            'ip' => $request->ip(),
+            'ip'       => $request->ip(),
         ]);
 
         return response()->json([
-            'message' => $isNew ? 'Registration successful' : 'Login successful',
+            'message'      => 'Login successful',
             'access_token' => $token,
-            'token_type' => 'Bearer',
-            'role' => $role,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
+            'token_type'   => 'Bearer',
+            'role'         => $role,
+            'user'         => [
+                'id'    => $user->id,
+                'name'  => $user->name,
                 'email' => $user->email,
-            ]
-        ], $isNew ? 201 : 200);
+            ],
+        ]);
     }
 }

@@ -211,9 +211,9 @@ const AdminCustomers = () => {
     const q = searchQuery.toLowerCase();
     return (
       ((c.name || '').toLowerCase().includes(q) ||
-       (c.email || '').toLowerCase().includes(q) ||
-       (c.phone || '').includes(searchQuery) ||
-       (c.notes || '').toLowerCase().includes(q)) &&
+        (c.email || '').toLowerCase().includes(q) ||
+        (c.phone || '').includes(searchQuery) ||
+        (c.notes || '').toLowerCase().includes(q)) &&
       (tierFilter === 'All' || c.tier === tierFilter)
     );
   }), [customers, searchQuery, tierFilter]);
@@ -351,7 +351,7 @@ const AdminCustomers = () => {
           {loading && (
             <motion.div key="sk" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1,2,3,4,5,6].map(i => (
+              {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} className="p-5 rounded-3xl border animate-pulse" style={{ background: C.cardBg, borderColor: C.cardBorder }}>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-11 h-11 rounded-2xl bg-slate-200 dark:bg-slate-800" />

@@ -73,6 +73,17 @@ export const AuthProvider = ({ children }) => {
         ? { credential: providerToken }
         : { access_token: providerToken };
       const res = await API.post(`/auth/${provider}`, payload);
+
+      if (res.data?.needs_registration) {
+        return {
+          success: false,
+          needsRegistration: true,
+          email: res.data.email,
+          suggestedName: res.data.suggested_name,
+          provider: res.data.provider,
+        };
+      }
+
       const { access_token, role: userRole, user: userData } = res.data;
 
       setToken(access_token);
