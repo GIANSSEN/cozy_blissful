@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import Lenis from "lenis";
 import gsap from "gsap";
+import DepthCarousel from "../components/DepthCarousel";
 
 /* ── Social Icons ─────────────────────────────────────────────────── */
 const FacebookIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>;
@@ -855,6 +856,70 @@ export default function LandingPage() {
               </div>
               <span className="text-white/60 text-xs font-semibold ml-1">2,500+ satisfied clients</span>
             </motion.div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── 3D GALLERY SHOWCASE (DEPTH CAROUSEL) ── */}
+      <section className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden" style={{ background: "linear-gradient(135deg,#020f0b 0%,#062b21 50%,#0a3d30 100%)" }}>
+        <Orb style={{ width: 600, height: 600, left: "-10%", top: "10%", background: "radial-gradient(circle,rgba(191,161,95,0.14) 0%,transparent 70%)" }} dur={16} />
+        <Orb style={{ width: 450, height: 450, right: "-8%", bottom: "5%", background: "radial-gradient(circle,rgba(52,201,158,0.12) 0%,transparent 70%)" }} delay={3} dur={14} />
+
+        <div className="max-w-6xl mx-auto text-center relative z-10">
+          <Reveal className="mb-10 sm:mb-14">
+            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30 backdrop-blur-md mb-4">
+              <Sparkle className="w-3.5 h-3.5 text-amber-400" />
+              <span>Interactive 3D Experience</span>
+            </span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight" style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "-0.01em" }}>
+              Explore Our Signature<br />
+              <span style={{ WebkitTextFillColor: "transparent", WebkitBackgroundClip: "text", backgroundImage: "linear-gradient(90deg,#e8cc8a,#bfa15f,#f5dfa0,#bfa15f)", backgroundClip: "text", fontStyle: "italic" }}>
+                3D Treatment Gallery
+              </span>
+            </h2>
+            <p className="text-emerald-100/60 max-w-md mx-auto mt-4 text-xs sm:text-sm leading-relaxed">
+              Drag, scroll, or swipe to explore our handpicked spa therapies and salon specialties in full 3D perspective.
+            </p>
+          </Reveal>
+
+          {/* Depth Carousel Container */}
+          <Reveal delay={0.15} className="relative w-full max-w-5xl mx-auto rounded-3xl overflow-hidden p-2 sm:p-4" style={{ background: "rgba(4,24,18,0.6)", border: "1px solid rgba(191,161,95,0.2)", boxShadow: "0 30px 80px rgba(0,0,0,0.65)" }}>
+            <div className="h-[440px] sm:h-[480px] md:h-[520px] relative">
+              <DepthCarousel
+                items={[
+                  { image: "https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=800&q=80", title: "Swedish Relaxation Massage", category: "Signature", price: 749, dur: "1 hr", alt: "Swedish Massage" },
+                  { image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80", title: "Deep Tissue Muscle Therapy", category: "Deep Relief", price: 849, dur: "1 hr", alt: "Deep Tissue Massage" },
+                  { image: "https://images.unsplash.com/photo-1519823551278-64ac928349d2?auto=format&fit=crop&w=800&q=80", title: "Traditional Hilot Healing", category: "Heritage", price: 749, dur: "1 hr", alt: "Hilot Healing" },
+                  { image: "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=800&q=80", title: "Thai Assisted Stretch Therapy", category: "Flexibility", price: 849, dur: "1 hr", alt: "Thai Stretch" },
+                  { image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=800&q=80", title: "Full Gel Manicure & Pedicure", category: "Nail Care", price: 1199, dur: "1.5 hrs", alt: "Gel Nails" },
+                  { image: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=800&q=80", title: "Therapeutic ManePedi Foot Spa", category: "Pampering", price: 799, dur: "1 hr", alt: "Foot Spa" },
+                  { image: "https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=800&q=80", title: "Exfoliating Body Scrub & Massage", category: "Full Body", price: 999, dur: "1.5 hrs", alt: "Body Scrub" },
+                  { image: "https://images.unsplash.com/photo-1519824206182-41622907f7e3?auto=format&fit=crop&w=800&q=80", title: "Ventosa Cupping & Massage", category: "Detox", price: 999, dur: "1 hr", alt: "Ventosa Cupping" }
+                ]}
+                cardWidth={280}
+                cardHeight={360}
+                depth={200}
+                spread={85}
+                tilt={20}
+                perspective={1300}
+                visibleCards={4}
+                falloff={0.22}
+                blur={5}
+                autoplay
+                autoplayDelay={3500}
+                loop
+                showControls
+                showIndicators
+              />
+            </div>
+
+            <div className="flex items-center justify-between px-4 py-3 border-t border-white/10 text-emerald-200/60 text-[11px] font-semibold">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Drag left or right to tilt cards
+              </span>
+              <span className="hidden sm:inline">Use mouse wheel or keyboard arrow keys</span>
+            </div>
           </Reveal>
         </div>
       </section>
