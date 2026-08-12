@@ -16,7 +16,7 @@ import {
   Phone, Mail, Briefcase, ArrowUpDown, Filter, Sparkles,
   Info, Check, Key, UserCheck, UserX, Copy, MoreHorizontal,
   Layers, BarChart3, ChevronRight, Percent, Award, ShieldAlert,
-  ArrowRight, RefreshCw, Zap, ExternalLink
+  ArrowRight, RefreshCw, Zap, ExternalLink, ListOrdered
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -25,16 +25,16 @@ import {
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const SHIFTS = [
-  { id: 'morning',   label: 'Morning',   time: '08:00–12:00', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { id: 'afternoon', label: 'Afternoon', time: '13:00–17:00', color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
-  { id: 'evening',   label: 'Evening',   time: '18:00–22:00', color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  { id: 'morning',   label: 'Morning',   time: '8:00 AM – 12:00 PM', color: '#f59e0b', bg: 'rgba(245,158,11,0.14)' },
+  { id: 'afternoon', label: 'Afternoon', time: '1:00 PM – 5:00 PM',  color: '#3b82f6', bg: 'rgba(59,130,246,0.14)' },
+  { id: 'evening',   label: 'Evening',   time: '6:00 PM – 10:00 PM', color: '#8b5cf6', bg: 'rgba(139,92,246,0.14)' },
 ];
 
 const ROLE_META = {
-  admin:     { label: 'Administrator',    desc: 'Full system control & user management', icon: Crown,       grad: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#0a3d30', darkColor: '#34d399', badgeBg: 'rgba(10,61,48,0.12)',  locked: true  },
-  staff:     { label: 'Staff Coordinator',desc: 'Manages scheduling, clients & bookings', icon: UserCog,     grad: 'linear-gradient(135deg,#1e3a8a,#3b82f6)', color: '#3b82f6', darkColor: '#60a5fa', badgeBg: 'rgba(59,130,246,0.12)', locked: false },
-  therapist: { label: 'Therapist',        desc: 'Assigned session & queue access',       icon: Stethoscope, grad: 'linear-gradient(135deg,#78350f,#d97706)', color: '#d97706', darkColor: '#fbbf24', badgeBg: 'rgba(217,119,6,0.12)',  locked: false },
-  client:    { label: 'Client',           desc: 'Self-service booking portal',           icon: User,        grad: 'linear-gradient(135deg,#4338ca,#6366f1)', color: '#6366f1', darkColor: '#818cf8', badgeBg: 'rgba(99,102,241,0.12)',locked: false },
+  admin:     { label: 'Administrator',    desc: 'Full system control & user management', icon: Crown,       grad: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#0a3d30', darkColor: '#34d399', badgeBg: 'rgba(10,61,48,0.15)',  locked: true  },
+  staff:     { label: 'Staff Coordinator',desc: 'Manages scheduling, clients & bookings', icon: UserCog,     grad: 'linear-gradient(135deg,#1e3a8a,#3b82f6)', color: '#3b82f6', darkColor: '#60a5fa', badgeBg: 'rgba(59,130,246,0.15)', locked: false },
+  therapist: { label: 'Therapist',        desc: 'Assigned session & queue access',       icon: Stethoscope, grad: 'linear-gradient(135deg,#78350f,#d97706)', color: '#d97706', darkColor: '#fbbf24', badgeBg: 'rgba(217,119,6,0.15)',  locked: false },
+  client:    { label: 'Client',           desc: 'Self-service booking portal',           icon: User,        grad: 'linear-gradient(135deg,#4338ca,#6366f1)', color: '#6366f1', darkColor: '#818cf8', badgeBg: 'rgba(99,102,241,0.15)',locked: false },
 };
 
 const PERM_META = {
@@ -65,41 +65,34 @@ const MOCK_USERS = [
 const EMPTY_FORM = { name: '', email: '', phone: '', specialty: '', role: 'therapist', status: 'active', commRate: 35, password: '', confirmPassword: '' };
 
 const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 16 },
+  initial: { opacity: 0, y: 12 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.38, delay, ease: [0.22, 1, 0.36, 1] },
+  transition: { duration: 0.32, delay, ease: [0.22, 1, 0.36, 1] },
 });
 
-const slideIn = {
-  initial: { opacity: 0, scale: 0.96, y: 10 },
-  animate: { opacity: 1, scale: 1, y: 0 },
-  exit:    { opacity: 0, scale: 0.96, y: 10 },
-  transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
-};
-
 /* ═══════════════════════════════════════════════════════════════ */
-/*  HOOK: THEME COLORS                                             */
+/*  HOOK: SEAMLESS THEME COLORS (NO HARSH WHITE BORDERS)           */
 /* ═══════════════════════════════════════════════════════════════ */
 function useC() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   return {
     isDark,
-    cardBg:     isDark ? '#141d2b' : '#ffffff',
-    cardShadow: isDark ? '0 4px 32px rgba(0,0,0,0.45)' : '0 2px 24px rgba(0,0,0,0.06)',
-    cardBorder: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.07)',
-    pageBg:     isDark ? '#0c101c' : '#f8fafc',
-    inputBg:    isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-    inputBdr:   isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    cardBg:     isDark ? '#121824' : '#ffffff',
+    cardShadow: isDark ? '0 4px 28px rgba(0,0,0,0.45)' : '0 2px 20px rgba(0,0,0,0.05)',
+    cardBorder: isDark ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.04)',
+    pageBg:     isDark ? '#0b0f19' : '#f8fafc',
+    inputBg:    isDark ? 'rgba(255,255,255,0.04)' : '#ffffff',
+    inputBdr:   isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
     textPri:    isDark ? '#f1f5f9' : '#0f172a',
     textSec:    isDark ? '#94a3b8' : '#475569',
     textMuted:  isDark ? '#64748b' : '#94a3b8',
-    divider:    isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-    rowHover:   isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-    pillBg:     isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+    divider:    isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+    rowHover:   isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.015)',
+    pillBg:     isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
     pillAct:    isDark ? '#059669' : '#0a3d30',
-    innerBg:    isDark ? '#101623' : '#f8fafc',
-    tableHead:  isDark ? '#1b2434' : '#f1f5f9',
+    innerBg:    isDark ? '#0d131f' : '#f8fafc',
+    tableHead:  isDark ? '#0f1522' : '#f1f5f9',
     accent:     isDark ? '#34d399' : '#0a3d30',
   };
 }
@@ -118,7 +111,7 @@ function Avatar({ name, gradient, size = 38 }) {
   return (
     <div
       aria-hidden="true"
-      className="flex items-center justify-center font-black text-white flex-shrink-0 select-none shadow-md transition-transform hover:scale-105"
+      className="flex items-center justify-center font-black text-white flex-shrink-0 select-none shadow-sm transition-transform hover:scale-105"
       style={{
         width: size,
         height: size,
@@ -183,15 +176,25 @@ function Toggle({ on, onChange, disabled, id }) {
 }
 
 function ModalBackdrop({ children, onClose }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = 'auto';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)' }}>
+        style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
         <motion.div
           initial={{ y: '100%', opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -240,22 +243,22 @@ function UserDetailModal({ user, onClose, onEdit, t, isDark }) {
         {/* Content Body */}
         <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
+            <div className="p-3.5 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Phone Number</p>
               <p className="text-xs font-bold" style={{ color: t.textPri }}>{user.phone || '—'}</p>
             </div>
-            <div className="p-3 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
+            <div className="p-3.5 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Specialization</p>
               <p className="text-xs font-bold" style={{ color: t.textPri }}>{user.specialty || '—'}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
+            <div className="p-3.5 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Commission Rate</p>
-              <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">{user.commRate ? `${user.commRate}%` : 'Standard'}</p>
+              <p className="text-xs font-black text-emerald-500">{user.commRate ? `${user.commRate}%` : 'Standard'}</p>
             </div>
-            <div className="p-3 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
+            <div className="p-3.5 rounded-2xl" style={{ background: t.innerBg, border: t.cardBorder }}>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Date Joined</p>
               <p className="text-xs font-bold" style={{ color: t.textPri }}>{user.joined || '—'}</p>
             </div>
@@ -268,8 +271,8 @@ function UserDetailModal({ user, onClose, onEdit, t, isDark }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 flex gap-3 border-t" style={{ borderColor: t.divider }}>
-          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-xs font-bold transition-all" style={{ background: t.innerBg, color: t.textSec }}>
+        <div className="px-6 py-4 flex gap-3" style={{ background: t.innerBg, borderTop: `1px solid ${t.divider}` }}>
+          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-xs font-bold transition-all hover:opacity-80" style={{ background: t.cardBg, color: t.textSec }}>
             Close
           </button>
           <button onClick={() => { onClose(); onEdit(user); }} className="flex-1 py-3 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-800 shadow-md">
@@ -299,161 +302,173 @@ function UserFormModal({ user, onClose, onSave, t }) {
   } : EMPTY_FORM);
 
   const [errors, setErrors] = useState({});
-  const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '' })); };
 
   const validate = () => {
     const e = {};
     if (!form.name.trim()) e.name = 'Full name is required';
-    if (!form.email.trim()) e.email = 'Email address is required';
-    if (!isEdit && !form.password) e.password = 'Password is required';
-    if (!isEdit && form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
-    setErrors(e);
-    return !Object.keys(e).length;
+    if (!form.email.trim() || !form.email.includes('@')) e.email = 'Valid email is required';
+    if (!isEdit) {
+      if (!form.password) e.password = 'Password is required';
+      else if (form.password.length < 6) e.password = 'Min. 6 characters';
+      if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
+    }
+    return e;
   };
 
-  const handleSubmit = () => {
-    if (validate()) {
+  const handleSubmit = e => {
+    e.preventDefault();
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length === 0) {
       onSave(form);
     }
   };
 
   return (
     <ModalBackdrop onClose={onClose}>
-      <div style={{ background: t.cardBg, border: t.cardBorder }} className="rounded-t-3xl sm:rounded-3xl">
-        <div className="px-6 py-4 flex items-center justify-between border-b" style={{ borderColor: t.divider }}>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/10 text-emerald-600">
-              {isEdit ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+      <div style={{ background: t.cardBg, border: t.cardBorder }} className="overflow-hidden flex flex-col h-full">
+        {/* Modal Header */}
+        <div className="p-5 flex items-center justify-between flex-shrink-0" style={{ borderBottom: `1px solid ${t.divider}` }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-emerald-500/15 text-emerald-500">
+              <UserCog className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-black text-sm" style={{ color: t.textPri }}>{isEdit ? 'Edit User Account' : 'Create New Staff / Therapist'}</p>
-              <p className="text-[10px]" style={{ color: t.textMuted }}>{isEdit ? 'Update account details & role permissions' : 'Add team member to system'}</p>
+              <h3 className="font-black text-sm sm:text-base" style={{ color: t.textPri }}>
+                {isEdit ? 'Edit User Profile' : 'Create New Account'}
+              </h3>
+              <p className="text-[10px]" style={{ color: t.textMuted }}>
+                {isEdit ? 'Update staff or therapist credentials' : 'Register a new team member'}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80" style={{ background: t.innerBg, color: t.textMuted }}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Full Name *</p>
-              <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Maria Santos"
-                className="w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-all"
-                style={{ background: t.inputBg, borderColor: errors.name ? '#ef4444' : t.inputBdr, color: t.textPri }} />
-              {errors.name && <p className="text-[10px] mt-1 text-red-500">{errors.name}</p>}
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Email Address *</p>
-              <input value={form.email} onChange={e => set('email', e.target.value)} placeholder="maria@cozy.spa"
-                className="w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-all"
-                style={{ background: t.inputBg, borderColor: errors.email ? '#ef4444' : t.inputBdr, color: t.textPri }} />
-              {errors.email && <p className="text-[10px] mt-1 text-red-500">{errors.email}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Phone Number</p>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+63 917 123 4567"
-                className="w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-all"
-                style={{ background: t.inputBg, borderColor: t.inputBdr, color: t.textPri }} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Specialty / Title</p>
-              <input value={form.specialty} onChange={e => set('specialty', e.target.value)} placeholder="e.g. Swedish & Hot Stone"
-                className="w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-all"
-                style={{ background: t.inputBg, borderColor: t.inputBdr, color: t.textPri }} />
-            </div>
-          </div>
-
+        {/* Modal Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1 max-h-[70vh]">
           <div>
-            <p className="text-[10px] font-black uppercase text-slate-400 mb-1.5">Role Assignment</p>
-            <div className="grid grid-cols-3 gap-2">
-              {Object.entries(ROLE_META).filter(([k]) => k !== 'admin').map(([k, meta]) => {
-                const isSel = form.role === k;
-                return (
-                  <button key={k} type="button" onClick={() => set('role', k)}
-                    className="p-2.5 rounded-2xl border flex flex-col items-center gap-1.5 transition-all text-center"
-                    style={{ background: isSel ? `${meta.color}15` : t.inputBg, borderColor: isSel ? meta.color : t.inputBdr }}>
-                    <meta.icon className="w-4 h-4" style={{ color: meta.color }} />
-                    <span className="text-[10px] font-extrabold" style={{ color: isSel ? meta.color : t.textSec }}>{meta.label}</span>
-                  </button>
-                );
-              })}
+            <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Full Name *</label>
+            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+              placeholder="e.g. Maria Santos"
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+              style={{ background: t.inputBg, border: `1px solid ${errors.name ? '#ef4444' : t.inputBdr}`, color: t.textPri }} />
+            {errors.name && <p className="text-[10px] text-red-500 mt-1">{errors.name}</p>}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Email Address *</label>
+              <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
+                placeholder="maria@cozy.spa"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+                style={{ background: t.inputBg, border: `1px solid ${errors.email ? '#ef4444' : t.inputBdr}`, color: t.textPri }} />
+              {errors.email && <p className="text-[10px] text-red-500 mt-1">{errors.email}</p>}
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Phone Number</label>
+              <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
+                placeholder="+63 917 123 4567"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBdr}`, color: t.textPri }} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">System Role</label>
+              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-bold cursor-pointer"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBdr}`, color: t.textPri }}>
+                <option value="therapist" style={{ background: t.cardBg, color: t.textPri }}>Therapist</option>
+                <option value="staff" style={{ background: t.cardBg, color: t.textPri }}>Staff Coordinator</option>
+                <option value="admin" style={{ background: t.cardBg, color: t.textPri }}>Administrator</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Status</label>
+              <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-bold cursor-pointer"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBdr}`, color: t.textPri }}>
+                <option value="active" style={{ background: t.cardBg, color: t.textPri }}>Active</option>
+                <option value="inactive" style={{ background: t.cardBg, color: t.textPri }}>Inactive</option>
+              </select>
             </div>
           </div>
 
           {form.role === 'therapist' && (
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Commission Rate (%)</p>
-              <input type="number" min="0" max="100" value={form.commRate} onChange={e => set('commRate', Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-all"
-                style={{ background: t.inputBg, borderColor: t.inputBdr, color: t.textPri }} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Specialization</label>
+                <input value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })}
+                  placeholder="e.g. Swedish & Deep Tissue"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium"
+                  style={{ background: t.inputBg, border: `1px solid ${t.inputBdr}`, color: t.textPri }} />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Commission Rate (%)</label>
+                <input type="number" value={form.commRate} onChange={e => setForm({ ...form, commRate: Number(e.target.value) })}
+                  placeholder="35"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium"
+                  style={{ background: t.inputBg, border: `1px solid ${t.inputBdr}`, color: t.textPri }} />
+              </div>
             </div>
           )}
 
           {!isEdit && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Password *</p>
-                <input type="password" value={form.password} onChange={e => set('password', e.target.value)} placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-all"
-                  style={{ background: t.inputBg, borderColor: errors.password ? '#ef4444' : t.inputBdr, color: t.textPri }} />
+                <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Password *</label>
+                <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none transition-all"
+                  style={{ background: t.inputBg, border: `1px solid ${errors.password ? '#ef4444' : t.inputBdr}`, color: t.textPri }} />
+                {errors.password && <p className="text-[10px] text-red-500 mt-1">{errors.password}</p>}
               </div>
+
               <div>
-                <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Confirm Password *</p>
-                <input type="password" value={form.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-xs border outline-none transition-all"
-                  style={{ background: t.inputBg, borderColor: errors.confirmPassword ? '#ef4444' : t.inputBdr, color: t.textPri }} />
+                <label className="text-[10px] font-black uppercase text-slate-400 mb-1 block">Confirm Password *</label>
+                <input type="password" value={form.confirmPassword} onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none transition-all"
+                  style={{ background: t.inputBg, border: `1px solid ${errors.confirmPassword ? '#ef4444' : t.inputBdr}`, color: t.textPri }} />
+                {errors.confirmPassword && <p className="text-[10px] text-red-500 mt-1">{errors.confirmPassword}</p>}
               </div>
             </div>
           )}
 
-          <div>
-            <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Account Status</p>
-            <div className="flex gap-2">
-              {['active', 'inactive'].map(s => (
-                <button key={s} type="button" onClick={() => set('status', s)}
-                  className="flex-1 py-2 rounded-xl text-xs font-bold border transition-all"
-                  style={{
-                    background: form.status === s ? (s === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)') : t.inputBg,
-                    borderColor: form.status === s ? (s === 'active' ? '#10b981' : '#ef4444') : t.inputBdr,
-                    color: form.status === s ? (s === 'active' ? '#059669' : '#dc2626') : t.textMuted,
-                  }}>
-                  {s === 'active' ? '✓ Active' : '✕ Inactive'}
-                </button>
-              ))}
-            </div>
+          {/* Modal Footer */}
+          <div className="flex items-center justify-end gap-2.5 pt-3" style={{ borderTop: `1px solid ${t.divider}` }}>
+            <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ color: t.textSec }}>
+              Cancel
+            </button>
+            <button type="submit" className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-800 shadow-md">
+              <Save className="w-3.5 h-3.5" />
+              <span>{isEdit ? 'Update Profile' : 'Create Account'}</span>
+            </button>
           </div>
-        </div>
-
-        <div className="px-6 py-4 flex gap-3 border-t" style={{ borderColor: t.divider }}>
-          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-xs font-bold" style={{ background: t.innerBg, color: t.textSec }}>
-            Cancel
-          </button>
-          <button onClick={handleSubmit} className="flex-1 py-3 rounded-2xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-800 shadow-md">
-            {isEdit ? 'Save Changes' : 'Create User Account'}
-          </button>
-        </div>
+        </form>
       </div>
     </ModalBackdrop>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/*  TAB 1: USER PROFILES                                           */
+/*  TAB 1: USER PROFILES (CLEAN, SEAMLESS, NO WHITE LINES)         */
 /* ═══════════════════════════════════════════════════════════════ */
 function TabProfiles({ users, onUsersChange }) {
   const C = useC();
   const { toast } = useToast();
-  const [search, setSearch]     = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [viewMode, setViewMode]   = useState('table'); // 'table' | 'cards'
-  const [viewingUser, setViewingUser] = useState(null);
-  const [editingUser, setEditingUser] = useState(null);
-  const [addingUser, setAddingUser]   = useState(false);
+  const [search, setSearch]             = useState('');
+  const [roleFilter, setRoleFilter]     = useState('all');
+  const [viewMode, setViewMode]         = useState('table');
+  const [viewingUser, setViewingUser]   = useState(null);
+  const [editingUser, setEditingUser]   = useState(null);
+  const [addingUser, setAddingUser]     = useState(false);
 
   const filtered = useMemo(() => {
     return users.filter(u => {
@@ -495,20 +510,20 @@ function TabProfiles({ users, onUsersChange }) {
       {(addingUser || editingUser) && <UserFormModal user={editingUser} onClose={() => { setAddingUser(false); setEditingUser(null); }} onSave={handleSaveUser} t={C} />}
 
       {/* Stats Cards Row */}
-      <div className="grid grid-cols-2 xs:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total Users', count: users.length, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', icon: Users },
           { label: 'Active', count: users.filter(u => u.status === 'active').length, color: '#10b981', bg: 'rgba(16,185,129,0.12)', icon: CheckCircle2 },
           { label: 'Therapists', count: users.filter(u => u.role === 'therapist').length, color: '#d97706', bg: 'rgba(217,119,6,0.12)', icon: Stethoscope },
           { label: 'Staff Lead', count: users.filter(u => u.role === 'staff').length, color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', icon: UserCog },
         ].map(s => (
-          <motion.div key={s.label} {...fadeUp(0)} className="p-4 rounded-2xl flex items-center justify-between shadow-sm border transition-all"
-            style={{ background: C.cardBg, borderColor: C.cardBorder }}>
+          <motion.div key={s.label} {...fadeUp(0)} className="p-4 rounded-2xl flex items-center justify-between shadow-sm transition-all"
+            style={{ background: C.cardBg, border: C.cardBorder, boxShadow: C.cardShadow }}>
             <div>
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-0.5">{s.label}</p>
               <p className="text-2xl font-black" style={{ color: C.textPri }}>{s.count}</p>
             </div>
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: s.bg }}>
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: s.bg }}>
               <s.icon className="w-5 h-5" style={{ color: s.color }} />
             </div>
           </motion.div>
@@ -516,13 +531,13 @@ function TabProfiles({ users, onUsersChange }) {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between p-3.5 rounded-2xl border"
-        style={{ background: C.cardBg, borderColor: C.cardBorder }}>
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between p-3.5 rounded-2xl shadow-sm"
+        style={{ background: C.cardBg, border: C.cardBorder }}>
         <div className="relative flex-1 w-full sm:max-w-xs">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search user name, email, specialty…"
-            className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border outline-none"
-            style={{ background: C.inputBg, borderColor: C.inputBdr, color: C.textPri }} />
+            className="w-full pl-9 pr-8 py-2 text-xs rounded-xl outline-none font-medium"
+            style={{ background: C.inputBg, border: `1px solid ${C.inputBdr}`, color: C.textPri }} />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
               <X className="w-3.5 h-3.5" />
@@ -559,13 +574,13 @@ function TabProfiles({ users, onUsersChange }) {
       {/* Main List Display */}
       {viewMode === 'table' ? (
         /* TABLE VIEW */
-        <div className="rounded-2xl border overflow-hidden shadow-sm" style={{ background: C.cardBg, borderColor: C.cardBorder }}>
+        <div className="rounded-2xl overflow-hidden shadow-sm" style={{ background: C.cardBg, border: C.cardBorder }}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[700px]">
               <thead>
                 <tr style={{ background: C.tableHead }}>
                   {['User', 'Specialization', 'Role', 'Status', 'Commission', 'Joined', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-widest text-slate-400">{h}</th>
+                    <th key={h} className="px-4 py-3.5 text-left text-[9px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -573,7 +588,7 @@ function TabProfiles({ users, onUsersChange }) {
                 {filtered.map(u => {
                   const meta = ROLE_META[u.role] || ROLE_META.staff;
                   return (
-                    <tr key={u.id} className="group hover:bg-slate-50/50 dark:hover:bg-white/[0.02] cursor-pointer transition-colors"
+                    <tr key={u.id} className="group hover:bg-slate-500/5 cursor-pointer transition-colors"
                       onClick={() => setViewingUser(u)}>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
@@ -589,7 +604,7 @@ function TabProfiles({ users, onUsersChange }) {
                       <td className="px-4 py-3.5"><StatusBadge status={u.status} /></td>
                       <td className="px-4 py-3.5">
                         {u.role === 'therapist' ? (
-                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-500/30">
+                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-500/15 px-2.5 py-1 rounded-full">
                             {u.commRate}% Comm.
                           </span>
                         ) : <span className="text-[10px] text-slate-400">—</span>}
@@ -597,14 +612,13 @@ function TabProfiles({ users, onUsersChange }) {
                       <td className="px-4 py-3.5 text-[11px]" style={{ color: C.textMuted }}>{u.joined}</td>
                       <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => setEditingUser(u)} className="w-8 h-8 rounded-xl border flex items-center justify-center hover:opacity-70"
-                            style={{ background: C.inputBg, borderColor: C.inputBdr, color: C.textSec }}>
+                          <button onClick={() => setEditingUser(u)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80"
+                            style={{ background: C.innerBg, color: C.textSec }}>
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => toggleStatus(u.id)} className="w-8 h-8 rounded-xl border flex items-center justify-center hover:opacity-70"
+                          <button onClick={() => toggleStatus(u.id)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80"
                             style={{
                               background: u.status === 'active' ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
-                              borderColor: u.status === 'active' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)',
                               color: u.status === 'active' ? '#ef4444' : '#059669',
                             }}>
                             {u.status === 'active' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
@@ -624,8 +638,8 @@ function TabProfiles({ users, onUsersChange }) {
           {filtered.map(u => {
             const meta = ROLE_META[u.role] || ROLE_META.staff;
             return (
-              <div key={u.id} className="p-5 rounded-2xl border space-y-3 cursor-pointer transition-all hover:shadow-md"
-                style={{ background: C.cardBg, borderColor: C.cardBorder }} onClick={() => setViewingUser(u)}>
+              <div key={u.id} className="p-5 rounded-2xl space-y-3 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5"
+                style={{ background: C.cardBg, border: C.cardBorder, boxShadow: C.cardShadow }} onClick={() => setViewingUser(u)}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <Avatar name={u.name} gradient={meta.grad} size={42} />
@@ -636,7 +650,7 @@ function TabProfiles({ users, onUsersChange }) {
                   </div>
                   <StatusBadge status={u.status} />
                 </div>
-                <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: C.divider }}>
+                <div className="flex items-center justify-between text-xs pt-3" style={{ borderTop: `1px solid ${C.divider}` }}>
                   <span className="font-medium text-slate-400">{u.specialty}</span>
                   <RolePill role={u.role} />
                 </div>
@@ -706,8 +720,8 @@ function TabSchedules({ users }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Team Roster List */}
-        <div className="lg:col-span-4 rounded-2xl border overflow-hidden" style={{ background: C.cardBg, borderColor: C.cardBorder }}>
-          <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: C.divider }}>
+        <div className="lg:col-span-4 rounded-2xl overflow-hidden shadow-sm" style={{ background: C.cardBg, border: C.cardBorder }}>
+          <div className="p-4 flex items-center justify-between" style={{ borderBottom: `1px solid ${C.divider}` }}>
             <p className="text-[10px] font-black uppercase text-slate-400">Team Roster</p>
           </div>
           <div className="p-2 space-y-1 max-h-[60vh] overflow-y-auto">
@@ -717,7 +731,7 @@ function TabSchedules({ users }) {
               return (
                 <button key={u.id} onClick={() => setSelected(u.id)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left"
-                  style={{ background: isSel ? C.accent + '15' : 'transparent', border: `1.5px solid ${isSel ? C.accent : 'transparent'}` }}>
+                  style={{ background: isSel ? C.accent + '15' : 'transparent' }}>
                   <Avatar name={u.name} gradient={meta.grad} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold truncate" style={{ color: C.textPri }}>{u.name}</p>
@@ -730,9 +744,9 @@ function TabSchedules({ users }) {
         </div>
 
         {/* Weekly Shifts Grid */}
-        <div className="lg:col-span-8 rounded-2xl border p-5 space-y-4" style={{ background: C.cardBg, borderColor: C.cardBorder }}>
+        <div className="lg:col-span-8 rounded-2xl p-5 space-y-4 shadow-sm" style={{ background: C.cardBg, border: C.cardBorder }}>
           {person && (
-            <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: C.divider }}>
+            <div className="flex items-center justify-between pb-4" style={{ borderBottom: `1px solid ${C.divider}` }}>
               <div className="flex items-center gap-3">
                 <Avatar name={person.name} gradient={ROLE_META[person.role]?.grad} size={42} />
                 <div>
@@ -742,7 +756,7 @@ function TabSchedules({ users }) {
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-black uppercase text-slate-400">Weekly Total</p>
-                <p className="text-lg font-black text-emerald-600">{totalShifts * 4} Hours</p>
+                <p className="text-lg font-black text-emerald-500">{totalShifts * 4} Hours</p>
               </div>
             </div>
           )}
@@ -758,10 +772,9 @@ function TabSchedules({ users }) {
                       const active = dayShifts.includes(sh.id);
                       return (
                         <button key={sh.id} onClick={() => toggle(day, sh.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
                           style={{
                             background: active ? sh.bg : C.cardBg,
-                            borderColor: active ? sh.color : C.inputBdr,
                             color: active ? sh.color : C.textMuted,
                           }}>
                           <span className="w-1.5 h-1.5 rounded-full" style={{ background: active ? sh.color : '#cbd5e1' }} />
@@ -829,31 +842,31 @@ function TabQueue({ users }) {
 
       <div className="space-y-2.5">
         {queue.map((t, idx) => (
-          <div key={t.id} className="p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all"
-            style={{ background: C.cardBg, borderColor: idx === 0 ? C.accent : C.cardBorder }}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs text-white"
+          <div key={t.id} className="p-4 rounded-2xl flex items-center justify-between gap-4 transition-all shadow-sm"
+            style={{ background: C.cardBg, border: C.cardBorder }}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs text-white flex-shrink-0"
                 style={{ background: idx === 0 ? 'linear-gradient(135deg,#062c22,#0a3d30)' : C.pillBg, color: idx === 0 ? '#fff' : C.textMuted }}>
                 #{t.position}
               </div>
               <Avatar name={t.name} gradient={ROLE_META[t.role]?.grad} size={40} />
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-bold text-sm" style={{ color: C.textPri }}>{t.name}</p>
-                  {idx === 0 && <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-white">NEXT UP</span>}
+                  <p className="font-bold text-sm truncate" style={{ color: C.textPri }}>{t.name}</p>
+                  {idx === 0 && <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-white flex-shrink-0">NEXT UP</span>}
                 </div>
-                <p className="text-xs text-slate-400">{t.specialty}</p>
+                <p className="text-xs text-slate-400 truncate">{t.specialty}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button onClick={() => moveUp(idx)} disabled={idx === 0} className="p-2 rounded-xl border text-slate-400 disabled:opacity-30">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button onClick={() => moveUp(idx)} disabled={idx === 0} className="p-2 rounded-xl text-slate-400 hover:bg-slate-500/10 disabled:opacity-30">
                 <ChevronUp className="w-4 h-4" />
               </button>
-              <button onClick={() => moveDown(idx)} disabled={idx === queue.length - 1} className="p-2 rounded-xl border text-slate-400 disabled:opacity-30">
+              <button onClick={() => moveDown(idx)} disabled={idx === queue.length - 1} className="p-2 rounded-xl text-slate-400 hover:bg-slate-500/10 disabled:opacity-30">
                 <ChevronDown className="w-4 h-4" />
               </button>
-              <button onClick={() => markServed(t.id)} className="px-4 py-2 rounded-xl text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-emerald-800 shadow-md">
+              <button onClick={() => markServed(t.id)} className="px-4 py-2 rounded-xl text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-emerald-800 shadow-md whitespace-nowrap">
                 Assign & Rotate
               </button>
             </div>
@@ -898,7 +911,7 @@ function TabRBAC() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-black tracking-tight flex items-center gap-2" style={{ color: C.textPri }}>
-            <Shield className="w-5 h-5 text-emerald-600" />
+            <Shield className="w-5 h-5 text-emerald-500" />
             <span>Role-Based Access Control (RBAC)</span>
           </h2>
           <p className="text-xs" style={{ color: C.textMuted }}>Configure system permission levels per role</p>
@@ -918,10 +931,10 @@ function TabRBAC() {
           const total= Object.keys(PERM_META).length;
 
           return (
-            <div key={role} className="rounded-3xl border overflow-hidden" style={{ background: C.cardBg, borderColor: C.cardBorder }}>
-              <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: C.divider }}>
+            <div key={role} className="rounded-3xl overflow-hidden shadow-sm" style={{ background: C.cardBg, border: C.cardBorder }}>
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${C.divider}` }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: meta.grad }}>
+                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm" style={{ background: meta.grad }}>
                     <Icon className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -930,7 +943,7 @@ function TabRBAC() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-emerald-600">{cnt} of {total} Enabled</span>
+                  <span className="text-xs font-bold text-emerald-500">{cnt} of {total} Enabled</span>
                   {meta.locked && <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-white/10 text-slate-500">System Locked</span>}
                 </div>
               </div>
@@ -939,7 +952,7 @@ function TabRBAC() {
                 {Object.entries(PERM_META).map(([pk, pm]) => {
                   const active = !!rp[pk];
                   return (
-                    <div key={pk} onClick={() => toggle(role, pk)} className="p-4 flex flex-col items-center text-center gap-2 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors">
+                    <div key={pk} onClick={() => toggle(role, pk)} className="p-4 flex flex-col items-center text-center gap-2 cursor-pointer hover:bg-slate-500/5 transition-colors">
                       <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: active ? `${pm.color}15` : C.pillBg }}>
                         <pm.icon className="w-4 h-4" style={{ color: active ? pm.color : C.textMuted }} />
                       </div>
@@ -1001,6 +1014,12 @@ export default function AdminUserMaintenance() {
 
   return (
     <AdminLayout title="User Management" subtitle={subMap[activeTab] || 'User Profiles'} icon={UserCog}>
+      <style>{`
+        select option {
+          background-color: #121824 !important;
+          color: #f1f5f9 !important;
+        }
+      `}</style>
       <AnimatePresence mode="wait">
         {activeTab === 'profiles' && (
           <motion.div key="profiles" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.18 }}>
