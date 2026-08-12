@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from './AdminLayout';
-import LoadingSpinner from '../../components/LoadingSpinner';
+
 import API from '../../api/axios';
 import { useTheme } from '../../context/ThemeContext';
 import {
@@ -575,10 +575,362 @@ const AdminDashboard = () => {
   };
   useEffect(() => { load(); }, []);
 
+  /* ─── Skeleton Loader ─────────────────────────────────────────── */
   if (loading) {
+    const shimBase = isDark
+      ? 'rgba(255,255,255,0.06)'
+      : 'rgba(0,0,0,0.07)';
+    const shimHigh = isDark
+      ? 'rgba(255,255,255,0.12)'
+      : 'rgba(0,0,0,0.13)';
+    const shimCard = isDark ? '#131b2a' : 'rgba(255,255,255,0.98)';
+    const shimBorder = isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)';
+    const shimShadow = isDark
+      ? '0 4px 32px rgba(0,0,0,0.45)'
+      : '0 1px 3px rgba(0,0,0,0.04), 0 4px 24px rgba(0,0,0,0.06)';
+    const shimInner = isDark ? '#0f1623' : '#f8f9fb';
+    const shimInnerBorder = isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)';
+
+    const pulse = {
+      animation: 'skeletonPulse 1.6s ease-in-out infinite',
+      background: `linear-gradient(90deg, ${shimBase} 25%, ${shimHigh} 50%, ${shimBase} 75%)`,
+      backgroundSize: '400% 100%',
+    };
+
+    const Bone = ({ w = '100%', h = 12, radius = 8, style = {} }) => (
+      <div style={{ width: w, height: h, borderRadius: radius, flexShrink: 0, ...pulse, ...style }} />
+    );
+
+    const SkCard = ({ children, style = {}, className = '' }) => (
+      <div
+        className={`rounded-2xl overflow-hidden ${className}`}
+        style={{ background: shimCard, border: shimBorder, boxShadow: shimShadow, padding: '20px', ...style }}
+      >
+        {children}
+      </div>
+    );
+
+    /* KPI card skeleton */
+    const KPISkel = () => (
+      <SkCard>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+          <Bone w={40} h={40} radius={12} />
+          <Bone w={52} h={22} radius={8} />
+        </div>
+        <Bone w='55%' h={10} radius={6} style={{ marginBottom: 8 }} />
+        <Bone w='70%' h={28} radius={8} style={{ marginBottom: 10 }} />
+        <Bone w='45%' h={8} radius={5} style={{ marginBottom: 14 }} />
+        <Bone w='100%' h={28} radius={6} />
+      </SkCard>
+    );
+
+    /* Insight mini-card skeleton */
+    const InsightSkel = () => (
+      <SkCard style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+          <Bone w={32} h={32} radius={10} />
+          <Bone w={20} h={14} radius={5} />
+        </div>
+        <Bone w='50%' h={8} radius={5} style={{ marginBottom: 6 }} />
+        <Bone w='65%' h={20} radius={6} style={{ marginBottom: 6 }} />
+        <Bone w='80%' h={7} radius={4} />
+      </SkCard>
+    );
+
+    /* Table row skeleton */
+    const RowSkel = ({ i }) => (
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '10px 0',
+          borderBottom: i < 4 ? shimInnerBorder : 'none',
+        }}
+      >
+        <Bone w={32} h={32} radius={10} />
+        <div style={{ flex: 1 }}>
+          <Bone w='50%' h={10} radius={5} style={{ marginBottom: 5 }} />
+          <Bone w='35%' h={8} radius={4} />
+        </div>
+        <Bone w={56} h={10} radius={5} />
+        <Bone w={48} h={10} radius={5} />
+        <Bone w={64} h={22} radius={8} />
+      </div>
+    );
+
     return (
       <AdminLayout title="Dashboard" subtitle="Full operational overview" icon={LayoutDashboard}>
-        <LoadingSpinner />
+        {/* inject keyframe once */}
+        <style>{`
+          @keyframes skeletonPulse {
+            0%   { background-position: 100% 0; }
+            100% { background-position: -100% 0; }
+          }
+        `}</style>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 32 }}>
+
+          {/* Status bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <Bone w={110} h={28} radius={12} />
+              <Bone w={200} h={12} radius={6} />
+            </div>
+            <Bone w={90} h={32} radius={12} />
+          </div>
+
+          {/* Row 1 — 4 KPI cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 }}>
+            {[0,1,2,3].map(i => <KPISkel key={i} />)}
+          </div>
+
+          {/* Row 2 — 4 insight mini-cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+            {[0,1,2,3].map(i => <InsightSkel key={i} />)}
+          </div>
+
+          {/* Row 3 — Live Sessions (2/3) + Activity Feed (1/3) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+
+            {/* Sessions card */}
+            <SkCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Bone w={22} h={22} radius={6} />
+                  <Bone w={120} h={14} radius={6} />
+                </div>
+              </div>
+              {[0,1,2].map(i => (
+                <div key={i} style={{
+                  display: 'flex', gap: 14, alignItems: 'flex-start',
+                  padding: '14px', borderRadius: 16, marginBottom: 10,
+                  background: shimInner, border: shimInnerBorder,
+                }}>
+                  <Bone w={52} h={52} radius={26} />
+                  <div style={{ flex: 1 }}>
+                    <Bone w='60%' h={12} radius={6} style={{ marginBottom: 7 }} />
+                    <Bone w='40%' h={10} radius={5} style={{ marginBottom: 10 }} />
+                    <Bone w='80%' h={8} radius={4} style={{ marginBottom: 10 }} />
+                    <Bone w='100%' h={4} radius={4} />
+                  </div>
+                  <Bone w={64} h={22} radius={8} />
+                </div>
+              ))}
+            </SkCard>
+
+            {/* Activity feed card */}
+            <SkCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Bone w={22} h={22} radius={6} />
+                  <Bone w={100} h={14} radius={6} />
+                </div>
+              </div>
+              {[0,1,2,3,4,5].map(i => (
+                <div key={i} style={{
+                  display: 'flex', gap: 10, alignItems: 'flex-start',
+                  padding: '8px 10px', borderRadius: 12, marginBottom: 4,
+                  background: i % 2 === 0 ? shimInner : 'transparent',
+                }}>
+                  <Bone w={24} h={24} radius={8} />
+                  <div style={{ flex: 1 }}>
+                    <Bone w='75%' h={9} radius={4} style={{ marginBottom: 5 }} />
+                    <Bone w='30%' h={8} radius={4} />
+                  </div>
+                </div>
+              ))}
+            </SkCard>
+          </div>
+
+          {/* Row 4 — Revenue / Donut / Funnel (stacked on mobile) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+
+            {/* Revenue chart */}
+            <SkCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Bone w={22} h={22} radius={6} />
+                  <Bone w={130} h={14} radius={6} />
+                </div>
+              </div>
+              <Bone w='45%' h={28} radius={8} style={{ marginBottom: 6 }} />
+              <Bone w='30%' h={10} radius={5} style={{ marginBottom: 18 }} />
+              <Bone w='100%' h={90} radius={12} style={{ marginBottom: 8 }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                {[0,1,2,3,4,5,6].map(i => <Bone key={i} w={24} h={8} radius={4} />)}
+              </div>
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${shimBase}` }}>
+                {[0,1,2].map(i => (
+                  <div key={i} style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Bone w='40%' h={9} radius={5} />
+                      <Bone w='20%' h={9} radius={5} />
+                    </div>
+                    <Bone w='100%' h={5} radius={4} />
+                  </div>
+                ))}
+              </div>
+            </SkCard>
+
+            {/* Booking donut */}
+            <SkCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Bone w={22} h={22} radius={6} />
+                  <Bone w={140} h={14} radius={6} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 20px' }}>
+                <div style={{ position: 'relative', width: 130, height: 130, borderRadius: '50%', ...pulse }} />
+              </div>
+              {[0,1,2].map(i => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 12px', borderRadius: 12, marginBottom: 8,
+                  background: shimInner, border: shimInnerBorder,
+                }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Bone w={10} h={10} radius={5} />
+                    <Bone w={70} h={9} radius={4} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Bone w={28} h={9} radius={4} />
+                    <Bone w={36} h={14} radius={6} />
+                  </div>
+                </div>
+              ))}
+              <div style={{ marginTop: 14, paddingTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, borderTop: `1px solid ${shimBase}` }}>
+                {[0,1,2,3].map(i => (
+                  <div key={i} style={{ padding: '12px', borderRadius: 12, background: shimInner, border: shimInnerBorder, textAlign: 'center' }}>
+                    <Bone w='60%' h={8} radius={4} style={{ margin: '0 auto 6px' }} />
+                    <Bone w='80%' h={14} radius={6} style={{ margin: '0 auto' }} />
+                  </div>
+                ))}
+              </div>
+            </SkCard>
+
+            {/* Funnel + performers */}
+            <SkCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Bone w={22} h={22} radius={6} />
+                  <Bone w={120} h={14} radius={6} />
+                </div>
+              </div>
+              {[0,1,2,3,4].map(i => (
+                <div key={i} style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Bone w='45%' h={10} radius={5} />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <Bone w={32} h={10} radius={4} />
+                      <Bone w={32} h={18} radius={6} />
+                    </div>
+                  </div>
+                  <Bone w='100%' h={5} radius={4} />
+                </div>
+              ))}
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${shimBase}` }}>
+                <Bone w={100} h={8} radius={4} style={{ marginBottom: 12 }} />
+                {[0,1,2].map(i => (
+                  <div key={i} style={{
+                    display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px',
+                    borderRadius: 12, marginBottom: 8, background: shimInner, border: shimInnerBorder,
+                  }}>
+                    <Bone w={32} h={32} radius={10} />
+                    <div style={{ flex: 1 }}>
+                      <Bone w='55%' h={10} radius={5} style={{ marginBottom: 5 }} />
+                      <Bone w='40%' h={8} radius={4} />
+                    </div>
+                    <Bone w={28} h={12} radius={5} />
+                  </div>
+                ))}
+              </div>
+            </SkCard>
+          </div>
+
+          {/* Row 5 — Therapist Status (1/3) + Staff Performance (2/3) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+
+            {/* Therapist status */}
+            <SkCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Bone w={22} h={22} radius={6} />
+                  <Bone w={130} h={14} radius={6} />
+                </div>
+              </div>
+              {[0,1,2].map(i => (
+                <div key={i} style={{
+                  padding: '12px', borderRadius: 12, marginBottom: 10,
+                  background: shimInner, border: shimInnerBorder,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <Bone w={10} h={10} radius={5} />
+                      <Bone w={100} h={10} radius={5} />
+                    </div>
+                    <Bone w={20} h={16} radius={5} />
+                  </div>
+                  <Bone w='100%' h={5} radius={4} />
+                </div>
+              ))}
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${shimBase}` }}>
+                <Bone w={80} h={8} radius={4} style={{ marginBottom: 12 }} />
+                {[0,1,2].map(i => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
+                    <Bone w='40%' h={10} radius={5} />
+                    <Bone w='25%' h={10} radius={5} />
+                  </div>
+                ))}
+              </div>
+            </SkCard>
+
+            {/* Staff performance */}
+            <SkCard>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Bone w={22} h={22} radius={6} />
+                  <Bone w={130} h={14} radius={6} />
+                </div>
+              </div>
+              {[0,1,2,3].map(i => (
+                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18 }}>
+                  <Bone w={36} h={36} radius={12} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <Bone w={90} h={12} radius={5} />
+                        <Bone w={70} h={10} radius={4} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Bone w={28} h={10} radius={4} />
+                        <Bone w={40} h={10} radius={4} />
+                        <Bone w={44} h={12} radius={5} />
+                      </div>
+                    </div>
+                    <Bone w='100%' h={6} radius={4} />
+                  </div>
+                </div>
+              ))}
+            </SkCard>
+          </div>
+
+          {/* Row 6 — Recent Appointments table */}
+          <SkCard>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <Bone w={22} h={22} radius={6} />
+                <Bone w={170} h={14} radius={6} />
+              </div>
+              <Bone w={60} h={12} radius={5} />
+            </div>
+            {/* Column headers */}
+            <div style={{ display: 'flex', gap: 12, paddingBottom: 10, borderBottom: shimInnerBorder, marginBottom: 4 }}>
+              {[100, 80, 90, 55, 60, 60].map((w, i) => <Bone key={i} w={w} h={9} radius={4} />)}
+            </div>
+            {[0,1,2,3,4].map(i => <RowSkel key={i} i={i} />)}
+          </SkCard>
+
+        </div>
       </AdminLayout>
     );
   }

@@ -471,5 +471,43 @@ class AdminController extends Controller
             'message' => 'Customer account deleted successfully'
         ]);
     }
+
+    /**
+     * Update RBAC permissions for roles and log audit event.
+     */
+    public function updatePermissions(Request $request)
+    {
+        $permissionsData = $request->input('permissions', []);
+
+        foreach ($permissionsData as $roleName => $perms) {
+            $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
+            if (!$role) continue;
+
+            $enabledPerms = array_keys(array_filter($perms));
+            // Ensure permissions exist before syncing
+            foreach ($enabledPerms as $permName) {
+                \Spatie\Permission\Models\Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
+            }
+            $role->syncPermissions($enabledPerms);
+        }
+
+        $actor = auth()->user()?->name ?? 'System Admin';
+        $actorRole = auth()->user()?->roles?->first()?->name ?? 'admin';
+
+        \App\Models\AuditLog::log('update', 'RBAC Permissions', "Updated permissions for system roles", [
+            'actor' => $actor,
+            'actor_role' => $actorRole,
+            'module' => 'Access Control',
+            'severity' => 'warning',
+            'metadata' => [
+                'updated_roles' => array_keys($permissionsData),
+                'permissions_payload' => $permissionsData,
+            ]
+        ]);
+
+        return response()->json([
+            'message' => 'RBAC permissions updated and logged successfully',
+        ]);
+    }
 }
 

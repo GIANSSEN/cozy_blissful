@@ -557,8 +557,8 @@ const AdminAuditLogs = () => {
       };
       const res = await axios.get('/admin/audit-logs', { params });
       const data = res.data.logs?.data || res.data.logs || [];
-      setLogs(data.length ? data : MOCK_LOGS);
-      // Save global action counts (unaffected by current filter/page)
+      setLogs(data);
+      // Save global action counts from database
       if (res.data.stats && typeof res.data.stats === 'object') {
         setStats(res.data.stats);
       }

@@ -59,6 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/services/{id}', [AdminController::class, 'updateService']);
         Route::delete('/services/{id}', [AdminController::class, 'deleteService']);
 
+        // RBAC Permissions
+        Route::post('/rbac/permissions', [AdminController::class, 'updatePermissions']);
+
         // Notifications
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
