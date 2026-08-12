@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/customers', [AdminController::class, 'getCustomers']);
         Route::post('/customers', [AdminController::class, 'storeCustomer']);
         Route::put('/customers/{id}', [AdminController::class, 'updateCustomer']);
+        Route::delete('/customers/{id}', [AdminController::class, 'deleteCustomer']);
 
         // Services CRUD
         Route::get('/services', [AdminController::class, 'getServices']);

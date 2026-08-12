@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import API from '../../api/axios';
 import {
   Calendar, Clock, User, CheckCircle, AlertCircle,
@@ -68,32 +69,6 @@ const fmtDate = (dt) => {
   const d = new Date(dt);
   return isNaN(d.getTime()) ? dt : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
-
-/* ─────────────────────────────────────────────────────────────────── */
-/*  TOAST COMPONENT                                                     */
-/* ─────────────────────────────────────────────────────────────────── */
-
-function Toast({ msg, type }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.94 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 24, scale: 0.94 }}
-      transition={{ duration: 0.2 }}
-      style={{
-        position: 'fixed', bottom: 24, right: 24, zIndex: 50,
-        padding: '14px 20px', borderRadius: 16, fontSize: 12, fontWeight: 700,
-        color: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
-        display: 'flex', alignItems: 'center', gap: 10,
-        background: type === 'error' ? '#dc2626' : '#064e3b',
-        border: type === 'error' ? 'none' : '1px solid rgba(16,185,129,0.3)'
-      }}
-    >
-      {type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} style={{ color: '#34d399' }} />}
-      <span>{msg}</span>
-    </motion.div>
-  );
-}
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  APPOINTMENT DETAIL MODAL                                            */
@@ -513,6 +488,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
 const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { toast } = useToast();
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -1577,10 +1553,7 @@ const AdminAppointments = () => {
     return () => { document.title = 'Admin | Cozy Blissful'; };
   }, []);
 
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
+  const showToast = (msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg);
 
   const loadData = async () => {
     try {
@@ -1664,10 +1637,7 @@ const AdminAppointments = () => {
       onSearchSelect={(item) => item.onSelect && item.onSelect()}
     >
       <div className="space-y-4 sm:space-y-6">
-        {/* Toast */}
-        <AnimatePresence>
-          {toast && <Toast msg={toast.msg} type={toast.type} />}
-        </AnimatePresence>
+
 
         {/* ── Top Summary Metric Cards ── */}
         <div style={{

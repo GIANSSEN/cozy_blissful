@@ -137,25 +137,33 @@ const Select = ({ t, error, children, ...props }) => (
 );
 
 /* ─── modal bottom-sheet wrapper ──────────────────────────────────── */
-const ModalSheet = ({ children, onClose, wide = false }) => (
-  <AnimatePresence>
-    <motion.div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+const ModalSheet = ({ children, onClose, wide = false }) => {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
       onClick={onClose}
-      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}>
+      role="dialog"
+      aria-modal="true">
       <motion.div
-        initial={{ y: '100%', opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: '100%', opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-        className={`w-full ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'} sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto shadow-2xl`}
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 320 }}
+        className={`w-full ${wide ? 'max-w-md sm:max-w-2xl' : 'max-w-md sm:max-w-lg'} rounded-2xl sm:rounded-3xl max-h-[88vh] overflow-y-auto shadow-2xl my-auto`}
         onClick={e => e.stopPropagation()}>
         {children}
       </motion.div>
-    </motion.div>
-  </AnimatePresence>
-);
+    </div>
+  );
+};
 
 /* ─── confirm delete modal ────────────────────────────────────────── */
 const DeleteModal = ({ item, onConfirm, onClose, t }) => {

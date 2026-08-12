@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import API from '../../api/axios';
 import StaffLayout from './StaffLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast } from '../../context/ToastContext';
 import {
   Users, Calendar, Clock, CheckCircle, Activity,
   UserCheck, Check, RefreshCw, CalendarDays, LayoutDashboard
@@ -34,17 +35,12 @@ const formatDateString = (dateObj) => {
 
 const StaffDashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [data, setData] = useState(null);
   const [therapistsWithAvail, setTherapistsWithAvail] = useState([]);
   const [selectedTherapistId, setSelectedTherapistId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [toastMsg, setToastMsg] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   const fetchDashboardData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -59,7 +55,7 @@ const StaffDashboard = () => {
       if (list.length > 0 && !selectedTherapistId) setSelectedTherapistId(list[0].id);
     } catch (e) {
       console.error('Staff dashboard fetch error:', e);
-      showToast('Error loading portal data.');
+      toast.error('Error loading portal data.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -81,9 +77,9 @@ const StaffDashboard = () => {
         return t;
       }));
       fetchDashboardData(true);
-      showToast(res.data.message || 'Schedule updated successfully.');
+      toast.success(res.data.message || 'Schedule updated successfully.');
     } catch {
-      showToast('Failed to update therapist schedule.');
+      toast.error('Failed to update therapist schedule.');
     }
   };
 
@@ -297,18 +293,7 @@ const StaffDashboard = () => {
         )}
       </div>
 
-      {/* Toast */}
-      <AnimatePresence>
-        {toastMsg && (
-          <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }} transition={{ duration: 0.25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-bold text-white shadow-xl flex items-center gap-2"
-            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 8px 24px rgba(6,44,34,0.25)', whiteSpace: 'nowrap' }}>
-            <CheckCircle className="w-4 h-4 text-emerald-300" />
-            {toastMsg}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </StaffLayout>
   );
 };

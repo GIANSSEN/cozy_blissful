@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import API from '../../api/axios';
 import StaffLayout from './StaffLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast } from '../../context/ToastContext';
 import {
   Users, CalendarDays, Activity, Check, AlertCircle,
   UserCheck, Clock, RefreshCw
@@ -40,13 +41,11 @@ const StaffTherapists = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'schedule';
 
+  const { toast } = useToast();
   const [therapists, setTherapists] = useState([]);
   const [selectedTherapistId, setSelectedTherapistId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [toastMsg, setToastMsg] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 3000); };
 
   const loadTherapists = async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
@@ -56,7 +55,7 @@ const StaffTherapists = () => {
       setTherapists(list);
       if (list.length > 0 && !selectedTherapistId) setSelectedTherapistId(list[0].id);
     } catch {
-      showToast('Failed to load therapists.');
+      toast.error('Failed to load therapists.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -77,9 +76,9 @@ const StaffTherapists = () => {
         }
         return t;
       }));
-      showToast(res.data.message || 'Schedule updated.');
+      toast.success(res.data.message || 'Schedule updated.');
     } catch {
-      showToast('Failed to update schedule.');
+      toast.error('Failed to update schedule.');
     }
   };
 
@@ -315,14 +314,7 @@ const StaffTherapists = () => {
         )}
       </div>
 
-      {/* Toast */}
-      {toastMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-bold text-white shadow-xl flex items-center gap-2"
-          style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', whiteSpace: 'nowrap' }}>
-          <Check className="w-4 h-4 text-emerald-300" />
-          {toastMsg}
-        </div>
-      )}
+
     </StaffLayout>
   );
 };

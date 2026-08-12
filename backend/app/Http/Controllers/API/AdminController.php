@@ -438,5 +438,23 @@ class AdminController extends Controller
             'message' => 'Customer updated successfully'
         ]);
     }
+
+    /**
+     * Delete customer account.
+     */
+    public function deleteCustomer($id)
+    {
+        $user = User::role('client')->findOrFail($id);
+
+        // Revoke any active tokens
+        $user->tokens()->delete();
+
+        // Delete user
+        $user->delete();
+
+        return response()->json([
+            'message' => 'Customer account deleted successfully'
+        ]);
+    }
 }
 

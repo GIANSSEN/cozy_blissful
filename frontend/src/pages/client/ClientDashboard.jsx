@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import {
@@ -841,15 +842,15 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
 
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [toastMsg, setToastMsg] = useState({ text: '', type: 'success' });
   const [cancelTarget, setCancelTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
 
-  const showToast = (msg, type = 'success') => { setToastMsg({ text: msg, type }); setTimeout(() => setToastMsg({ text: '', type: 'success' }), 4500); };
+  const showToast = (msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg);
 
   // Therapist chat
   const [chatInput, setChatInput] = useState('');
@@ -1203,31 +1204,7 @@ const ClientDashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* ═══ TOAST ════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {toastMsg.text && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-bold text-white shadow-xl flex items-center gap-2"
-            style={{
-              background: toastMsg.type === 'error'
-                ? 'linear-gradient(135deg,#dc2626,#b91c1c)'
-                : 'linear-gradient(135deg,#062c22,#0f5040)',
-              boxShadow: toastMsg.type === 'error'
-                ? '0 8px 24px rgba(220,38,38,0.25)'
-                : '0 8px 24px rgba(6,44,34,0.25)',
-              whiteSpace: 'nowrap'
-            }}>
-            {toastMsg.type === 'error'
-              ? <XCircle className="w-4 h-4 text-red-200" />
-              : <CheckCircle className="w-4 h-4 text-emerald-300" />}
-            {toastMsg.text}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 };

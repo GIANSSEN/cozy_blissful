@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import {
@@ -38,17 +39,12 @@ const formatDateString = (dateObj) => {
 
 const TherapistDashboard = () => {
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [availabilities, setAvailabilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [appliedJobs, setAppliedJobs] = useState([]);
-  const [toastMsg, setToastMsg] = useState('');
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   const fetchDashboardData = () => {
     API.get('/therapist/dashboard')
@@ -73,7 +69,7 @@ const TherapistDashboard = () => {
   const handleApply = (jobId, jobTitle) => {
     if (appliedJobs.includes(jobId)) return;
     setAppliedJobs((prev) => [...prev, jobId]);
-    showToast(`Applied for "${jobTitle}"!`);
+    toast.success(`Applied for "${jobTitle}"!`);
   };
 
   const toggleAvailability = async (dateStr) => {
@@ -81,17 +77,17 @@ const TherapistDashboard = () => {
       const res = await API.post('/therapist/availability/toggle', { date: dateStr });
       if (res.data.available) {
         setAvailabilities((prev) => [...prev, dateStr]);
-        showToast(`Available marked on ${dateStr}`);
+        toast.success(`Available marked on ${dateStr}`);
       } else {
         setAvailabilities((prev) => prev.filter((d) => d !== dateStr));
-        showToast(`Availability removed for ${dateStr}`);
+        toast.info(`Availability removed for ${dateStr}`);
       }
       
       // Refresh available jobs based on newly toggled availability
       const r = await API.get('/therapist/dashboard');
       setData(r.data);
     } catch (e) {
-      showToast("Could not update availability.");
+      toast.error("Could not update availability.");
     }
   };
 
@@ -440,26 +436,7 @@ const TherapistDashboard = () => {
         )}
       </main>
 
-      {/* ═══ TOAST NOTIFICATION ══════════════════════════════════════════════ */}
-      <AnimatePresence>
-        {toastMsg && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-bold text-white shadow-xl flex items-center gap-2"
-            style={{
-              background: 'linear-gradient(135deg,#062c22,#0f5040)',
-              boxShadow: '0 8px 24px rgba(6,44,34,0.25)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <CheckCircle className="w-4 h-4 text-emerald-300" />
-            {toastMsg}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 };

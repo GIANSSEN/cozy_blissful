@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import API from '../../api/axios';
 import StaffLayout from './StaffLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Clock, UserCheck, Calendar, CheckCircle, AlertCircle,
@@ -602,17 +603,15 @@ const StaffAppointments = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'today';
 
+  const { toast } = useToast();
   const [appointments, setAppointments] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
 
   const [acceptTarget, setAcceptTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
-
-  const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 3000); };
 
   const loadAppointments = async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
@@ -638,20 +637,20 @@ const StaffAppointments = () => {
   const handleAssignTherapist = async (apptId, therapistId) => {
     try {
       const res = await API.post(`/staff/appointments/${apptId}/assign`, { therapist_id: therapistId || null });
-      showToast(res.data.message || 'Therapist assigned and booking confirmed.');
+      toast.success(res.data.message || 'Therapist assigned and booking confirmed.');
       loadAppointments(true);
     } catch {
-      showToast('Failed to assign therapist.');
+      toast.error('Failed to assign therapist.');
     }
   };
 
   const handleStatusChange = async (apptId, status, reason = '') => {
     try {
       const res = await API.post(`/staff/appointments/${apptId}/status`, { status, reason });
-      showToast(res.data.message || 'Status updated.');
+      toast.success(res.data.message || 'Status updated.');
       loadAppointments(true);
     } catch {
-      showToast('Failed to update status.');
+      toast.error('Failed to update status.');
     }
   };
 
@@ -666,12 +665,7 @@ const StaffAppointments = () => {
     <StaffLayout title="Bookings Overview" subtitle={TABS.find((t) => t.id === activeTab)?.label} icon={CalendarCheck}>
       <div className="space-y-6">
 
-        {/* Toast */}
-        {toastMsg && (
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold text-center">
-            {toastMsg}
-          </div>
-        )}
+
 
         {/* Tab switcher + Search */}
         <div className="flex flex-wrap items-center gap-3 justify-between">

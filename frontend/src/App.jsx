@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ToastProvider } from './context/ToastContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -97,9 +98,11 @@ function App() {
     <AuthProvider>
       <ThemeProvider>
         <NotificationProvider>
-          <BrowserRouter>
-            <AnimatedRoutes />
-          </BrowserRouter>
+          <ToastProvider>
+            <BrowserRouter>
+              <AnimatedRoutes />
+            </BrowserRouter>
+          </ToastProvider>
         </NotificationProvider>
       </ThemeProvider>
     </AuthProvider>
