@@ -1,238 +1,209 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
-import AdminLayout from './AdminLayout';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import API from '../../api/axios';
-import { DollarSign, CheckCircle, Clock, Plus, Landmark, FileText, ArrowUpRight, CreditCard } from 'lucide-react';
+﻿import React, { useState, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
+import AdminLayout from "./AdminLayout";
+import { useTheme } from "../../context/ThemeContext";
+import {
+  CreditCard, TrendingUp, DollarSign, CheckCircle2, Clock,
+  ChevronDown, ChevronUp, Calendar, Check, X, Receipt,
+  Banknote, Wallet, BarChart3, Search, Filter, Download,
+  AlertTriangle, RefreshCw, Users, ArrowUpRight, ArrowDownRight,
+  FileText, Trash2, Plus, Eye, EyeOff, Info,
+} from "lucide-react";
 
-const AdminPayments = () => {
-  const [searchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'sales';
+/* ============================================================
+   BUSINESS CONSTANTS — 60 / 40 SPLIT POLICY
+   - Therapist remits FULL booking amount to admin DAILY
+   - Admin releases 40% salary to therapist every FRIDAY
+   - Admin retains 60% as business revenue
+============================================================ */
+const ADMIN_PCT     = 0.60;
+const THERAPIST_PCT = 0.40;
 
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
+const THERAPISTS = [
+  { id:1, name:"Anna Reyes",      specialty:"Swedish & Hot Stone",   initials:"AR", grad:"linear-gradient(135deg,#78350f,#d97706)" },
+  { id:2, name:"Leo Garcia",      specialty:"Deep Tissue & Sports",  initials:"LG", grad:"linear-gradient(135deg,#1e3a8a,#2563eb)" },
+  { id:3, name:"Grace Tan",       specialty:"Hilot & Shiatsu",       initials:"GT", grad:"linear-gradient(135deg,#4338ca,#6366f1)" },
+  { id:4, name:"Mark Villanueva", specialty:"Aromatherapy & Lomi",   initials:"MV", grad:"linear-gradient(135deg,#065f46,#059669)" },
+];
 
-  // Expense tracker state
-  const [expenses, setExpenses] = useState([
-    { id: 101, description: 'Electricity Utility Bill', category: 'Utilities', amount: 4850, date: '2026-07-01', status: 'Paid' },
-    { id: 102, description: 'Monthly Rent (Main Branch)', category: 'Rent', amount: 25000, date: '2026-07-02', status: 'Paid' },
-    { id: 103, description: 'Eco Essential Oil Restock', category: 'Supplies', amount: 3500, date: '2026-07-05', status: 'Paid' }
-  ]);
+const RAW_BOOKINGS = [
+  {id:101,date:"2026-08-04",tid:1,svc:"Swedish Massage 60min",amt:850, st:"completed"},
+  {id:102,date:"2026-08-04",tid:1,svc:"Hot Stone Therapy 90min",amt:1200,st:"completed"},
+  {id:103,date:"2026-08-04",tid:2,svc:"Deep Tissue 60min",amt:900,st:"completed"},
+  {id:104,date:"2026-08-05",tid:1,svc:"Swedish Massage 60min",amt:850,st:"completed"},
+  {id:105,date:"2026-08-05",tid:3,svc:"Hilot Massage",amt:750,st:"completed"},
+  {id:106,date:"2026-08-06",tid:2,svc:"Sports Massage 90min",amt:1100,st:"completed"},
+  {id:107,date:"2026-08-06",tid:4,svc:"Aromatherapy 60min",amt:800,st:"completed"},
+  {id:108,date:"2026-08-07",tid:1,svc:"Couple Massage",amt:1800,st:"completed"},
+  {id:109,date:"2026-08-07",tid:3,svc:"Lomi-Lomi Massage",amt:950,st:"completed"},
+  {id:110,date:"2026-08-08",tid:4,svc:"Aromatherapy 90min",amt:1000,st:"completed"},
+  {id:111,date:"2026-08-08",tid:2,svc:"Deep Tissue 90min",amt:1250,st:"completed"},
+  {id:201,date:"2026-08-11",tid:1,svc:"Swedish Massage 60min",amt:850,st:"completed"},
+  {id:202,date:"2026-08-11",tid:2,svc:"Deep Tissue 60min",amt:900,st:"completed"},
+  {id:203,date:"2026-08-12",tid:3,svc:"Hilot Massage",amt:750,st:"completed"},
+  {id:204,date:"2026-08-12",tid:1,svc:"Hot Stone Therapy 90min",amt:1200,st:"completed"},
+  {id:205,date:"2026-08-13",tid:4,svc:"Aromatherapy 60min",amt:800,st:"pending"},
+  {id:206,date:"2026-08-13",tid:2,svc:"Sports Massage 90min",amt:1100,st:"pending"},
+];
 
-  const [toast, setToast] = useState(null);
+function enrich(b){
+  return{...b,adminEarning:Math.round(b.amt*ADMIN_PCT),therapistEarning:Math.round(b.amt*THERAPIST_PCT)};
+}
+const BOOKINGS = RAW_BOOKINGS.map(enrich);
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+function getWeekBounds(dateStr){
+  const d=new Date(dateStr+"T00:00:00"),day=d.getDay();
+  const mon=new Date(d); mon.setDate(d.getDate()-day+(day===0?-6:1));
+  const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const fmt=(dt,o={month:"short",day:"numeric"})=>dt.toLocaleDateString("en-PH",o);
+  return{
+    key:mon.toISOString().slice(0,10),
+    mon,fri,sun,
+    label:`${fmt(mon)} – ${fmt(fri,{month:"short",day:"numeric",year:"numeric"})}`,
+    fridayStr:fri.toISOString().slice(0,10),
   };
+}
 
-  useEffect(() => {
-    API.get('/admin/dashboard')
-      .then((r) => setPayments(r.data.payments || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+function isFriday(dateStr){
+  return new Date(dateStr+"T00:00:00").getDay()===5;
+}
 
-  const totalRevenue = payments
-    .filter((p) => p.status === 'Completed')
-    .reduce((sum, p) => sum + p.amount, 0);
-
-  const getPageTitle = () => {
-    switch (activeTab) {
-      case 'payroll': return 'Payroll & Commissions';
-      case 'expenses': return 'Expense Tracker';
-      case 'sales':
-      default: return 'Daily Sales Logs';
-    }
+/* ============================================================  THEME  */
+function useC(){
+  const{theme}=useTheme();const dk=theme==="dark";
+  return{dk,
+    page:   dk?"#080f1e":"#f0f4f8",
+    card:   dk?"#0f1929":"#ffffff",
+    card2:  dk?"#0d1626":"#f8fafc",
+    inner:  dk?"#0a1120":"#f1f5f9",
+    txt:    dk?"#e8f0fe":"#0f172a",
+    sec:    dk?"#7899c0":"#475569",
+    muted:  dk?"#3d566e":"#94a3b8",
+    div:    dk?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.06)",
+    head:   dk?"#0a1322":"#f1f5f9",
+    sh:     dk?"0 4px 32px rgba(0,0,0,0.5)":"0 2px 20px rgba(0,0,0,0.07)",
+    ibg:    dk?"rgba(255,255,255,0.04)":"#ffffff",
+    ibdr:   dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.12)",
   };
+}
 
-  // Mock payroll logs
-  const mockPayroll = [
-    { id: 201, name: 'Maria Santos', completed: 15, base: 7500, commission: 3930, total: 11430, status: 'Awaiting Release' },
-    { id: 202, name: 'John Doe', completed: 8, base: 4000, commission: 2370, total: 6370, status: 'Released' },
-    { id: 203, name: 'Anna Reyes', completed: 12, base: 6000, commission: 3120, total: 9120, status: 'Awaiting Release' }
-  ];
+/* ============================================================  ATOMS  */
+const peso=n=>`\u20b1${Number(n).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const fmtDate=ds=>new Date(ds+"T00:00:00").toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"});
+const fmtDow=ds=>new Date(ds+"T00:00:00").toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
 
-  return (
-    <AdminLayout title="Financials" subtitle={getPageTitle()} icon={CreditCard}>
-      <div className="space-y-6">
-        
-        {/* Toast Notification */}
-        {toast && (
-          <div className="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs font-bold text-white shadow-xl flex items-center gap-2 bg-emerald-800">
-            <CheckCircle className="w-4 h-4 text-emerald-400" />
-            {toast}
-          </div>
-        )}
+function Av({t,size=36}){
+  return(<div className="flex-shrink-0 flex items-center justify-center font-black text-white shadow"
+    style={{width:size,height:size,borderRadius:"50%",fontSize:size*0.35,background:t?.grad||"#334155"}}>
+    {t?.initials||"?"}
+  </div>);
+}
 
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <div>
-            
-            {/* ── Tab Content: Daily Sales Logs ── */}
-            {activeTab === 'sales' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-slate-800 tracking-wider uppercase">Transactions Summary</h2>
-                  <div className="bg-emerald-50 text-emerald-800 px-4 py-2 rounded-xl text-xs font-bold border border-emerald-100 shadow-sm">
-                    Sales Revenue: ₱{totalRevenue.toLocaleString()}
-                  </div>
-                </div>
+function Badge({status}){
+  const map={
+    completed:{bg:"rgba(16,185,129,0.12)",c:"#059669",ic:Check,lbl:"Completed"},
+    remitted: {bg:"rgba(59,130,246,0.12)", c:"#3b82f6",ic:Check,lbl:"Remitted"},
+    pending:  {bg:"rgba(245,158,11,0.12)", c:"#d97706",ic:Clock,lbl:"Pending"},
+    released: {bg:"rgba(139,92,246,0.12)", c:"#8b5cf6",ic:Check,lbl:"Released"},
+    paid:     {bg:"rgba(16,185,129,0.12)", c:"#059669",ic:Check,lbl:"Paid"},
+    overdue:  {bg:"rgba(239,68,68,0.12)",  c:"#ef4444",ic:AlertTriangle,lbl:"Overdue"},
+  };
+  const s=map[status]||map.pending;const Ic=s.ic;
+  return(<span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold whitespace-nowrap"
+    style={{background:s.bg,color:s.c}}>
+    <Ic className="w-3 h-3"/>{s.lbl}
+  </span>);
+}
 
-                <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-slate-400 text-[10px] font-bold uppercase tracking-wider bg-slate-50/50">
-                          <th className="px-6 py-4">Receipt ID</th>
-                          <th className="px-6 py-4">Client Name</th>
-                          <th className="px-6 py-4">Payment Method</th>
-                          <th className="px-6 py-4">Amount</th>
-                          <th className="px-6 py-4">Date</th>
-                          <th className="px-6 py-4">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {payments.map((p, i) => (
-                          <motion.tr
-                            key={p.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            className="hover:bg-slate-50/50 transition duration-150"
-                          >
-                            <td className="px-6 py-4 text-slate-500 font-mono">#INV-{p.id}</td>
-                            <td className="px-6 py-4 font-bold text-slate-800">{p.client_name}</td>
-                            <td className="px-6 py-4 text-slate-400">GCash Transfer</td>
-                            <td className="px-6 py-4 font-black text-slate-800">
-                              ₱{p.amount.toLocaleString()}
-                            </td>
-                            <td className="px-6 py-4 text-slate-500">{p.date}</td>
-                            <td className="px-6 py-4">
-                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border
-                                ${p.status === 'Completed'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-100'
-                                  : 'bg-amber-50 text-amber-800 border-amber-100'}`}>
-                                {p.status}
-                              </span>
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
+function SplitBar({admin,therapist}){
+  const total=admin+therapist;if(!total)return null;
+  const ap=Math.round((admin/total)*100);
+  return(<div className="flex items-center gap-2 w-full">
+    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{background:"rgba(255,255,255,0.08)"}}>
+      <div className="h-full rounded-full" style={{width:`${ap}%`,background:"linear-gradient(90deg,#059669,#0ea5e9)"}}/>
+    </div>
+    <span className="text-[9px] font-black text-slate-400 whitespace-nowrap">{ap}%A / {100-ap}%T</span>
+  </div>);
+}
 
-            {/* ── Tab Content: Payroll & Commissions ── */}
-            {activeTab === 'payroll' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-slate-800 text-sm">Automated Commission Payouts</h3>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base rate: ₱500/session + 35% commission</span>
-                </div>
-
-                <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-slate-400 text-[10px] font-bold uppercase tracking-wider bg-slate-50/50">
-                          <th className="px-6 py-4">Therapist</th>
-                          <th className="px-6 py-4 text-center">Sessions</th>
-                          <th className="px-6 py-4">Base Payout</th>
-                          <th className="px-6 py-4">Commissions</th>
-                          <th className="px-6 py-4">Net Total</th>
-                          <th className="px-6 py-4 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-700">
-                        {mockPayroll.map(pr => (
-                          <tr key={pr.id} className="hover:bg-slate-50/30 transition">
-                            <td className="px-6 py-4 font-bold text-slate-850">{pr.name}</td>
-                            <td className="px-6 py-4 text-center font-bold text-slate-600">{pr.completed}</td>
-                            <td className="px-6 py-4 text-slate-500">₱{pr.base.toLocaleString()}</td>
-                            <td className="px-6 py-4 text-slate-500">₱{pr.commission.toLocaleString()}</td>
-                            <td className="px-6 py-4 font-black text-emerald-800">₱{pr.total.toLocaleString()}</td>
-                            <td className="px-6 py-4 text-right">
-                              {pr.status === 'Released' ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-100 text-slate-500 px-3 py-1 rounded-xl">
-                                  Released
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => showToast(`Released payout to ${pr.name}`)}
-                                  className="px-3 py-1 bg-emerald-950 text-white rounded-xl text-[10px] font-bold hover:bg-emerald-900 transition"
-                                >
-                                  Release Pay
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── Tab Content: Expense Tracker ── */}
-            {activeTab === 'expenses' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-slate-800 text-sm">Operation Expenses</h3>
-                  <button
-                    onClick={() => showToast('Mock Add Expense Clicked')}
-                    className="flex items-center gap-1 px-4 py-2 bg-emerald-950 text-white rounded-xl text-xs font-bold hover:bg-emerald-900 transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Log Expense
-                  </button>
-                </div>
-
-                <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
-                  <table className="w-full text-xs text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-slate-400 text-[10px] font-bold uppercase tracking-wider bg-slate-50/50">
-                        <th className="px-6 py-4">Expense Details</th>
-                        <th className="px-6 py-4">Category</th>
-                        <th className="px-6 py-4">Log Date</th>
-                        <th className="px-6 py-4">Amount</th>
-                        <th className="px-6 py-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {expenses.map(exp => (
-                        <tr key={exp.id} className="hover:bg-slate-50/30 transition">
-                          <td className="px-6 py-4 font-bold text-slate-805">{exp.description}</td>
-                          <td className="px-6 py-4">
-                            <span className="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-semibold text-[10px]">
-                              {exp.category}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-slate-500">{exp.date}</td>
-                          <td className="px-6 py-4 font-black text-red-500">₱{exp.amount.toLocaleString()}</td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full">
-                              {exp.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
-
+function ConfirmModal({title,message,onConfirm,onCancel,confirmLabel="Confirm",variant="success",C}){
+  const colors={success:{bg:"rgba(5,150,105,0.1)",c:"#059669",grad:"linear-gradient(135deg,#059669,#0a5f3c)"},
+    danger:{bg:"rgba(239,68,68,0.1)",c:"#ef4444",grad:"linear-gradient(135deg,#ef4444,#b91c1c)"}};
+  const col=colors[variant]||colors.success;
+  return(<AnimatePresence><motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+    className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+    style={{background:"rgba(0,0,0,0.6)",backdropFilter:"blur(8px)"}}>
+    <motion.div initial={{scale:0.9,y:20}} animate={{scale:1,y:0}} exit={{scale:0.9,y:20}}
+      className="w-full max-w-sm rounded-3xl p-6 shadow-2xl" style={{background:C.card}}>
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{background:col.bg}}>
+        <AlertTriangle className="w-6 h-6" style={{color:col.c}}/>
       </div>
-    </AdminLayout>
-  );
-};
+      <h3 className="text-center font-black text-base mb-2" style={{color:C.txt}}>{title}</h3>
+      <p className="text-center text-xs mb-6" style={{color:C.sec}}>{message}</p>
+      <div className="flex gap-3">
+        <button onClick={onCancel} className="flex-1 py-3 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
+          style={{background:C.inner,color:C.sec}}>Cancel</button>
+        <button onClick={onConfirm} className="flex-1 py-3 rounded-2xl text-xs font-black text-white shadow-lg transition-all hover:opacity-90"
+          style={{background:col.grad}}>{confirmLabel}</button>
+      </div>
+    </motion.div>
+  </motion.div></AnimatePresence>);
+}
 
-export default AdminPayments;
+function PolicyCard({text,color="#059669",bg="rgba(5,150,105,0.08)",bdr="rgba(5,150,105,0.2)",Icon=Info}){
+  return(<div className="flex items-start gap-3 p-4 rounded-2xl text-xs"
+    style={{background:bg,border:`1px solid ${bdr}`}}>
+    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+      style={{background:`${color}22`}}>
+      <Icon className="w-4 h-4" style={{color}}/>
+    </div>
+    <div><p className="font-black mb-1" style={{color}}>Business Policy</p>
+      <p style={{color:"#7899c0"}}>{text}</p>
+    </div>
+  </div>);
+}
+
+function FilterBar({search,setSearch,dateFrom,setDateFrom,dateTo,setDateTo,therapistId,setTherapistId,C,showTherapist=true}){
+  const is={background:C.ibg,border:`1.5px solid ${C.ibdr}`,color:C.txt};
+  return(<div className="flex flex-wrap gap-2">
+    <div className="relative flex-1 min-w-[160px]">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{color:C.muted}}/>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..."
+        className="w-full pl-8 pr-3 py-2.5 text-xs rounded-xl outline-none font-medium"
+        style={is}/>
+      {search&&<button onClick={()=>setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 hover:opacity-70">
+        <X className="w-3 h-3 text-slate-400"/></button>}
+    </div>
+    <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
+      className="px-3 py-2.5 text-xs rounded-xl outline-none font-medium" style={is}/>
+    <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
+      className="px-3 py-2.5 text-xs rounded-xl outline-none font-medium" style={is}/>
+    {showTherapist&&<select value={therapistId} onChange={e=>setTherapistId(e.target.value)}
+      className="px-3 py-2.5 text-xs rounded-xl outline-none font-bold cursor-pointer" style={is}>
+      <option value="">All Therapists</option>
+      {THERAPISTS.map(t=><option key={t.id} value={t.id} style={{background:C.card,color:C.txt}}>{t.name}</option>)}
+    </select>}
+    {(search||dateFrom||dateTo||therapistId)&&
+      <button onClick={()=>{setSearch("");setDateFrom("");setDateTo("");setTherapistId&&setTherapistId("");}}
+        className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold hover:opacity-80 transition-all"
+        style={{background:"rgba(239,68,68,0.1)",color:"#ef4444"}}>
+        <RefreshCw className="w-3.5 h-3.5"/>Clear
+      </button>}
+  </div>);
+}
+
+function THead({cols,C}){return(
+  <thead><tr style={{background:C.head}}>
+    {cols.map(c=><th key={c} className="px-4 py-3.5 text-left text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
+      style={{color:C.muted}}>{c}</th>)}
+  </tr></thead>
+);}
+
+function exportCSV(headers,rows,filename){
+  const csv=[headers.join(","),...rows.map(r=>r.map(v=>`"${v}"`).join(","))].join("\n");
+  const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+  a.download=filename;a.click();
+}
+

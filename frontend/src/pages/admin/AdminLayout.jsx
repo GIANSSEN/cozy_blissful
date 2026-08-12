@@ -10,18 +10,20 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/* ── Searchable Navigation Quick Links Index ─────────────────────── */
 const SEARCH_INDEX = [
-  { label: 'Dashboard',        desc: 'Overview & Analytics',           path: '/admin/dashboard',   category: 'Pages'    },
-  { label: 'Bookings',         desc: 'Manage Bookings & Schedules',     path: '/admin/appointments',category: 'Pages'    },
-  { label: 'Customers',        desc: 'Client Records & History',        path: '/admin/customers',   category: 'Pages'    },
-  { label: 'Services Menu',    desc: 'Manage Massage & Spa Offerings',  path: '/admin/services',    category: 'Pages'    },
-  { label: 'Staff & Therapists', desc: 'Staff Accounts & Availability', path: '/admin/staff',       category: 'Pages'    },
-  { label: 'Marketing & Promos',desc: 'Promotions & Discounts',         path: '/admin/marketing',   category: 'Pages'    },
-  { label: 'Payments & Revenue',desc: 'Transaction History',            path: '/admin/payments',    category: 'Pages'    },
-  { label: 'User Maintenance', desc: 'System RBAC & Roles',             path: '/admin/users',       category: 'Pages'    },
-  { label: 'Audit Logs',       desc: 'System Logs & Security',          path: '/admin/audit-logs',  category: 'Pages'    },
-  { label: 'System Settings',  desc: 'General & Spa Preferences',       path: '/admin/settings',    category: 'Settings' },
+  { label: 'Dashboard',            desc: 'Overview & Analytics',           path: '/admin/dashboard',               category: 'Pages'     },
+  { label: 'Bookings',             desc: 'Manage Bookings & Schedules',     path: '/admin/appointments',            category: 'Pages'     },
+  { label: 'Customers',            desc: 'Client Records & History',        path: '/admin/customers',               category: 'Pages'     },
+  { label: 'Services Menu',        desc: 'Manage Massage & Spa Offerings',  path: '/admin/services',                category: 'Pages'     },
+  { label: 'Staff & Therapists',   desc: 'Staff Accounts & Availability',   path: '/admin/staff',                   category: 'Pages'     },
+  { label: 'Marketing & Promos',   desc: 'Promotions & Discounts',          path: '/admin/marketing',               category: 'Pages'     },
+  { label: 'Daily Sales Logs',     desc: 'Transaction History & Split',     path: '/admin/payments?tab=sales',      category: 'Financials'},
+  { label: 'Weekly Payroll',       desc: 'Therapist 40% Salary Release',    path: '/admin/payments?tab=payroll',    category: 'Financials'},
+  { label: 'Daily Remittance',     desc: 'Therapist Daily Remittance Log',  path: '/admin/payments?tab=remittance', category: 'Financials'},
+  { label: 'Expense Tracker',      desc: 'Operational Costs & Expenses',    path: '/admin/payments?tab=expenses',   category: 'Financials'},
+  { label: 'User Maintenance',     desc: 'System RBAC & Roles',             path: '/admin/users',                   category: 'Pages'     },
+  { label: 'Audit Logs',           desc: 'System Logs & Security',          path: '/admin/audit-logs',              category: 'Pages'     },
+  { label: 'System Settings',      desc: 'General & Spa Preferences',       path: '/admin/settings',                category: 'Settings'  },
 ];
 
 /* ── Breadcrumb path map ─────────────────────────────────────────── */

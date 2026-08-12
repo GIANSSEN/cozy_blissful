@@ -87,9 +87,10 @@ const MENU = [
     path: null,
     basePath: '/admin/payments',
     subs: [
-      { label: 'Sales',                 tab: 'sales',    path: '/admin/payments' },
-      { label: 'Payroll & Commissions', tab: 'payroll',  path: '/admin/payments' },
-      { label: 'Expense Tracker',       tab: 'expenses', path: '/admin/payments' },
+      { label: 'Daily Sales Logs',        tab: 'sales',       path: '/admin/payments', accent: '#3b82f6' },
+      { label: 'Weekly Payroll (40%)',    tab: 'payroll',     path: '/admin/payments', accent: '#d97706' },
+      { label: 'Daily Remittance',        tab: 'remittance',  path: '/admin/payments', accent: '#059669' },
+      { label: 'Expense Tracker',         tab: 'expenses',    path: '/admin/payments', accent: '#ef4444' },
     ],
   },
   {
