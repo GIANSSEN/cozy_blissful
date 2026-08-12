@@ -49,6 +49,19 @@ class AuthController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
+            \App\Models\AuditLog::log('login', 'Authentication', "Failed login attempt for email '{$email}'", [
+                'actor' => $email,
+                'actor_role' => 'guest',
+                'module' => 'Auth',
+                'ip' => $request->ip(),
+                'severity' => 'warning',
+                'metadata' => [
+                    'email' => $email,
+                    'user_agent' => $request->userAgent(),
+                    'status' => 'failed'
+                ]
+            ]);
+
             // Generic error message to prevent user enumeration
             return response()->json([
                 'message' => 'Invalid login credentials.'
@@ -64,11 +77,25 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token', ['*'], now()->addDays(7))->plainTextToken;
         $role = $user->getRoleNames()->first() ?? 'client';
 
-        // Log successful login
+        // Log successful login in system log and AuditLog database
         Log::info('Successful login', [
             'user_id' => $user->id,
             'email' => $email,
             'ip' => $request->ip(),
+        ]);
+
+        \App\Models\AuditLog::log('login', 'Authentication', "User '{$user->name}' logged into system successfully", [
+            'actor' => $user->name,
+            'actor_role' => $role,
+            'module' => 'Auth',
+            'ip' => $request->ip(),
+            'severity' => 'info',
+            'metadata' => [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'role' => $role,
+                'user_agent' => $request->userAgent()
+            ]
         ]);
 
         return response()->json([

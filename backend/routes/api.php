@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\API\AdminController;
+use App\Http\Controllers\API\AuditLogController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ClientController;
 use App\Http\Controllers\API\NotificationController;
@@ -62,6 +63,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
         Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
+
+        // Audit Logs CRUD
+        Route::get('/audit-logs/export', [AuditLogController::class, 'export']);
+        Route::delete('/audit-logs/bulk-delete', [AuditLogController::class, 'bulkDelete']);
+        Route::apiResource('/audit-logs', AuditLogController::class);
     });
 
     // Group 2: /therapist/* -> Therapist only

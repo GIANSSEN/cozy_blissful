@@ -148,6 +148,21 @@ class AdminController extends Controller
             ]);
         }
 
+        $actor = auth()->user()?->name ?? 'System Admin';
+        $actorRole = auth()->user()?->roles?->first()?->name ?? 'admin';
+
+        \App\Models\AuditLog::log('update', 'Appointment', "Assigned therapist '".($appt->therapist?->name ?? 'Therapist')."' to booking #{$appt->id}", [
+            'actor' => $actor,
+            'actor_role' => $actorRole,
+            'module' => 'Bookings',
+            'severity' => 'warning',
+            'metadata' => [
+                'appointment_id' => $appt->id,
+                'therapist_id' => $appt->therapist_id,
+                'status' => $appt->status
+            ]
+        ]);
+
         return response()->json([
             'message' => 'Therapist assigned successfully',
             'appointment' => [
