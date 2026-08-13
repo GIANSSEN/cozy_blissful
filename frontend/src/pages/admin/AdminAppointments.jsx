@@ -764,17 +764,7 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Date *</label>
-              <input
-                type="date"
-                min={new Date().toISOString().split('T')[0]}
-                value={newDate}
-                onChange={(e) => { setNewDate(e.target.value); setErrors({}); }}
-                style={{
-                  padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  background: C.inputBg, color: C.textPrimary, border: `1px solid ${errors.newDate ? '#ef4444' : C.cardBorder}`,
-                  outline: 'none',
-                }}
-              />
+              <DatePickerInput value={newDate} onChange={(d) => { setNewDate(d); setErrors({}); }} placeholder="mm/dd/yyyy" isDark={isDark} className="w-full" />
               {errors.newDate && <p style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', margin: 0 }}>{errors.newDate}</p>}
             </div>
 
