@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
+import { DatePickerInput } from '../../components/ui/date-picker';
 import {
   Plus, Pencil, Trash2, X, Search, Clock, ShoppingBag,
   CheckCircle, AlertCircle, Tag, Gift, ToggleLeft, ToggleRight,
@@ -1117,13 +1118,11 @@ const OffersTab = ({ t, isDark }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <Field label="Start Validity Date" required error={errors.validFrom} icon={Calendar}>
-                  <Input t={t} type="date" error={errors.validFrom}
-                    value={form.validFrom} onChange={e => setForm({ ...form, validFrom: e.target.value })} />
+                  <DatePickerInput value={form.validFrom} onChange={d => setForm({ ...form, validFrom: d })} placeholder="mm/dd/yyyy" isDark={isDark} className="w-full" />
                 </Field>
 
                 <Field label="Expiration Date" required error={errors.validTo} icon={Calendar}>
-                  <Input t={t} type="date" error={errors.validTo}
-                    value={form.validTo} onChange={e => setForm({ ...form, validTo: e.target.value })} />
+                  <DatePickerInput value={form.validTo} onChange={d => setForm({ ...form, validTo: d })} placeholder="mm/dd/yyyy" isDark={isDark} className="w-full" />
                 </Field>
               </div>
             </div>
