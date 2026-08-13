@@ -220,7 +220,6 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   const navigate = useNavigate();
   const [pending, setPending] = useState(null);
   const [googleReady, setGoogleReady] = useState(false);
-  const [fbReady, setFbReady] = useState(false);
   const googleBtnRef = useRef(null);
   const busy = useRef(false);
 
@@ -236,7 +235,7 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     } else if (res.needsRegistration) {
       navigate(`/register?prefill_email=${encodeURIComponent(res.email)}&prefill_name=${encodeURIComponent(res.suggestedName || '')}&provider=${encodeURIComponent(res.provider || '')}`);
     } else {
-      onError(res.error || `${provider === 'facebook' ? 'Facebook' : 'Google'} sign-in failed.`);
+      onError(res.error || 'Google sign-in failed.');
     }
   }, [socialLogin, onSuccess, onError, navigate]);
 
@@ -263,19 +262,6 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     return () => { cancelled = true; };
   }, [finish, onError]);
 
-  useEffect(() => {
-    const appId = FACEBOOK_APP_ID || '3462314653929826';
-    let cancelled = false;
-    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
-      .then(() => {
-        if (cancelled || !window.FB) return;
-        window.FB.init({ appId, cookie: true, xfbml: false, version: 'v21.0' });
-        setFbReady(true);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
   const handleGoogleClick = () => {
     if (disabled || pending) return;
     if (window.google?.accounts?.id) {
@@ -289,55 +275,27 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     } else { onError('Google Sign-In is initializing. Please try again.'); }
   };
 
-  const handleFacebookClick = () => {
-    if (disabled || pending) return;
-    setPending('facebook');
-    if (window.FB && fbReady) {
-      window.FB.login((resp) => {
-        if (resp.status === 'connected' && resp?.authResponse?.accessToken) {
-          finish('facebook', resp.authResponse.accessToken);
-        } else {
-          setPending(null);
-          onError('Facebook auth was cancelled.');
-        }
-      }, { scope: 'public_profile,email' });
-    } else {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-      window.location.href = `${apiBase}/auth/facebook/redirect`;
-    }
-  };
-
-  const btnBase = "w-full h-10 sm:h-11 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 sm:gap-2.5 font-semibold text-xs sm:text-[13px] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border";
+  const btnBase = "w-full h-10 sm:h-11 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-xs sm:text-[13px] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border";
 
   return (
-    <div className="w-full mt-1">
-      <div className="flex items-center gap-2 sm:gap-3 my-3 sm:my-4">
+    <div className="w-full mt-0.5">
+      <div className="flex items-center gap-2 sm:gap-3 my-2.5 sm:my-3">
         <div className="flex-1 h-px" style={{ background: B.line }} />
         <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: B.inkSoft }}>or sign up with</span>
         <div className="flex-1 h-px" style={{ background: B.line }} />
       </div>
-      <div className="flex flex-col gap-2 w-full">
-        <div className="relative w-full">
-          <motion.button type="button" onClick={handleGoogleClick} disabled={disabled || pending !== null}
-            whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }} whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
-            className={btnBase}
-            style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            {pending === 'google'
-              ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
-              : <><GoogleGlyph /><span className="truncate">Sign up with Google</span></>}
-          </motion.button>
-          <div ref={googleBtnRef} aria-label="Sign up with Google"
-            className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
-            style={{ opacity: googleReady && pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }} />
-        </div>
-        <motion.button type="button" onClick={handleFacebookClick} disabled={disabled || pending !== null}
+      <div className="relative w-full">
+        <motion.button type="button" onClick={handleGoogleClick} disabled={disabled || pending !== null}
           whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }} whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
           className={btnBase}
           style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          {pending === 'facebook'
-            ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1877F2' }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
-            : <><FacebookGlyph /><span className="truncate">Sign up with Facebook</span></>}
+          {pending === 'google'
+            ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
+            : <><GoogleGlyph /><span className="truncate">Sign up with Google</span></>}
         </motion.button>
+        <div ref={googleBtnRef} aria-label="Sign up with Google"
+          className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
+          style={{ opacity: googleReady && pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }} />
       </div>
     </div>
   );
@@ -464,7 +422,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-[100svh] w-full relative flex items-start sm:items-center justify-center overflow-x-hidden px-3 sm:px-6 py-4 sm:py-8 md:py-10"
+    <div className="min-h-screen w-full relative flex items-center justify-center overflow-x-hidden px-3 sm:px-6 py-3 sm:py-6"
       style={{ fontFamily: "'Inter', system-ui, sans-serif", background: 'linear-gradient(135deg,#f0f4f8 0%,#e8edf3 100%)' }}>
 
       {/* Ambient blobs */}
@@ -476,11 +434,11 @@ const Register = () => {
       {/* Main card */}
       <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-[980px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row my-auto shadow-2xl"
+        className="relative w-full max-w-[960px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row my-auto shadow-2xl max-h-[96vh]"
         style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.06)' }}>
 
         {/* ─── Left brand panel (Desktop/Tablet landscape) ─── */}
-        <div className="hidden md:flex flex-col justify-between w-[44%] relative px-8 py-10 overflow-hidden flex-shrink-0"
+        <div className="hidden md:flex flex-col justify-between w-[44%] relative px-7 py-6 overflow-y-auto no-scrollbar flex-shrink-0"
           style={{ background: `linear-gradient(155deg, ${B.mid} 0%, ${B.green} 45%, ${B.deep} 100%)` }}>
 
           <div className="absolute rounded-full" style={{ width: 220, height: 220, right: -80, top: -80, border: '40px solid rgba(255,255,255,0.05)' }} />
@@ -492,36 +450,36 @@ const Register = () => {
           <DotGrid rows={3} cols={5} className="absolute left-8 bottom-16 opacity-40" />
 
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold mb-5"
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold mb-3"
               style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em' }}>
               <Sparkles className="w-3 h-3" style={{ color: B.goldLight }} />
               <span>Join 2,500+ Happy Clients Today</span>
             </div>
 
-            <h2 className="text-[2rem] font-black text-white leading-tight tracking-tight mb-1">Start Your</h2>
-            <h3 className="text-xl font-bold mb-3" style={{ color: B.goldLight }}>Wellness Journey.</h3>
-            <p className="text-xs leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '18rem' }}>
+            <h2 className="text-[1.75rem] font-black text-white leading-tight tracking-tight mb-0.5">Start Your</h2>
+            <h3 className="text-lg font-bold mb-2" style={{ color: B.goldLight }}>Wellness Journey.</h3>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '18rem' }}>
               Massage therapy & nail care delivered to your home — 7 days a week, 6 AM – 11 PM.
             </p>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-2 mb-5">
+            <div className="grid grid-cols-4 gap-1.5 mb-4">
               {STATS.map(s => (
-                <div key={s.label} className="rounded-xl px-1 py-2.5 text-center"
+                <div key={s.label} className="rounded-xl px-1 py-2 text-center"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <p className="text-sm font-black leading-none mb-0.5" style={{ color: B.goldLight }}>{s.value}</p>
-                  <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{s.label}</p>
+                  <p className="text-xs font-black leading-none mb-0.5" style={{ color: B.goldLight }}>{s.value}</p>
+                  <p className="text-[8.5px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{s.label}</p>
                 </div>
               ))}
             </div>
 
             {/* Services */}
-            <div className="flex flex-col gap-1.5 mb-5">
+            <div className="flex flex-col gap-1.5 mb-3">
               {SERVICES.map(s => (
-                <div key={s.name} className="flex items-center justify-between rounded-xl px-3 py-2"
+                <div key={s.name} className="flex items-center justify-between rounded-xl px-3 py-1.5"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{s.icon}</span>
+                    <span className="text-sm">{s.icon}</span>
                     <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.82)' }}>{s.name}</span>
                   </div>
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
@@ -531,9 +489,9 @@ const Register = () => {
             </div>
 
             {/* Member perks */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {PERKS.map(p => (
-                <div key={p.text} className="flex items-center gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                <div key={p.text} className="flex items-center gap-2 text-[10.5px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   <span>{p.icon}</span>
                   <span>{p.text}</span>
                 </div>
@@ -541,11 +499,11 @@ const Register = () => {
             </div>
           </div>
 
-          <div className="relative z-10">
+          <div className="relative z-10 pt-2">
             <div className="flex gap-2">
               {SOCIALS.map(s => (
                 <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
-                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
+                  className="flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-200"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; }}>
@@ -557,8 +515,8 @@ const Register = () => {
         </div>
 
         {/* ─── Right form panel ─── */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-5 sm:py-8 md:py-10" style={{ background: B.white }}>
-          <div className="w-full max-w-[370px] sm:max-w-[410px] mx-auto">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-4 sm:py-5 overflow-y-auto no-scrollbar" style={{ background: B.white }}>
+          <div className="w-full max-w-[370px] sm:max-w-[390px] mx-auto">
 
             {/* Header */}
             <div className="flex flex-col items-center mb-5 sm:mb-6 text-center">

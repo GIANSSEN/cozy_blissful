@@ -290,7 +290,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[100svh] w-full relative flex items-start sm:items-center justify-center overflow-x-hidden px-3 sm:px-6 py-4 sm:py-8 md:py-10"
+    <div className="min-h-screen w-full relative flex items-center justify-center overflow-x-hidden px-3 sm:px-6 py-3 sm:py-6"
       style={{ fontFamily: "'Inter', system-ui, sans-serif", background: 'linear-gradient(135deg,#f0f4f8 0%,#e8edf3 100%)' }}>
 
       {/* Ambient background blobs */}
@@ -302,11 +302,11 @@ const Login = () => {
       {/* Main card */}
       <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-[960px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row my-auto shadow-2xl"
+        className="relative w-full max-w-[940px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row my-auto shadow-2xl max-h-[96vh]"
         style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.06)' }}>
 
         {/* ─── Left brand panel (Desktop/Tablet landscape) ─── */}
-        <div className="hidden md:flex flex-col justify-between w-[44%] relative px-8 py-10 overflow-hidden flex-shrink-0"
+        <div className="hidden md:flex flex-col justify-between w-[44%] relative px-7 py-7 overflow-y-auto no-scrollbar flex-shrink-0"
           style={{ background: `linear-gradient(155deg, ${B.mid} 0%, ${B.green} 45%, ${B.deep} 100%)` }}>
 
           {/* Decorative elements */}
@@ -320,35 +320,35 @@ const Login = () => {
 
           {/* Top section */}
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold mb-5"
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold mb-3"
               style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em' }}>
               <Sparkles className="w-3 h-3" style={{ color: B.goldLight }} />
               <span>Premium Home Service Spa & Wellness</span>
             </div>
-            <h2 className="text-[2rem] font-black text-white leading-tight tracking-tight mb-1">Relax. Recharge.</h2>
-            <h3 className="text-xl font-bold mb-3" style={{ color: B.goldLight }}>Spa-Quality At Your Door.</h3>
-            <p className="text-xs leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '18rem' }}>
+            <h2 className="text-[1.75rem] font-black text-white leading-tight tracking-tight mb-0.5">Relax. Recharge.</h2>
+            <h3 className="text-lg font-bold mb-2" style={{ color: B.goldLight }}>Spa-Quality At Your Door.</h3>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '18rem' }}>
               Massage therapy & nail care delivered to your home — 7 days a week, 6 AM – 11 PM.
             </p>
 
             {/* Stats grid */}
-            <div className="grid grid-cols-4 gap-2 mb-5">
+            <div className="grid grid-cols-4 gap-1.5 mb-4">
               {STATS.map(s => (
-                <div key={s.label} className="rounded-xl px-1 py-2.5 text-center"
+                <div key={s.label} className="rounded-xl px-1 py-2 text-center"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <p className="text-sm font-black leading-none mb-0.5" style={{ color: B.goldLight }}>{s.value}</p>
-                  <p className="text-[9px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{s.label}</p>
+                  <p className="text-xs font-black leading-none mb-0.5" style={{ color: B.goldLight }}>{s.value}</p>
+                  <p className="text-[8.5px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{s.label}</p>
                 </div>
               ))}
             </div>
 
             {/* Services */}
-            <div className="flex flex-col gap-1.5 mb-6">
+            <div className="flex flex-col gap-1.5 mb-4">
               {SERVICES.map(s => (
-                <div key={s.name} className="flex items-center justify-between rounded-xl px-3 py-2"
+                <div key={s.name} className="flex items-center justify-between rounded-xl px-3 py-1.5"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-base">{s.icon}</span>
+                    <span className="text-sm">{s.icon}</span>
                     <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.82)' }}>{s.name}</span>
                   </div>
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
@@ -359,11 +359,11 @@ const Login = () => {
           </div>
 
           {/* Bottom section — social */}
-          <div className="relative z-10">
+          <div className="relative z-10 pt-2">
             <div className="flex gap-2">
               {SOCIALS.map(s => (
                 <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
-                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-all duration-200"
+                  className="flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-200"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)' }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = '#fff'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; }}>
@@ -375,22 +375,22 @@ const Login = () => {
         </div>
 
         {/* ─── Right form panel ─── */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-5 sm:py-8 md:py-10" style={{ background: B.white }}>
-          <div className="w-full max-w-[360px] sm:max-w-[400px] mx-auto">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-5 sm:py-6 overflow-y-auto no-scrollbar" style={{ background: B.white }}>
+          <div className="w-full max-w-[360px] sm:max-w-[380px] mx-auto">
 
             {/* Logo + heading */}
-            <div className="flex flex-col items-center mb-5 sm:mb-6 text-center">
-              <motion.div className="relative mb-3 sm:mb-4"
+            <div className="flex flex-col items-center mb-3 sm:mb-4 text-center">
+              <motion.div className="relative mb-2 sm:mb-3"
                 initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.1, duration: 0.3 }}>
-                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl flex items-center justify-center"
+                <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-2xl flex items-center justify-center"
                   style={{ boxShadow: `0 8px 24px rgba(191,161,95,0.2), 0 2px 8px rgba(0,0,0,0.08)`, background: B.white, border: `1.5px solid ${B.line}` }}>
-                  <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl object-cover" />
+                  <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-9 sm:w-10 h-9 sm:h-10 rounded-xl object-cover" />
                 </div>
                 {/* Online indicator */}
-                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
                   style={{ background: '#22c55e' }} />
               </motion.div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-1" style={{ color: B.ink }}>Welcome Back!</h1>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight mb-0.5" style={{ color: B.ink }}>Welcome Back!</h1>
               <p className="text-xs" style={{ color: B.inkSoft }}>Sign in to your Cozy Blissful account</p>
             </div>
 
