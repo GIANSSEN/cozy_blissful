@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
 import axios from '../../api/axios';
+import { DatePickerInput } from '../../components/ui/date-picker';
 import {
   History, Search, ShieldCheck, PlusCircle, Pencil,
   Trash2, LogIn, Settings as SettingsIcon, X, Eye,
@@ -825,12 +826,8 @@ const AdminAuditLogs = () => {
                     <div>
                       <p className="text-[9px] font-black uppercase tracking-wider mb-2" style={{ color: t.txtMuted }}>Date Range</p>
                       <div className="space-y-1.5">
-                        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg text-[10px] border outline-none"
-                          style={{ background: t.inner, borderColor: t.inputBorder, color: t.txt }} />
-                        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg text-[10px] border outline-none"
-                          style={{ background: t.inner, borderColor: t.inputBorder, color: t.txt }} />
+                        <DatePickerInput value={dateFrom} onChange={setDateFrom} placeholder="mm/dd/yyyy" isDark={isDark} className="w-full" />
+                        <DatePickerInput value={dateTo} onChange={setDateTo} placeholder="mm/dd/yyyy" isDark={isDark} className="w-full" />
                       </div>
                     </div>
                   </div>

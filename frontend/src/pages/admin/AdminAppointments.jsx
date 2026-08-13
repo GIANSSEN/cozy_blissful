@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
@@ -11,8 +11,11 @@ import {
   XCircle, Check, X, RefreshCw, ChevronLeft, ChevronRight, UserCheck,
   Tag, Zap, Mail, FileText, Eye, ChevronDown, CalendarDays,
   Filter, Search, AlertTriangle, RotateCcw, CheckCircle2,
-  Sparkles, ArrowRight, CalendarRange, CalendarCheck
+  Sparkles, ArrowRight, CalendarRange, CalendarCheck, CalendarIcon,
 } from 'lucide-react';
+import { MiniCalendar } from '../../components/ui/mini-calendar';
+import { format } from 'date-fns';
+
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  HELPERS & STYLING MAPS                                              */
@@ -842,6 +845,19 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const dateKey = selectedDate.toISOString().split('T')[0];
+  const [calPickerOpen, setCalPickerOpen] = useState(false);
+  const pickerRef = useRef(null);
+
+  // Close popup on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setCalPickerOpen(false);
+      }
+    };
+    if (calPickerOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [calPickerOpen]);
 
   const C = {
     textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
@@ -851,6 +867,13 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
     cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
     headerBg:      isDark ? '#1a2236' : '#dde3ec',
     rowBorder:     isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
+    popupBg:       isDark ? '#1a2236' : '#ffffff',
+    popupBorder:   isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    popupShadow:   isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.15)',
+    inputBg:       isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    inputBorder:   isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    inputTxt:      isDark ? '#e8ecf3' : '#0f172a',
+    inputMuted:    isDark ? '#4e5a70' : '#94a3b8',
   };
 
   const dayAppts = appointments.filter((a) => {
@@ -863,7 +886,9 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
 
   const prevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); onDateChange(d); };
   const nextDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); onDateChange(d); };
-  const setToday = () => onDateChange(new Date());
+  const setToday = () => { onDateChange(new Date()); setCalPickerOpen(false); };
+  const handleClear = () => { onDateChange(new Date()); setCalPickerOpen(false); };
+  const handlePickerSelect = (day) => { onDateChange(day); setCalPickerOpen(false); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -874,7 +899,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
         padding: '14px 18px', display: 'flex', flexDirection: 'column',
         gap: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
       }}>
-        {/* Row 1: nav buttons + date picker */}
+        {/* Row 1: nav buttons + custom date picker */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <button onClick={prevDay} style={{
@@ -891,17 +916,107 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
               background: 'transparent', color: C.textSecondary, display: 'flex', alignItems: 'center',
             }}><ChevronRight size={16} /></button>
           </div>
-          <input
-            type="date"
-            value={dateKey}
-            onChange={(e) => e.target.value && onDateChange(new Date(e.target.value + 'T00:00:00'))}
-            style={{
-              padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-              background: C.cardBg, color: C.textPrimary, border: `1px solid ${C.cardBorder}`,
-              outline: 'none', cursor: 'pointer',
-            }}
-          />
+
+          {/* ── Custom Date Picker ── */}
+          <div ref={pickerRef} style={{ position: 'relative' }}>
+            {/* Trigger button — styled like the screenshot */}
+            <button
+              onClick={() => setCalPickerOpen(prev => !prev)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '7px 14px', borderRadius: 10, cursor: 'pointer',
+                background: C.inputBg, color: C.inputTxt,
+                border: `1px solid ${calPickerOpen ? (isDark ? '#34d399' : '#0a3d30') : C.inputBorder}`,
+                fontWeight: 700, fontSize: 13,
+                boxShadow: calPickerOpen ? `0 0 0 3px ${isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)'}` : 'none',
+                transition: 'all 0.15s ease',
+                minWidth: 140,
+              }}
+            >
+              <span style={{ flex: 1, textAlign: 'left' }}>
+                {format(selectedDate, 'MM/dd/yyyy')}
+              </span>
+              <span style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 24, height: 24, borderRadius: 6,
+                background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
+                color: isDark ? '#94a3b8' : '#64748b', flexShrink: 0,
+              }}>
+                <CalendarDays size={13} />
+              </span>
+            </button>
+
+            {/* ── Popup dropdown ── */}
+            <AnimatePresence>
+              {calPickerOpen && (
+                <motion.div
+                  key="cal-popup"
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
+                  style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                    zIndex: 100, width: 280,
+                    background: C.popupBg,
+                    border: `1px solid ${C.popupBorder}`,
+                    borderRadius: 16,
+                    boxShadow: C.popupShadow,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Calendar body */}
+                  <div style={{ padding: '12px 12px 0' }}>
+                    <MiniCalendar
+                      isDark={isDark}
+                      selectedDate={selectedDate}
+                      onSelectDate={handlePickerSelect}
+                      accentColor={isDark ? '#34d399' : '#0a3d30'}
+                      selectedBg={isDark ? '#34d399' : '#0a3d30'}
+                    />
+                  </div>
+
+                  {/* Footer: Clear / Today */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 16px', borderTop: `1px solid ${C.popupBorder}`,
+                    marginTop: 8,
+                  }}>
+                    <button
+                      onClick={handleClear}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 13, fontWeight: 700,
+                        color: isDark ? '#34d399' : '#0a3d30',
+                        padding: '4px 8px', borderRadius: 8,
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={setToday}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 13, fontWeight: 700,
+                        color: isDark ? '#34d399' : '#0a3d30',
+                        padding: '4px 8px', borderRadius: 8,
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      Today
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
+
         {/* Row 2: date title */}
         <div style={{ textAlign: 'center', borderTop: `1px solid ${C.rowBorder}`, paddingTop: 10 }}>
           <h3 style={{ fontSize: 17, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
