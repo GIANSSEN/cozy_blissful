@@ -40,7 +40,6 @@ const SERVICES = [
 
 // ─── OAuth config ─────────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const FACEBOOK_APP_ID  = import.meta.env.VITE_FACEBOOK_APP_ID;
 
 const loadScript = (src, id) => new Promise((resolve, reject) => {
   const existing = document.getElementById(id);
@@ -63,12 +62,6 @@ const GoogleGlyph = () => (
     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
     <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
     <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-  </svg>
-);
-
-const FacebookGlyph = () => (
-  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-4.5 h-4.5 shrink-0" aria-hidden="true">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
   </svg>
 );
 
@@ -113,7 +106,7 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
   const [focused, setFocused] = useState(false);
   return (
     <div className="w-full">
-      <label htmlFor={id} className="block text-xs font-semibold mb-1 sm:mb-1.5" style={{ color: B.ink }}>
+      <label htmlFor={id} className="block text-xs font-semibold mb-1" style={{ color: B.ink }}>
         {label}
       </label>
       <div className="relative w-full">
@@ -122,13 +115,15 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
         <input id={id}
           onFocus={() => setFocused(true)}
           onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
-          className="w-full text-xs sm:text-sm rounded-xl outline-none transition-all duration-200 bg-white"
+          className="w-full rounded-xl outline-none transition-all duration-200 bg-white"
           style={{
+            fontSize: '16px',
             border: error ? '1.5px solid rgba(220,38,38,0.55)' : focused ? `1.5px solid ${B.gold}` : `1.5px solid ${B.line}`,
             color: B.ink,
-            padding: rightEl ? '0.65rem 2.6rem 0.65rem 2.6rem' : '0.65rem 0.9rem 0.65rem 2.6rem',
+            padding: rightEl ? '0.6rem 2.6rem 0.6rem 2.6rem' : '0.6rem 0.9rem 0.6rem 2.6rem',
             boxShadow: focused && !error ? `0 0 0 4px rgba(191,161,95,0.1)` : error ? `0 0 0 4px rgba(220,38,38,0.06)` : 'none',
             caretColor: B.gold,
+            touchAction: 'manipulation',
           }} {...props} />
         {rightEl && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">{rightEl}</div>}
       </div>
@@ -149,7 +144,6 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   const navigate = useNavigate();
   const [pending, setPending] = useState(null);
   const [googleReady, setGoogleReady] = useState(false);
-  const [fbReady, setFbReady] = useState(false);
   const googleBtnRef = useRef(null);
   const busy = useRef(false);
 
@@ -165,7 +159,7 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     } else if (res.needsRegistration) {
       navigate(`/register?prefill_email=${encodeURIComponent(res.email)}&prefill_name=${encodeURIComponent(res.suggestedName || '')}&provider=${encodeURIComponent(res.provider || '')}`);
     } else {
-      onError(res.error || `${provider === 'facebook' ? 'Facebook' : 'Google'} sign-in failed.`);
+      onError(res.error || 'Google sign-in failed.');
     }
   }, [socialLogin, onSuccess, onError, navigate]);
 
@@ -192,19 +186,6 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     return () => { cancelled = true; };
   }, [finish, onError]);
 
-  useEffect(() => {
-    const appId = FACEBOOK_APP_ID || '3462314653929826';
-    let cancelled = false;
-    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
-      .then(() => {
-        if (cancelled || !window.FB) return;
-        window.FB.init({ appId, cookie: true, xfbml: false, version: 'v21.0' });
-        setFbReady(true);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
   const handleGoogleClick = () => {
     if (disabled || pending) return;
     if (window.google?.accounts?.id) {
@@ -220,59 +201,28 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     }
   };
 
-  const handleFacebookClick = () => {
-    if (disabled || pending) return;
-    setPending('facebook');
-    if (window.FB && fbReady) {
-      window.FB.login((resp) => {
-        if (resp.status === 'connected' && resp?.authResponse?.accessToken) {
-          finish('facebook', resp.authResponse.accessToken);
-        } else {
-          setPending(null);
-          onError('Facebook auth was cancelled.');
-        }
-      }, { scope: 'public_profile,email' });
-    } else {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-      window.location.href = `${apiBase}/auth/facebook/redirect`;
-    }
-  };
-
-  const btnBase = "w-full h-10 sm:h-11 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 sm:gap-2.5 font-semibold text-xs sm:text-[13px] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border";
+  const btnBase = "w-full h-10 sm:h-11 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-xs sm:text-[13px] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border";
 
   return (
-    <div className="w-full mt-1">
-      <div className="flex items-center gap-2 sm:gap-3 my-3 sm:my-4">
+    <div className="w-full mt-0.5">
+      <div className="flex items-center gap-2 sm:gap-3 my-2.5 sm:my-3">
         <div className="flex-1 h-px" style={{ background: B.line }} />
         <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: B.inkSoft }}>or continue with</span>
         <div className="flex-1 h-px" style={{ background: B.line }} />
       </div>
 
-      <div className="flex flex-col gap-2 w-full">
-        {/* Google */}
-        <div className="relative w-full">
-          <motion.button type="button" onClick={handleGoogleClick} disabled={disabled || pending !== null}
-            whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }} whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
-            className={btnBase}
-            style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-            {pending === 'google'
-              ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
-              : <><GoogleGlyph /><span className="truncate">Continue with Google</span></>}
-          </motion.button>
-          <div ref={googleBtnRef} aria-label="Continue with Google"
-            className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
-            style={{ opacity: googleReady && pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }} />
-        </div>
-
-        {/* Facebook */}
-        <motion.button type="button" onClick={handleFacebookClick} disabled={disabled || pending !== null}
+      <div className="relative w-full">
+        <motion.button type="button" onClick={handleGoogleClick} disabled={disabled || pending !== null}
           whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }} whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
           className={btnBase}
           style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          {pending === 'facebook'
-            ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1877F2' }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
-            : <><FacebookGlyph /><span className="truncate">Continue with Facebook</span></>}
+          {pending === 'google'
+            ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
+            : <><GoogleGlyph /><span className="truncate">Continue with Google</span></>}
         </motion.button>
+        <div ref={googleBtnRef} aria-label="Continue with Google"
+          className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
+          style={{ opacity: googleReady && pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }} />
       </div>
     </div>
   );
@@ -340,7 +290,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full relative flex items-center justify-center overflow-x-hidden px-3 sm:px-6 py-6 sm:py-10"
+    <div className="min-h-[100svh] w-full relative flex items-start sm:items-center justify-center overflow-x-hidden px-3 sm:px-6 py-4 sm:py-8 md:py-10"
       style={{ fontFamily: "'Inter', system-ui, sans-serif", background: 'linear-gradient(135deg,#f0f4f8 0%,#e8edf3 100%)' }}>
 
       {/* Ambient background blobs */}
@@ -425,8 +375,8 @@ const Login = () => {
         </div>
 
         {/* ─── Right form panel ─── */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-6 sm:py-8 md:py-10" style={{ background: B.white }}>
-          <div className="w-full max-w-[360px] mx-auto">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-5 sm:py-8 md:py-10" style={{ background: B.white }}>
+          <div className="w-full max-w-[360px] sm:max-w-[400px] mx-auto">
 
             {/* Logo + heading */}
             <div className="flex flex-col items-center mb-5 sm:mb-6 text-center">
@@ -519,8 +469,8 @@ const Login = () => {
               <motion.button type="submit" id="login-submit" disabled={submitting || rateLimit > 0}
                 whileHover={{ scale: submitting ? 1 : 1.015, boxShadow: submitting ? undefined : `0 8px 24px rgba(191,161,95,0.4)` }}
                 whileTap={{ scale: submitting ? 1 : 0.985 }}
-                className="w-full h-11 sm:h-12 flex justify-center items-center gap-2 rounded-xl text-xs sm:text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
-                style={{ background: `linear-gradient(135deg, ${B.goldLight} 0%, ${B.gold} 100%)`, color: B.deep, boxShadow: `0 4px 16px rgba(191,161,95,0.3)`, letterSpacing: '0.02em' }}>
+                className="w-full h-12 sm:h-13 flex justify-center items-center gap-2 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer select-none"
+                style={{ background: `linear-gradient(135deg, ${B.goldLight} 0%, ${B.gold} 100%)`, color: B.deep, boxShadow: `0 4px 16px rgba(191,161,95,0.3)`, letterSpacing: '0.02em', fontSize: '15px', touchAction: 'manipulation', minHeight: '48px' }}>
                 {submitting
                   ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(4,30,22,0.2)', borderTopColor: B.deep }} />
                   : <><LogIn className="w-4 h-4" /><span>Sign In</span></>}

@@ -132,13 +132,16 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
         <input id={id}
           onFocus={() => setFocused(true)}
           onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
-          className="w-full text-xs sm:text-sm rounded-xl outline-none transition-all duration-200 bg-white"
+          className="w-full rounded-xl outline-none transition-all duration-200 bg-white"
           style={{
+            /* CRITICAL: font-size must be >= 16px on mobile to prevent iOS Safari auto-zoom */
+            fontSize: '16px',
             border: error ? '1.5px solid rgba(220,38,38,0.55)' : focused ? `1.5px solid ${B.gold}` : `1.5px solid ${B.line}`,
             color: B.ink,
-            padding: rightEl ? '0.65rem 2.6rem 0.65rem 2.6rem' : '0.65rem 0.9rem 0.65rem 2.6rem',
+            padding: rightEl ? '0.7rem 2.8rem 0.7rem 2.6rem' : '0.7rem 0.9rem 0.7rem 2.6rem',
             boxShadow: focused && !error ? `0 0 0 4px rgba(191,161,95,0.1)` : error ? `0 0 0 4px rgba(220,38,38,0.06)` : 'none',
             caretColor: B.gold,
+            touchAction: 'manipulation',
           }} {...props} />
         {rightEl && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">{rightEl}</div>}
       </div>
@@ -461,7 +464,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full relative flex items-center justify-center overflow-x-hidden px-3 sm:px-6 py-6 sm:py-10"
+    <div className="min-h-[100svh] w-full relative flex items-start sm:items-center justify-center overflow-x-hidden px-3 sm:px-6 py-4 sm:py-8 md:py-10"
       style={{ fontFamily: "'Inter', system-ui, sans-serif", background: 'linear-gradient(135deg,#f0f4f8 0%,#e8edf3 100%)' }}>
 
       {/* Ambient blobs */}
@@ -554,8 +557,8 @@ const Register = () => {
         </div>
 
         {/* ─── Right form panel ─── */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-6 sm:py-8 md:py-10" style={{ background: B.white }}>
-          <div className="w-full max-w-[370px] mx-auto">
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-5 sm:py-8 md:py-10" style={{ background: B.white }}>
+          <div className="w-full max-w-[370px] sm:max-w-[410px] mx-auto">
 
             {/* Header */}
             <div className="flex flex-col items-center mb-5 sm:mb-6 text-center">
@@ -672,8 +675,8 @@ const Register = () => {
               <motion.button type="submit" id="register-submit" disabled={submitting || rateLimit > 0}
                 whileHover={{ scale: submitting ? 1 : 1.015, boxShadow: submitting ? undefined : `0 8px 24px rgba(191,161,95,0.4)` }}
                 whileTap={{ scale: submitting ? 1 : 0.985 }}
-                className="w-full h-11 sm:h-12 flex justify-center items-center gap-2 rounded-xl text-xs sm:text-sm font-bold mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
-                style={{ background: `linear-gradient(135deg, ${B.goldLight} 0%, ${B.gold} 100%)`, color: B.deep, boxShadow: `0 4px 16px rgba(191,161,95,0.3)`, letterSpacing: '0.02em' }}>
+                className="w-full flex justify-center items-center gap-2 rounded-xl font-bold mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer select-none"
+                style={{ background: `linear-gradient(135deg, ${B.goldLight} 0%, ${B.gold} 100%)`, color: B.deep, boxShadow: `0 4px 16px rgba(191,161,95,0.3)`, letterSpacing: '0.02em', fontSize: '15px', touchAction: 'manipulation', minHeight: '48px' }}>
                 {submitting
                   ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(4,30,22,0.2)', borderTopColor: B.deep }} />
                   : <><UserPlus className="w-4 h-4" /><span>Create My Account</span></>}
