@@ -15,7 +15,7 @@ class AuditLogController extends Controller
         $query = AuditLog::query()->latest();
 
         // Search
-        if ($q = $request->get('search')) {
+        if ($q = $request->input('search')) {
             $query->where(function ($qb) use ($q) {
                 $qb->where('actor',  'like', "%{$q}%")
                    ->orWhere('entity', 'like', "%{$q}%")
@@ -26,32 +26,32 @@ class AuditLogController extends Controller
         }
 
         // Filters
-        if ($action = $request->get('action')) {
+        if ($action = $request->input('action')) {
             $query->where('action', $action);
         }
-        if ($role = $request->get('role')) {
+        if ($role = $request->input('role')) {
             $query->where('actor_role', $role);
         }
-        if ($module = $request->get('module')) {
+        if ($module = $request->input('module')) {
             $query->where('module', $module);
         }
-        if ($severity = $request->get('severity')) {
+        if ($severity = $request->input('severity')) {
             $query->where('severity', $severity);
         }
 
         // Date range
-        if ($from = $request->get('date_from')) {
+        if ($from = $request->input('date_from')) {
             $query->whereDate('created_at', '>=', $from);
         }
-        if ($to = $request->get('date_to')) {
+        if ($to = $request->input('date_to')) {
             $query->whereDate('created_at', '<=', $to);
         }
 
         // Sort
-        $sort = $request->get('sort', 'desc') === 'asc' ? 'asc' : 'desc';
+        $sort = $request->input('sort', 'desc') === 'asc' ? 'asc' : 'desc';
         $query->orderBy('created_at', $sort);
 
-        $perPage = (int) $request->get('per_page', 10);
+        $perPage = (int) $request->input('per_page', 10);
         $logs    = $query->paginate($perPage);
 
         // Stats

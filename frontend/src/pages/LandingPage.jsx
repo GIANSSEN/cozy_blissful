@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import SalonMenu from '../components/SalonMenu/SalonMenu';
 import { Link } from "react-router-dom";
 import {
   motion,
@@ -327,8 +326,8 @@ export default function LandingPage() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: EASE }}
         className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${scrolled
-            ? "bg-[#04100a]/90 backdrop-blur-md border-[rgba(191,161,95,0.22)] shadow-lg shadow-black/40"
-            : "bg-[#04100a]/50 backdrop-blur-sm border-white/5"
+          ? "bg-[#04100a]/90 backdrop-blur-md border-[rgba(191,161,95,0.22)] shadow-lg shadow-black/40"
+          : "bg-[#04100a]/50 backdrop-blur-sm border-white/5"
           }`}
       >
 
@@ -859,8 +858,50 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── SERVICES — Premium Salon Menu ── */}
-      <SalonMenu />
+      {/* ── SERVICES ── */}
+      <section id="services" className="py-20 md:py-28 px-4 sm:px-6" style={{ background: "#faf9f7" }}>
+        <div className="max-w-7xl mx-auto">
+          <Reveal className="text-center mb-12">
+            <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 mb-4">Specialist Treatments</span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Our Salon Menu</h2>
+            <p className="text-slate-400 mt-3 max-w-md mx-auto text-sm leading-relaxed">Curated in-salon treatments for complete mind and body care — inside our premium suites.</p>
+          </Reveal>
+          <Reveal delay={0.1} className="flex overflow-x-auto no-scrollbar py-2 px-1 justify-start sm:justify-center gap-2.5 sm:gap-3.5 mb-10 flex-nowrap sm:flex-wrap">
+            {Object.entries(SVCS).map(([key, c]) => (
+              <motion.button key={key} onClick={() => { setTab(key); setShowAll(false); }}
+                className="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all duration-300"
+                style={tab === key
+                  ? { background: c.color.bg, color: "#fff", boxShadow: "0 8px 28px " + c.color.glow }
+                  : { background: "linear-gradient(145deg,#fdfdfc,#f4ede1)", color: "#64748b", boxShadow: "4px 4px 10px #e6dfd5,-4px -4px 10px #fff", border: "1px solid rgba(0,0,0,0.04)" }}
+                whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+                <span>{c.icon}</span><span>{c.label}</span>
+                <span className="ml-1 px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background: tab === key ? c.color.badge : "rgba(0,0,0,0.07)", color: tab === key ? "#fff" : "#94a3b8" }}>{c.list.length}</span>
+              </motion.button>
+            ))}
+          </Reveal>
+          <AnimatePresence mode="wait">
+            <motion.div key={tab + "-note"} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, ease: EASE }} className="text-center mb-8">
+              <span className="text-xs font-bold px-4 py-2 rounded-xl" style={{ background: cat?.color.bg + "18", color: cat?.color.bg }}>{cat?.icon} {cat?.note}</span>
+            </motion.div>
+          </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+              {vis.map((s, i) => <Card key={s.name} s={s} i={i} cat={cat} />)}
+            </motion.div>
+          </AnimatePresence>
+          {cat.list.length > 6 && (
+            <Reveal className="text-center mt-10">
+              <motion.button onClick={() => setShowAll(v => !v)}
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-sm hover:scale-105 transition-all duration-300"
+                style={{ background: "linear-gradient(145deg,#fdfdfc,#f4ede1)", color: cat.color.bg, border: "1.5px solid " + cat.color.bg + "30", boxShadow: "6px 6px 18px #e6dfd5,-4px -4px 12px #fff" }}
+                whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}>
+                <motion.span animate={{ rotate: showAll ? 180 : 0 }} transition={{ duration: 0.3 }}><ChevronDown className="w-4 h-4" /></motion.span>
+                {showAll ? "Show Less" : "View All " + cat.list.length + " " + cat.label + " Services"}
+              </motion.button>
+            </Reveal>
+          )}
+        </div>
+      </section>
 
       {/* ── TESTIMONIALS ── */}
       <section id="testimonials" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden" style={{ background: "linear-gradient(135deg,#ede4d6,#e4d9c8)" }}>

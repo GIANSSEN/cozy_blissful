@@ -61,16 +61,6 @@ const MENU = [
     ],
   },
   {
-    title: 'Marketing & Loyalty',
-    icon: Megaphone,
-    path: null,
-    basePath: '/admin/marketing',
-    subs: [
-      { label: 'Gift Cards & Vouchers', tab: 'giftcards', path: '/admin/marketing' },
-      { label: 'Promo Campaigns',       tab: 'promos',    path: '/admin/marketing' },
-    ],
-  },
-  {
     title: 'Inventory',
     icon: Package,
     path: null,
