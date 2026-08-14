@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ToastProvider } from './context/ToastContext';
+import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -99,9 +100,11 @@ function App() {
       <ThemeProvider>
         <NotificationProvider>
           <ToastProvider>
-            <BrowserRouter>
-              <AnimatedRoutes />
-            </BrowserRouter>
+            <CartProvider>
+              <BrowserRouter>
+                <AnimatedRoutes />
+              </BrowserRouter>
+            </CartProvider>
           </ToastProvider>
         </NotificationProvider>
       </ThemeProvider>
