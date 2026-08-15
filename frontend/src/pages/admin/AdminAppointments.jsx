@@ -1678,6 +1678,22 @@ const AdminAppointments = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  // ── Auto-open target appointment when navigating from notification or search ──
+  useEffect(() => {
+    const targetId = searchParams.get('id');
+    if (!targetId || appointments.length === 0) return;
+    const found = appointments.find((a) => String(a.id) === String(targetId));
+    if (found) {
+      if (found.status === 'Pending') {
+        setAcceptTarget(found);
+      } else if (found.notes && found.notes.toLowerCase().includes('reschedule')) {
+        setRescheduleTarget(found);
+      } else {
+        setSelectedAppt(found);
+      }
+    }
+  }, [searchParams, appointments]);
+
   const handleAssignTherapist = async (apptId, therapistId) => {
     try {
       const res = await API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId });

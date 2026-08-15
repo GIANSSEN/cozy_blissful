@@ -175,6 +175,40 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
   const markAllRead_local = () => markAllRead();
 
+  const handleNotifClick = (notif) => {
+    markRead(notif.id);
+    setShowNotifs(false);
+
+    if (notif.appointment_id) {
+      if (
+        notif.type === 'new_booking' ||
+        notif.title?.toLowerCase().includes('new') ||
+        notif.title?.toLowerCase().includes('received')
+      ) {
+        navigate(`/admin/appointments?tab=pending&id=${notif.appointment_id}`);
+      } else if (
+        notif.type === 'cancelled' ||
+        notif.type === 'reschedule' ||
+        notif.title?.toLowerCase().includes('reschedule') ||
+        notif.title?.toLowerCase().includes('cancel')
+      ) {
+        navigate(`/admin/appointments?tab=requests&id=${notif.appointment_id}`);
+      } else {
+        navigate(`/admin/appointments?tab=all&id=${notif.appointment_id}`);
+      }
+    } else {
+      if (notif.type === 'new_booking' || notif.title?.toLowerCase().includes('booking')) {
+        navigate('/admin/appointments?tab=pending');
+      } else if (notif.type === 'audit_log') {
+        navigate('/admin/audit-logs');
+      } else if (notif.type === 'customer') {
+        navigate('/admin/customers');
+      } else {
+        navigate('/admin/appointments');
+      }
+    }
+  };
+
   /* ── CSS injection for blink animation ── */
   useEffect(() => {
     const style = document.createElement('style');
@@ -446,7 +480,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                             }}
                             onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)')}
                             onMouseLeave={e => (e.currentTarget.style.background = n.unread ? (isDark ? 'rgba(52,211,153,0.04)' : 'rgba(10,61,48,0.03)') : 'transparent')}
-                            onClick={() => markRead(n.id)}
+                            onClick={() => handleNotifClick(n)}
                           >
                             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm"
                               style={{ background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)' }}>
@@ -468,7 +502,11 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
                       <div className="p-2" style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
                         <button
-                          className="w-full py-2 text-[11px] font-bold rounded-xl transition-all hover:opacity-80"
+                          onClick={() => {
+                            setShowNotifs(false);
+                            navigate('/admin/appointments?tab=pending');
+                          }}
+                          className="w-full py-2 text-[11px] font-bold rounded-xl transition-all hover:opacity-80 cursor-pointer"
                           style={{
                             background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                             color: isDark ? '#a0aec0' : '#64748b',
