@@ -305,7 +305,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
               style={{ color: t.txtMuted }} />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
               style={{ color: t.txtSub, letterSpacing: '-0.01em' }}>
-              Back to Landing
+              Back to Home
             </span>
             <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 -translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0"
               style={{ color: t.txtMuted }} />

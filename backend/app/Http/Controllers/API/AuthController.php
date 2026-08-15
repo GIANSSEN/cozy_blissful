@@ -4,13 +4,17 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\AuditLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Password;
 use App\Mail\WelcomeMail;
 use App\Mail\ResetPasswordMail;
 
@@ -49,7 +53,7 @@ class AuthController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            \App\Models\AuditLog::log('login', 'Authentication', "Failed login attempt for email '{$email}'", [
+            AuditLog::log('login', 'Authentication', "Failed login attempt for email '{$email}'", [
                 'actor' => $email,
                 'actor_role' => 'guest',
                 'module' => 'Auth',
@@ -84,7 +88,7 @@ class AuthController extends Controller
             'ip' => $request->ip(),
         ]);
 
-        \App\Models\AuditLog::log('login', 'Authentication', "User '{$user->name}' logged into system successfully", [
+        AuditLog::log('login', 'Authentication', "User '{$user->name}' logged into system successfully", [
             'actor' => $user->name,
             'actor_role' => $role,
             'module' => 'Auth',
@@ -220,9 +224,6 @@ class AuthController extends Controller
     /**
      * Send a password reset link to the given email.
      */
-    /**
-     * Send a password reset link to the given email.
-     */
     public function sendResetLinkEmail(Request $request)
     {
         $request->validate([
@@ -249,14 +250,14 @@ class AuthController extends Controller
 
         try {
             // Generate secure random token
-            $rawToken = \Illuminate\Support\Str::random(60);
+            $rawToken = Str::random(60);
 
             // Store token in database
-            \Illuminate\Support\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+            DB::table('password_reset_tokens')->updateOrInsert(
                 ['email' => $email],
                 [
                     'email'      => $email,
-                    'token'      => \Illuminate\Support\Facades\Hash::make($rawToken),
+                    'token'      => Hash::make($rawToken),
                     'created_at' => now(),
                 ]
             );
@@ -299,21 +300,21 @@ class AuthController extends Controller
         ]);
 
         $email = strtolower(trim($request->email));
-        $record = \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $email)->first();
+        $record = DB::table('password_reset_tokens')->where('email', $email)->first();
 
         if (!$record) {
             return response()->json(['message' => 'Invalid or expired password reset link.'], 422);
         }
 
         // Check if token is older than 60 minutes
-        if (\Carbon\Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
-            \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $email)->delete();
+        if (Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            DB::table('password_reset_tokens')->where('email', $email)->delete();
             return response()->json(['message' => 'Password reset link has expired. Please request a new one.'], 422);
         }
 
         // Verify token hash
-        if (!\Illuminate\Support\Facades\Hash::check($request->token, $record->token)) {
-            return response()->json(['message' => 'Invalid password reset token.'], 422);
+        if (!Hash::check($request->token, $record->token)) {
+            return response()->json(['message' => 'Invalid reset token.'], 422);
         }
 
         // Find user & update password
@@ -322,11 +323,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'User not found.'], 404);
         }
 
-        $user->password = \Illuminate\Support\Facades\Hash::make($request->password);
+        $user->password = Hash::make($request->password);
         $user->save();
 
         // Delete used token & revoke active tokens for security
-        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $email)->delete();
+        DB::table('password_reset_tokens')->where('email', $email)->delete();
         $user->tokens()->delete();
 
         Log::info('Password successfully reset', ['user_id' => $user->id, 'email' => $email]);

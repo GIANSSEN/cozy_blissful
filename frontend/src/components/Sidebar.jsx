@@ -44,10 +44,10 @@ const MENU = [
     path: null,
     basePath: '/admin/users',
     subs: [
-      { label: 'User Profiles',   tab: 'profiles',  path: '/admin/users', accent: '#3b55e6' },
-      { label: 'Work Schedules',  tab: 'schedules', path: '/admin/users', accent: '#b45309' },
-      { label: 'Therapist Queue', tab: 'queue',     path: '/admin/users', accent: '#0891b2' },
-      { label: 'Permissions',     tab: 'rbac',      path: '/admin/users', accent: '#0a3d30' },
+      { label: 'User Profiles', tab: 'profiles', path: '/admin/users', accent: '#3b55e6' },
+      { label: 'Work Schedules', tab: 'schedules', path: '/admin/users', accent: '#b45309' },
+      { label: 'Therapist Queue', tab: 'queue', path: '/admin/users', accent: '#0891b2' },
+      { label: 'Permissions', tab: 'rbac', path: '/admin/users', accent: '#0a3d30' },
     ],
   },
   {
@@ -57,7 +57,17 @@ const MENU = [
     basePath: '/admin/services',
     subs: [
       { label: 'Services', tab: 'services', path: '/admin/services' },
-      { label: 'Offers',   tab: 'offers',   path: '/admin/services' },
+      { label: 'Offers', tab: 'offers', path: '/admin/services' },
+    ],
+  },
+  {
+    title: 'Marketing & Loyalty',
+    icon: Megaphone,
+    path: null,
+    basePath: '/admin/marketing',
+    subs: [
+      { label: 'Gift Cards & Vouchers', tab: 'giftcards', path: '/admin/marketing' },
+      { label: 'Promo Campaigns', tab: 'promos', path: '/admin/marketing' },
     ],
   },
   {
@@ -66,8 +76,8 @@ const MENU = [
     path: null,
     basePath: '/admin/products',
     subs: [
-      { label: 'Product Catalog',    tab: 'retail',    path: '/admin/products' },
-      { label: 'Stock Control',      tab: 'stock',     path: '/admin/products' },
+      { label: 'Product Catalog', tab: 'retail', path: '/admin/products' },
+      { label: 'Stock Control', tab: 'stock', path: '/admin/products' },
       { label: 'Suppliers & Orders', tab: 'suppliers', path: '/admin/products' },
     ],
   },
@@ -77,10 +87,10 @@ const MENU = [
     path: null,
     basePath: '/admin/payments',
     subs: [
-      { label: 'Daily Sales Logs',        tab: 'sales',       path: '/admin/payments', accent: '#3b82f6' },
-      { label: 'Weekly Payroll (40%)',    tab: 'payroll',     path: '/admin/payments', accent: '#d97706' },
-      { label: 'Daily Remittance',        tab: 'remittance',  path: '/admin/payments', accent: '#059669' },
-      { label: 'Expense Tracker',         tab: 'expenses',    path: '/admin/payments', accent: '#ef4444' },
+      { label: 'Daily Sales Logs', tab: 'sales', path: '/admin/payments', accent: '#3b82f6' },
+      { label: 'Weekly Payroll (40%)', tab: 'payroll', path: '/admin/payments', accent: '#d97706' },
+      { label: 'Daily Remittance', tab: 'remittance', path: '/admin/payments', accent: '#059669' },
+      { label: 'Expense Tracker', tab: 'expenses', path: '/admin/payments', accent: '#ef4444' },
     ],
   },
   {
@@ -103,13 +113,13 @@ const MENU = [
 /*  SUB-ICON MAP                                                        */
 /* ─────────────────────────────────────────────────────────────────── */
 const SUB_ICON = {
-  calendar:  Calendar,    pending:  Clock,       requests:  AlertCircle,
-  profiles:  UserCheck,   reviews:  Star,
-  schedules: CalendarDays, queue:   ListOrdered, rbac:     Shield,
-  services:  ShoppingBag, offers:   Gift,        categories:Hourglass,
-  giftcards: Gift,        promos:   Megaphone,
-  retail:    Tags,        stock:    Truck,        suppliers: Boxes,
-  sales:     DollarSign,  payroll:  Coins,        expenses:  Wallet,
+  calendar: Calendar, pending: Clock, requests: AlertCircle,
+  profiles: UserCheck, reviews: Star,
+  schedules: CalendarDays, queue: ListOrdered, rbac: Shield,
+  services: ShoppingBag, offers: Gift, categories: Hourglass,
+  giftcards: Gift, promos: Megaphone,
+  retail: Tags, stock: Truck, suppliers: Boxes,
+  sales: DollarSign, payroll: Coins, expenses: Wallet,
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -136,16 +146,16 @@ const DARK = {
 /*  COMPONENT                                                           */
 /* ─────────────────────────────────────────────────────────────────── */
 const Sidebar = ({ isOpen, onClose }) => {
-  const { logout }         = useAuth();
+  const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const location           = useLocation();
-  const navigate           = useNavigate();
-  const [searchParams]     = useSearchParams();
-  const activeTab          = searchParams.get('tab') || '';
-  const [search, setSearch]       = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || '';
+  const [search, setSearch] = useState('');
   const [openTitle, setOpenTitle] = useState(null);
 
-  const t      = theme === 'dark' ? DARK : LIGHT;
+  const t = theme === 'dark' ? DARK : LIGHT;
   const isDark = theme === 'dark';
 
   /* Auto-expand the section matching current URL */
@@ -166,7 +176,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const filtered = MENU.map(cat => {
     const q = search.toLowerCase();
     if (!q) return cat;
-    const subHits  = cat.subs.filter(s => s.label.toLowerCase().includes(q));
+    const subHits = cat.subs.filter(s => s.label.toLowerCase().includes(q));
     const parentHit = cat.title.toLowerCase().includes(q);
     if (parentHit || subHits.length > 0) {
       return { ...cat, subs: parentHit ? cat.subs : subHits, forceOpen: true };
@@ -304,8 +314,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             }
 
             /* Accordion */
-            const basePath  = cat.basePath || '';
-            const isActive  = location.pathname.startsWith(basePath);
+            const basePath = cat.basePath || '';
+            const isActive = location.pathname.startsWith(basePath);
             const isOpenNow = openTitle === cat.title || (search.length > 0 && cat.forceOpen);
 
             return (
@@ -344,8 +354,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                         className="ml-4 pl-3 py-1 space-y-0.5"
                         style={{ borderLeft: `1.5px solid ${t.border}` }}>
                         {cat.subs.map((sub, idx) => {
-                          const active    = isSubActive(sub);
-                          const SubIcon   = SUB_ICON[sub.tab] || FileText;
+                          const active = isSubActive(sub);
+                          const SubIcon = SUB_ICON[sub.tab] || FileText;
                           const subAccent = sub.accent || t.defaultSubActive;
                           return (
                             <motion.div
@@ -419,7 +429,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               style={{ color: t.txtMuted }} />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
               style={{ color: t.txtSub, letterSpacing: '-0.01em' }}>
-              Back to Landing
+              Back to Home
             </span>
             <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all"
               style={{ color: t.txtMuted }} />

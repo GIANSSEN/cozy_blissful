@@ -480,6 +480,7 @@ class AdminController extends Controller
         $permissionsData = $request->input('permissions', []);
 
         foreach ($permissionsData as $roleName => $perms) {
+            /** @var \Spatie\Permission\Models\Role|null $role */
             $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
             if (!$role) continue;
 
