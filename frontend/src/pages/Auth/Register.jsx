@@ -136,6 +136,8 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
           style={{
             /* CRITICAL: font-size must be >= 16px on mobile to prevent iOS Safari auto-zoom */
             fontSize: '16px',
+            background: '#ffffff',
+            backgroundColor: '#ffffff',
             border: error ? '1.5px solid rgba(220,38,38,0.55)' : focused ? `1.5px solid ${B.gold}` : `1.5px solid ${B.line}`,
             color: B.ink,
             padding: rightEl ? '0.7rem 2.8rem 0.7rem 2.6rem' : '0.7rem 0.9rem 0.7rem 2.6rem',

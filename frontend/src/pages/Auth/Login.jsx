@@ -118,6 +118,8 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
           className="w-full rounded-xl outline-none transition-all duration-200 bg-white"
           style={{
             fontSize: '16px',
+            background: '#ffffff',
+            backgroundColor: '#ffffff',
             border: error ? '1.5px solid rgba(220,38,38,0.55)' : focused ? `1.5px solid ${B.gold}` : `1.5px solid ${B.line}`,
             color: B.ink,
             padding: rightEl ? '0.6rem 2.6rem 0.6rem 2.6rem' : '0.6rem 0.9rem 0.6rem 2.6rem',
