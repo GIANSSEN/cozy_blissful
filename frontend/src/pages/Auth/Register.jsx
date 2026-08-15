@@ -127,7 +127,7 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
         {label}
       </label>
       <div className="relative w-full">
-        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors duration-150 shrink-0"
+        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors duration-150 shrink-0 z-10"
           style={{ color: error ? '#dc2626' : focused ? B.gold : '#94a3b8' }} />
         <input id={id}
           onFocus={() => setFocused(true)}
@@ -143,7 +143,7 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
             caretColor: B.gold,
             touchAction: 'manipulation',
           }} {...props} />
-        {rightEl && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center">{rightEl}</div>}
+        {rightEl && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center z-10">{rightEl}</div>}
       </div>
       <AnimatePresence>
         {error && (

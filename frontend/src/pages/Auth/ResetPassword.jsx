@@ -242,24 +242,36 @@ const ResetPassword = () => {
                 <motion.form key="form" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onSubmit={handleSubmit}>
                   <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-                    {/* Email (pre-filled, read-only styling) */}
+                    {/* Email (read-only, locked to the reset request) */}
                     <div>
-                      <label htmlFor="reset-email" style={{ display:'block', fontSize:12, fontWeight:700, color:B.ink, marginBottom:7 }}>
-                        Email Address
-                      </label>
-                      <input
-                        id="reset-email"
-                        type="email"
-                        required
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        style={{
-                          width:'100%', padding:'12px 14px',
-                          borderRadius:14, fontSize:13, color:B.muted,
-                          border:`1.5px solid ${B.line}`,
-                          background:'#f8fafc', outline:'none', boxSizing:'border-box',
-                        }}
-                      />
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
+                        <label htmlFor="reset-email" style={{ fontSize:12, fontWeight:700, color:B.ink }}>
+                          Email Address
+                        </label>
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:B.muted, fontWeight:600 }}>
+                          <Lock style={{ width:11, height:11, color:B.gold }} /> Locked
+                        </span>
+                      </div>
+                      <div style={{ position:'relative' }}>
+                        <input
+                          id="reset-email"
+                          type="email"
+                          readOnly
+                          tabIndex={-1}
+                          value={email}
+                          style={{
+                            width:'100%', padding:'12px 38px 12px 14px',
+                            borderRadius:14, fontSize:13, color:'#475569',
+                            border:`1.5px solid ${B.line}`,
+                            background:'#f1f5f9', outline:'none', boxSizing:'border-box',
+                            cursor:'not-allowed', userSelect:'none',
+                            fontWeight:500,
+                          }}
+                        />
+                        <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', display:'flex', alignItems:'center', pointerEvents:'none' }}>
+                          <ShieldCheck style={{ width:16, height:16, color:B.gold }} />
+                        </div>
+                      </div>
                     </div>
 
                     {/* New Password */}
