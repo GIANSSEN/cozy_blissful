@@ -410,11 +410,6 @@ const Login = () => {
           }}>
           <div className="w-full" style={{ maxWidth: 'clamp(280px, 90%, 360px)' }}>
 
-            {/* Logo + heading — mobile brand strip */}
-            <div className="md:hidden flex items-center gap-2 mb-3 pb-2.5"
-              style={{ borderBottom: `1px solid ${B.line}` }}>
-              <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
-              <div>
                 <p className="text-[10px] font-black leading-none" style={{ color: B.green }}>Cozy Blissful</p>
                 <p className="text-[9px]" style={{ color: B.inkSoft }}>Premium Spa & Wellness</p>
               </div>
