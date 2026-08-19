@@ -233,10 +233,12 @@ class AuthController extends Controller
         $email = strtolower(trim($request->email));
         $user  = User::where('email', $email)->first();
 
+        // Always return 200 with a generic message to prevent email enumeration attacks.
+        // An attacker should not be able to learn which email addresses are registered.
         if (!$user) {
             return response()->json([
-                'message' => 'No account found with this email address. Please register or check your email.'
-            ], 404);
+                'message' => 'If an account with that email exists, a reset link has been sent.'
+            ]);
         }
 
         // Check if Gmail SMTP credentials are set in .env
@@ -335,6 +337,22 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Your password has been reset successfully! You can now log in with your new password.'
         ]);
+    }
+
+    /**
+     * Invalidate the user's current Sanctum token (logout).
+     */
+    public function logout(Request $request)
+    {
+        // Revoke the token that was used to authenticate this request
+        $request->user()->currentAccessToken()->delete();
+
+        Log::info('User logged out', [
+            'user_id' => $request->user()->id,
+            'ip'      => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Logged out successfully.']);
     }
 }
 

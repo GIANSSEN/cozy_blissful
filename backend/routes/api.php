@@ -15,7 +15,7 @@ use App\Http\Controllers\API\SocialAuthController;
 // Public auth routes with custom rate limiting for enhanced security
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle.register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle.login');
-Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail']);
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->middleware('throttle.register');
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/auth/google', [SocialAuthController::class, 'google'])->middleware('throttle.login');
 Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middleware('throttle.login');

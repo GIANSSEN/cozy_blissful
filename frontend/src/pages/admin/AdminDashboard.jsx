@@ -276,7 +276,7 @@ const Counter = ({ value, prefix = '', suffix = '', duration = 1.2 }) => {
 /* ─── Card ────────────────────────────────────────────────────────── */
 const Card = ({ children, className = '', style = {}, t, onClick, hoverable = false }) => (
   <div
-    className={`rounded-2xl overflow-hidden ${hoverable ? 'cursor-pointer transition-all duration-200 active:scale-[0.98] hover:-translate-y-0.5' : ''} ${className}`}
+    className={`rounded-2xl overflow-hidden ${hoverable ? 'cursor-pointer transition-all duration-200 active:scale-[0.98] hover:-translate-y-1 hover:shadow-xl' : ''} ${className}`}
     style={{ background: t.card, boxShadow: t.cardShadow, border: t.cardBorder, ...style }}
     onClick={onClick}
   >
@@ -287,17 +287,23 @@ const Card = ({ children, className = '', style = {}, t, onClick, hoverable = fa
 /* ─── KPI Card with Sparkline ─────────────────────────────────────── */
 const KPI = ({ icon: Icon, label, value, sub, color, trend, trendUp, delay, t, onClick, sparkData }) => (
   <motion.div {...fadeUp(delay)} className="cursor-pointer group" onClick={onClick}>
-    <Card t={t} hoverable
-      className="p-4 sm:p-5 flex flex-col gap-3 relative overflow-hidden"
+    <div
+      className="rounded-2xl overflow-hidden relative p-4 sm:p-5 flex flex-col gap-3 transition-all duration-200 hover:-translate-y-1 active:scale-[0.97]"
       style={{
         background: t.card,
         boxShadow: t.cardShadow,
         border: t.cardBorder,
       }}
     >
+      {/* Hover glow layer */}
+      <div
+        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{ boxShadow: `0 0 0 1.5px ${color}40, 0 8px 32px ${color}18` }}
+      />
+
       {/* Background glow blob */}
       <div
-        className="absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none"
+        className="absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none transition-all duration-300 group-hover:opacity-10"
         style={{
           background: color,
           opacity: 0.04,
@@ -307,9 +313,9 @@ const KPI = ({ icon: Icon, label, value, sub, color, trend, trendUp, delay, t, o
       />
 
       {/* Top row: icon + trend badge */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between relative z-10">
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 group-hover:scale-110 group-hover:shadow-lg"
           style={{ background: `${color}18`, border: `1px solid ${color}28` }}
         >
           <Icon className="w-5 h-5" style={{ color }} />
@@ -329,9 +335,9 @@ const KPI = ({ icon: Icon, label, value, sub, color, trend, trendUp, delay, t, o
       </div>
 
       {/* Value */}
-      <div>
+      <div className="relative z-10">
         <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: t.txtMuted }}>{label}</p>
-        <p className="text-2xl font-black mt-0.5 leading-none tabular-nums" style={{ color: t.txt }}>
+        <p className="text-2xl font-black mt-0.5 leading-none tabular-nums transition-colors duration-200" style={{ color: t.txt }}>
           <Counter value={value} />
         </p>
         {sub && <p className="text-[10px] mt-1 font-medium" style={{ color: t.txtMuted }}>{sub}</p>}
@@ -339,11 +345,18 @@ const KPI = ({ icon: Icon, label, value, sub, color, trend, trendUp, delay, t, o
 
       {/* Sparkline */}
       {sparkData && (
-        <div className="pt-1 mt-auto">
+        <div className="pt-1 mt-auto relative z-10">
           <Sparkline data={sparkData} color={color} width={100} height={28} />
         </div>
       )}
-    </Card>
+
+      {/* Click hint */}
+      <div className="absolute bottom-2 right-3 opacity-0 group-hover:opacity-60 transition-opacity duration-200 z-10">
+        <span className="text-[8px] font-bold flex items-center gap-0.5" style={{ color: t.txtMuted }}>
+          <Eye className="w-2.5 h-2.5" /> details
+        </span>
+      </div>
+    </div>
   </motion.div>
 );
 
@@ -1106,33 +1119,35 @@ const AdminDashboard = () => {
         {/* ══ ROW 2: INSIGHT STRIP ══════════════════════════════════ */}
         <motion.div {...fadeUp(0.2)} className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
           {[
-            { icon: Flame,        label: 'Conversion',      value: '68.4%', color: t.danger,  sub: '+3.2% vs last week', up: true  },
-            { icon: Award,        label: 'Completion',      value: '92.1%', color: t.success, sub: 'Excellent rate',      up: true  },
-            { icon: Target,       label: 'Cancellation',    value: '4.8%',  color: t.warning, sub: '-0.5% this week',    up: false },
-            { icon: Zap,          label: 'Avg Session',     value: '72 min',color: t.info,    sub: 'Across all services', up: true  },
+            { icon: Flame,   label: 'Conversion',   value: '68.4%', color: t.danger,  sub: '+3.2% vs last week', up: true  },
+            { icon: Award,   label: 'Completion',   value: '92.1%', color: t.success, sub: 'Excellent rate',      up: true  },
+            { icon: Target,  label: 'Cancellation', value: '4.8%',  color: t.warning, sub: '-0.5% this week',    up: false },
+            { icon: Zap,     label: 'Avg Session',  value: '72 min',color: t.info,    sub: 'Across all services', up: true  },
           ].map((ins, i) => (
             <motion.div
               key={ins.label}
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + i * 0.06, duration: 0.4 }}
-              className="p-3 sm:p-4 rounded-2xl hover:-translate-y-0.5 transition-transform cursor-default"
+              className="group p-3 sm:p-4 rounded-2xl hover:-translate-y-1 transition-all duration-200 cursor-default relative overflow-hidden"
               style={{ background: t.card, border: t.cardBorder, boxShadow: t.cardShadow }}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+              {/* hover glow */}
+              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                style={{ boxShadow: `0 0 0 1px ${ins.color}30, 0 6px 20px ${ins.color}12` }} />
+              <div className="flex items-center justify-between mb-2 relative z-10">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
                   style={{ background: `${ins.color}18`, border: `1px solid ${ins.color}28` }}>
                   <ins.icon className="w-4 h-4" style={{ color: ins.color }} />
                 </div>
-                <span
-                  className="text-[9px] font-bold flex items-center gap-0.5"
-                  style={{ color: ins.up ? t.success : t.danger }}
-                >
+                <span className="text-[9px] font-bold flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg"
+                  style={{ color: ins.up ? t.success : t.danger, background: ins.up ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)' }}>
                   {ins.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                  {ins.up ? '↑' : '↓'}
                 </span>
               </div>
-              <p className="text-[9px] uppercase font-black tracking-wider" style={{ color: t.txtMuted }}>{ins.label}</p>
-              <p className="text-base sm:text-lg font-black" style={{ color: ins.color }}>{ins.value}</p>
-              <p className="text-[9px] mt-0.5 hidden sm:block" style={{ color: t.txtMuted }}>{ins.sub}</p>
+              <p className="text-[9px] uppercase font-black tracking-wider relative z-10" style={{ color: t.txtMuted }}>{ins.label}</p>
+              <p className="text-lg sm:text-xl font-black relative z-10" style={{ color: ins.color }}>{ins.value}</p>
+              <p className="text-[9px] mt-0.5 relative z-10" style={{ color: t.txtMuted }}>{ins.sub}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -1143,17 +1158,31 @@ const AdminDashboard = () => {
           {/* Live Sessions — 2 cols */}
           <motion.div {...fadeUp(0.24)} className="lg:col-span-2">
             <Card t={t} className="p-4 sm:p-5">
-              <SectionHeader title="Active Sessions" icon={Wifi} t={t} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: t.accentAlpha }}>
+                    <Wifi className="w-3.5 h-3.5" style={{ color: t.accent }} />
+                  </div>
+                  <h3 className="text-sm font-black" style={{ color: t.txt }}>Active Sessions</h3>
+                </div>
+                {/* Live pulse indicator */}
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#ef4444' }} />
+                    <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#ef4444' }} />
+                  </span>
+                  <span className="text-[9px] font-black" style={{ color: '#ef4444' }}>LIVE</span>
+                </div>
+              </div>
               <div className="space-y-3">
                 {sessions.map(s => {
                   const pctColor = s.pct > 60 ? t.accent : s.pct > 30 ? t.warning : t.danger;
                   return (
                     <div key={s.id}
-                      className="p-4 rounded-2xl transition-all hover:shadow-md"
+                      className="group p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer"
                       style={{ background: t.inner, border: t.innerBorder }}
                     >
                       <div className="flex items-start gap-3 mb-3">
-                        {/* Circular ring */}
                         <div className="relative flex-shrink-0">
                           <Ring pct={s.pct} color={pctColor} size={52} stroke={5} />
                           <div className="absolute inset-0 flex items-center justify-center">
@@ -1179,8 +1208,8 @@ const AdminDashboard = () => {
                             <span className="text-[9px] font-semibold flex items-center gap-1" style={{ color: t.txtMuted }}>
                               <MapPin className="w-2.5 h-2.5" />{s.location}
                             </span>
-                            <span className="text-[9px] font-semibold" style={{ color: t.txtMuted }}>
-                              {s.start} – {s.end}
+                            <span className="text-[9px] font-semibold flex items-center gap-1" style={{ color: t.txtMuted }}>
+                              <Clock className="w-2.5 h-2.5" />{s.start} – {s.end}
                             </span>
                           </div>
                         </div>
@@ -1196,26 +1225,34 @@ const AdminDashboard = () => {
           {/* Activity Feed */}
           <motion.div {...fadeUp(0.28)}>
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col">
-              <SectionHeader title="Live Activity" icon={Activity} t={t} />
-              <div className="flex-1 space-y-1 overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: t.accentAlpha }}>
+                    <Activity className="w-3.5 h-3.5" style={{ color: t.accent }} />
+                  </div>
+                  <h3 className="text-sm font-black" style={{ color: t.txt }}>Live Activity</h3>
+                </div>
+                <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: t.accentAlpha, color: t.accent }}>Real-time</span>
+              </div>
+              <div className="flex-1 space-y-0.5 overflow-hidden">
                 {activityFeed.map((item, i) => (
                   <motion.div
                     key={i}
-                    initial={{ opacity: 0, x: -8 }}
+                    initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + i * 0.05 }}
-                    className="flex items-start gap-3 py-2 px-2.5 rounded-xl hover:opacity-80 transition-opacity cursor-default"
+                    transition={{ delay: 0.3 + i * 0.06 }}
+                    className="group flex items-start gap-3 py-2.5 px-2.5 rounded-xl hover:scale-[1.01] transition-all duration-150 cursor-default"
                     style={{ background: i % 2 === 0 ? t.tableStripe : 'transparent' }}
                   >
                     <div
-                      className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: `${item.color}18` }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 transition-transform duration-150 group-hover:scale-110"
+                      style={{ background: `${item.color}18`, border: `1px solid ${item.color}20` }}
                     >
                       <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-medium leading-snug" style={{ color: t.txtSub }}>{item.text}</p>
-                      <p className="text-[9px] mt-0.5 font-semibold" style={{ color: t.txtMuted }}>{item.time}</p>
+                      <p className="text-[10px] font-semibold leading-snug" style={{ color: t.txtSub }}>{item.text}</p>
+                      <p className="text-[9px] mt-0.5 font-bold" style={{ color: t.txtMuted }}>{item.time}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -1385,31 +1422,38 @@ const AdminDashboard = () => {
               <div className="space-y-3 flex-1">
                 {therapistStatus.map(s => (
                   <div key={s.label}
-                    className="p-3 rounded-xl"
+                    className="group p-3 rounded-xl transition-all duration-200 hover:shadow-sm hover:-translate-y-0.5 cursor-default"
                     style={{ background: t.inner, border: t.innerBorder }}
                   >
                     <div className="flex items-center justify-between mb-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
-                        <span className="text-[11px] font-medium" style={{ color: t.txtSub }}>{s.label}</span>
+                        <span className="relative flex-shrink-0">
+                          <span className="w-2.5 h-2.5 rounded-full block" style={{ background: s.color }} />
+                          {s.label.includes('Duty') && <span className="absolute inset-0 w-2.5 h-2.5 rounded-full animate-ping opacity-40" style={{ background: s.color }} />}
+                        </span>
+                        <span className="text-[11px] font-semibold" style={{ color: t.txtSub }}>{s.label}</span>
                       </div>
-                      <span className="text-sm font-black" style={{ color: t.txt }}>{s.count}</span>
+                      <span className="text-base font-black transition-colors" style={{ color: t.txt }}>{s.count}</span>
                     </div>
                     <Bar pct={s.pct} color={s.color} t={t} height={5} />
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 pt-4 space-y-2.5" style={{ borderTop: `1px solid ${t.divider}` }}>
+              <div className="mt-4 pt-4 space-y-2" style={{ borderTop: `1px solid ${t.divider}` }}>
                 <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: t.txtMuted }}>Quick Metrics</p>
                 {[
                   { label: 'Avg Ticket',  value: '₱850',     color: t.warning },
                   { label: 'Commissions', value: '₱12,450',  color: t.info    },
                   { label: 'New Clients', value: clients || 42, color: t.pink  },
                 ].map(r => (
-                  <div key={r.label} className="flex items-center justify-between py-1">
+                  <div key={r.label} className="group flex items-center justify-between py-1.5 px-2 rounded-lg hover:scale-[1.01] transition-all duration-150 cursor-default"
+                    style={{ background: 'transparent' }}
+                    onMouseEnter={e => e.currentTarget.style.background = t.tableStripe}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
                     <span className="text-[11px]" style={{ color: t.txtSub }}>{r.label}</span>
-                    <span className="text-[12px] font-black" style={{ color: r.color }}>
+                    <span className="text-[13px] font-black" style={{ color: r.color }}>
                       {typeof r.value === 'number' ? r.value.toLocaleString() : r.value}
                     </span>
                   </div>
@@ -1418,7 +1462,7 @@ const AdminDashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Therapist performance bars */}
+          {/* Staff Performance */}
           <motion.div {...fadeUp(0.44)} className="lg:col-span-2">
             <Card t={t} className="p-4 sm:p-5 h-full">
               <SectionHeader title="Staff Performance" icon={Award} t={t} />
@@ -1429,22 +1473,26 @@ const AdminDashboard = () => {
                   { name: 'Anna Reyes',   role: 'Nail Specialist',   sessions: 7,  revenue: 4800,  rating: 4.8, pct: 58, color: t.gold   },
                   { name: 'Ben Torres',   role: 'Therapist',         sessions: 5,  revenue: 3500,  rating: 4.5, pct: 40, color: t.pink   },
                 ].map((p, i) => (
-                  <div key={p.name} className="flex items-center gap-3">
+                  <div key={p.name} className="group flex items-center gap-3 p-2 rounded-xl transition-all duration-200 hover:scale-[1.01] cursor-default"
+                    style={{ borderRadius: 12 }}
+                    onMouseEnter={e => e.currentTarget.style.background = t.tableStripe}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black text-white flex-shrink-0"
-                      style={{ background: `${p.color}22`, border: `1px solid ${p.color}30`, color: p.color }}
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+                      style={{ background: `${p.color}18`, border: `1px solid ${p.color}30`, color: p.color }}
                     >
                       {p.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <div>
-                          <span className="text-[12px] font-bold" style={{ color: t.txt }}>{p.name}</span>
-                          <span className="text-[10px] ml-2" style={{ color: t.txtMuted }}>{p.role}</span>
+                      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[12px] font-bold truncate" style={{ color: t.txt }}>{p.name}</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-md hidden sm:inline" style={{ background: t.tag, color: t.tagTxt }}>{p.role}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="text-[10px] font-bold" style={{ color: t.gold }}>★{p.rating}</span>
-                          <span className="text-[10px]" style={{ color: t.txtMuted }}>{p.sessions} sessions</span>
+                          <span className="text-[9px]" style={{ color: t.txtMuted }}>{p.sessions} ses.</span>
                           <span className="text-[11px] font-black" style={{ color: p.color }}>₱{p.revenue.toLocaleString()}</span>
                         </div>
                       </div>
