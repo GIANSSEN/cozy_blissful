@@ -325,19 +325,7 @@ const ResetPassword = () => {
           }}>
           <div className="w-full" style={{ maxWidth: 'clamp(280px, 90%, 360px)' }}>
 
-            {/* Mobile brand strip */}
-            <div className="md:hidden flex items-center gap-2 mb-3 pb-2.5"
-              style={{ borderBottom: `1px solid ${B.line}` }}>
-              <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
-              <div>
-                <p className="text-[10px] font-black leading-none" style={{ color: B.green }}>Cozy Blissful</p>
-                <p className="text-[9px]" style={{ color: B.inkSoft }}>Premium Spa & Wellness</p>
-              </div>
-              <span className="ml-auto flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(10,61,48,0.08)', color: B.green }}>
-                <ShieldCheck className="w-2.5 h-2.5" /> Secure
-              </span>
-            </div>
+
 
             {/* Logo + heading */}
             <div className="flex flex-col items-center mb-3 text-center">
