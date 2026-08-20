@@ -50,6 +50,7 @@ const PERKS = [
 
 // ─── OAuth ────────────────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
 
 const loadScript = (src, id) => new Promise((resolve, reject) => {
   const existing = document.getElementById(id);
@@ -66,9 +67,8 @@ const loadScript = (src, id) => new Promise((resolve, reject) => {
   document.head.appendChild(s);
 });
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
 const GoogleGlyph = () => (
-  <svg viewBox="0 0 48 48" className="w-4 h-4 shrink-0" aria-hidden="true">
+  <svg viewBox="0 0 48 48" className="w-4.5 h-4.5 shrink-0" aria-hidden="true">
     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
     <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
@@ -76,14 +76,20 @@ const GoogleGlyph = () => (
   </svg>
 );
 
+const FacebookGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-4.5 h-4.5 shrink-0" aria-hidden="true">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
+
 const Particle = ({ style, delay = 0, duration = 9 }) => (
   <motion.div className="absolute rounded-full pointer-events-none" style={style}
-    animate={{ y: [0, -14, 0], x: [0, 6, 0], opacity: [0.35, 0.75, 0.35] }}
+    animate={{ y: [0, -18, 0], x: [0, 8, 0], opacity: [0.35, 0.75, 0.35] }}
     transition={{ duration, delay, repeat: Infinity, ease: 'easeInOut' }} />
 );
 
 const DotGrid = ({ rows = 4, cols = 8, className = '' }) => (
-  <div className={`grid gap-[6px] pointer-events-none ${className}`}
+  <div className={`grid gap-[7px] pointer-events-none ${className}`}
     style={{ gridTemplateColumns: `repeat(${cols}, 4px)` }}>
     {Array.from({ length: rows * cols }).map((_, i) => (
       <span key={i} className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.2)' }} />
@@ -102,7 +108,7 @@ const RateLimitBanner = ({ retryAfter }) => {
   const m = Math.floor(s / 60), sec = s % 60;
   return (
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-      className="flex items-start gap-2 p-2.5 rounded-xl text-xs"
+      className="flex items-start gap-2 p-3 rounded-xl text-xs"
       style={{ background: 'rgba(191,161,95,0.08)', border: '1px solid rgba(191,161,95,0.3)' }}>
       <Clock className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
       <span style={{ color: '#8b7a45' }}>
@@ -113,38 +119,38 @@ const RateLimitBanner = ({ retryAfter }) => {
   );
 };
 
-// ─── Compact Input ────────────────────────────────────────────────────────────
 const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
   const [focused, setFocused] = useState(false);
   return (
     <div className="w-full">
-      <label htmlFor={id} className="block text-[11px] font-semibold mb-1" style={{ color: B.ink }}>
+      <label htmlFor={id} className="block text-xs font-semibold mb-1 sm:mb-1.5" style={{ color: B.ink }}>
         {label}
       </label>
       <div className="relative w-full">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none transition-colors duration-150 shrink-0 z-10"
+        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-colors duration-150 shrink-0 z-10"
           style={{ color: error ? '#dc2626' : focused ? B.gold : '#94a3b8' }} />
         <input id={id}
           onFocus={() => setFocused(true)}
           onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
           className="w-full rounded-xl outline-none transition-all duration-200 bg-white"
           style={{
-            fontSize: '16px', /* Must be ≥16px to prevent iOS Safari auto-zoom */
+            /* CRITICAL: font-size must be >= 16px on mobile to prevent iOS Safari auto-zoom */
+            fontSize: '16px',
             background: '#ffffff',
             backgroundColor: '#ffffff',
             border: error ? '1.5px solid rgba(220,38,38,0.55)' : focused ? `1.5px solid ${B.gold}` : `1.5px solid ${B.line}`,
             color: B.ink,
-            padding: rightEl ? '0.5rem 2.4rem 0.5rem 2.3rem' : '0.5rem 0.75rem 0.5rem 2.3rem',
-            boxShadow: focused && !error ? `0 0 0 3px rgba(191,161,95,0.1)` : error ? `0 0 0 3px rgba(220,38,38,0.06)` : 'none',
+            padding: rightEl ? '0.7rem 2.8rem 0.7rem 2.6rem' : '0.7rem 0.9rem 0.7rem 2.6rem',
+            boxShadow: focused && !error ? `0 0 0 4px rgba(191,161,95,0.1)` : error ? `0 0 0 4px rgba(220,38,38,0.06)` : 'none',
             caretColor: B.gold,
             touchAction: 'manipulation',
           }} {...props} />
-        {rightEl && <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center z-10">{rightEl}</div>}
+        {rightEl && <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center z-10">{rightEl}</div>}
       </div>
       <AnimatePresence>
         {error && (
           <motion.p initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="mt-0.5 text-[11px] flex items-center gap-1 font-medium" style={{ color: '#dc2626' }}>
+            className="mt-1 text-[11px] flex items-center gap-1 font-medium" style={{ color: '#dc2626' }}>
             <AlertCircle className="w-3 h-3 flex-shrink-0" />{error}
           </motion.p>
         )}
@@ -173,12 +179,12 @@ const PasswordStrength = ({ password }) => {
   return (
     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
-      className="mt-1.5 overflow-hidden">
-      <div className="p-2 rounded-xl space-y-1.5" style={{ background: '#f8fafc', border: `1px solid ${B.line}` }}>
+      className="mt-1.5 sm:mt-2 overflow-hidden">
+      <div className="p-2.5 sm:p-3 rounded-xl space-y-2" style={{ background: '#f8fafc', border: `1px solid ${B.line}` }}>
         <div className="flex items-center gap-2">
           <div className="flex gap-1 flex-1">
             {[0, 1, 2, 3, 4].map(i => (
-              <motion.div key={i} className="h-1 flex-1 rounded-full"
+              <motion.div key={i} className="h-1.5 flex-1 rounded-full"
                 animate={{ background: i < passed ? barColor : '#e2e8f0' }}
                 transition={{ duration: 0.25 }} />
             ))}
@@ -186,20 +192,20 @@ const PasswordStrength = ({ password }) => {
           <AnimatePresence mode="wait">
             {label && (
               <motion.span key={label} initial={{ opacity: 0, x: 4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-                className="text-[9px] font-bold whitespace-nowrap" style={{ color: barColor }}>
+                className="text-[10px] font-bold whitespace-nowrap" style={{ color: barColor }}>
                 {label}
               </motion.span>
             )}
           </AnimatePresence>
         </div>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+        <div className="grid grid-cols-2 gap-x-2 sm:gap-x-3 gap-y-1">
           {results.map(r => (
-            <motion.div key={r.key} className="flex items-center gap-1"
+            <motion.div key={r.key} className="flex items-center gap-1 sm:gap-1.5"
               animate={{ opacity: r.ok ? 1 : 0.5 }}>
               {r.ok
-                ? <Check className="w-2.5 h-2.5 flex-shrink-0" style={{ color: '#16a34a' }} />
-                : <X className="w-2.5 h-2.5 flex-shrink-0" style={{ color: '#94a3b8' }} />}
-              <span className="text-[9.5px] font-medium truncate" style={{ color: r.ok ? '#15803d' : '#94a3b8' }}>
+                ? <Check className="w-3 h-3 flex-shrink-0" style={{ color: '#16a34a' }} />
+                : <X className="w-3 h-3 flex-shrink-0" style={{ color: '#94a3b8' }} />}
+              <span className="text-[10px] font-medium truncate" style={{ color: r.ok ? '#15803d' : '#94a3b8' }}>
                 {r.label}
               </span>
             </motion.div>
@@ -210,7 +216,7 @@ const PasswordStrength = ({ password }) => {
   );
 };
 
-// ─── Social Sign-up ───────────────────────────────────────────────────────────
+// ─── Social sign-up ───────────────────────────────────────────────────────────
 const SocialSignIn = ({ onSuccess, onError, disabled }) => {
   const { socialLogin } = useAuth();
   const navigate = useNavigate();
@@ -271,13 +277,13 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
     } else { onError('Google Sign-In is initializing. Please try again.'); }
   };
 
-  const btnBase = "w-full h-9 px-3 rounded-xl flex items-center justify-center gap-2 font-semibold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border";
+  const btnBase = "w-full h-10 sm:h-11 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-xs sm:text-[13px] transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border";
 
   return (
     <div className="w-full mt-0.5">
-      <div className="flex items-center gap-2 my-2">
+      <div className="flex items-center gap-2 sm:gap-3 my-2.5 sm:my-3">
         <div className="flex-1 h-px" style={{ background: B.line }} />
-        <span className="text-[9px] font-bold tracking-widest uppercase shrink-0" style={{ color: B.inkSoft }}>or sign up with</span>
+        <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: B.inkSoft }}>or sign up with</span>
         <div className="flex-1 h-px" style={{ background: B.line }} />
       </div>
       <div className="relative w-full">
@@ -286,7 +292,7 @@ const SocialSignIn = ({ onSuccess, onError, disabled }) => {
           className={btnBase}
           style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           {pending === 'google'
-            ? <><div className="w-3.5 h-3.5 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
+            ? <><div className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span style={{ color: B.inkSoft }}>Connecting…</span></>
             : <><GoogleGlyph /><span className="truncate">Sign up with Google</span></>}
         </motion.button>
         <div ref={googleBtnRef} aria-label="Sign up with Google"
@@ -322,6 +328,7 @@ const Register = () => {
     const preEmail = params.get('prefill_email');
     const preName = params.get('prefill_name');
     const provider = params.get('provider');
+
     if (preEmail) setEmail(preEmail);
     if (preName) setName(preName);
     if (preEmail || provider) {
@@ -381,6 +388,7 @@ const Register = () => {
     setError(null); setFieldErrors({}); setRateLimit(null);
     if (!validate()) return;
     setSubmitting(true);
+
     const res = await register(name.trim(), email.trim(), password, confirmPw);
     if (res.success) {
       await logout();
@@ -390,6 +398,7 @@ const Register = () => {
       setSubmitting(false);
       return;
     }
+
     if (res.rateLimited) setRateLimit(res.retryAfter || 3600);
     else if (res.errors) {
       const m = {};
@@ -415,84 +424,67 @@ const Register = () => {
   };
 
   return (
-    <div
-      className="min-h-screen w-full relative flex items-center justify-center overflow-hidden"
-      style={{
-        fontFamily: "'Inter', system-ui, sans-serif",
-        background: 'linear-gradient(135deg,#f0f4f8 0%,#e8edf3 100%)',
-        padding: 'clamp(8px, 2vw, 24px)',
-      }}>
+    <div className="min-h-screen w-full relative flex items-center justify-center overflow-x-hidden px-3 sm:px-6 py-3 sm:py-6"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif", background: 'linear-gradient(135deg,#f0f4f8 0%,#e8edf3 100%)' }}>
 
       {/* Ambient blobs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute rounded-full" style={{ width: '50vw', maxWidth: 500, height: '50vw', maxHeight: 500, left: '-15vw', top: '-15vw', background: `radial-gradient(circle, rgba(10,61,48,0.12) 0%, transparent 70%)` }} />
-        <div className="absolute rounded-full" style={{ width: '45vw', maxWidth: 450, height: '45vw', maxHeight: 450, right: '-12vw', bottom: '-12vw', background: `radial-gradient(circle, rgba(191,161,95,0.1) 0%, transparent 70%)` }} />
+        <div className="absolute rounded-full" style={{ width: '50vw', maxWidth: 600, height: '50vw', maxHeight: 600, left: '-15vw', top: '-15vw', background: `radial-gradient(circle, rgba(10,61,48,0.12) 0%, transparent 70%)` }} />
+        <div className="absolute rounded-full" style={{ width: '45vw', maxWidth: 500, height: '45vw', maxHeight: 500, right: '-12vw', bottom: '-12vw', background: `radial-gradient(circle, rgba(191,161,95,0.1) 0%, transparent 70%)` }} />
       </div>
 
-      {/* ─── Main card ─── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+      {/* Main card */}
+      <motion.div initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full rounded-2xl overflow-hidden flex flex-col md:flex-row my-auto"
-        style={{
-          maxWidth: 'min(940px, 100%)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.14), 0 4px 18px rgba(0,0,0,0.06)',
-          maxHeight: 'calc(100vh - clamp(16px, 4vw, 48px))',
-        }}>
+        className="relative w-full max-w-[960px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row my-auto shadow-2xl max-h-[96vh]"
+        style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.14), 0 4px 20px rgba(0,0,0,0.06)' }}>
 
-        {/* ─── Left brand panel (md+ only) ─── */}
-        <div
-          className="hidden md:flex flex-col justify-between relative overflow-y-auto no-scrollbar flex-shrink-0"
-          style={{
-            width: 'clamp(200px, 42%, 380px)',
-            padding: 'clamp(16px, 3vw, 24px)',
-            background: `linear-gradient(155deg, ${B.mid} 0%, ${B.green} 45%, ${B.deep} 100%)`,
-          }}>
+        {/* ─── Left brand panel (Desktop/Tablet landscape) ─── */}
+        <div className="hidden md:flex flex-col justify-between w-[44%] relative px-7 py-6 overflow-y-auto no-scrollbar flex-shrink-0"
+          style={{ background: `linear-gradient(155deg, ${B.mid} 0%, ${B.green} 45%, ${B.deep} 100%)` }}>
 
-          <div className="absolute rounded-full" style={{ width: 200, height: 200, right: -70, top: -70, border: '36px solid rgba(255,255,255,0.05)' }} />
-          <div className="absolute rounded-full" style={{ width: 140, height: 140, left: -45, bottom: -45, background: 'rgba(191,161,95,0.12)', border: '1px solid rgba(191,161,95,0.2)' }} />
-          <Particle style={{ width: 14, height: 14, left: 24, top: '35%', background: 'rgba(255,255,255,0.2)' }} delay={0} duration={7} />
-          <Particle style={{ width: 8, height: 8, right: 40, top: '22%', background: 'rgba(191,161,95,0.55)' }} delay={2} duration={9} />
-          <Particle style={{ width: 12, height: 12, right: 22, bottom: '32%', background: 'rgba(255,255,255,0.15)' }} delay={1.5} duration={8} />
-          <DotGrid rows={4} cols={7} className="absolute right-6 top-14 opacity-60" />
-          <DotGrid rows={3} cols={5} className="absolute left-6 bottom-14 opacity-40" />
+          <div className="absolute rounded-full" style={{ width: 220, height: 220, right: -80, top: -80, border: '40px solid rgba(255,255,255,0.05)' }} />
+          <div className="absolute rounded-full" style={{ width: 160, height: 160, left: -50, bottom: -50, background: 'rgba(191,161,95,0.12)', border: '1px solid rgba(191,161,95,0.2)' }} />
+          <Particle style={{ width: 18, height: 18, left: 30, top: '35%', background: 'rgba(255,255,255,0.2)' }} delay={0} duration={7} />
+          <Particle style={{ width: 10, height: 10, right: 50, top: '22%', background: 'rgba(191,161,95,0.55)' }} delay={2} duration={9} />
+          <Particle style={{ width: 14, height: 14, right: 28, bottom: '32%', background: 'rgba(255,255,255,0.15)' }} delay={1.5} duration={8} />
+          <DotGrid rows={5} cols={8} className="absolute right-8 top-16 opacity-60" />
+          <DotGrid rows={3} cols={5} className="absolute left-8 bottom-16 opacity-40" />
 
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-bold mb-2.5"
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold mb-3"
               style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em' }}>
-              <Sparkles className="w-2.5 h-2.5" style={{ color: B.goldLight }} />
+              <Sparkles className="w-3 h-3" style={{ color: B.goldLight }} />
               <span>Join 2,500+ Happy Clients Today</span>
             </div>
 
-            <h2 className="font-black text-white leading-tight tracking-tight mb-0.5"
-              style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.65rem)' }}>Start Your</h2>
-            <h3 className="font-bold mb-2" style={{ color: B.goldLight, fontSize: 'clamp(0.85rem, 1.5vw, 1rem)' }}>Wellness Journey.</h3>
-            <p className="text-[11px] leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '16rem' }}>
+            <h2 className="text-[1.75rem] font-black text-white leading-tight tracking-tight mb-0.5">Start Your</h2>
+            <h3 className="text-lg font-bold mb-2" style={{ color: B.goldLight }}>Wellness Journey.</h3>
+            <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '18rem' }}>
               Massage therapy & nail care delivered to your home — 7 days a week, 6 AM – 11 PM.
             </p>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-1 mb-3">
+            <div className="grid grid-cols-4 gap-1.5 mb-4">
               {STATS.map(s => (
-                <div key={s.label} className="rounded-xl px-1 py-1.5 text-center"
+                <div key={s.label} className="rounded-xl px-1 py-2 text-center"
                   style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <p className="text-[11px] font-black leading-none mb-0.5" style={{ color: B.goldLight }}>{s.value}</p>
-                  <p className="text-[8px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{s.label}</p>
+                  <p className="text-xs font-black leading-none mb-0.5" style={{ color: B.goldLight }}>{s.value}</p>
+                  <p className="text-[8.5px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>{s.label}</p>
                 </div>
               ))}
             </div>
 
             {/* Services */}
-            <div className="flex flex-col gap-1 mb-2.5">
+            <div className="flex flex-col gap-1.5 mb-3">
               {SERVICES.map(s => (
-                <div key={s.name} className="flex items-center justify-between rounded-xl px-2.5 py-1.5"
+                <div key={s.name} className="flex items-center justify-between rounded-xl px-3 py-1.5"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-sm">{s.icon}</span>
-                    <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,255,255,0.82)' }}>{s.name}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.82)' }}>{s.name}</span>
                   </div>
-                  <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-full"
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
                     style={{ background: 'rgba(191,161,95,0.2)', color: B.goldLight }}>{s.note}</span>
                 </div>
               ))}
@@ -501,7 +493,7 @@ const Register = () => {
             {/* Member perks */}
             <div className="space-y-1">
               {PERKS.map(p => (
-                <div key={p.text} className="flex items-center gap-2 text-[10px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                <div key={p.text} className="flex items-center gap-2 text-[10.5px]" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   <span>{p.icon}</span>
                   <span>{p.text}</span>
                 </div>
@@ -510,7 +502,7 @@ const Register = () => {
           </div>
 
           <div className="relative z-10 pt-2">
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {SOCIALS.map(s => (
                 <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
                   className="flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-200"
@@ -525,47 +517,40 @@ const Register = () => {
         </div>
 
         {/* ─── Right form panel ─── */}
-        <div
-          className="flex-1 flex items-center justify-center overflow-y-auto no-scrollbar"
-          style={{
-            background: B.white,
-            padding: 'clamp(14px, 3vw, 28px) clamp(16px, 5vw, 40px)',
-          }}>
-          <div className="w-full" style={{ maxWidth: 'clamp(280px, 90%, 370px)' }}>
+        <div className="flex-1 flex items-center justify-center px-4 sm:px-8 md:px-10 py-4 sm:py-5 overflow-y-auto no-scrollbar" style={{ background: B.white }}>
+          <div className="w-full max-w-[370px] sm:max-w-[390px] mx-auto">
 
-
-
-            {/* Header with logo — desktop */}
-            <div className="flex flex-col items-center mb-3 text-center">
-              <motion.div className="relative mb-2"
+            {/* Header */}
+            <div className="flex flex-col items-center mb-5 sm:mb-6 text-center">
+              <motion.div className="relative mb-3 sm:mb-4"
                 initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.1, duration: 0.3 }}>
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
-                  style={{ boxShadow: `0 6px 20px rgba(191,161,95,0.2), 0 2px 6px rgba(0,0,0,0.08)`, background: B.white, border: `1.5px solid ${B.line}` }}>
-                  <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-8 h-8 rounded-xl object-cover" />
+                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl flex items-center justify-center"
+                  style={{ boxShadow: `0 8px 24px rgba(191,161,95,0.2), 0 2px 8px rgba(0,0,0,0.08)`, background: B.white, border: `1.5px solid ${B.line}` }}>
+                  <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 sm:w-11 h-10 sm:h-11 rounded-xl object-cover" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+                <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
                   style={{ background: '#22c55e' }} />
               </motion.div>
-              <h1 className="text-base font-black tracking-tight mb-0.5" style={{ color: B.ink }}>Create Account</h1>
-              <p className="text-[11px]" style={{ color: B.inkSoft }}>Join Cozy Blissful — it&apos;s free</p>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-1" style={{ color: B.ink }}>Create Account</h1>
+              <p className="text-xs" style={{ color: B.inkSoft }}>Join Cozy Blissful — it&apos;s free</p>
             </div>
 
             {/* Social prefill notice */}
             <AnimatePresence mode="wait">
               {socialNotice && (
                 <motion.div key="sn" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="flex items-start gap-2 p-2.5 rounded-xl text-xs mb-2.5"
+                  className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-xl text-xs mb-3 sm:mb-4"
                   style={{ background: 'rgba(191,161,95,0.08)', border: '1.5px solid rgba(191,161,95,0.3)' }}>
-                  <Info className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
+                  <Info className="w-4 h-4 flex-shrink-0 mt-px" style={{ color: '#a89658' }} />
                   <span style={{ color: '#8b7a45', fontWeight: 500 }}>{socialNotice}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Alert banners */}
+            {/* Alerts */}
             <AnimatePresence mode="wait">
               {rateLimit !== null && (
-                <motion.div key="rl" className="mb-2.5" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                <motion.div key="rl" className="mb-3 sm:mb-4" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                   <RateLimitBanner retryAfter={rateLimit} />
                 </motion.div>
               )}
@@ -573,16 +558,16 @@ const Register = () => {
             <AnimatePresence mode="wait">
               {error && !rateLimit && (
                 <motion.div key="err" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                  className="flex items-start gap-2 p-2.5 rounded-xl text-xs mb-2.5"
+                  className="flex items-start gap-2.5 p-2.5 sm:p-3 rounded-xl text-xs mb-3 sm:mb-4"
                   style={{ background: 'rgba(220,38,38,0.05)', border: '1.5px solid rgba(220,38,38,0.2)' }}>
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-px" style={{ color: '#dc2626' }} />
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" style={{ color: '#dc2626' }} />
                   <span style={{ color: '#b91c1c', fontWeight: 500 }}>{error}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} noValidate className="space-y-2">
+            <form onSubmit={handleSubmit} noValidate className="space-y-3 sm:space-y-3.5">
               <Input label="Full Name" id="register-name" type="text" autoComplete="name" required icon={User}
                 value={name} placeholder="e.g. Maria Santos" error={fieldErrors.name}
                 onBlur={() => validateField('name', name)}
@@ -610,7 +595,7 @@ const Register = () => {
                       style={{ color: '#94a3b8' }}
                       onMouseEnter={e => e.currentTarget.style.color = B.ink}
                       onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}>
-                      {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   } />
                 <AnimatePresence>
@@ -629,7 +614,7 @@ const Register = () => {
                     style={{ color: '#94a3b8' }}
                     onMouseEnter={e => e.currentTarget.style.color = B.ink}
                     onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}>
-                    {showCPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showCPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 } />
 
@@ -637,30 +622,21 @@ const Register = () => {
               <AnimatePresence>
                 {confirmPw && password && (
                   <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                    className="flex items-center gap-1.5 text-[11px] font-medium"
+                    className="flex items-center gap-1.5 text-xs font-medium"
                     style={{ color: confirmPw === password ? '#16a34a' : '#dc2626' }}>
                     {confirmPw === password
-                      ? <><Check className="w-3 h-3" />Passwords match</>
-                      : <><X className="w-3 h-3" />Passwords do not match</>}
+                      ? <><Check className="w-3.5 h-3.5" />Passwords match</>
+                      : <><X className="w-3.5 h-3.5" />Passwords do not match</>}
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {/* Submit */}
               <motion.button type="submit" id="register-submit" disabled={submitting || rateLimit > 0}
-                whileHover={{ scale: submitting ? 1 : 1.015, boxShadow: submitting ? undefined : `0 6px 20px rgba(191,161,95,0.4)` }}
+                whileHover={{ scale: submitting ? 1 : 1.015, boxShadow: submitting ? undefined : `0 8px 24px rgba(191,161,95,0.4)` }}
                 whileTap={{ scale: submitting ? 1 : 0.985 }}
-                className="w-full flex justify-center items-center gap-2 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer select-none"
-                style={{
-                  background: `linear-gradient(135deg, ${B.goldLight} 0%, ${B.gold} 100%)`,
-                  color: B.deep,
-                  boxShadow: `0 3px 12px rgba(191,161,95,0.3)`,
-                  letterSpacing: '0.02em',
-                  fontSize: '14px',
-                  touchAction: 'manipulation',
-                  minHeight: '42px',
-                  height: '42px',
-                }}>
+                className="w-full flex justify-center items-center gap-2 rounded-xl font-bold mt-1 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer select-none"
+                style={{ background: `linear-gradient(135deg, ${B.goldLight} 0%, ${B.gold} 100%)`, color: B.deep, boxShadow: `0 4px 16px rgba(191,161,95,0.3)`, letterSpacing: '0.02em', fontSize: '15px', touchAction: 'manipulation', minHeight: '48px' }}>
                 {submitting
                   ? <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(4,30,22,0.2)', borderTopColor: B.deep }} />
                   : <><UserPlus className="w-4 h-4" /><span>Create My Account</span></>}
@@ -672,15 +648,15 @@ const Register = () => {
               onError={(msg) => { setRateLimit(null); setError(msg); }} />
 
             {/* Footer */}
-            <div className="mt-3 text-center space-y-1.5">
-              <p className="text-[11px]" style={{ color: B.inkSoft }}>
+            <div className="mt-4 sm:mt-5 text-center space-y-2">
+              <p className="text-xs" style={{ color: B.inkSoft }}>
                 Already have an account?{' '}
                 <Link to="/login" className="font-bold hover:underline underline-offset-2" style={{ color: B.gold }}>
                   Sign in
                 </Link>
               </p>
               <div>
-                <Link to="/" className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                <Link to="/" className="inline-flex items-center gap-1 text-xs transition-colors"
                   style={{ color: '#cbd5e1' }}
                   onMouseEnter={e => e.currentTarget.style.color = B.inkSoft}
                   onMouseLeave={e => e.currentTarget.style.color = '#cbd5e1'}>
@@ -692,47 +668,48 @@ const Register = () => {
         </div>
       </motion.div>
 
-      {/* ═══ Success Modal ═══ */}
+      {/* ═══ Success Modal -> Redirect to Login ═══ */}
       <AnimatePresence>
         {showSuccessModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
             style={{ background: 'rgba(4,30,22,0.75)', backdropFilter: 'blur(8px)' }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.88, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.88, y: 20 }}
               transition={{ type: 'spring', damping: 22, stiffness: 280 }}
-              className="relative w-full rounded-2xl bg-white overflow-hidden text-center"
-              style={{ maxWidth: 'min(380px, 94vw)', boxShadow: '0 24px 64px rgba(0,0,0,0.35)', border: `1px solid ${B.line}` }}>
+              className="relative w-full max-w-[380px] rounded-2xl bg-white overflow-hidden text-center max-h-[90vh] overflow-y-auto"
+              style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.35)', border: `1px solid ${B.line}` }}>
 
               {/* Header gradient */}
-              <div className="relative h-20 overflow-hidden"
+              <div className="relative h-20 sm:h-24 overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${B.deep} 0%, ${B.mid} 100%)` }}>
                 <div className="absolute rounded-full" style={{ width: 100, height: 100, right: -20, top: -30, background: B.gold, opacity: 0.15 }} />
                 <div className="absolute rounded-full" style={{ width: 60, height: 60, left: -10, bottom: -10, border: `10px solid ${B.goldLight}`, opacity: 0.12 }} />
+                {/* Icon badge */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-                  <motion.div className="w-14 h-14 rounded-full bg-white flex items-center justify-center"
+                  <motion.div className="w-14 sm:w-16 h-14 sm:h-16 rounded-full bg-white flex items-center justify-center"
                     style={{ boxShadow: '0 8px 28px rgba(52,211,153,0.3)', border: `3px solid #34d399` }}
                     initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.15, type: 'spring', damping: 16, stiffness: 260 }}>
                     <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: 'rgba(52,211,153,0.1)' }}>
-                      <CheckCircle2 className="w-7 h-7" style={{ color: '#059669' }} />
+                      <CheckCircle2 className="w-7 sm:w-8 h-7 sm:h-8" style={{ color: '#059669' }} />
                     </div>
                   </motion.div>
                 </div>
               </div>
 
               {/* Body */}
-              <div className="px-5 pt-10 pb-5 space-y-3">
-                <div className="space-y-1">
+              <div className="px-5 sm:px-6 pt-10 sm:pt-12 pb-5 sm:pb-6 space-y-3.5 sm:space-y-4">
+                <div className="space-y-1 sm:space-y-1.5">
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest"
                     style={{ background: 'rgba(191,161,95,0.12)', color: B.gold }}>
                     <Sparkles className="w-3 h-3" /> Account Created
                   </span>
-                  <h3 className="text-lg font-black tracking-tight" style={{ color: B.ink }}>
+                  <h3 className="text-lg sm:text-xl font-black tracking-tight" style={{ color: B.ink }}>
                     Registration Successful!
                   </h3>
                   <p className="text-xs leading-relaxed" style={{ color: B.inkSoft }}>
-                    Your account has been created. Please sign in with your credentials to access your account.
+                    Your account has been created successfully. Please sign in with your credentials to access your account.
                   </p>
                 </div>
 
@@ -746,14 +723,16 @@ const Register = () => {
                   ))}
                 </div>
 
-                {/* Proceed button */}
-                <motion.button type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={handleProceedToLogin}
-                  className="w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
-                  style={{ background: `linear-gradient(135deg, ${B.goldLight}, ${B.gold})`, color: B.deep, boxShadow: `0 6px 20px rgba(191,161,95,0.35)`, letterSpacing: '0.015em' }}>
-                  Proceed to Login
-                  <ArrowRight className="w-4 h-4" />
-                </motion.button>
+                {/* Button -> Navigate to Login */}
+                <div className="pt-1">
+                  <motion.button type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={handleProceedToLogin}
+                    className="w-full h-10 sm:h-11 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
+                    style={{ background: `linear-gradient(135deg, ${B.goldLight}, ${B.gold})`, color: B.deep, boxShadow: `0 6px 20px rgba(191,161,95,0.35)`, letterSpacing: '0.015em' }}>
+                    Proceed to Login
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
           </div>

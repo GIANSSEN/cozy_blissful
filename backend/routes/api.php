@@ -15,7 +15,7 @@ use App\Http\Controllers\API\SocialAuthController;
 // Public auth routes with custom rate limiting for enhanced security
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle.register');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle.login');
-Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->middleware('throttle.register');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/auth/google', [SocialAuthController::class, 'google'])->middleware('throttle.login');
 Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middleware('throttle.login');
@@ -82,10 +82,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Group 3: /staff/* -> Staff only
     Route::middleware('role:staff')->prefix('staff')->group(function () {
-        Route::get('/dashboard',              [StaffController::class, 'index']);
-        Route::get('/therapists',             [StaffController::class, 'getTherapists']);
-        Route::post('/availability/toggle',   [StaffController::class, 'toggleAvailability']);
-        Route::get('/appointments',           [StaffController::class, 'getAppointments']);
+        Route::get('/dashboard', [StaffController::class, 'index']);
+        Route::get('/therapists', [StaffController::class, 'getTherapists']);
+        Route::post('/availability/toggle', [StaffController::class, 'toggleAvailability']);
+        Route::get('/appointments', [StaffController::class, 'getAppointments']);
         Route::post('/appointments/{id}/assign', [StaffController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [StaffController::class, 'updateStatus']);
     });

@@ -231,14 +231,12 @@ class AuthController extends Controller
         ]);
 
         $email = strtolower(trim($request->email));
-        $user  = User::where('email', $email)->first();
+        $user = User::where('email', $email)->first();
 
-        // Always return 200 with a generic message to prevent email enumeration attacks.
-        // An attacker should not be able to learn which email addresses are registered.
         if (!$user) {
             return response()->json([
-                'message' => 'If an account with that email exists, a reset link has been sent.'
-            ]);
+                'message' => 'No account found with this email address. Please register or check your email.'
+            ], 404);
         }
 
         // Check if Gmail SMTP credentials are set in .env
@@ -258,8 +256,8 @@ class AuthController extends Controller
             DB::table('password_reset_tokens')->updateOrInsert(
                 ['email' => $email],
                 [
-                    'email'      => $email,
-                    'token'      => Hash::make($rawToken),
+                    'email' => $email,
+                    'token' => Hash::make($rawToken),
                     'created_at' => now(),
                 ]
             );
@@ -287,8 +285,8 @@ class AuthController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'token'    => 'required|string',
-            'email'    => 'required|email',
+            'token' => 'required|string',
+            'email' => 'required|email',
             'password' => [
                 'required',
                 'string',
@@ -297,7 +295,7 @@ class AuthController extends Controller
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/',
             ],
         ], [
-            'password.regex'     => 'The password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).',
+            'password.regex' => 'The password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).',
             'password.confirmed' => 'Password confirmation does not match.',
         ]);
 
@@ -337,22 +335,6 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Your password has been reset successfully! You can now log in with your new password.'
         ]);
-    }
-
-    /**
-     * Invalidate the user's current Sanctum token (logout).
-     */
-    public function logout(Request $request)
-    {
-        // Revoke the token that was used to authenticate this request
-        $request->user()->currentAccessToken()->delete();
-
-        Log::info('User logged out', [
-            'user_id' => $request->user()->id,
-            'ip'      => $request->ip(),
-        ]);
-
-        return response()->json(['message' => 'Logged out successfully.']);
     }
 }
 
