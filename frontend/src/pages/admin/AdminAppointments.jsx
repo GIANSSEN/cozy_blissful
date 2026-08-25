@@ -74,10 +74,11 @@ const fmtDate = (dt) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  APPOINTMENT DETAIL MODAL                                            */
+/*  APPOINTMENT DETAIL MODAL (READ-ONLY)                                */
+/*  All booking actions live on the tab cards — this modal only views.  */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const DetailModal = ({ appt, therapists, onClose, onAssign, onStatus }) => {
+const DetailModal = ({ appt, onClose }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const ss = getStatusStyle(appt.status, isDark);
@@ -89,7 +90,6 @@ const DetailModal = ({ appt, therapists, onClose, onAssign, onStatus }) => {
     modalBg:       isDark ? '#141927' : '#ffffff',
     cardBg:        isDark ? '#0f1420' : '#f8fafc',
     cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    selectBg:      isDark ? '#0f1420' : '#ffffff',
     noteBg:        isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
     noteBorder:    isDark ? 'rgba(245,158,11,0.2)' : 'rgba(253,230,138,1)',
   };
@@ -171,47 +171,20 @@ const DetailModal = ({ appt, therapists, onClose, onAssign, onStatus }) => {
             )}
           </div>
 
-          {/* Therapist assign */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Assign Practitioner</p>
-            <select
-              defaultValue={appt.therapist_id || ''}
-              onChange={(e) => onAssign(appt.id, e.target.value || null)}
-              style={{
-                width: '100%', padding: '10px 14px', borderRadius: 14,
-                fontSize: 12, fontWeight: 700, color: C.textPrimary,
-                background: C.selectBg, border: `1px solid ${C.cardBorder}`,
-                outline: 'none', cursor: 'pointer',
-              }}
-            >
-              <option value="">Unassigned</option>
-              {therapists.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} ({t.specialty || 'Specialist'})</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status change */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Update Booking Status</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
-              {['Pending', 'Confirmed', 'Completed', 'Cancelled'].map((s) => {
-                const st = getStatusStyle(s, isDark);
-                const active = appt.status === s;
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => onStatus(appt.id, s)}
-                    style={active
-                      ? { padding: '8px 4px', borderRadius: 12, fontSize: 11, fontWeight: 900, cursor: 'pointer', background: st.bg, color: st.color, border: `1px solid ${st.border}` }
-                      : { padding: '8px 4px', borderRadius: 12, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: C.cardBg, color: C.textMuted, border: `1px solid ${C.cardBorder}` }}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Therapist info (read-only) */}
+          <div style={{
+            padding: 16, borderRadius: 16, background: C.cardBg,
+            border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4,
+          }}>
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Assigned Practitioner</p>
+            <p style={{ fontSize: 16, fontWeight: 900, color: appt.therapist_name && appt.therapist_name !== 'Unassigned' ? C.textPrimary : C.textMuted, margin: 0 }}>
+              {appt.therapist_name || 'Unassigned'}
+            </p>
+            {appt.service_price && (
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0 0' }}>
+                <Zap size={13} style={{ color: '#f59e0b' }} /> Session Fee: ₱{appt.service_price}
+              </p>
+            )}
           </div>
 
           {/* Notes */}
@@ -224,6 +197,19 @@ const DetailModal = ({ appt, therapists, onClose, onAssign, onStatus }) => {
               <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5 }}>{appt.notes}</p>
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '16px 24px', borderTop: `1px solid ${C.cardBorder}`,
+          background: C.cardBg, display: 'flex', flexShrink: 0,
+        }}>
+          <button type="button" onClick={onClose} style={{
+            flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`,
+            background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900, cursor: 'pointer',
+          }}>
+            Close
+          </button>
         </div>
       </motion.div>
     </div>
@@ -1262,15 +1248,6 @@ const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject, onSel
                     border: '1px solid rgba(239,68,68,0.25)',
                   }}
                 ><X size={15} /> Decline</button>
-                <button
-                  onClick={() => onSelectAppt(appt)}
-                  title="View Details"
-                  style={{
-                    padding: '9px 11px', borderRadius: 14, cursor: 'pointer',
-                    background: 'transparent', border: `1px solid ${C.cardBorder}`,
-                    color: C.textSecondary, display: 'flex', alignItems: 'center',
-                  }}
-                ><Eye size={16} /></button>
               </div>
             </motion.div>
           ))}
@@ -1282,9 +1259,11 @@ const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject, onSel
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  VIEW 3: CANCELLATION & RESCHEDULE REQUESTS                          */
+/*  Active sessions with reschedule requests → can be rescheduled.      */
+/*  Cancelled sessions → final records (managed in History).            */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const CancellationRescheduleTab = ({ appointments, onOpenReschedule, onOpenReject, onSelectAppt }) => {
+const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [requestType, setRequestType] = useState('all');
@@ -1304,10 +1283,10 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule, onOpenRejec
   const requestItems = useMemo(() => {
     return appointments.filter(a => {
       const isCancelled = a.status === 'Cancelled';
-      const isRescheduleRequested = a.notes && a.notes.toLowerCase().includes('reschedule');
+      const isRescheduleRequested = a.status !== 'Cancelled' && a.notes && a.notes.toLowerCase().includes('reschedule');
       if (requestType === 'cancelled') return isCancelled;
       if (requestType === 'reschedule') return isRescheduleRequested;
-      return isCancelled || isRescheduleRequested || a.status === 'Pending';
+      return isCancelled || isRescheduleRequested;
     });
   }, [appointments, requestType]);
 
@@ -1415,27 +1394,30 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule, onOpenRejec
                   </div>
                 </div>
 
-                {/* Actions */}
+                {/* Actions — only active sessions can be rescheduled; cancelled items are final */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' }}>
-                  <button
-                    onClick={() => onOpenReschedule(item)}
-                    style={{
+                  {!isCancelled ? (
+                    <button
+                      onClick={() => onOpenReschedule(item)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
+                        fontSize: 12, fontWeight: 900, color: '#fff',
+                        background: '#2563eb', border: 'none',
+                        boxShadow: '0 3px 10px rgba(37,99,235,0.25)',
+                      }}
+                    ><RotateCcw size={14} /> Reschedule</button>
+                  ) : (
+                    <span style={{
                       display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
-                      fontSize: 12, fontWeight: 900, color: '#fff',
-                      background: '#2563eb', border: 'none',
-                      boxShadow: '0 3px 10px rgba(37,99,235,0.25)',
-                    }}
-                  ><RotateCcw size={14} /> Reschedule</button>
-                  <button
-                    onClick={() => onSelectAppt(item)}
-                    title="View Details"
-                    style={{
-                      padding: '9px 11px', borderRadius: 14, cursor: 'pointer',
-                      background: 'transparent', border: `1px solid ${C.cardBorder}`,
-                      color: C.textSecondary, display: 'flex', alignItems: 'center',
-                    }}
-                  ><Eye size={16} /></button>
+                      padding: '9px 16px', borderRadius: 14,
+                      fontSize: 11, fontWeight: 800,
+                      color: C.textMuted, background: C.pillBg,
+                      border: `1px solid ${C.pillBorder}`,
+                    }}>
+                      <Check size={14} /> Processed — view in History
+                    </span>
+                  )}
                 </div>
               </motion.div>
             );
