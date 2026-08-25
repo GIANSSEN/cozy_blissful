@@ -9,7 +9,7 @@ import API from '../../api/axios';
 import {
   Calendar, Clock, CheckCircle, AlertCircle,
   XCircle, Check, X, ChevronLeft, ChevronRight, UserCheck,
-  Zap, Mail, Eye, CalendarDays,
+  Zap, Mail, CalendarDays,
   Search, RotateCcw, CheckCircle2, CalendarCheck,
 } from 'lucide-react';
 import { MiniCalendar } from '../../components/ui/mini-calendar';
@@ -1111,7 +1111,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
 /*  VIEW 2: PENDING APPROVALS QUEUE                                     */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject, onSelectAppt }) => {
+const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const pending = appointments.filter((a) => a.status === 'Pending');
@@ -1433,7 +1433,7 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
 /*  Completed sessions leave this module and flow into History.         */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const ConfirmedSessionsTab = ({ appointments, onSelectAppt, onOpenReschedule, onOpenCancel, onComplete }) => {
+const ConfirmedSessionsTab = ({ appointments, onOpenReschedule, onOpenCancel, onComplete }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -1578,7 +1578,7 @@ const ConfirmedSessionsTab = ({ appointments, onSelectAppt, onOpenReschedule, on
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* Actions — the 3 possible next steps for a confirmed session */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => onComplete(appt)}
@@ -1611,15 +1611,6 @@ const ConfirmedSessionsTab = ({ appointments, onSelectAppt, onOpenReschedule, on
                     border: '1px solid rgba(239,68,68,0.25)',
                   }}
                 ><X size={15} /> Cancel</button>
-                <button
-                  onClick={() => onSelectAppt(appt)}
-                  title="View Details"
-                  style={{
-                    padding: '9px 11px', borderRadius: 14, cursor: 'pointer',
-                    background: 'transparent', border: `1px solid ${C.cardBorder}`,
-                    color: C.textSecondary, display: 'flex', alignItems: 'center',
-                  }}
-                ><Eye size={16} /></button>
               </div>
             </motion.div>
           ))}
@@ -1825,6 +1816,37 @@ const AdminAppointments = () => {
           ))}
         </div>
 
+        {/* ── Workflow Guide ── */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexWrap: 'wrap', gap: 8, padding: '10px 16px',
+          background: C.pillBg, border: `1px solid ${C.cardBorder}`, borderRadius: 16,
+        }}>
+          <span style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>
+            Flow:
+          </span>
+          {[
+            { label: 'Pending', hint: 'client request', color: '#d97706' },
+            { label: 'Confirmed', hint: 'after Accept & Assign', color: '#059669' },
+            { label: 'Complete', hint: 'session done', color: '#4f46e5' },
+            { label: 'History', hint: 'view-only archive', color: '#64748b' },
+          ].map((step, i) => (
+            <React.Fragment key={step.label}>
+              {i > 0 && <ChevronRight size={13} style={{ color: C.textMuted }} />}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 900, padding: '3px 12px', borderRadius: 999,
+                  background: `${step.color}1a`, color: step.color, border: `1px solid ${step.color}55`,
+                }}>{step.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted }}>{step.hint}</span>
+              </span>
+            </React.Fragment>
+          ))}
+          <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, paddingLeft: 6, borderLeft: `1px solid ${C.cardBorder}` }}>
+            Cancel / Reschedule handled in their tabs
+          </span>
+        </div>
+
         {/* ── Tab Navigation ── */}
         <div style={{
           background: C.pillBg, border: `1px solid ${C.cardBorder}`,
@@ -1891,7 +1913,6 @@ const AdminAppointments = () => {
                   appointments={appointments}
                   onOpenAccept={(appt) => setAcceptTarget(appt)}
                   onOpenReject={(appt) => setRejectTarget(appt)}
-                  onSelectAppt={setSelectedAppt}
                 />
               </motion.div>
             )}
@@ -1901,8 +1922,6 @@ const AdminAppointments = () => {
                 <CancellationRescheduleTab
                   appointments={appointments}
                   onOpenReschedule={(appt) => setRescheduleTarget(appt)}
-                  onOpenReject={(appt) => setRejectTarget(appt)}
-                  onSelectAppt={setSelectedAppt}
                 />
               </motion.div>
             )}
@@ -1911,7 +1930,6 @@ const AdminAppointments = () => {
               <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <ConfirmedSessionsTab
                   appointments={appointments}
-                  onSelectAppt={setSelectedAppt}
                   onOpenReschedule={(appt) => setRescheduleTarget(appt)}
                   onOpenCancel={(appt) => setRejectTarget(appt)}
                   onComplete={(appt) => handleUpdateStatus(appt.id, 'Completed')}
@@ -1966,10 +1984,7 @@ const AdminAppointments = () => {
           {selectedAppt && (
             <DetailModal
               appt={selectedAppt}
-              therapists={therapists}
               onClose={() => setSelectedAppt(null)}
-              onAssign={(id, tid) => { handleAssignTherapist(id, tid); setSelectedAppt(null); }}
-              onStatus={(id, s) => { handleUpdateStatus(id, s); setSelectedAppt((prev) => ({ ...prev, status: s })); }}
             />
           )}
         </AnimatePresence>
