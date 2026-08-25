@@ -230,15 +230,14 @@
         <img src="{{ config('app.url') }}/cb-logo.jpg" alt="Cozy Blissful" onerror="this.style.display='none'" />
       </div>
       <div class="brand-name">Cozy Blissful</div>
-      <div class="brand-sub">Home Service Spa &amp; Wellness</div>
+      <div class="brand-sub">Spa Salon &amp; Wellness</div>
     </div>
-
-    <!-- CONTENT -->
-    <div class="content">
-      <div class="welcome-badge">🌿 Welcome Aboard</div>
-      <h1>Hello, <span>{{ $clientName }}</span>! <br />You're all set.</h1>
-      <p class="intro">
-        Thank you for joining <strong>Cozy Blissful</strong> — your premium home service spa. We're thrilled to have you
+    
+    <!-- Hero Banner -->
+    <div class="hero">
+      <h1 class="hero-title">Welcome to Luxury &amp; Serenity</h1>
+      <p class="hero-text">
+        Thank you for joining <strong>Cozy Blissful Spa Salon</strong> — your premium spa &amp; wellness sanctuary. We're thrilled to have you
         as part of our wellness community. Relaxation, beauty, and expert care are now just a booking away.
       </p>
 

@@ -12,16 +12,16 @@ import {
 
 /* ── RBAC initial state including staff role ────────────────────── */
 const INITIAL_PERMISSIONS = {
-  admin: { bookings: true, services: true, financials: true, settings: true },
-  staff: { bookings: true, services: false, financials: false, settings: false },
-  therapist: { bookings: true, services: false, financials: false, settings: false },
-  client: { bookings: false, services: false, financials: false, settings: false },
+  admin: { bookings: true, services: true, history: true, settings: true },
+  staff: { bookings: true, services: false, history: true, settings: false },
+  therapist: { bookings: true, services: false, history: false, settings: false },
+  client: { bookings: false, services: false, history: false, settings: false },
 };
 
 const PERMISSION_META = {
   bookings:   { label: 'Manage Bookings',   desc: 'View and manage appointment bookings' },
   services:   { label: 'Maintain Services', desc: 'Create and edit service catalog entries' },
-  financials: { label: 'Financial Reports', desc: 'Access revenue and payment reports' },
+  history:    { label: 'Session History',   desc: 'View archived completed & cancelled sessions' },
   settings:   { label: 'System Settings',   desc: 'Configure system-wide settings' },
 };
 

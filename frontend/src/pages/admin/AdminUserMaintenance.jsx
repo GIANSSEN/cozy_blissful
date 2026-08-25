@@ -38,7 +38,7 @@ const ROLE_META = {
 const PERM_META = {
   bookings:   { label: 'Bookings',   desc: 'View & manage appointments',  icon: Calendar,          color: '#3b82f6' },
   services:   { label: 'Services',   desc: 'Create & edit services',       icon: Activity,          color: '#f59e0b' },
-  financials: { label: 'Financials', desc: 'Revenue & payment access',     icon: TrendingUp,        color: '#10b981' },
+  history:    { label: 'History',    desc: 'View archived sessions',       icon: TrendingUp,        color: '#10b981' },
   settings:   { label: 'Settings',   desc: 'System-wide configuration',    icon: SlidersHorizontal, color: '#8b5cf6' },
   analytics:  { label: 'Analytics',  desc: 'View KPIs & reports',          icon: BarChart3,         color: '#ef4444' },
   userMgmt:   { label: 'User Mgmt',  desc: 'Create & manage accounts',     icon: Users,             color: '#0ea5e9' },
@@ -49,9 +49,9 @@ const THERAPIST_SHARE = 40;
 const ADMIN_SHARE     = 60;
 
 const INITIAL_PERMS = {
-  admin:     { bookings: true,  services: true,  financials: true,  settings: true,  analytics: true,  userMgmt: true  },
-  staff:     { bookings: true,  services: true,  financials: false, settings: false, analytics: true,  userMgmt: false },
-  therapist: { bookings: true,  services: false, financials: false, settings: false, analytics: false, userMgmt: false },
+  admin:     { bookings: true,  services: true,  history: true,  settings: true,  analytics: true,  userMgmt: true  },
+  staff:     { bookings: true,  services: true,  history: true,  settings: false, analytics: true,  userMgmt: false },
+  therapist: { bookings: true,  services: false, history: false, settings: false, analytics: false, userMgmt: false },
 };
 
 const MOCK_USERS = [

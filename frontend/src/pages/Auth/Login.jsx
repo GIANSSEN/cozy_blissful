@@ -325,12 +325,12 @@ const Login = () => {
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold mb-3"
               style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em' }}>
               <Sparkles className="w-3 h-3" style={{ color: B.goldLight }} />
-              <span>Premium Home Service Spa & Wellness</span>
+              <span>Premium Spa Salon & Wellness</span>
             </div>
             <h2 className="text-[1.75rem] font-black text-white leading-tight tracking-tight mb-0.5">Relax. Recharge.</h2>
-            <h3 className="text-lg font-bold mb-2" style={{ color: B.goldLight }}>Spa-Quality At Your Door.</h3>
+            <h3 className="text-lg font-bold mb-2" style={{ color: B.goldLight }}>Spa & Salon Quality Experience.</h3>
             <p className="text-xs leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.65)', maxWidth: '18rem' }}>
-              Massage therapy & nail care delivered to your home — 7 days a week, 6 AM – 11 PM.
+              Massage therapy, salon and nail care — 7 days a week, 6 AM – 11 PM.
             </p>
 
             {/* Stats grid */}

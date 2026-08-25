@@ -5,13 +5,13 @@ import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Calendar, Users, ShoppingBag,
-  Package, CreditCard, Settings, ChevronDown,
+  Settings, ChevronDown,
   LogOut, Search, ChevronLeft,
   Moon, Sun, X, Home,
-  DollarSign, Clock, AlertCircle,
-  UserCheck, ShieldCheck, Gift, Hourglass, Tags, Truck,
-  FileText, Coins, Wallet, UserCog, Megaphone, Boxes,
-  History, Star, ListOrdered, CalendarDays, Shield,
+  Clock, AlertCircle,
+  UserCheck, Gift, Hourglass,
+  FileText, UserCog,
+  History, Star, ListOrdered, CalendarDays, Shield, Archive,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -56,42 +56,16 @@ const MENU = [
     path: null,
     basePath: '/admin/services',
     subs: [
-      { label: 'Services', tab: 'services', path: '/admin/services' },
-      { label: 'Offers', tab: 'offers', path: '/admin/services' },
+      { label: 'Services', tab: 'services', path: '/admin/services', accent: '#10b981' },
+      { label: 'Offers', tab: 'offers', path: '/admin/services', accent: '#f59e0b' },
     ],
   },
   {
-    title: 'Marketing & Loyalty',
-    icon: Megaphone,
-    path: null,
-    basePath: '/admin/marketing',
-    subs: [
-      { label: 'Gift Cards & Vouchers', tab: 'giftcards', path: '/admin/marketing' },
-      { label: 'Promo Campaigns', tab: 'promos', path: '/admin/marketing' },
-    ],
-  },
-  {
-    title: 'Inventory',
-    icon: Package,
-    path: null,
-    basePath: '/admin/products',
-    subs: [
-      { label: 'Product Catalog', tab: 'retail', path: '/admin/products' },
-      { label: 'Stock Control', tab: 'stock', path: '/admin/products' },
-      { label: 'Suppliers & Orders', tab: 'suppliers', path: '/admin/products' },
-    ],
-  },
-  {
-    title: 'Financials',
-    icon: CreditCard,
-    path: null,
-    basePath: '/admin/payments',
-    subs: [
-      { label: 'Daily Sales Logs', tab: 'sales', path: '/admin/payments', accent: '#3b82f6' },
-      { label: 'Weekly Payroll (40%)', tab: 'payroll', path: '/admin/payments', accent: '#d97706' },
-      { label: 'Daily Remittance', tab: 'remittance', path: '/admin/payments', accent: '#059669' },
-      { label: 'Expense Tracker', tab: 'expenses', path: '/admin/payments', accent: '#ef4444' },
-    ],
+    title: 'History',
+    icon: Archive,
+    path: '/admin/history',
+    basePath: '/admin/history',
+    subs: [],
   },
   {
     title: 'Audit Logs',
@@ -117,9 +91,6 @@ const SUB_ICON = {
   profiles: UserCheck, reviews: Star,
   schedules: CalendarDays, queue: ListOrdered, rbac: Shield,
   services: ShoppingBag, offers: Gift, categories: Hourglass,
-  giftcards: Gift, promos: Megaphone,
-  retail: Tags, stock: Truck, suppliers: Boxes,
-  sales: DollarSign, payroll: Coins, expenses: Wallet,
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -230,7 +201,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 Cozy Blissful
               </p>
               <p className="text-[9px] font-bold tracking-[0.18em] uppercase mt-0.5 truncate" style={{ color: t.gold }}>
-                Home Service Spa
+                Spa Salon
               </p>
             </div>
           </button>

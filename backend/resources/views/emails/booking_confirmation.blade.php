@@ -266,7 +266,7 @@
         <img src="{{ config('app.url') }}/cb-logo.jpg" alt="Cozy Blissful" onerror="this.style.display='none'" />
       </div>
       <div class="brand-name">Cozy Blissful</div>
-      <div class="brand-sub">Home Service Spa &amp; Wellness</div>
+      <div class="brand-sub">Spa Salon &amp; Wellness</div>
       <div class="success-badge">
         <span>✓ &nbsp; Booking Received</span>
       </div>

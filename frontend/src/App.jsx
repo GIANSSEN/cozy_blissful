@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ToastProvider } from './context/ToastContext';
+import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -19,13 +20,11 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminAppointments from './pages/admin/AdminAppointments';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminServices from './pages/admin/AdminServices';
-import AdminMarketing from './pages/admin/AdminMarketing';
-import AdminPayments from './pages/admin/AdminPayments';
 import AdminStaff from './pages/admin/AdminStaff';
 import AdminUserMaintenance from './pages/admin/AdminUserMaintenance';
-import AdminProducts from './pages/admin/AdminProducts';
 import AdminAuditLogs from './pages/admin/AdminAuditLogs';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminHistory from './pages/admin/AdminHistory';
 
 // Therapist Pages
 import TherapistDashboard from './pages/therapist/TherapistDashboard';
@@ -66,11 +65,9 @@ function AnimatedRoutes() {
         <Route path="/admin/appointments" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminAppointments /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/customers" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminCustomers /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/services" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminServices /></PageTransition></ProtectedRoute>} />
-        <Route path="/admin/marketing" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminMarketing /></PageTransition></ProtectedRoute>} />
-        <Route path="/admin/payments" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminPayments /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminStaff /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminUserMaintenance /></PageTransition></ProtectedRoute>} />
-        <Route path="/admin/products" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminProducts /></PageTransition></ProtectedRoute>} />
+        <Route path="/admin/history" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminHistory /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminAuditLogs /></PageTransition></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><PageTransition><AdminSettings /></PageTransition></ProtectedRoute>} />
 
@@ -99,9 +96,11 @@ function App() {
       <ThemeProvider>
         <NotificationProvider>
           <ToastProvider>
-            <BrowserRouter>
-              <AnimatedRoutes />
-            </BrowserRouter>
+            <CartProvider>
+              <BrowserRouter>
+                <AnimatedRoutes />
+              </BrowserRouter>
+            </CartProvider>
           </ToastProvider>
         </NotificationProvider>
       </ThemeProvider>

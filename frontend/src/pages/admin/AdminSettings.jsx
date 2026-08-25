@@ -780,7 +780,7 @@ const AdminSettings = () => {
 
   // Spa Config State
   const [spaConfig, setSpaConfig] = useState({
-    name: 'Cozy Blissful Home Service Spa',
+    name: 'Cozy Blissful Spa Salon',
     hoursOpen: '06:00 AM',
     hoursClose: '11:00 PM',
     address: 'Metropolitan Manila, Philippines',
@@ -792,9 +792,9 @@ const AdminSettings = () => {
 
   // CMS Copy State
   const [cmsConfig, setCmsConfig] = useState({
-    heroTitle: 'Spa-Quality At Your Door.',
-    heroSubtitle: 'Premium Home Service Spa & Wellness',
-    heroDescription: 'Professional massage therapy and nail care — delivered to your sanctuary. Available 7 days a week, 6:00 AM – 11:00 PM.',
+    heroTitle: 'Spa & Salon Quality at Your Service.',
+    heroSubtitle: 'Premium Spa Salon & Wellness',
+    heroDescription: 'Professional massage therapy, hair and nail care — delivered to your sanctuary. Available 7 days a week, 6:00 AM – 11:00 PM.',
     facebookUrl: 'https://facebook.com/cozyblissful',
     instagramUrl: 'https://instagram.com/cozyblissful',
     promoBannerText: '✨ Special Offer: Get 15% off on Weekend Combination Massages!'

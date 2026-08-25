@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   motion,
@@ -20,18 +20,23 @@ import {
   Shield,
   Menu,
   X,
-  Heart,
   Award,
-  Smile,
   Check,
   ChevronDown,
   Quote,
   Leaf,
   Sparkle,
   UserCheck,
+  ShoppingCart,
+  Plus,
+  Minus,
+  MessageCircle,
 } from "lucide-react";
 import Lenis from "lenis";
 import gsap from "gsap";
+import { useToast } from "../context/ToastContext";
+import { useCart, peso } from "../context/CartContext";
+import CartSidebar from "../components/Cart/CartSidebar";
 
 /* ── Social Icons ─────────────────────────────────────────────────── */
 const FacebookIcon = () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>;
@@ -105,11 +110,23 @@ const Reveal = ({ children, delay = 0, className = "", dir = "up" }) => {
   );
 };
 
-const ParImg = ({ src, alt, className }) => (
-  <div className={`overflow-hidden ${className}`}>
-    <img src={src} alt={alt} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" loading="lazy" />
-  </div>
-);
+/* ── True Scroll Parallax Image (scroll-linked, GPU accelerated) ──── */
+const ParImg = ({ src, alt, className }) => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], ["-14%", "14%"]);
+  return (
+    <div ref={ref} className={`overflow-hidden ${className}`}>
+      <motion.img
+        src={src}
+        alt={alt}
+        style={{ y, height: "128%", marginTop: "-14%" }}
+        className="w-full object-cover"
+        loading="lazy"
+      />
+    </div>
+  );
+};
 
 const Orb = ({ style, delay = 0, dur = 10 }) => (
   <motion.div
@@ -199,36 +216,287 @@ const MagneticBtn = ({ children, className = "", style = {}, strength = 0.25 }) 
   );
 };
 
-/* ── Service Card with Spotlight ─────────────────────────────────── */
-const Card = ({ s, i, cat }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 36 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.55, delay: i * 0.055, ease: EASE }}
-    whileHover={{ y: -14, transition: { duration: 0.3 } }}
-    className="group flex flex-col rounded-[28px] overflow-hidden"
-    style={{ background: "linear-gradient(145deg,#fdfdfc,#f7f2ea)", boxShadow: "16px 16px 40px #e4ddd3,-8px -8px 22px #fff,inset 2px 2px 4px rgba(255,255,255,0.9)", border: "1px solid rgba(255,255,255,0.9)" }}
-  >
-    <SpotlightCard spotlightColor={`${cat.color.bg}22`} className="flex flex-col flex-1">
-      <div className="relative h-52 overflow-hidden flex-shrink-0">
-        <motion.img src={s.img} alt={s.name} className="w-full h-full object-cover" whileHover={{ scale: 1.08 }} transition={{ duration: 0.6 }} loading="lazy" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-        <span className="absolute bottom-3 left-3 text-[10px] font-bold text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1.5" style={{ background: "rgba(0,0,0,0.52)", backdropFilter: "blur(8px)" }}>
-          <Clock className="w-3 h-3 text-amber-300" />{s.dur}
-        </span>
-        {s.price && <span className="absolute top-3 right-3 text-xs font-black text-white px-3 py-1 rounded-full" style={{ background: `${cat.color.bg}e0`, backdropFilter: "blur(8px)" }}>₱{s.price.toLocaleString()}</span>}
-      </div>
-      <div className="flex-1 flex flex-col p-5">
-        <h4 className="font-bold text-slate-800 text-[15px] leading-snug tracking-tight group-hover:text-emerald-900 transition-colors mb-2">{s.name}</h4>
-        <p className="text-xs text-slate-400 leading-relaxed flex-1">{s.desc}</p>
-        <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100">
-          <div>{s.price ? <span className="text-lg font-black text-emerald-900">₱{s.price.toLocaleString()}</span> : <span className="text-xs font-semibold text-slate-400 italic">Call for pricing</span>}</div>
-          <Link to="/register" className="flex items-center gap-1.5 py-2 px-4 rounded-xl text-[11px] font-bold text-white hover:scale-105 active:scale-95 transition-all duration-300" style={{ background: `linear-gradient(135deg,${cat.color.bg},${cat.color.bg}bb)`, boxShadow: `0 4px 14px ${cat.color.glow}` }}>Book <ArrowRight className="w-3 h-3" /></Link>
+/* ── React Bits: Scroll Progress Bar ──────────────────────────────── */
+const ScrollProgress = () => {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 26, restDelta: 0.001 });
+  return (
+    <motion.div
+      className="fixed top-0 left-0 right-0 h-[3px] origin-left z-[60] pointer-events-none"
+      style={{ scaleX, background: "linear-gradient(90deg,#bfa15f,#e8cc8a,#34d399)", boxShadow: "0 0 12px rgba(191,161,95,0.55)" }}
+    />
+  );
+};
+
+/* ── React Bits: TiltedCard — 3D perspective tilt on mouse move ───── */
+const TiltedCard = ({ children, className = "", maxTilt = 10 }) => {
+  const ref = useRef(null);
+  const rxv = useMotionValue(0);
+  const ryv = useMotionValue(0);
+  const rx = useSpring(rxv, { stiffness: 180, damping: 18 });
+  const ry = useSpring(ryv, { stiffness: 180, damping: 18 });
+
+  const onMove = useCallback((e) => {
+    if (!ref.current || window.matchMedia("(pointer: coarse)").matches) return;
+    const rect = ref.current.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    ryv.set(px * maxTilt * 2);
+    rxv.set(-py * maxTilt * 2);
+  }, [rxv, ryv, maxTilt]);
+
+  const onLeave = useCallback(() => { rxv.set(0); ryv.set(0); }, [rxv, ryv]);
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      style={{ rotateX: rx, rotateY: ry, transformPerspective: 900, willChange: "transform" }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+/* ── React Bits: TypeRotate — animated rotating word list ─────────── */
+const TypeRotate = ({ words, interval = 2600 }) => {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(v => (v + 1) % words.length), interval);
+    return () => clearInterval(t);
+  }, [words.length, interval]);
+  return (
+    <span className="relative inline-block align-baseline">
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={idx}
+          initial={{ y: "70%", opacity: 0, filter: "blur(6px)" }}
+          animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+          exit={{ y: "-70%", opacity: 0, filter: "blur(6px)" }}
+          transition={{ duration: 0.45, ease: EASE }}
+          className="inline-block"
+        >
+          {words[idx]}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+};
+
+/* ── Floating Petals (hero ambience, desktop only) ────────────────── */
+const FloatingPetals = ({ count = 14 }) => {
+  const petals = useMemo(() =>
+    Array.from({ length: count }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      size: 4 + Math.random() * 7,
+      delay: Math.random() * 14,
+      dur: 11 + Math.random() * 12,
+      drift: -40 + Math.random() * 80,
+      op: 0.14 + Math.random() * 0.22,
+    })), [count]);
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden>
+      {petals.map(p => (
+        <motion.span
+          key={p.id}
+          className="absolute rounded-full"
+          style={{
+            left: `${p.left}%`, bottom: -20, width: p.size, height: p.size,
+            background: "radial-gradient(circle,#e8cc8a 0%,rgba(191,161,95,0.4) 100%)",
+          }}
+          animate={{ y: [0, -900], x: [0, p.drift], opacity: [0, p.op, p.op, 0], rotate: [0, 220] }}
+          transition={{ duration: p.dur, delay: p.delay, repeat: Infinity, ease: "linear" }}
+        />
+      ))}
+    </div>
+  );
+};
+
+/* ── Floating Cart FAB + Back To Top cluster ──────────────────────── */
+const FloatingActions = () => {
+  const { count, openCart, isOpen } = useCart();
+  const visible = count > 0;
+  return (
+    <AnimatePresence>
+      {visible && !isOpen && (
+        <motion.div
+          key="fab-cluster"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 24 }}
+          transition={{ duration: 0.3, ease: EASE }}
+          className="fixed bottom-6 right-5 z-[70] flex flex-col items-center gap-2.5 md:bottom-8 md:right-8"
+        >
+          <motion.button
+            type="button"
+            aria-label={`Open cart, ${count} ${count === 1 ? "item" : "items"}`}
+            onClick={openCart}
+            whileHover={{ scale: 1.07 }}
+            whileTap={{ scale: 0.92 }}
+            className="relative flex h-14 w-14 items-center justify-center rounded-full md:h-[60px] md:w-[60px]"
+            style={{
+              background: "linear-gradient(135deg,#bfa15f,#e8cc8a)",
+              color: "#041e16",
+              boxShadow: count > 0 ? "0 12px 32px rgba(191,161,95,0.55)" : "0 10px 28px rgba(191,161,95,0.45)",
+            }}
+          >
+            {count > 0 && (
+              <motion.span
+                key={count}
+                initial={{ scale: 1.5 }}
+                animate={{ scale: 1 }}
+                className="absolute inset-0 rounded-full"
+                style={{ border: "2px solid rgba(232,204,138,0.7)" }}
+              />
+            )}
+            <ShoppingCart className="h-6 w-6" strokeWidth={2.4} />
+            <AnimatePresence mode="popLayout">
+              {count > 0 && (
+                <motion.span
+                  key={count}
+                  initial={{ scale: 0, y: 8 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                  className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-black tabular-nums"
+                  style={{ background: "#041e16", color: "#e8cc8a", border: "2px solid #faf9f7" }}
+                >
+                  {count > 99 ? "99+" : count}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+/* ── Service Card with Spotlight + Add to Cart ──────────────────── */
+const Card = ({ s, i, cat, catKey }) => {
+  const { addItem, updateQty, items } = useCart();
+  const { toast } = useToast();
+  const serviceId = `${catKey}:${s.name}`;
+  const inCart = items.find((it) => it.id === serviceId);
+  const qty = inCart ? Number(inCart.qty) : 0;
+  const atMax = qty >= 20;
+
+  const handleAdd = () => {
+    addItem(
+      { id: serviceId, name: s.name, price: s.price, dur: s.dur, img: s.img, desc: s.desc },
+      { key: catKey, label: cat.label, icon: cat.icon }
+    );
+    toast.success(`${s.name} added to your cart`, { title: "Added to Cart" });
+  };
+
+  const handleInc = () => {
+    if (atMax) {
+      toast.warning("Maximum of 20 slots per service", { title: "Quantity Limit" });
+      return;
+    }
+    updateQty(serviceId, qty + 1);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 36 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, delay: i * 0.055, ease: EASE }}
+      whileHover={{ y: -14, transition: { duration: 0.3 } }}
+      className="group flex flex-col rounded-[28px] overflow-hidden"
+      style={{ background: "linear-gradient(145deg,#fdfdfc,#f7f2ea)", boxShadow: "16px 16px 40px #e4ddd3,-8px -8px 22px #fff,inset 2px 2px 4px rgba(255,255,255,0.9)", border: "1px solid rgba(255,255,255,0.9)" }}
+    >
+      <SpotlightCard spotlightColor={`${cat.color.bg}22`} className="flex flex-col flex-1">
+        <div className="relative h-52 overflow-hidden flex-shrink-0">
+          <motion.img src={s.img} alt={s.name} className="w-full h-full object-cover" whileHover={{ scale: 1.08 }} transition={{ duration: 0.6 }} loading="lazy" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <span className="absolute bottom-3 left-3 text-[10px] font-bold text-white px-2.5 py-1.5 rounded-lg flex items-center gap-1.5" style={{ background: "rgba(0,0,0,0.52)", backdropFilter: "blur(8px)" }}>
+            <Clock className="w-3 h-3 text-amber-300" />{s.dur}
+          </span>
+          {qty > 0 && (
+            <motion.span
+              key={qty}
+              initial={{ scale: 0.6 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 480, damping: 20 }}
+              className="absolute top-3 left-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black text-white"
+              style={{ background: "#059669", boxShadow: "0 4px 14px rgba(5,150,105,0.5)" }}
+            >
+              <ShoppingCart className="w-3 h-3" /> ×{qty}
+            </motion.span>
+          )}
+          {s.price && <span className="absolute top-3 right-3 text-xs font-black text-white px-3 py-1 rounded-full" style={{ background: `${cat.color.bg}e0`, backdropFilter: "blur(8px)" }}>₱{s.price.toLocaleString()}</span>}
         </div>
-      </div>
-    </SpotlightCard>
-  </motion.div>
-);
+        <div className="flex-1 flex flex-col p-5">
+          <h4 className="font-bold text-slate-800 text-[15px] leading-snug tracking-tight group-hover:text-emerald-900 transition-colors mb-2">{s.name}</h4>
+          <p className="text-xs text-slate-400 leading-relaxed flex-1">{s.desc}</p>
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 gap-3">
+            <div className="min-w-0">{s.price ? <span className="text-lg font-black text-emerald-900">₱{s.price.toLocaleString()}</span> : <span className="text-xs font-semibold text-slate-400 italic">Call for pricing</span>}</div>
+
+            {!s.price ? (
+              <a
+                href={`https://wa.me/639995435913?text=${encodeURIComponent(`Hello Cozy Blissful! I'd like to inquire about the pricing for "${s.name}".`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Inquire about ${s.name} pricing`}
+                className="flex-shrink-0 flex items-center gap-1.5 py-2 px-4 rounded-xl text-[11px] font-bold text-emerald-950 border border-emerald-900/20 hover:bg-emerald-50 active:scale-95 transition-all duration-200"
+              >
+                Inquire <MessageCircle className="w-3.5 h-3.5" />
+              </a>
+            ) : qty === 0 ? (
+              <motion.button
+                type="button"
+                onClick={handleAdd}
+                aria-label={`Add ${s.name} to cart`}
+                whileTap={{ scale: 0.92 }}
+                className="flex-shrink-0 flex items-center gap-1.5 py-2 px-4 rounded-xl text-[11px] font-black text-white hover:brightness-110 active:scale-95 transition-all duration-300 cursor-pointer"
+                style={{ background: `linear-gradient(135deg,${cat.color.bg},${cat.color.bg}bb)`, boxShadow: `0 4px 14px ${cat.color.glow}` }}
+              >
+                <ShoppingCart className="w-3.5 h-3.5" strokeWidth={2.6} /> Add to Cart
+              </motion.button>
+            ) : (
+              <div className="flex-shrink-0 flex items-center gap-1 rounded-xl p-1" style={{ background: "#05966914", border: "1px solid #05966930" }}>
+                <button
+                  type="button"
+                  onClick={() => updateQty(serviceId, qty - 1)}
+                  aria-label={`Remove one ${s.name}`}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-emerald-950 shadow-sm active:scale-90 hover:text-red-600 transition-all"
+                >
+                  <Minus className="w-3.5 h-3.5" strokeWidth={3} />
+                </button>
+                <span className="min-w-7 text-center text-sm font-black tabular-nums text-emerald-950">{qty}</span>
+                <button
+                  type="button"
+                  onClick={handleInc}
+                  disabled={atMax}
+                  aria-label={`Add another ${s.name}`}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-white shadow-sm active:scale-90 disabled:opacity-40 transition-all"
+                  style={{ background: `linear-gradient(135deg,${cat.color.bg},${cat.color.bg}cc)` }}
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={3} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </SpotlightCard>
+    </motion.div>
+  );
+};
+
+/* ── Navbar Links (module scope — stable identity for observers) ──── */
+const NAV_LINKS = [
+  { href: "#story", label: "Our Story", Icon: Leaf },
+  { href: "#services", label: "Services", Icon: Sparkles },
+  { href: "#how-it-works", label: "How It Works", Icon: Calendar },
+  { href: "#testimonials", label: "Reviews", Icon: Star },
+];
+
+const drawerContainerV = { hidden: {}, show: { transition: { staggerChildren: 0.055, delayChildren: 0.1 } } };
+const drawerItemV = { hidden: { opacity: 0, x: 28 }, show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: EASE } } };
 
 /* ════════════════════════════════════════════════════════════════════
    MAIN LANDING PAGE
@@ -236,11 +504,20 @@ const Card = ({ s, i, cat }) => (
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
   const [tab, setTab] = useState("massage");
   const [showAll, setShowAll] = useState(false);
   const mqRef = useRef(null);
 
+  const { count, subtotal, openCart } = useCart();
+
   const lenisRef = useRef(null);
+
+  const handleCartLock = useCallback((lock) => {
+    if (!lenisRef.current) return;
+    if (lock) lenisRef.current.stop();
+    else lenisRef.current.start();
+  }, []);
 
   useEffect(() => {
     const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
@@ -284,6 +561,7 @@ export default function LandingPage() {
     if (href.startsWith('#')) {
       e.preventDefault();
       setMobile(false);
+      setActiveSection(href);
       const targetEl = document.querySelector(href);
       if (targetEl) {
         if (lenisRef.current) {
@@ -294,6 +572,47 @@ export default function LandingPage() {
       }
     }
   };
+
+  /* Track which landing section is in view → highlights nav link */
+  useEffect(() => {
+    const sections = NAV_LINKS
+      .map(({ href }) => document.getElementById(href.slice(1)))
+      .filter(Boolean);
+    if (!sections.length) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) setActiveSection(`#${en.target.id}`);
+        });
+      },
+      { rootMargin: "-40% 0px -55% 0px" }
+    );
+    sections.forEach((s) => obs.observe(s));
+    return () => obs.disconnect();
+  }, []);
+
+  /* Mobile drawer: Escape to close + lock page scroll while open */
+  useEffect(() => {
+    if (!mobile) return;
+    const onKey = (e) => { if (e.key === "Escape") setMobile(false); };
+    window.addEventListener("keydown", onKey);
+    lenisRef.current?.stop();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      lenisRef.current?.start();
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobile]);
+
+  /* Auto-close drawer when viewport grows into desktop layout */
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = (e) => { if (e.matches) setMobile(false); };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const el = mqRef.current; if (!el) return;
@@ -315,10 +634,12 @@ export default function LandingPage() {
     { I: WhatsAppIcon, label: "WhatsApp", href: "https://wa.me/639995435913", hover: "#25D366" },
   ];
 
-  const NAV_LINKS = [["#story", "Our Story"], ["#services", "Services"], ["#how-it-works", "How It Works"], ["#testimonials", "Reviews"]];
-
   return (
     <div className="min-h-screen overflow-x-hidden selection:bg-emerald-200 selection:text-emerald-900" style={{ fontFamily: "'Inter',sans-serif", background: "#faf9f7" }}>
+
+      {/* ── GLOBAL INTERACTIVE LAYERS ── */}
+      <ScrollProgress />
+      <FloatingActions />
 
       {/* ── GLASSMORPHISM NAVBAR ── */}
       <motion.header
@@ -326,19 +647,19 @@ export default function LandingPage() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: EASE }}
         className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${scrolled
-          ? "bg-[#04100a]/90 backdrop-blur-md border-[rgba(191,161,95,0.22)] shadow-lg shadow-black/40"
-          : "bg-[#04100a]/50 backdrop-blur-sm border-white/5"
+          ? "bg-[#04100a]/92 backdrop-blur-xl border-[rgba(191,161,95,0.22)] shadow-lg shadow-black/40"
+          : "bg-[#04100a]/45 backdrop-blur-md border-white/5"
           }`}
       >
 
-        <div className="max-w-7xl mx-auto px-5 lg:px-10">
-          <div className="flex items-center justify-between py-3.5 lg:py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className={`flex items-center justify-between transition-all duration-300 ${scrolled ? "py-2.5" : "py-3.5 lg:py-4"}`}>
 
             {/* Brand Logo & Name */}
-            <Link to="/" className="flex items-center gap-3 group">
+            <Link to="/" aria-label="Cozy Blissful Salon & Spa — home" className="flex items-center gap-3 group flex-shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60">
               <div className="relative flex-shrink-0">
                 <motion.div className="absolute inset-0 rounded-full" style={{ border: "1.5px solid rgba(191,161,95,0.55)" }} animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }} transition={{ duration: 2.8, repeat: Infinity }} />
-                <img src="/cb-logo.jpg" alt="Cozy Blissful Salon Spa" className="w-10 h-10 lg:w-11 lg:h-11 rounded-full object-cover relative z-10" style={{ border: "2px solid rgba(191,161,95,0.55)", boxShadow: "0 0 0 1px rgba(191,161,95,0.15),0 4px 20px rgba(0,0,0,0.4)" }} />
+                <img src="/cb-logo.jpg" alt="Cozy Blissful Salon Spa" className={`w-10 h-10 lg:w-11 lg:h-11 rounded-full object-cover relative z-10 transition-all duration-300 ${scrolled ? "lg:w-10 lg:h-10" : ""}`} style={{ border: "2px solid rgba(191,161,95,0.55)", boxShadow: "0 0 0 1px rgba(191,161,95,0.15),0 4px 20px rgba(0,0,0,0.4)" }} />
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 z-20" style={{ background: "#34d399", borderColor: "#041e16" }} />
               </div>
               <div className="leading-none">
@@ -347,68 +668,207 @@ export default function LandingPage() {
               </div>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {NAV_LINKS.map(([href, label]) => (
-                <a key={href} href={href} onClick={(e) => handleNavClick(e, href)}
-                  className="relative px-4 py-2 text-xs font-bold tracking-wide text-white/75 hover:text-white transition-colors duration-300 group cursor-pointer rounded-lg hover:bg-white/[0.04]">
-                  {label}
-                  <span className="absolute bottom-1 left-4 right-4 h-[1.5px] rounded-full origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-350" style={{ background: "linear-gradient(90deg,#bfa15f,#e8cc8a)" }} />
-                </a>
-              ))}
+            {/* Desktop Navigation (lg+) */}
+            <nav className="hidden lg:flex items-center gap-1" aria-label="Primary">
+              {NAV_LINKS.map(({ href, label }) => {
+                const active = activeSection === href;
+                return (
+                  <a key={href} href={href} onClick={(e) => handleNavClick(e, href)} aria-current={active ? "true" : undefined}
+                    className={`group relative px-4 py-2 text-[13px] font-semibold tracking-wide rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60 ${active
+                      ? "text-amber-200 bg-white/[0.07]"
+                      : "text-white/70 hover:text-white hover:bg-white/[0.05]"
+                      }`}>
+                    {label}
+                    <span aria-hidden className={`absolute bottom-0.5 left-4 right-4 h-[2px] rounded-full origin-left transition-transform duration-300 ${active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"}`} style={{ background: "linear-gradient(90deg,#bfa15f,#e8cc8a)" }} />
+                  </a>
+                );
+              })}
             </nav>
 
-            {/* Auth Buttons */}
-            <div className="hidden md:flex items-center gap-3">
-              <Link to="/login" className="px-5 py-2 text-xs font-bold rounded-xl hover:bg-white/10 transition-all duration-300 text-white/80 hover:text-white" style={{ border: "1px solid rgba(255,255,255,0.12)" }}>Log In</Link>
+            {/* Desktop Actions (lg+): Cart · Log In · Book Now */}
+            <div className="hidden lg:flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={openCart}
+                aria-label={`Open cart${count > 0 ? `, ${count} ${count === 1 ? "item" : "items"}` : ""}`}
+                className="relative flex items-center justify-center w-10 h-10 rounded-full text-white/80 hover:text-white hover:bg-white/10 active:scale-90 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+              >
+                <ShoppingCart className="w-[18px] h-[18px]" />
+                <AnimatePresence>
+                  {count > 0 && (
+                    <motion.span
+                      key={count}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                      className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center text-[#041e16]"
+                      style={{ background: "linear-gradient(135deg,#bfa15f,#e8cc8a)", boxShadow: "0 2px 8px rgba(191,161,95,0.5)" }}
+                    >
+                      {count}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+
+              <span aria-hidden className="w-px h-6 bg-white/10" />
+
+              <Link to="/login" className="px-4 xl:px-5 py-2 text-xs font-bold rounded-xl hover:bg-white/10 transition-all duration-300 text-white/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60" style={{ border: "1px solid rgba(255,255,255,0.12)" }}>Log In</Link>
               <MagneticBtn strength={0.25}>
-                <Link to="/register" id="nav-book" className="px-5 py-2.5 text-xs font-black text-[#041e16] rounded-xl flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all duration-200" style={{ background: "linear-gradient(135deg,#bfa15f,#e8cc8a)", boxShadow: "0 4px 18px rgba(191,161,95,0.45)" }}>
+                <Link to="/register" id="nav-book" className="px-4 xl:px-5 py-2.5 text-xs font-black text-[#041e16] rounded-xl flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all duration-200" style={{ background: "linear-gradient(135deg,#bfa15f,#e8cc8a)", boxShadow: "0 4px 18px rgba(191,161,95,0.45)" }}>
                   <Sparkles className="w-3.5 h-3.5" />Book Now
                 </Link>
               </MagneticBtn>
             </div>
 
-            {/* Mobile Hamburger Toggle (Instant 0ms Tap Response) */}
+            {/* Mobile Hamburger (below lg) */}
             <button
               type="button"
-              aria-label="Toggle navigation menu"
-              className="md:hidden flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 border border-white/15 text-white active:scale-90 transition-transform duration-150 touch-manipulation"
+              aria-label={mobile ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={mobile}
+              aria-controls="mobile-nav"
+              className="lg:hidden relative flex items-center justify-center w-11 h-11 rounded-xl bg-white/10 border border-white/15 text-white hover:bg-white/15 active:scale-90 transition-all duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
               onClick={() => setMobile(v => !v)}>
-              {mobile ? <X className="w-5 h-5 text-amber-300" /> : <Menu className="w-5 h-5 text-white" />}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={mobile ? "close" : "open"}
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.18, ease: EASE }}
+                  className="flex"
+                >
+                  {mobile ? <X className="w-5 h-5 text-amber-300" /> : <Menu className="w-5 h-5" />}
+                </motion.span>
+              </AnimatePresence>
             </button>
           </div>
         </div>
+      </motion.header>
 
-        {/* Mobile Slide-down Drawer (GPU Hardware Accelerated — 0 Lag) */}
-        <AnimatePresence>
-          {mobile && (
+      {/* ── MOBILE NAV DRAWER — slide-in panel + backdrop ── */}
+      <AnimatePresence>
+        {mobile && (
+          <>
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              style={{ willChange: "transform, opacity" }}
-              className="md:hidden w-full border-t border-[rgba(191,161,95,0.18)] bg-[#040c08]/98 backdrop-blur-md shadow-2xl">
-              <div className="px-6 py-5 flex flex-col gap-1">
-                {NAV_LINKS.map(([href, label]) => (
-                  <a key={href} href={href} onClick={(e) => handleNavClick(e, href)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/80 hover:text-white cursor-pointer active:bg-[#bfa15f]/15 transition-colors">
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#bfa15f]" />
-                    <span className="text-sm font-semibold">{label}</span>
-                  </a>
-                ))}
-                <div className="my-2 h-px mx-1 bg-[rgba(191,161,95,0.12)]" />
-                <div className="flex gap-2.5 pt-1">
-                  <Link to="/login" onClick={() => setMobile(false)} className="flex-1 text-center py-3 rounded-xl text-sm font-bold text-white/80 border border-white/10 bg-white/5 active:bg-white/10 transition-colors">Log In</Link>
+              key="nav-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              onClick={() => setMobile(false)}
+              aria-hidden
+              className="lg:hidden fixed inset-0 z-[54] bg-black/60 backdrop-blur-sm"
+              style={{ willChange: "opacity" }}
+            />
+            <motion.aside
+              key="mobile-nav"
+              id="mobile-nav"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Site navigation"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.35, ease: EASE }}
+              style={{ willChange: "transform", background: "linear-gradient(180deg,#04100a 0%,#06251a 100%)" }}
+              className="lg:hidden fixed top-0 right-0 bottom-0 z-[55] w-[86%] max-w-sm flex flex-col overflow-y-auto overscroll-contain border-l border-[rgba(191,161,95,0.22)] shadow-2xl shadow-black/60"
+            >
+              {/* Drawer header */}
+              <div className="flex items-center justify-between pl-4 pr-3 py-3.5 border-b border-white/[0.06] flex-shrink-0">
+                <Link to="/" onClick={() => setMobile(false)} className="flex items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60">
+                  <img src="/cb-logo.jpg" alt="" className="w-9 h-9 rounded-full object-cover" style={{ border: "2px solid rgba(191,161,95,0.55)" }} />
+                  <div className="leading-none">
+                    <span className="text-sm font-black text-white block" style={{ fontFamily: "'Playfair Display', serif" }}>Cozy Blissful</span>
+                    <span className="block text-[8px] font-bold tracking-[0.18em] uppercase mt-0.5" style={{ color: "#bfa15f" }}>Salon & Spa</span>
+                  </div>
+                </Link>
+                <button
+                  type="button"
+                  aria-label="Close navigation menu"
+                  onClick={() => setMobile(false)}
+                  className="flex items-center justify-center w-11 h-11 rounded-xl text-white/70 hover:text-white hover:bg-white/10 active:scale-90 transition-all duration-150 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer links — staggered entrance */}
+              <motion.nav
+                variants={drawerContainerV}
+                initial="hidden"
+                animate="show"
+                aria-label="Mobile"
+                className="flex-1 px-4 py-5 flex flex-col gap-1.5"
+              >
+                {NAV_LINKS.map(({ href, label, Icon }) => {
+                  const active = activeSection === href;
+                  return (
+                    <motion.a
+                      key={href}
+                      href={href}
+                      variants={drawerItemV}
+                      onClick={(e) => handleNavClick(e, href)}
+                      aria-current={active ? "true" : undefined}
+                      className={`flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-colors duration-200 active:bg-[#bfa15f]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60 ${active ? "text-amber-200 bg-white/[0.06]" : "text-white/80"}`}
+                    >
+                      <span
+                        aria-hidden
+                        className="flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 transition-all duration-300"
+                        style={{
+                          background: active ? "linear-gradient(135deg,#bfa15f,#e8cc8a)" : "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(191,161,95,0.25)",
+                        }}
+                      >
+                        <Icon className={`w-4 h-4 ${active ? "text-[#041e16]" : "text-[#bfa15f]"}`} />
+                      </span>
+                      <span className="text-[15px] font-semibold">{label}</span>
+                      {active && <span aria-hidden className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#e8cc8a" }} />}
+                    </motion.a>
+                  );
+                })}
+              </motion.nav>
+
+              {/* Drawer footer: cart summary · auth · socials */}
+              <div className="flex-shrink-0 px-4 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] border-t border-white/[0.06] bg-black/20">
+                {count > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setMobile(false); openCart(); }}
+                    className="w-full flex items-center justify-between px-4 py-3 mb-3 rounded-xl bg-white/[0.05] border border-[rgba(191,161,95,0.2)] text-white/85 active:bg-white/10 transition-colors"
+                  >
+                    <span className="flex items-center gap-2.5 text-sm font-semibold">
+                      <ShoppingCart className="w-4 h-4" style={{ color: "#bfa15f" }} />
+                      View Cart ({count})
+                    </span>
+                    <span className="text-sm font-black" style={{ color: "#e8cc8a" }}>{peso(subtotal)}</span>
+                  </button>
+                )}
+                <div className="flex gap-2.5">
+                  <Link to="/login" onClick={() => setMobile(false)} className="flex-1 text-center py-3 rounded-xl text-sm font-bold text-white/80 border border-white/10 bg-white/5 active:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60">Log In</Link>
                   <Link to="/register" onClick={() => setMobile(false)} className="flex-1 text-center py-3 rounded-xl text-sm font-bold text-[#041e16] flex items-center justify-center gap-2 bg-gradient-to-r from-[#bfa15f] to-[#d4b87a] active:scale-95 transition-transform" style={{ boxShadow: "0 4px 16px rgba(191,161,95,0.35)" }}>
                     <Sparkles className="w-3.5 h-3.5" />Book Now
                   </Link>
                 </div>
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  {social.map(({ I, label, href }) => (
+                    <a
+                      key={label}
+                      href={href}
+                      target={href.startsWith("http") ? "_blank" : undefined}
+                      rel={href.startsWith("http") ? "noreferrer" : undefined}
+                      aria-label={label}
+                      className="flex items-center justify-center w-9 h-9 rounded-full text-white/60 hover:text-white bg-white/[0.05] border border-white/10 hover:bg-white/10 active:scale-90 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+                    >
+                      <I />
+                    </a>
+                  ))}
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.header>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── HERO SECTION — SPA ATMOSPHERE ── */}
       <section className="relative min-h-screen flex items-center overflow-hidden" style={{ background: "linear-gradient(135deg,#041e16 0%,#073328 55%,#0e4d38 100%)" }}>
@@ -427,6 +887,7 @@ export default function LandingPage() {
         <Orb style={{ width: 580, height: 580, right: "1%", top: "3%", background: "radial-gradient(circle,rgba(191,161,95,0.14) 0%,transparent 68%)" }} dur={12} />
         <Orb style={{ width: 360, height: 360, left: "0%", bottom: "4%", background: "radial-gradient(circle,rgba(52,201,158,0.09) 0%,transparent 70%)" }} delay={3} dur={15} />
         <Orb style={{ width: 220, height: 220, left: "30%", top: "20%", background: "radial-gradient(circle,rgba(191,161,95,0.06) 0%,transparent 70%)" }} delay={6} dur={18} />
+        <FloatingPetals count={16} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 w-full pt-32 pb-24">
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
@@ -465,6 +926,15 @@ export default function LandingPage() {
                   Your Sanctuary.
                 </motion.span>
               </motion.h1>
+
+              {/* Rotating specialty ticker */}
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55, duration: 0.6 }}
+                className="flex items-center gap-2.5 mb-5 justify-center lg:justify-start h-7">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-emerald-200/50">Featuring</span>
+                <span className="text-sm sm:text-base lg:text-lg font-black italic" style={{ fontFamily: "'Playfair Display', serif", color: "#e8cc8a" }}>
+                  <TypeRotate words={["Massage Therapy", "Nail Care & Art", "Hilot Healing", "Foot Spa Rituals", "Couple Retreats"]} />
+                </span>
+              </motion.div>
 
               <motion.p initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.35 }}
                 className="text-emerald-100/70 text-sm sm:text-base lg:text-lg mb-9 leading-relaxed max-w-md mx-auto lg:mx-0">
@@ -506,7 +976,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1.3, delay: 0.25, ease: EASE }}
               className="hidden lg:flex flex-1 justify-center relative z-10">
-              <div className="relative w-[440px] xl:w-[480px]">
+              <TiltedCard maxTilt={7} className="relative w-[440px] xl:w-[480px]">
                 <div className="absolute inset-0 rounded-full blur-3xl opacity-20" style={{ background: "radial-gradient(circle,#bfa15f 0%,transparent 65%)" }} />
 
                 {/* Main Hero Card — Warm Spa Massage Suite */}
@@ -567,6 +1037,34 @@ export default function LandingPage() {
                     <p className="text-xs text-white font-black">2,500+ Happy Guests</p>
                   </div>
                 </motion.div>
+              </TiltedCard>
+            </motion.div>
+
+            {/* Mobile Hero Visual (compact, shown below text on small screens) */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.4, ease: EASE }}
+              className="lg:hidden w-full max-w-sm mx-auto relative z-10">
+              <div className="relative h-64 sm:h-72 rounded-[28px] overflow-hidden"
+                style={{ border: "2px solid rgba(191,161,95,0.35)", boxShadow: "0 20px 50px rgba(0,0,0,0.55)" }}>
+                <img
+                  src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=800&q=80"
+                  alt="Cozy Blissful Salon Spa Ambience"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(4,30,22,0.85) 0%, transparent 60%)" }} />
+                <div className="absolute bottom-4 left-5 right-5 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="inline-block px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider text-amber-300 bg-amber-400/15 border border-amber-400/30 backdrop-blur-md mb-1.5">
+                      Premium Salon & Spa
+                    </span>
+                    <p className="text-white text-base font-black" style={{ fontFamily: "'Playfair Display', serif" }}>Cozy Blissful Salon Spa</p>
+                  </div>
+                  <div className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center bg-emerald-400/15 border border-emerald-400/30 backdrop-blur-md">
+                    <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                  </div>
+                </div>
               </div>
             </motion.div>
 
@@ -865,6 +1363,27 @@ export default function LandingPage() {
             <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 mb-4">Specialist Treatments</span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Our Salon Menu</h2>
             <p className="text-slate-400 mt-3 max-w-md mx-auto text-sm leading-relaxed">Curated in-salon treatments for complete mind and body care — inside our premium suites.</p>
+
+            <AnimatePresence>
+              {count > 0 && (
+                <motion.button
+                  type="button"
+                  onClick={openCart}
+                  initial={{ opacity: 0, y: 14, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 22 }}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="mt-5 inline-flex items-center gap-2.5 rounded-full px-5 py-2.5 text-xs font-black text-white cursor-pointer"
+                  style={{ background: "linear-gradient(135deg,#059669,#047857)", boxShadow: "0 8px 24px rgba(5,150,105,0.4)" }}
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  {count} {count === 1 ? "service" : "services"} · {peso(subtotal)}
+                  <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">View Cart →</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
           </Reveal>
           <Reveal delay={0.1} className="flex overflow-x-auto no-scrollbar py-2 px-1 justify-start sm:justify-center gap-2.5 sm:gap-3.5 mb-10 flex-nowrap sm:flex-wrap">
             {Object.entries(SVCS).map(([key, c]) => (
@@ -886,7 +1405,7 @@ export default function LandingPage() {
           </AnimatePresence>
           <AnimatePresence mode="wait">
             <motion.div key={tab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-              {vis.map((s, i) => <Card key={s.name} s={s} i={i} cat={cat} />)}
+              {vis.map((s, i) => <Card key={s.name} s={s} i={i} cat={cat} catKey={tab} />)}
             </motion.div>
           </AnimatePresence>
           {cat.list.length > 6 && (
@@ -921,18 +1440,20 @@ export default function LandingPage() {
               { name: "Alicia R.", role: "First-time Guest", stars: 5, text: "From the moment I walked in, I knew this was special. Beautifully designed space, expertly assigned therapist, and the best Hilot I've ever had." },
             ].map((t, i) => (
               <Reveal key={t.name} delay={i * 0.12}>
-                <SpotlightCard spotlightColor="rgba(191,161,95,0.08)"
-                  className="p-8 rounded-3xl flex flex-col justify-between h-full"
-                  style={{ background: "rgba(255,255,255,0.9)", boxShadow: "0 8px 36px rgba(0,0,0,0.07)", border: "1px solid rgba(255,255,255,0.7)", backdropFilter: "blur(10px)" }}>
-                  <motion.div whileHover={{ y: -8, transition: { duration: 0.25 } }} className="flex flex-col h-full">
-                    <div className="flex space-x-0.5 mb-5">{[...Array(t.stars)].map((_, j) => <Star key={j} className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />)}</div>
-                    <p className="text-slate-600 text-sm leading-relaxed italic flex-1">"{t.text}"</p>
-                    <div className="flex items-center gap-3 pt-6 mt-6 border-t border-slate-100">
-                      <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 font-black text-sm">{t.name.charAt(0)}</div>
-                      <div><p className="font-bold text-slate-800 text-sm">{t.name}</p><p className="text-slate-400 text-[10px] font-semibold">{t.role}</p></div>
-                    </div>
-                  </motion.div>
-                </SpotlightCard>
+                <TiltedCard maxTilt={6} className="h-full">
+                  <SpotlightCard spotlightColor="rgba(191,161,95,0.08)"
+                    className="p-8 rounded-3xl flex flex-col justify-between h-full"
+                    style={{ background: "rgba(255,255,255,0.9)", boxShadow: "0 8px 36px rgba(0,0,0,0.07)", border: "1px solid rgba(255,255,255,0.7)", backdropFilter: "blur(10px)" }}>
+                    <motion.div whileHover={{ y: -8, transition: { duration: 0.25 } }} className="flex flex-col h-full">
+                      <div className="flex space-x-0.5 mb-5">{[...Array(t.stars)].map((_, j) => <Star key={j} className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />)}</div>
+                      <p className="text-slate-600 text-sm leading-relaxed italic flex-1">"{t.text}"</p>
+                      <div className="flex items-center gap-3 pt-6 mt-6 border-t border-slate-100">
+                        <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800 font-black text-sm">{t.name.charAt(0)}</div>
+                        <div><p className="font-bold text-slate-800 text-sm">{t.name}</p><p className="text-slate-400 text-[10px] font-semibold">{t.role}</p></div>
+                      </div>
+                    </motion.div>
+                  </SpotlightCard>
+                </TiltedCard>
               </Reveal>
             ))}
           </div>
@@ -1030,6 +1551,9 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* ── CART SIDEBAR ── */}
+      <CartSidebar onLockChange={handleCartLock} />
     </div>
   );
 }

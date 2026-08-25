@@ -16,11 +16,7 @@ const SEARCH_INDEX = [
   { label: 'Customers',            desc: 'Client Records & History',        path: '/admin/customers',               category: 'Pages'     },
   { label: 'Services Menu',        desc: 'Manage Massage & Spa Offerings',  path: '/admin/services',                category: 'Pages'     },
   { label: 'Staff & Therapists',   desc: 'Staff Accounts & Availability',   path: '/admin/staff',                   category: 'Pages'     },
-  { label: 'Marketing & Promos',   desc: 'Promotions & Discounts',          path: '/admin/marketing',               category: 'Pages'     },
-  { label: 'Daily Sales Logs',     desc: 'Transaction History & Split',     path: '/admin/payments?tab=sales',      category: 'Financials'},
-  { label: 'Weekly Payroll',       desc: 'Therapist 40% Salary Release',    path: '/admin/payments?tab=payroll',    category: 'Financials'},
-  { label: 'Daily Remittance',     desc: 'Therapist Daily Remittance Log',  path: '/admin/payments?tab=remittance', category: 'Financials'},
-  { label: 'Expense Tracker',      desc: 'Operational Costs & Expenses',    path: '/admin/payments?tab=expenses',   category: 'Financials'},
+  { label: 'History',              desc: 'Completed & Cancelled Sessions',  path: '/admin/history',                 category: 'Pages'     },
   { label: 'User Maintenance',     desc: 'System RBAC & Roles',             path: '/admin/users',                   category: 'Pages'     },
   { label: 'Audit Logs',           desc: 'System Logs & Security',          path: '/admin/audit-logs',              category: 'Pages'     },
   { label: 'System Settings',      desc: 'General & Spa Preferences',       path: '/admin/settings',                category: 'Settings'  },
@@ -33,8 +29,7 @@ const BREADCRUMB_MAP = {
   '/admin/customers':   ['Admin', 'Customers'],
   '/admin/services':    ['Admin', 'Services'],
   '/admin/staff':       ['Admin', 'Staff'],
-  '/admin/marketing':   ['Admin', 'Marketing'],
-  '/admin/payments':    ['Admin', 'Payments'],
+  '/admin/history':     ['Admin', 'History'],
   '/admin/users':       ['Admin', 'User Maintenance'],
   '/admin/audit-logs':  ['Admin', 'Audit Logs'],
   '/admin/settings':    ['Admin', 'Settings'],
@@ -194,7 +189,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
       ) {
         navigate(`/admin/appointments?tab=requests&id=${notif.appointment_id}`);
       } else {
-        navigate(`/admin/appointments?tab=all&id=${notif.appointment_id}`);
+        navigate(`/admin/appointments?tab=confirmed&id=${notif.appointment_id}`);
       }
     } else {
       if (notif.type === 'new_booking' || notif.title?.toLowerCase().includes('booking')) {

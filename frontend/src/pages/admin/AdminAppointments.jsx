@@ -7,13 +7,13 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import API from '../../api/axios';
 import {
-  Calendar, Clock, User, CheckCircle, AlertCircle,
-  XCircle, Check, X, RefreshCw, ChevronLeft, ChevronRight, UserCheck,
-  Tag, Zap, Mail, FileText, Eye, ChevronDown, CalendarDays,
-  Filter, Search, AlertTriangle, RotateCcw, CheckCircle2,
-  Sparkles, ArrowRight, CalendarRange, CalendarCheck, CalendarIcon,
+  Calendar, Clock, CheckCircle, AlertCircle,
+  XCircle, Check, X, ChevronLeft, ChevronRight, UserCheck,
+  Zap, Mail, Eye, CalendarDays,
+  Search, RotateCcw, CheckCircle2, CalendarCheck,
 } from 'lucide-react';
 import { MiniCalendar } from '../../components/ui/mini-calendar';
+import { DatePickerInput } from '../../components/ui/date-picker';
 import { format } from 'date-fns';
 
 
@@ -868,6 +868,8 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
 
   const dayAppts = appointments.filter((a) => {
     if (!a.datetime) return false;
+    // Only active bookings appear on the board — Completed flows to History, Cancelled is archived
+    if (a.status !== 'Pending' && a.status !== 'Confirmed') return false;
     const d = new Date(a.datetime);
     return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === dateKey;
   });
@@ -1445,10 +1447,11 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule, onOpenRejec
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  VIEW 4: ALL APPOINTMENTS LIST                                       */
+/*  VIEW 4: CONFIRMED SESSIONS (ACTIVE BOOKINGS)                        */
+/*  Completed sessions leave this module and flow into History.         */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const AllAppointmentsTab = ({ appointments, onSelectAppt }) => {
+const ConfirmedSessionsTab = ({ appointments, onSelectAppt, onOpenReschedule, onOpenCancel, onComplete }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -1461,33 +1464,42 @@ const AllAppointmentsTab = ({ appointments, onSelectAppt }) => {
     inputBg:       isDark ? '#0f1420' : '#ffffff',
     pillBg:        isDark ? '#1e2a3a' : '#f1f5f9',
     pillBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)',
-    rowHover:      isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
   };
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
 
-  const filtered = useMemo(() => {
+  const confirmed = useMemo(() => {
     return appointments.filter(a => {
+      if (a.status !== 'Confirmed') return false;
       const q = search.toLowerCase();
-      const matchQ = !q || (a.service && a.service.toLowerCase().includes(q)) ||
-                          (a.client_name && a.client_name.toLowerCase().includes(q)) ||
-                          (a.therapist_name && a.therapist_name.toLowerCase().includes(q)) ||
-                          String(a.id).includes(q);
-      const matchS = statusFilter === 'all' || a.status === statusFilter;
-      return matchQ && matchS;
+      if (!q) return true;
+      return (a.service || '').toLowerCase().includes(q) ||
+             (a.client_name || a.client || '').toLowerCase().includes(q) ||
+             (a.therapist_name || '').toLowerCase().includes(q) ||
+             String(a.id).includes(q);
     });
-  }, [appointments, search, statusFilter]);
+  }, [appointments, search]);
 
-  const STATUS_FILTERS = ['all', 'Pending', 'Confirmed', 'Completed', 'Cancelled'];
+  const emptyState = (
+    <div style={{
+      padding: 48, textAlign: 'center', borderRadius: 24,
+      background: C.cardBg, border: `1px solid ${C.cardBorder}`,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+    }}>
+      <CalendarCheck size={48} style={{ color: '#059669', margin: '0 auto 12px', opacity: 0.85 }} />
+      <p style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>No confirmed sessions right now</p>
+      <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '8px 0 0' }}>
+        Accept a pending booking and assign a therapist — it will appear here and sync to both client &amp; therapist.
+      </p>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Search & Filter bar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        {/* Search input */}
+      {/* Search bar */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{
-          flex: '1 1 220px', display: 'flex', alignItems: 'center', gap: 10,
+          flex: '1 1 260px', maxWidth: 480, display: 'flex', alignItems: 'center', gap: 10,
           padding: '10px 16px', borderRadius: 16,
           background: C.inputBg, border: `1px solid ${C.cardBorder}`,
           boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
@@ -1495,13 +1507,10 @@ const AllAppointmentsTab = ({ appointments, onSelectAppt }) => {
           <Search size={15} style={{ color: C.textMuted, flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search by client, therapist, service or ID..."
+            placeholder="Search confirmed sessions by client, therapist or service..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              fontSize: 12, fontWeight: 600, color: C.textPrimary,
-            }}
+            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: C.textPrimary }}
           />
           {search && (
             <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, display: 'flex' }}>
@@ -1509,98 +1518,129 @@ const AllAppointmentsTab = ({ appointments, onSelectAppt }) => {
             </button>
           )}
         </div>
-
-        {/* Status filter pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', overflowX: 'auto' }}>
-          {STATUS_FILTERS.map(s => {
-            const active = statusFilter === s;
-            return (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                style={{
-                  padding: '8px 14px', borderRadius: 14, cursor: 'pointer',
-                  fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
-                  border: active ? '1px solid #059669' : `1px solid ${C.pillBorder}`,
-                  background: active ? '#059669' : C.pillBg,
-                  color: active ? '#fff' : C.textSecondary,
-                  boxShadow: active ? '0 2px 8px rgba(5,150,105,0.2)' : 'none',
-                }}
-              >{s === 'all' ? 'All Status' : s}</button>
-            );
-          })}
-        </div>
+        <span style={{
+          fontSize: 11, fontWeight: 900, padding: '7px 14px', borderRadius: 12,
+          background: 'rgba(5,150,105,0.12)', color: '#059669', border: '1px solid rgba(5,150,105,0.25)',
+        }}>
+          {confirmed.length} Active Session{confirmed.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {/* Empty state */}
-      {filtered.length === 0 ? (
-        <div style={{
-          padding: 48, textAlign: 'center', borderRadius: 24,
-          background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        }}>
-          <Calendar size={40} style={{ color: C.textMuted, margin: '0 auto 12px', opacity: 0.7 }} />
-          <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>No appointments match your search criteria</p>
-          <p style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, margin: '6px 0 0' }}>Try adjusting the search term or status filter above.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gap: 8 }}>
-          {filtered.map((appt) => {
-            const ss = getStatusStyle(appt.status, isDark);
-            return (
-              <motion.div
-                key={appt.id}
-                onClick={() => onSelectAppt(appt)}
-                whileHover={{ scale: 1.003 }}
-                style={{
-                  background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-                  borderRadius: 18, padding: '14px 18px',
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'space-between', gap: 16,
-                  cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                  transition: 'box-shadow 0.15s',
-                }}
-              >
-                {/* Left: color bar + info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
-                  <div style={{ width: 4, height: 40, borderRadius: 4, flexShrink: 0, background: ss.dot }} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <p style={{
-                        fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>{appt.service}</p>
-                      <span style={{
-                        fontSize: 10, fontWeight: 900, color: C.textMuted,
-                        fontFamily: 'monospace', flexShrink: 0,
-                      }}>#{String(appt.id).padStart(4, '0')}</span>
-                    </div>
-                    <p style={{
-                      fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{appt.client_name || appt.client}</span>
-                      <span style={{ color: C.textMuted }}> • </span>
-                      Therapist: <span style={{ fontWeight: 900, color: C.textPrimary }}>{appt.therapist_name || 'Unassigned'}</span>
-                    </p>
-                  </div>
+      {confirmed.length === 0 ? emptyState : (
+        <div style={{ display: 'grid', gap: 10 }}>
+          {confirmed.map((appt) => (
+            <motion.div
+              key={appt.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'linear-gradient(135deg,' + (isDark ? '#101d2c,#141927' : '#f0fdf9,#ffffff') + ')',
+                border: '1px solid rgba(16,185,129,0.35)',
+                borderRadius: 24, padding: '18px 20px',
+                display: 'flex', flexWrap: 'wrap',
+                alignItems: 'flex-start', gap: 16,
+                boxShadow: '0 2px 10px rgba(5,150,105,0.08)',
+              }}
+            >
+              {/* Icon + Info */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+                  background: 'rgba(5,150,105,0.12)', color: '#059669',
+                  border: '1px solid rgba(5,150,105,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <CheckCircle2 size={20} />
                 </div>
 
-                {/* Right: date + status */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: 12, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{fmt12(appt.datetime)}</p>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, margin: '2px 0 0' }}>{fmtDate(appt.datetime)}</p>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
+                    <span style={{
+                      fontSize: 10, fontWeight: 900, padding: '2px 10px', borderRadius: 999,
+                      background: 'rgba(5,150,105,0.12)', color: '#059669', border: '1px solid rgba(5,150,105,0.3)',
+                    }}>Confirmed</span>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: C.textMuted, fontFamily: 'monospace' }}>
+                      #{String(appt.id).padStart(4, '0')}
+                    </span>
                   </div>
-                  <span style={{
-                    fontSize: 11, fontWeight: 800, padding: '4px 12px', borderRadius: 999,
-                    background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`,
-                    flexShrink: 0,
-                  }}>{appt.status}</span>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '6px 0 0' }}>
+                    Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{appt.client_name || appt.client}</span>
+                    <span style={{ color: C.textMuted }}> • </span>
+                    Therapist: <span style={{ fontWeight: 900, color: '#059669' }}>{appt.therapist_name || 'Unassigned'}</span>
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: '#059669' }}>
+                      <Calendar size={14} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
+                    </span>
+                    {appt.service_duration && (
+                      <span style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        fontSize: 12, fontWeight: 700, color: C.textSecondary,
+                        background: C.pillBg, border: `1px solid ${C.pillBorder}`,
+                        padding: '3px 10px', borderRadius: 8,
+                      }}>
+                        <Zap size={13} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
+                      </span>
+                    )}
+                  </div>
+                  {appt.notes && (
+                    <p style={{
+                      fontSize: 11, fontWeight: 500, fontStyle: 'italic',
+                      color: C.textSecondary, margin: '10px 0 0',
+                      padding: '10px 14px', borderRadius: 14,
+                      background: C.pillBg, border: `1px solid ${C.pillBorder}`,
+                    }}>📝 "{appt.notes}"</p>
+                  )}
                 </div>
-              </motion.div>
-            );
-          })}
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => onComplete(appt)}
+                  title="Mark session as completed — it will be archived into History"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
+                    fontSize: 12, fontWeight: 900, color: '#fff',
+                    background: 'linear-gradient(135deg,#062c22,#0f5040)', border: 'none',
+                    boxShadow: '0 3px 10px rgba(5,150,105,0.3)',
+                  }}
+                ><Check size={15} /> Complete</button>
+                <button
+                  onClick={() => onOpenReschedule(appt)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
+                    fontSize: 12, fontWeight: 900,
+                    color: '#2563eb', background: 'rgba(37,99,235,0.1)',
+                    border: '1px solid rgba(37,99,235,0.25)',
+                  }}
+                ><RotateCcw size={14} /> Reschedule</button>
+                <button
+                  onClick={() => onOpenCancel(appt)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
+                    fontSize: 12, fontWeight: 900,
+                    color: '#dc2626', background: 'rgba(239,68,68,0.1)',
+                    border: '1px solid rgba(239,68,68,0.25)',
+                  }}
+                ><X size={15} /> Cancel</button>
+                <button
+                  onClick={() => onSelectAppt(appt)}
+                  title="View Details"
+                  style={{
+                    padding: '9px 11px', borderRadius: 14, cursor: 'pointer',
+                    background: 'transparent', border: `1px solid ${C.cardBorder}`,
+                    color: C.textSecondary, display: 'flex', alignItems: 'center',
+                  }}
+                ><Eye size={16} /></button>
+              </div>
+            </motion.div>
+          ))}
         </div>
       )}
     </div>
@@ -1633,7 +1673,7 @@ const AdminAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
+  const { toast } = useToast();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedAppt, setSelectedAppt] = useState(null);
@@ -1727,7 +1767,8 @@ const AdminAppointments = () => {
     }
   };
 
-  // Summary Metrics
+  // Summary Metrics — completed sessions live in the History module
+  const activeBookings = appointments.filter((a) => a.status === 'Pending' || a.status === 'Confirmed').length;
   const pendingCount = appointments.filter((a) => a.status === 'Pending').length;
   const confirmedCount = appointments.filter((a) => a.status === 'Confirmed').length;
   const requestsCount = appointments.filter((a) => a.status === 'Cancelled' || (a.notes && a.notes.toLowerCase().includes('reschedule'))).length;
@@ -1743,10 +1784,10 @@ const AdminAppointments = () => {
   })), [appointments]);
 
   const TABS = [
-    { id: 'calendar', label: 'Master Calendar', icon: CalendarDays },
-    { id: 'pending', label: 'Pending Approvals', icon: Clock, badge: pendingCount },
-    { id: 'requests', label: 'Reschedule & Cancel', icon: RotateCcw, badge: requestsCount },
-    { id: 'all', label: 'All Appointments', icon: Calendar }
+    { id: 'calendar',  label: 'Master Calendar',     icon: CalendarDays },
+    { id: 'pending',   label: 'Pending Approvals',   icon: Clock, badge: pendingCount },
+    { id: 'confirmed', label: 'Confirmed',           icon: CheckCircle2, badge: confirmedCount },
+    { id: 'requests',  label: 'Reschedule & Cancel', icon: RotateCcw, badge: requestsCount },
   ];
 
   return (
@@ -1767,7 +1808,7 @@ const AdminAppointments = () => {
           gap: isWide ? 12 : 8,
         }}>
           {[
-            { label: 'Total Bookings',      value: appointments.length, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: Calendar },
+            { label: 'Active Bookings',     value: activeBookings,      color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: Calendar },
             { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock },
             { label: 'Confirmed Sessions',  value: confirmedCount,      color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CheckCircle },
             { label: 'Reschedule / Cancel', value: requestsCount,       color: '#2563eb', accent: 'rgba(37,99,235,0.12)', Icon: RotateCcw },
@@ -1884,11 +1925,14 @@ const AdminAppointments = () => {
               </motion.div>
             )}
 
-            {activeTab === 'all' && (
-              <motion.div key="all" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <AllAppointmentsTab
+            {activeTab === 'confirmed' && (
+              <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <ConfirmedSessionsTab
                   appointments={appointments}
                   onSelectAppt={setSelectedAppt}
+                  onOpenReschedule={(appt) => setRescheduleTarget(appt)}
+                  onOpenCancel={(appt) => setRejectTarget(appt)}
+                  onComplete={(appt) => handleUpdateStatus(appt.id, 'Completed')}
                 />
               </motion.div>
             )}
