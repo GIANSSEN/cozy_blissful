@@ -76,18 +76,18 @@ class ClientController extends Controller
 
     /**
      * Return available time slots for a given date and service.
-     * GET /booking/available-slots?date=YYYY-MM-DD&service_id=X
+     * GET /booking/available-slots?date=YYYY-MM-DD&service_id=X&therapist_id=Y
      */
     public function getAvailableSlots(Request $request)
     {
         $request->validate([
-            'date'       => 'required|date|after_or_equal:today',
-            'service_id' => 'required|exists:services,id',
+            'date'         => 'required|date|after_or_equal:today',
+            'service_id'   => 'required|exists:services,id',
+            'therapist_id' => 'nullable|exists:users,id',
         ]);
 
         $service = Service::findOrFail($request->service_id);
         $duration = (int)$service->duration; // minutes
-
         $date = Carbon::parse($request->date);
 
         // Salon operating hours: 9:00 AM – 9:00 PM
@@ -102,42 +102,79 @@ class ClientController extends Controller
             $cursor->addMinutes(30);
         }
 
+        // Determine working therapists for this date
+        $workingTherapists = User::role('therapist')
+            ->whereHas('availabilities', fn($q) => $q->where('date', $date->toDateString()))
+            ->pluck('id')
+            ->toArray();
+
+        // If no therapists explicitly marked calendar, fallback to all active therapists
+        if (empty($workingTherapists)) {
+            $workingTherapists = User::role('therapist')->pluck('id')->toArray();
+        }
+
+        $salonCapacity = max(1, count($workingTherapists));
+        $requestedTherapistId = $request->therapist_id;
+
         // Fetch existing confirmed/pending appointments on that date
         $existingAppointments = Appointment::with('service')
             ->whereIn('status', ['Pending', 'Confirmed'])
             ->whereDate('datetime', $date->toDateString())
             ->get();
 
-        // Build an array of blocked minute ranges [start_minute, end_minute]
-        $blockedRanges = $existingAppointments->map(function ($appt) {
-            $startMin  = (int)$appt->datetime->format('H') * 60 + (int)$appt->datetime->format('i');
-            $apptDur   = $appt->service ? (int)$appt->service->duration : 60;
-            return [$startMin, $startMin + $apptDur];
-        })->toArray();
+        // Convert appointments to interval minutes [startMin, endMin, therapist_id]
+        $apptIntervals = $existingAppointments->map(function ($appt) {
+            $startMin = (int)$appt->datetime->format('H') * 60 + (int)$appt->datetime->format('i');
+            $dur      = $appt->service ? (int)$appt->service->duration : 60;
+            return [
+                'start'        => $startMin,
+                'end'          => $startMin + $dur,
+                'therapist_id' => $appt->therapist_id,
+            ];
+        });
 
-        // Filter out slots that overlap with any existing booking
-        $availableSlots = array_filter($slots, function ($slotTime) use ($duration, $blockedRanges) {
+        // Filter candidate slots based on capacity or specific therapist
+        $availableSlots = array_filter($slots, function ($slotTime) use ($duration, $apptIntervals, $salonCapacity, $requestedTherapistId) {
             [$h, $m] = explode(':', $slotTime);
             $slotStart = (int)$h * 60 + (int)$m;
             $slotEnd   = $slotStart + $duration;
 
-            foreach ($blockedRanges as [$blockStart, $blockEnd]) {
-                // Overlap if slot starts before block ends AND slot ends after block starts
-                if ($slotStart < $blockEnd && $slotEnd > $blockStart) {
-                    return false;
+            if ($requestedTherapistId) {
+                // If a specific therapist is requested, slot is unavailable if that therapist is busy
+                foreach ($apptIntervals as $interval) {
+                    if ((int)$interval['therapist_id'] === (int)$requestedTherapistId) {
+                        if ($slotStart < $interval['end'] && $slotEnd > $interval['start']) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+
+            // General salon capacity: count how many overlapping appointments exist
+            $overlapCount = 0;
+            foreach ($apptIntervals as $interval) {
+                if ($slotStart < $interval['end'] && $slotEnd > $interval['start']) {
+                    $overlapCount++;
                 }
             }
-            return true;
+
+            return $overlapCount < $salonCapacity;
         });
 
+        $availableSlots = array_values($availableSlots);
+        $bookedSlots = array_values(array_diff($slots, $availableSlots));
+
         return response()->json([
-            'date'            => $date->toDateString(),
-            'service_id'      => $service->id,
-            'service_name'    => $service->name,
-            'service_duration'=> $duration,
-            'available_slots' => array_values($availableSlots),
-            'all_slots'       => $slots,
-            'booked_slots'    => array_values(array_diff($slots, $availableSlots)),
+            'date'             => $date->toDateString(),
+            'service_id'       => $service->id,
+            'service_name'     => $service->name,
+            'service_duration' => $duration,
+            'therapist_id'     => $requestedTherapistId,
+            'salon_capacity'   => $salonCapacity,
+            'available_slots'  => $availableSlots,
+            'all_slots'        => $slots,
+            'booked_slots'     => $bookedSlots,
         ]);
     }
 
@@ -147,9 +184,10 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'service_id'  => 'required|exists:services,id',
-            'datetime'    => 'required|date|after:now',
-            'notes'       => 'nullable|string|max:1000',
+            'service_id'   => 'required|exists:services,id',
+            'therapist_id' => 'nullable|exists:users,id',
+            'datetime'     => 'required|date|after:now',
+            'notes'        => 'nullable|string|max:1000',
         ]);
 
         $user = $request->user();
@@ -162,39 +200,83 @@ class ClientController extends Controller
             return response()->json(['message' => 'Invalid date time format.'], 422);
         }
 
-        // ── Server-side conflict check ─────────────────────────────────────
+        // ── Concurrency & Capacity check ─────────────────────────────────────
         $newStart = $parsedDatetime->copy();
         $newEnd   = $parsedDatetime->copy()->addMinutes($duration);
+        $newStartMin = (int)$newStart->format('H') * 60 + (int)$newStart->format('i');
+        $newEndMin   = $newStartMin + $duration;
 
-        $conflict = Appointment::with('service')
+        $existingAppointments = Appointment::with('service')
             ->whereIn('status', ['Pending', 'Confirmed'])
             ->whereDate('datetime', $parsedDatetime->toDateString())
-            ->get()
-            ->first(function ($appt) use ($newStart, $newEnd) {
-                $existStart = $appt->datetime;
-                $existDur   = $appt->service ? (int)$appt->service->duration : 60;
-                $existEnd   = $existStart->copy()->addMinutes($existDur);
-                return $newStart->lt($existEnd) && $newEnd->gt($existStart);
+            ->get();
+
+        if ($request->filled('therapist_id')) {
+            $therapistBusy = $existingAppointments->first(function ($appt) use ($request, $newStartMin, $newEndMin) {
+                if ((int)$appt->therapist_id !== (int)$request->therapist_id) {
+                    return false;
+                }
+                $startMin = (int)$appt->datetime->format('H') * 60 + (int)$appt->datetime->format('i');
+                $dur      = $appt->service ? (int)$appt->service->duration : 60;
+                $endMin   = $startMin + $dur;
+                return $newStartMin < $endMin && $newEndMin > $startMin;
             });
 
-        if ($conflict) {
-            return response()->json([
-                'message' => 'This time slot is already booked. Please choose a different time.',
-                'errors'  => ['datetime' => ['Time slot conflict — another appointment overlaps this window.']],
-            ], 422);
+            if ($therapistBusy) {
+                return response()->json([
+                    'message' => 'The selected specialist is not available at this time. Please pick another slot or choose Any Specialist.',
+                    'errors'  => ['datetime' => ['Specialist time conflict — therapist already has a booking during this window.']],
+                ], 422);
+            }
+        } else {
+            // Check overall salon capacity
+            $workingTherapistsCount = User::role('therapist')
+                ->whereHas('availabilities', fn($q) => $q->where('date', $parsedDatetime->toDateString()))
+                ->count();
+
+            if ($workingTherapistsCount === 0) {
+                $workingTherapistsCount = User::role('therapist')->count();
+            }
+            $capacity = max(1, $workingTherapistsCount);
+
+            $overlapCount = $existingAppointments->filter(function ($appt) use ($newStartMin, $newEndMin) {
+                $startMin = (int)$appt->datetime->format('H') * 60 + (int)$appt->datetime->format('i');
+                $dur      = $appt->service ? (int)$appt->service->duration : 60;
+                $endMin   = $startMin + $dur;
+                return $newStartMin < $endMin && $newEndMin > $startMin;
+            })->count();
+
+            if ($overlapCount >= $capacity) {
+                return response()->json([
+                    'message' => 'All specialist slots are fully booked for this time window. Please select an adjacent time slot.',
+                    'errors'  => ['datetime' => ['Salon capacity reached for this time window.']],
+                ], 422);
+            }
         }
 
-        // ── Create appointment ─────────────────────────────────────────────
-        $appt = Appointment::create([
-            'client_id'    => $user->id,
-            'therapist_id' => null, // Admin/Staff will assign the therapist
-            'service_id'   => $service->id,
-            'datetime'     => $parsedDatetime,
-            'status'       => 'Pending',
-            'notes'        => $request->notes,
-        ]);
+        // ── Create appointment within transaction ─────────────────────────
+        $appt = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $service, $request, $parsedDatetime) {
+            $appointment = Appointment::create([
+                'client_id'    => $user->id,
+                'therapist_id' => $request->therapist_id, // Assigned if requested, or left for staff
+                'service_id'   => $service->id,
+                'datetime'     => $parsedDatetime,
+                'status'       => 'Pending',
+                'notes'        => $request->notes,
+            ]);
 
-        // Load relationships for the email
+            // Create admin notification for new booking
+            Notification::create([
+                'type'           => 'new_booking',
+                'title'          => 'New Booking Received',
+                'description'    => $user->name . ' — ' . $service->name . ' on ' . $parsedDatetime->format('M d, g:i A'),
+                'appointment_id' => $appointment->id,
+            ]);
+
+            return $appointment;
+        });
+
+        // Load relationships for response and email
         $appt->load(['client', 'therapist', 'service']);
 
         if ($user->email) {
@@ -205,25 +287,18 @@ class ClientController extends Controller
             }
         }
 
-        // Create admin notification for new booking
-        Notification::create([
-            'type'           => 'new_booking',
-            'title'          => 'New Booking Received',
-            'description'    => $user->name . ' — ' . $service->name . ' on ' . $parsedDatetime->format('M d, g:i A'),
-            'appointment_id' => $appt->id,
-        ]);
-
         return response()->json([
             'message' => 'Booking created successfully!',
             'booking' => [
-                'id'              => $appt->id,
-                'therapist_name'  => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
-                'service'         => $service->name,
-                'service_price'   => (float)$service->price,
-                'service_duration'=> $duration,
-                'datetime'        => $appt->datetime->format('Y-m-d H:i:s'),
-                'status'          => 'Pending',
-                'notes'           => $appt->notes,
+                'id'               => $appt->id,
+                'therapist_name'   => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
+                'therapist_id'     => $appt->therapist_id,
+                'service'          => $service->name,
+                'service_price'    => (float)$service->price,
+                'service_duration' => $duration,
+                'datetime'         => $appt->datetime->format('Y-m-d H:i:s'),
+                'status'           => 'Pending',
+                'notes'            => $appt->notes,
             ],
         ], 201);
     }
@@ -264,7 +339,8 @@ class ClientController extends Controller
     public function reschedule(Request $request, $id)
     {
         $request->validate([
-            'datetime' => 'required|date|after:now',
+            'datetime'     => 'required|date|after:now',
+            'therapist_id' => 'nullable|exists:users,id',
         ]);
 
         $user = $request->user();
@@ -285,32 +361,65 @@ class ClientController extends Controller
             return response()->json(['message' => 'Invalid date time format.'], 422);
         }
 
-        // Server-side conflict check (exclude the current appointment itself)
-        $duration = $appt->service ? (int)$appt->service->duration : 60;
-        $newStart = $parsedDatetime->copy();
-        $newEnd   = $parsedDatetime->copy()->addMinutes($duration);
+        $duration   = $appt->service ? (int)$appt->service->duration : 60;
+        $newStartMin = (int)$parsedDatetime->format('H') * 60 + (int)$parsedDatetime->format('i');
+        $newEndMin   = $newStartMin + $duration;
 
-        $conflict = Appointment::with('service')
+        $targetTherapistId = $request->has('therapist_id') ? $request->therapist_id : $appt->therapist_id;
+
+        $existingAppointments = Appointment::with('service')
             ->whereIn('status', ['Pending', 'Confirmed'])
             ->where('id', '!=', $appt->id)
             ->whereDate('datetime', $parsedDatetime->toDateString())
-            ->get()
-            ->first(function ($other) use ($newStart, $newEnd) {
-                $otherDur   = $other->service ? (int)$other->service->duration : 60;
-                $otherStart = $other->datetime;
-                $otherEnd   = $otherStart->copy()->addMinutes($otherDur);
-                return $newStart->lt($otherEnd) && $newEnd->gt($otherStart);
+            ->get();
+
+        if ($targetTherapistId) {
+            $therapistBusy = $existingAppointments->first(function ($other) use ($targetTherapistId, $newStartMin, $newEndMin) {
+                if ((int)$other->therapist_id !== (int)$targetTherapistId) {
+                    return false;
+                }
+                $otherStartMin = (int)$other->datetime->format('H') * 60 + (int)$other->datetime->format('i');
+                $otherDur      = $other->service ? (int)$other->service->duration : 60;
+                $otherEndMin   = $otherStartMin + $otherDur;
+                return $newStartMin < $otherEndMin && $newEndMin > $otherStartMin;
             });
 
-        if ($conflict) {
-            return response()->json([
-                'message' => 'This time slot is already booked. Please choose a different time.',
-                'errors'  => ['datetime' => ['Time slot conflict — another appointment overlaps this window.']],
-            ], 422);
+            if ($therapistBusy) {
+                return response()->json([
+                    'message' => 'The selected specialist is not available at this rescheduled time. Please choose another slot.',
+                    'errors'  => ['datetime' => ['Specialist time conflict for requested reschedule window.']],
+                ], 422);
+            }
+        } else {
+            $workingTherapistsCount = User::role('therapist')
+                ->whereHas('availabilities', fn($q) => $q->where('date', $parsedDatetime->toDateString()))
+                ->count();
+
+            if ($workingTherapistsCount === 0) {
+                $workingTherapistsCount = User::role('therapist')->count();
+            }
+            $capacity = max(1, $workingTherapistsCount);
+
+            $overlapCount = $existingAppointments->filter(function ($other) use ($newStartMin, $newEndMin) {
+                $otherStartMin = (int)$other->datetime->format('H') * 60 + (int)$other->datetime->format('i');
+                $otherDur      = $other->service ? (int)$other->service->duration : 60;
+                $otherEndMin   = $otherStartMin + $otherDur;
+                return $newStartMin < $otherEndMin && $newEndMin > $otherStartMin;
+            })->count();
+
+            if ($overlapCount >= $capacity) {
+                return response()->json([
+                    'message' => 'All specialist slots are fully booked for this reschedule window. Please choose another time.',
+                    'errors'  => ['datetime' => ['Salon capacity reached for this reschedule window.']],
+                ], 422);
+            }
         }
 
-        // Update datetime and reset reminder flags so client gets fresh reminders
-        $appt->datetime           = $parsedDatetime;
+        // Update datetime and reset reminder flags
+        $appt->datetime             = $parsedDatetime;
+        if ($request->has('therapist_id')) {
+            $appt->therapist_id = $request->therapist_id;
+        }
         $appt->reminder_24h_sent_at = null;
         $appt->reminder_2h_sent_at  = null;
         $appt->save();
@@ -318,9 +427,10 @@ class ClientController extends Controller
         return response()->json([
             'message' => 'Appointment rescheduled successfully!',
             'booking' => [
-                'id'       => $appt->id,
-                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
-                'status'   => $appt->status,
+                'id'           => $appt->id,
+                'datetime'     => $appt->datetime->format('Y-m-d H:i:s'),
+                'therapist_id' => $appt->therapist_id,
+                'status'       => $appt->status,
             ],
         ]);
     }

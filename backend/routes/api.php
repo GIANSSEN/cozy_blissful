@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appointments', [AdminController::class, 'getAppointments']);
         Route::post('/appointments/{id}/assign', [AdminController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [AdminController::class, 'updateStatus']);
+        Route::post('/appointments/{id}/reschedule', [AdminController::class, 'reschedule']);
         Route::get('/therapists', [AdminController::class, 'getTherapists']);
         Route::get('/customers', [AdminController::class, 'getCustomers']);
         Route::post('/customers', [AdminController::class, 'storeCustomer']);
@@ -78,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [TherapistController::class, 'index']);
         Route::get('/availability', [TherapistController::class, 'getAvailability']);
         Route::post('/availability/toggle', [TherapistController::class, 'toggleAvailability']);
+        Route::post('/appointments/{id}/status', [TherapistController::class, 'updateStatus']);
     });
 
     // Group 3: /staff/* -> Staff only
@@ -88,6 +90,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appointments', [StaffController::class, 'getAppointments']);
         Route::post('/appointments/{id}/assign', [StaffController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [StaffController::class, 'updateStatus']);
+        Route::post('/appointments/{id}/reschedule', [StaffController::class, 'reschedule']);
     });
 
     // Group 4: /booking/* -> Client only for booking management

@@ -1,6 +1,6 @@
 ---
-name: cozy_blissful
-description: Comprehensive architecture, end-to-end workflows, scalability standards, and UI/UX guidelines for Cozy Blissful Spa & Salon Booking System.
+name: cozy-blissful
+description: Architecture, end-to-end booking workflows, scalability rules, and UI/UX guidelines for the Cozy Blissful Spa & Salon system.
 disable-model-invocation: false
 ---
 

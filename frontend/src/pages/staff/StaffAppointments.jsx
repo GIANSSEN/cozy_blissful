@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import API from '../../api/axios';
@@ -36,10 +36,11 @@ const ClayCard = ({ children, className = '', style = {}, ...props }) => {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES = {
-  Confirmed: { bg: 'rgba(22,163,74,0.12)',  color: '#22c55e', border: 'rgba(22,163,74,0.25)'  },
-  Pending:   { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: 'rgba(245,158,11,0.25)' },
-  Cancelled: { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444', border: 'rgba(239,68,68,0.25)'  },
-  Completed: { bg: 'rgba(99,102,241,0.12)', color: '#818cf8', border: 'rgba(99,102,241,0.25)' },
+  Confirmed:     { bg: 'rgba(22,163,74,0.12)',  color: '#22c55e', border: 'rgba(22,163,74,0.25)'  },
+  'In Progress': { bg: 'rgba(14,165,233,0.12)', color: '#0284c7', border: 'rgba(14,165,233,0.25)' },
+  Pending:       { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: 'rgba(245,158,11,0.25)' },
+  Cancelled:     { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444', border: 'rgba(239,68,68,0.25)'  },
+  Completed:     { bg: 'rgba(99,102,241,0.12)', color: '#818cf8', border: 'rgba(99,102,241,0.25)' },
 };
 
 const TABS = [
@@ -69,7 +70,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     if (!selectedTherapistId && availableTherapists.length > 0) {
       setSelectedTherapistId(availableTherapists[0].id);
     }
-  }, [availableTherapists]);
+  }, [availableTherapists, selectedTherapistId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -396,7 +397,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
 
 // ─── Appointment Card ─────────────────────────────────────────────────────────
 
-const AppointmentCard = ({ appt, therapists, onOpenAccept, onOpenReject, onAssign, onStatus, isDark, index }) => {
+const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, isDark, index }) => {
   const [expanded, setExpanded] = useState(false);
   const ss = STATUS_STYLES[appt.status] || STATUS_STYLES.Pending;
 
@@ -459,26 +460,27 @@ const AppointmentCard = ({ appt, therapists, onOpenAccept, onOpenReject, onAssig
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onOpenAccept(appt)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95"
-                    style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 4px 12px rgba(22,163,74,0.25)' }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95"
+                    style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 4px 12px rgba(6,44,34,0.25)' }}
                   >
-                    <Check className="w-3.5 h-3.5" /> Accept
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-300" /> Assign Specialist
                   </button>
                   <button
                     onClick={() => onOpenReject(appt)}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-red-500 transition-all hover:scale-105 active:scale-95"
                     style={{ background: isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2', border: isDark ? '1px solid rgba(239,68,68,0.25)' : '1px solid #fecaca' }}
                   >
-                    <X className="w-3.5 h-3.5" /> Reject
+                    <X className="w-3.5 h-3.5" /> Decline
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                   {/* Status badge */}
                   <span
-                    className="px-3 py-1 rounded-xl text-[10px] font-bold border"
+                    className="px-3 py-1 rounded-xl text-[10px] font-bold border flex items-center gap-1.5"
                     style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}
                   >
+                    {appt.status === 'In Progress' && <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-ping" />}
                     {appt.status}
                   </span>
                 </div>
@@ -560,30 +562,57 @@ const AppointmentCard = ({ appt, therapists, onOpenAccept, onOpenReject, onAssig
 
                 {/* Quick action row */}
                 <div className="flex items-center gap-2 mt-4 pt-3 border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }}>
-                  <button
-                    onClick={() => onStatus(appt.id, 'Confirmed')}
-                    disabled={appt.status === 'Confirmed'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-white transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 2px 8px rgba(22,163,74,0.2)' }}
-                  >
-                    <Check className="w-3 h-3" /> Mark Confirmed
-                  </button>
-                  <button
-                    onClick={() => onStatus(appt.id, 'Completed')}
-                    disabled={appt.status === 'Completed'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.1)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}
-                  >
-                    <CheckCircle className="w-3 h-3" /> Mark Completed
-                  </button>
-                  <button
-                    onClick={() => onStatus(appt.id, 'Cancelled')}
-                    disabled={appt.status === 'Cancelled'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
-                  >
-                    <X className="w-3 h-3" /> Cancel
-                  </button>
+                  {isPending ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onOpenAccept(appt)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105"
+                        style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
+                      >
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-300" /> Assign Specialist &amp; Confirm
+                      </button>
+                      <button
+                        onClick={() => onOpenReject(appt)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-red-500 transition hover:scale-105"
+                        style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: isDark ? '1px solid rgba(239,68,68,0.2)' : '1px solid #fecaca' }}
+                      >
+                        <X className="w-3.5 h-3.5" /> Decline
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => onOpenAccept(appt)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 transition hover:scale-105"
+                      >
+                        <UserCheck className="w-3 h-3" /> Reassign Specialist
+                      </button>
+                      <button
+                        onClick={() => onStatus(appt.id, 'In Progress')}
+                        disabled={appt.status === 'In Progress' || appt.status === 'Completed' || appt.status === 'Cancelled'}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: 'rgba(14,165,233,0.15)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.25)' }}
+                      >
+                        <Zap className="w-3 h-3" /> Mark In Progress
+                      </button>
+                      <button
+                        onClick={() => onStatus(appt.id, 'Completed')}
+                        disabled={appt.status === 'Completed' || appt.status === 'Cancelled'}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.1)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}
+                      >
+                        <CheckCircle className="w-3 h-3" /> Mark Completed
+                      </button>
+                      <button
+                        onClick={() => onStatus(appt.id, 'Cancelled')}
+                        disabled={appt.status === 'Cancelled' || appt.status === 'Completed'}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
+                      >
+                        <X className="w-3 h-3" /> Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -613,7 +642,7 @@ const StaffAppointments = () => {
   const [acceptTarget, setAcceptTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
 
-  const loadAppointments = async (silent = false) => {
+  const loadAppointments = useCallback(async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
     try {
       const filterMap = { today: 'today', upcoming: 'upcoming', all: 'all' };
@@ -630,9 +659,11 @@ const StaffAppointments = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [activeTab]);
 
-  useEffect(() => { loadAppointments(); }, [activeTab]);
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
 
   const handleAssignTherapist = async (apptId, therapistId) => {
     try {
@@ -737,11 +768,8 @@ const StaffAppointments = () => {
               <AppointmentCard
                 key={appt.id}
                 appt={appt}
-                therapists={therapists}
                 onOpenAccept={(a) => setAcceptTarget(a)}
                 onOpenReject={(a) => setRejectTarget(a)}
-                onAssign={handleAssignTherapist}
-                onStatus={handleStatusChange}
                 isDark={isDark}
                 index={i}
               />

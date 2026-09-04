@@ -202,7 +202,7 @@ class StaffController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:Pending,Confirmed,Completed,Cancelled',
+            'status' => 'required|in:Pending,Confirmed,In Progress,Completed,Cancelled',
             'reason' => 'nullable|string',
         ]);
 
@@ -227,8 +227,72 @@ class StaffController extends Controller
             }
         }
 
+        if ($oldStatus !== 'In Progress' && $appt->status === 'In Progress') {
+            Notification::create([
+                'type'           => 'in_progress',
+                'title'          => 'Session In Progress',
+                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'appointment_id' => $appt->id,
+            ]);
+        }
+
+        if ($oldStatus !== 'Completed' && $appt->status === 'Completed') {
+            Notification::create([
+                'type'           => 'completed',
+                'title'          => 'Session Completed',
+                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'appointment_id' => $appt->id,
+            ]);
+        }
+
         return response()->json([
             'message' => 'Appointment status updated to ' . $request->status,
+            'appointment' => [
+                'id'           => $appt->id,
+                'client'       => $appt->client?->name ?? 'Client',
+                'therapist'    => $appt->therapist?->name ?? 'Unassigned',
+                'therapist_id' => $appt->therapist_id,
+                'service'      => $appt->service?->name ?? 'Service',
+                'datetime'     => $appt->datetime,
+                'status'       => $appt->status,
+                'notes'        => $appt->notes,
+            ]
+        ]);
+    }
+
+    /**
+     * Reschedule appointment (Staff).
+     */
+    public function reschedule(Request $request, $id)
+    {
+        $request->validate([
+            'datetime' => 'required|date|after:now',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+
+        $appt = Appointment::findOrFail($id);
+
+        try {
+            $parsedDatetime = \Carbon\Carbon::parse($request->datetime);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Invalid datetime format.'], 422);
+        }
+
+        $oldDatetime = $appt->datetime->format('Y-m-d H:i:s');
+        $appt->datetime = $parsedDatetime;
+        if ($request->filled('notes')) {
+            $noteText = 'Rescheduled: ' . trim($request->notes);
+            $appt->notes = $appt->notes ? $appt->notes . ' | ' . $noteText : $noteText;
+        }
+
+        $appt->reminder_24h_sent_at = null;
+        $appt->reminder_2h_sent_at = null;
+        $appt->save();
+
+        $appt->load(['client', 'therapist', 'service']);
+
+        return response()->json([
+            'message' => 'Appointment rescheduled successfully',
             'appointment' => [
                 'id'           => $appt->id,
                 'client'       => $appt->client?->name ?? 'Client',

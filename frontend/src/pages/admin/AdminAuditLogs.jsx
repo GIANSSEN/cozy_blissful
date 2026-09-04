@@ -163,7 +163,6 @@ const ConfirmDeleteModal = ({ log, onConfirm, onClose, t, isDark }) => {
 /* ─── LOG FORM (Create / Edit) ──────────────────────────────────── */
 const LogFormModal = ({ log, onSave, onClose, t, isDark, isLoading }) => {
   const isEdit = !!(log && log.id);
-  const accent = isDark ? '#34d399' : '#0a3d30';
   const [form, setForm] = useState({
     actor:      (log && log.actor)      || '',
     actor_role: (log && log.actor_role) || 'admin',
@@ -643,7 +642,7 @@ const AdminAuditLogs = () => {
     showToast('success', 'CSV exported');
   };
 
-  const toggleSelect    = id => setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleSelect    = id => setSelected(prev => { const s = new Set(prev); if (s.has(id)) { s.delete(id); } else { s.add(id); } return s; });
   const toggleSelectAll = ()  => selected.size === paginated.length ? setSelected(new Set()) : setSelected(new Set(paginated.map(l => l.id)));
   const clearFilters    = ()  => { setSearch(''); setFilterAction('All'); setFilterRole('All'); setFilterModule('All'); setFilterSeverity('All'); setDateFrom(''); setDateTo(''); };
 
@@ -1000,7 +999,6 @@ const AdminAuditLogs = () => {
               <AnimatePresence mode="popLayout">
                 {paginated.map((log, i) => {
                   const meta  = ACTION_META[log.action]  || ACTION_META.create;
-                  const sev   = SEVERITY_META[log.severity] || SEVERITY_META.info;
                   const Icon  = meta.icon;
                   const color = isDark ? meta.darkColor : meta.color;
                   return (

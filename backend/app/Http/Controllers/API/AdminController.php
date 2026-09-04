@@ -184,7 +184,7 @@ class AdminController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:Pending,Confirmed,Completed,Cancelled',
+            'status' => 'required|in:Pending,Confirmed,In Progress,Completed,Cancelled',
             'reason' => 'nullable|string',
         ]);
 
@@ -217,6 +217,15 @@ class AdminController extends Controller
             ]);
         }
 
+        if ($oldStatus !== 'In Progress' && $appt->status === 'In Progress') {
+            Notification::create([
+                'type'           => 'in_progress',
+                'title'          => 'Session In Progress',
+                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'appointment_id' => $appt->id,
+            ]);
+        }
+
         if ($oldStatus !== 'Completed' && $appt->status === 'Completed') {
             Notification::create([
                 'type'           => 'completed',
@@ -235,8 +244,81 @@ class AdminController extends Controller
             ]);
         }
 
+        \App\Models\AuditLog::log('update', 'Appointment', "Admin updated status of booking #{$appt->id} from {$oldStatus} to {$appt->status}", [
+            'actor' => auth()->user()?->name ?? 'System Admin',
+            'actor_role' => 'admin',
+            'module' => 'Bookings',
+            'severity' => 'info',
+            'metadata' => [
+                'appointment_id' => $appt->id,
+                'old_status' => $oldStatus,
+                'new_status' => $appt->status,
+                'reason' => $request->reason ?? null
+            ]
+        ]);
+
         return response()->json([
-            'message' => 'Appointment status updated successfully',
+            'message' => 'Appointment status updated to ' . $appt->status,
+            'appointment' => [
+                'id' => $appt->id,
+                'client_name' => $appt->client ? $appt->client->name : 'Client',
+                'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
+                'therapist_id' => $appt->therapist_id,
+                'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'status' => $appt->status,
+                'notes' => $appt->notes ?? '',
+            ]
+        ]);
+    }
+
+    /**
+     * Reschedule appointment (Admin).
+     */
+    public function reschedule(Request $request, $id)
+    {
+        $request->validate([
+            'datetime' => 'required|date|after:now',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+
+        $appt = Appointment::findOrFail($id);
+
+        try {
+            $parsedDatetime = \Carbon\Carbon::parse($request->datetime);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Invalid datetime format.'], 422);
+        }
+
+        $oldDatetime = $appt->datetime->format('Y-m-d H:i:s');
+        $appt->datetime = $parsedDatetime;
+        if ($request->filled('notes')) {
+            $noteText = 'Rescheduled: ' . trim($request->notes);
+            $appt->notes = $appt->notes ? $appt->notes . ' | ' . $noteText : $noteText;
+        }
+
+        // Reset reminder timestamps
+        $appt->reminder_24h_sent_at = null;
+        $appt->reminder_2h_sent_at = null;
+        $appt->save();
+
+        $appt->load(['client', 'therapist', 'service']);
+
+        \App\Models\AuditLog::log('update', 'Appointment', "Admin rescheduled booking #{$appt->id} from {$oldDatetime} to {$appt->datetime->format('Y-m-d H:i:s')}", [
+            'actor' => auth()->user()?->name ?? 'System Admin',
+            'actor_role' => 'admin',
+            'module' => 'Bookings',
+            'severity' => 'warning',
+            'metadata' => [
+                'appointment_id' => $appt->id,
+                'old_datetime' => $oldDatetime,
+                'new_datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'notes' => $request->notes ?? null
+            ]
+        ]);
+
+        return response()->json([
+            'message' => 'Appointment rescheduled successfully',
             'appointment' => [
                 'id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',

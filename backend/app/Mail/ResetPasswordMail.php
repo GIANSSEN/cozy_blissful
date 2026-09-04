@@ -23,7 +23,7 @@ class ResetPasswordMail extends Mailable
         $this->userEmail = $user->email;
         
         // Build frontend reset URL
-        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173'));
+        $frontendUrl = config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5174'));
         $this->resetUrl = $frontendUrl . '/reset-password?token=' . $token . '&email=' . urlencode($user->email);
     }
 

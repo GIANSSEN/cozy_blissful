@@ -161,7 +161,7 @@ class SocialAuthController extends Controller
     public function callbackFacebook(Request $request)
     {
         $code = $request->query('code');
-        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
+        $frontendUrl = config('app.frontend_url', 'http://localhost:5174');
 
         if (!$code) {
             return redirect()->away("{$frontendUrl}/login?error=" . urlencode('Facebook authentication was cancelled.'));

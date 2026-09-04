@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from './AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -274,7 +274,7 @@ const AdminHistory = () => {
     return () => { document.title = 'Admin | Cozy Blissful'; };
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await API.get('/admin/appointments');
@@ -288,9 +288,9 @@ const AdminHistory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   /* Combined view: live archived records + session-only imported rows */
   const allRecords = useMemo(() => [

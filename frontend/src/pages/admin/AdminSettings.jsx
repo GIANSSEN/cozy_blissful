@@ -5,10 +5,8 @@ import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Sliders, Globe, Bell, Save, CheckCircle2, UserPlus,
-  Users, Shield, Clock, Phone, Mail, MapPin, Sparkles,
-  Plus, Search, X, Edit3, Lock, Eye, EyeOff, AlertCircle,
-  BadgeCheck, RotateCcw, Key, Percent, Briefcase,
-  DollarSign, Building, ChevronRight, CheckCheck, RefreshCw, Send
+  Users, Shield, Clock, Phone, Sparkles,
+  Search, X, Edit3, Eye, EyeOff,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -813,7 +811,7 @@ const AdminSettings = () => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
-  }, [tabFromUrl]);
+  }, [tabFromUrl, activeTab]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);

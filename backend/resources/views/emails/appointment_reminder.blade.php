@@ -363,7 +363,7 @@
         </div>
       </div>
 
-      <a href="{{ config('app.frontend_url', 'http://localhost:5173') }}/client/dashboard" class="cta-button">
+      <a href="{{ config('app.frontend_url', 'http://localhost:5174') }}/client/dashboard" class="cta-button">
         📅 &nbsp; View My Booking Details
       </a>
 

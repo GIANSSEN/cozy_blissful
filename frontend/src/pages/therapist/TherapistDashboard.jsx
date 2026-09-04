@@ -66,6 +66,16 @@ const TherapistDashboard = () => {
     navigate('/login');
   };
 
+  const handleStatusUpdate = async (apptId, newStatus) => {
+    try {
+      const res = await API.post(`/therapist/appointments/${apptId}/status`, { status: newStatus });
+      toast.success(res.data?.message || `Session status updated to ${newStatus}`);
+      fetchDashboardData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update session status.');
+    }
+  };
+
   const handleApply = (jobId, jobTitle) => {
     if (appliedJobs.includes(jobId)) return;
     setAppliedJobs((prev) => [...prev, jobId]);
@@ -232,15 +242,31 @@ const TherapistDashboard = () => {
                               </div>
                             </div>
                             <span
-                              className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 border whitespace-nowrap flex-shrink-0"
+                              className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 border whitespace-nowrap flex-shrink-0"
                               style={
-                                appt.status === 'Confirmed'
+                                appt.status === 'In Progress'
+                                  ? { background: 'rgba(2,132,199,0.1)', color: '#0284c7', borderColor: 'rgba(2,132,199,0.25)' }
+                                  : appt.status === 'Confirmed'
                                   ? { background: 'rgba(6,44,34,0.06)', color: '#062c22', borderColor: 'rgba(6,44,34,0.15)' }
                                   : { background: 'rgba(191,161,95,0.1)', color: '#a08742', borderColor: 'rgba(191,161,95,0.2)' }
                               }
                             >
-                              {appt.status === 'Confirmed' ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                              {appt.status}
+                              {appt.status === 'In Progress' ? (
+                                <>
+                                  <span className="w-2 h-2 rounded-full bg-sky-500 animate-ping" />
+                                  In Progress
+                                </>
+                              ) : appt.status === 'Confirmed' ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3" />
+                                  Confirmed
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="w-3 h-3" />
+                                  {appt.status}
+                                </>
+                              )}
                             </span>
                           </div>
 
@@ -272,6 +298,42 @@ const TherapistDashboard = () => {
                               </div>
                             )}
                           </div>
+
+                          {/* Action Row for Therapist workflow */}
+                          {appt.status === 'Confirmed' && (
+                            <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-100">
+                              <span className="text-[11px] text-slate-500 font-medium">Ready to begin treatment?</span>
+                              <button
+                                onClick={() => handleStatusUpdate(appt.id, 'In Progress')}
+                                className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                                style={{
+                                  background: 'linear-gradient(135deg,#0284c7,#0369a1)',
+                                  boxShadow: '0 4px 12px rgba(2,132,199,0.25)',
+                                }}
+                              >
+                                <Zap className="w-3.5 h-3.5 text-sky-200" /> Start Session
+                              </button>
+                            </div>
+                          )}
+
+                          {appt.status === 'In Progress' && (
+                            <div className="pt-2 flex items-center justify-between gap-3 p-3 rounded-2xl" style={{ background: 'rgba(2,132,199,0.06)', border: '1px solid rgba(2,132,199,0.18)' }}>
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-ping" />
+                                <span className="text-xs font-black text-sky-800">Session in progress…</span>
+                              </div>
+                              <button
+                                onClick={() => handleStatusUpdate(appt.id, 'Completed')}
+                                className="px-4 py-2 rounded-xl text-xs font-black text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                                style={{
+                                  background: 'linear-gradient(135deg,#062c22,#0f5040)',
+                                  boxShadow: '0 4px 12px rgba(6,44,34,0.25)',
+                                }}
+                              >
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-300" /> Complete Treatment
+                              </button>
+                            </div>
+                          )}
 
                           {/* Locked cancellation policy notice */}
                           <div className="flex items-start gap-2.5 rounded-xl px-3 py-2.5" style={{ background: 'rgba(220,38,38,0.04)', border: '1px solid rgba(220,38,38,0.1)' }}>

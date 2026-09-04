@@ -19,7 +19,7 @@ class TherapistController extends Controller
 
         // 1. Calculate stats
         $myAppointmentsCount = Appointment::where('therapist_id', $user->id)
-            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress'])
             ->count();
 
         $completedSessions = Appointment::where('therapist_id', $user->id)
@@ -36,7 +36,7 @@ class TherapistController extends Controller
         // 2. Fetch upcoming appointments
         $appointments = Appointment::with(['client', 'service'])
             ->where('therapist_id', $user->id)
-            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress'])
             ->orderBy('datetime', 'asc')
             ->get()
             ->map(function ($appt) {
@@ -140,5 +140,66 @@ class TherapistController extends Controller
                 'available' => true
             ]);
         }
+    }
+
+    /**
+     * Update session status by therapist (In Progress, Completed).
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:In Progress,Completed',
+        ]);
+
+        $user = $request->user();
+        $appt = Appointment::where('id', $id)
+            ->where('therapist_id', $user->id)
+            ->firstOrFail();
+
+        $oldStatus = $appt->status;
+        $appt->status = $request->status;
+        $appt->save();
+
+        $appt->load(['client', 'service']);
+
+        if ($request->status === 'In Progress') {
+            \App\Models\Notification::create([
+                'type'           => 'in_progress',
+                'title'          => 'Session Started',
+                'description'    => "Therapist {$user->name} began session with " . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ')',
+                'appointment_id' => $appt->id,
+            ]);
+        } elseif ($request->status === 'Completed') {
+            \App\Models\Notification::create([
+                'type'           => 'completed',
+                'title'          => 'Session Completed',
+                'description'    => "Therapist {$user->name} concluded session with " . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ')',
+                'appointment_id' => $appt->id,
+            ]);
+        }
+
+        \App\Models\AuditLog::log('update', 'Appointment', "Therapist {$user->name} updated booking #{$appt->id} status from {$oldStatus} to {$request->status}", [
+            'actor' => $user->name,
+            'actor_role' => 'therapist',
+            'module' => 'Therapist Portal',
+            'severity' => 'info',
+            'metadata' => [
+                'appointment_id' => $appt->id,
+                'old_status' => $oldStatus,
+                'new_status' => $request->status,
+            ]
+        ]);
+
+        return response()->json([
+            'message' => 'Session status updated to ' . $request->status,
+            'appointment' => [
+                'id' => $appt->id,
+                'client_name' => $appt->client ? $appt->client->name : 'Client',
+                'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'notes' => $appt->notes ?? '',
+                'status' => $appt->status
+            ]
+        ]);
     }
 }

@@ -265,7 +265,7 @@
         </div>
       </div>
 
-      <a href="{{ config('app.frontend_url', 'http://localhost:5173') }}/register" class="cta-button">
+      <a href="{{ config('app.frontend_url', 'http://localhost:5174') }}/register" class="cta-button">
         ✨ &nbsp; Book Your First Session
       </a>
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -7,9 +7,9 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import {
   Calendar, Clock, CheckCircle, AlertCircle,
-  LogOut, Heart, Plus, ChevronRight, ChevronLeft,
+  LogOut, Plus, ChevronRight, ChevronLeft,
   Sparkles, Award, Gift, Send, UserCheck, Star, X,
-  Tag, Zap, MessageSquare, Scissors, XCircle, RefreshCw,
+  Zap, MessageSquare, Scissors, XCircle, RefreshCw,
   CalendarX, CalendarCheck, Ban, Info,
 } from 'lucide-react';
 
@@ -48,8 +48,12 @@ const STEP_LABELS = ['Choose Service', 'Pick Date & Time', 'Review & Notes', 'Co
 
 const statusStyle = (status) => {
   switch (status) {
-    case 'Confirmed': case 'Completed':
+    case 'In Progress':
+      return { bg: 'rgba(2,132,199,0.08)', color: '#0284c7', border: 'rgba(2,132,199,0.25)', icon: <Sparkles className="w-3.5 h-3.5 animate-pulse" /> };
+    case 'Confirmed':
       return { bg: 'rgba(6,44,34,0.06)', color: '#062c22', border: 'rgba(6,44,34,0.15)', icon: <CheckCircle className="w-3.5 h-3.5" /> };
+    case 'Completed':
+      return { bg: 'rgba(16,185,129,0.08)', color: '#047857', border: 'rgba(16,185,129,0.2)', icon: <CheckCircle className="w-3.5 h-3.5" /> };
     case 'Cancelled':
       return { bg: 'rgba(239,68,68,0.06)', color: '#b91c1c', border: 'rgba(239,68,68,0.15)', icon: <AlertCircle className="w-3.5 h-3.5" /> };
     default:
@@ -153,7 +157,7 @@ const ServiceCards = ({ services, selectedId, onSelect }) => (
 
 // ─── STEP 2: DATE & TIME PICKER ──────────────────────────────────────────────
 
-const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots, therapists, selectedTherapist, onTherapistSelect }) => {
+const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots, therapists = [], selectedTherapist, onTherapistSelect }) => {
   // Generate next 14 days
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
@@ -166,9 +170,53 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-black text-slate-800">Pick Your Date & Time</h3>
+        <h3 className="text-base font-black text-slate-800">Pick Your Specialist, Date & Time</h3>
         <p className="text-xs text-slate-400 mt-0.5">We're open 9:00 AM – 9:00 PM</p>
       </div>
+
+      {/* Specialist preference selector */}
+      {therapists.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Preferred Specialist (Optional)</p>
+            <span className="text-[10px] text-emerald-700 font-bold">
+              {selectedTherapist ? selectedTherapist.name : 'Any Specialist'}
+            </span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => onTherapistSelect && onTherapistSelect(null)}
+              className="flex-shrink-0 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200"
+              style={
+                !selectedTherapist
+                  ? { background: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#fff', boxShadow: '0 4px 12px rgba(6,44,34,0.25)' }
+                  : { background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', color: '#475569', boxShadow: '3px 3px 6px #eae6df, -3px -3px 6px #fff', border: '1px solid rgba(255,255,255,0.8)' }
+              }
+            >
+              Any Specialist
+            </button>
+            {therapists.map((t) => {
+              const isSelected = selectedTherapist?.id === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onTherapistSelect && onTherapistSelect(t)}
+                  className="flex-shrink-0 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200"
+                  style={
+                    isSelected
+                      ? { background: 'linear-gradient(135deg,#bfa15f,#d4b87a)', color: '#fff', boxShadow: '0 3px 10px rgba(191,161,95,0.3)' }
+                      : { background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', color: '#475569', boxShadow: '3px 3px 6px #eae6df, -3px -3px 6px #fff', border: '1px solid rgba(255,255,255,0.8)' }
+                  }
+                >
+                  {t.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Date chips */}
       <div>
@@ -258,7 +306,15 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
         style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.08)' }}>
         <UserCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-slate-600 leading-relaxed">
-          <span className="font-bold text-emerald-800">Therapist Assigned by Us.</span> Our admin team will carefully match you with the best available specialist for your chosen service. You'll be notified by email once confirmed.
+          {selectedTherapist ? (
+            <>
+              <span className="font-bold text-emerald-800">Specialist Requested:</span> You have selected <span className="font-semibold text-slate-800">{selectedTherapist.name}</span>. Our desk will prioritize assigning this specialist to your booking.
+            </>
+          ) : (
+            <>
+              <span className="font-bold text-emerald-800">Therapist Assigned by Us.</span> Our admin team will carefully match you with the best available specialist for your chosen service. You'll be notified by email once confirmed.
+            </>
+          )}
         </p>
       </div>
     </div>
@@ -267,7 +323,7 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
 
 // ─── STEP 3: REVIEW & NOTES ──────────────────────────────────────────────────
 
-const ReviewStep = ({ service, date, time, notes, onNotesChange }) => {
+const ReviewStep = ({ service, date, time, therapist, notes, onNotesChange }) => {
   const [h, m] = time.split(':');
   const hour = parseInt(h);
   const timeLabel = `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
@@ -305,7 +361,9 @@ const ReviewStep = ({ service, date, time, notes, onNotesChange }) => {
           </div>
           <div className="flex items-center gap-2 text-xs">
             <UserCheck className="w-3.5 h-3.5 text-emerald-300/70 flex-shrink-0" />
-            <span className="text-white font-semibold">Our team will assign your specialist</span>
+            <span className="text-white font-semibold">
+              {therapist ? `Requested Specialist: ${therapist.name}` : 'Specialist: Assigned by Spa Team'}
+            </span>
           </div>
         </div>
 
@@ -497,7 +555,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
       .then((r) => setSlots(r.data))
       .catch(() => setSlots({ available_slots: [], booked_slots: [], all_slots: [] }))
       .finally(() => setLoadingSlots(false));
-  }, [selectedDate]);
+  }, [selectedDate, booking.service_id]);
 
   const handleReschedule = async () => {
     if (!selectedDate || !selectedTime) { setError('Please select a date and time.'); return; }
@@ -670,17 +728,23 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [error, setError] = useState('');
 
-  // Fetch available slots whenever date + service both selected
+  // Fetch available slots whenever date, service, or preferred therapist changes
   useEffect(() => {
     if (selectedDate && selectedService) {
       setLoadingSlots(true);
       setSelectedTime('');
-      API.get('/booking/available-slots', { params: { date: selectedDate, service_id: selectedService.id } })
+      API.get('/booking/available-slots', {
+        params: {
+          date: selectedDate,
+          service_id: selectedService.id,
+          therapist_id: selectedTherapist?.id || undefined,
+        },
+      })
         .then((r) => setSlots(r.data))
         .catch(() => setSlots({ all_slots: [], booked_slots: [], available_slots: [] }))
         .finally(() => setLoadingSlots(false));
     }
-  }, [selectedDate, selectedService]);
+  }, [selectedDate, selectedService, selectedTherapist]);
 
   const canNext = () => {
     if (step === 0) return !!selectedService;
@@ -699,7 +763,7 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
       const datetime = `${selectedDate}T${selectedTime}:00`;
       const res = await API.post('/booking/store', {
         service_id:   selectedService.id,
-        therapist_id: null,   // Admin/Staff assign the therapist
+        therapist_id: selectedTherapist?.id || null,
         datetime,
         notes,
       });
@@ -785,6 +849,7 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
                   service={selectedService}
                   date={selectedDate}
                   time={selectedTime}
+                  therapist={selectedTherapist}
                   notes={notes}
                   onNotesChange={setNotes}
                 />
@@ -881,9 +946,9 @@ const ClientDashboard = () => {
     }, 1500);
   };
 
-  const completedCount = data?.bookings?.filter(b => b.status === 'Confirmed' || b.status === 'Completed').length || 0;
+  const completedCount = data?.bookings?.filter(b => b.status === 'Confirmed' || b.status === 'In Progress' || b.status === 'Completed').length || 0;
   const stamps = Math.min(completedCount + 3, 10);
-  const latestConfirmedBooking = data?.bookings?.find(b => b.status === 'Confirmed' && b.therapist_name !== 'Awaiting Assignment');
+  const latestConfirmedBooking = data?.bookings?.find(b => (b.status === 'Confirmed' || b.status === 'In Progress') && b.therapist_name && b.therapist_name !== 'Awaiting Assignment');
   const assignedTherapistName = latestConfirmedBooking?.therapist_name || null;
 
   return (
@@ -1027,59 +1092,180 @@ const ClientDashboard = () => {
                     {data.bookings.map((b, i) => {
                       const ss = statusStyle(b.status);
                       const canManage = b.status === 'Pending' || b.status === 'Confirmed';
+                      const hasTherapist = b.therapist_name && b.therapist_name !== 'Awaiting Assignment';
+
+                      // Determine active progress step (1 to 4)
+                      const activeStep = b.status === 'Completed' ? 4 : b.status === 'In Progress' ? 3 : b.status === 'Confirmed' ? 2 : 1;
+
                       return (
                         <div key={b.id || i} className="rounded-3xl p-5 flex flex-col gap-4 transition hover:scale-[1.005]"
                           style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '10px 10px 24px #eae6df, -10px -10px 24px #ffffff', border: '1px solid rgba(255,255,255,0.8)' }}>
                           {/* Booking info row */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-                                style={{ background: b.status === 'Confirmed' || b.status === 'Completed' ? '#062c2210' : b.status === 'Cancelled' ? 'rgba(239,68,68,0.07)' : '#bfa15f15' }}>
-                                {b.status === 'Cancelled'
-                                  ? <Ban className="w-5 h-5 text-red-400" />
-                                  : <Calendar className="w-5 h-5" style={{ color: b.status === 'Confirmed' || b.status === 'Completed' ? '#062c22' : '#bfa15f' }} />}
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                              <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                                style={{
+                                  background: b.status === 'In Progress'
+                                    ? 'rgba(2,132,199,0.1)'
+                                    : b.status === 'Completed'
+                                    ? 'rgba(16,185,129,0.1)'
+                                    : b.status === 'Confirmed'
+                                    ? '#062c2212'
+                                    : b.status === 'Cancelled'
+                                    ? 'rgba(239,68,68,0.08)'
+                                    : '#bfa15f15'
+                                }}>
+                                {b.status === 'Cancelled' ? (
+                                  <Ban className="w-5 h-5 text-red-500" />
+                                ) : b.status === 'In Progress' ? (
+                                  <Sparkles className="w-5 h-5 text-sky-600 animate-pulse" />
+                                ) : b.status === 'Completed' ? (
+                                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                ) : b.status === 'Confirmed' ? (
+                                  <UserCheck className="w-5 h-5 text-emerald-800" />
+                                ) : (
+                                  <Clock className="w-5 h-5 text-amber-600" />
+                                )}
                               </div>
-                              <div>
-                                <p className="font-bold text-slate-800 text-sm leading-snug">{b.service}</p>
-                                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-400">
-                                  <span className="font-mono text-[10px] text-slate-400">#{String(b.id).padStart(5,'0')}</span>
-                                  <span>·</span>
-                                  <span>with <strong className="text-slate-600">{b.therapist_name}</strong></span>
-                                  <span>·</span>
-                                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {new Date(b.datetime).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true})}</span>
-                                  {b.service_duration && <span className="flex items-center gap-1"><Zap className="w-3 h-3 text-amber-500" /> {b.service_duration} min</span>}
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-bold text-slate-800 text-base leading-snug">{b.service}</p>
+                                  <span className="font-mono text-[10px] text-slate-400 bg-black/[0.04] px-2 py-0.5 rounded-md font-semibold">
+                                    #{String(b.id).padStart(5,'0')}
+                                  </span>
                                 </div>
-                                {b.notes && <p className="text-[10px] text-slate-400 italic mt-1">📋 {b.notes}</p>}
+
+                                {/* Specialist Assignment Tag */}
+                                <div className="pt-0.5">
+                                  {hasTherapist ? (
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200/60">
+                                      <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
+                                      Assigned Specialist: <strong className="font-bold text-emerald-950">{b.therapist_name}</strong>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-900 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/60">
+                                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                      Specialist: <span className="font-semibold">Awaiting Assignment by Admin/Staff</span>
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
+                                  <span className="flex items-center gap-1 text-slate-700 font-medium">
+                                    <Calendar className="w-3.5 h-3.5 text-emerald-800" />
+                                    {new Date(b.datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                  </span>
+                                  <span>·</span>
+                                  <span className="flex items-center gap-1 text-slate-700 font-medium">
+                                    <Clock className="w-3.5 h-3.5 text-emerald-800" />
+                                    {new Date(b.datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                  </span>
+                                  {b.service_duration && (
+                                    <>
+                                      <span>·</span>
+                                      <span className="flex items-center gap-1 text-amber-700 font-medium">
+                                        <Zap className="w-3 h-3 text-amber-500" /> {b.service_duration} min
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                                {b.notes && <p className="text-[11px] text-slate-400 italic pt-0.5">📋 Note: {b.notes}</p>}
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 self-start sm:self-auto border whitespace-nowrap"
+                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-start sm:self-auto border whitespace-nowrap uppercase tracking-wider"
                               style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
                               {ss.icon} {b.status}
                             </span>
                           </div>
+
+                          {/* 4-Step Lifecycle Progress Tracker */}
+                          {b.status !== 'Cancelled' ? (
+                            <div className="p-3.5 rounded-2xl bg-black/[0.02] border border-black/[0.04]">
+                              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-2.5">
+                                <span className="uppercase tracking-wider text-[9px] font-bold text-slate-400">Appointment Workflow</span>
+                                <span className="font-bold" style={{ color: activeStep === 3 ? '#0284c7' : activeStep === 4 ? '#047857' : '#062c22' }}>
+                                  {activeStep === 1 && 'Step 1 of 4: Booking Received'}
+                                  {activeStep === 2 && 'Step 2 of 4: Specialist Assigned & Confirmed'}
+                                  {activeStep === 3 && 'Step 3 of 4: Treatment In Progress'}
+                                  {activeStep === 4 && 'Step 4 of 4: Treatment Completed'}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-4 gap-2">
+                                {[
+                                  { num: 1, label: 'Requested', desc: 'Received by Desk' },
+                                  { num: 2, label: 'Assigned', desc: hasTherapist ? b.therapist_name.split(' ')[0] : 'Admin Review' },
+                                  { num: 3, label: 'In Treatment', desc: 'Therapist Session' },
+                                  { num: 4, label: 'Completed', desc: 'Service Done' },
+                                ].map((st) => {
+                                  const isCurrent = activeStep === st.num;
+                                  const isPast = activeStep > st.num;
+                                  return (
+                                    <div key={st.num} className="flex flex-col items-center text-center">
+                                      <div
+                                        className={`w-full h-1.5 rounded-full mb-1.5 transition-all ${
+                                          isPast
+                                            ? 'bg-emerald-600'
+                                            : isCurrent
+                                            ? st.num === 3 ? 'bg-sky-500 animate-pulse' : 'bg-emerald-800'
+                                            : 'bg-slate-200'
+                                        }`}
+                                      />
+                                      <span className={`text-[10px] font-bold truncate w-full ${isCurrent ? (st.num === 3 ? 'text-sky-600' : 'text-emerald-900') : isPast ? 'text-emerald-800' : 'text-slate-400'}`}>
+                                        {st.label}
+                                      </span>
+                                      <span className="text-[8px] text-slate-400 truncate w-full hidden sm:block">
+                                        {st.desc}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-3 rounded-2xl bg-red-50/60 border border-red-100 flex items-center gap-2 text-xs text-red-600">
+                              <Ban className="w-4 h-4 flex-shrink-0" />
+                              <span>This appointment was cancelled. Please book a new slot if you wish to reschedule.</span>
+                            </div>
+                          )}
+
+                          {/* Contextual Status Alerts & Actions */}
+                          {b.status === 'In Progress' && (
+                            <div className="flex items-center gap-2 text-xs font-semibold text-sky-800 p-3 rounded-2xl bg-sky-50/80 border border-sky-200/70">
+                              <Sparkles className="w-4 h-4 text-sky-600 animate-pulse flex-shrink-0" />
+                              <span>Your treatment is currently in progress with <strong className="text-sky-900">{b.therapist_name}</strong>. Relax and enjoy your wellness experience!</span>
+                            </div>
+                          )}
+
+                          {b.status === 'Completed' && (
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-900 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60">
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <CheckCircle className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+                                Treatment successfully completed. We hope to welcome you back soon!
+                              </span>
+                              <button
+                                onClick={() => setShowWizard(true)}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold text-white transition hover:scale-105 self-start sm:self-auto flex-shrink-0"
+                                style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}>
+                                Book Again
+                              </button>
+                            </div>
+                          )}
 
                           {/* Action buttons — only for Pending or Confirmed */}
                           {canManage && (
                             <div className="flex gap-2 pt-1 border-t border-black/[0.04]">
                               <button
                                 onClick={() => setRescheduleTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-emerald-800 transition-all hover:scale-[1.03] active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-emerald-800 transition-all hover:scale-[1.02] active:scale-95"
                                 style={{ background: 'linear-gradient(145deg,rgba(6,44,34,0.07),rgba(6,44,34,0.04))', border: '1px solid rgba(6,44,34,0.1)', boxShadow: '2px 2px 6px rgba(6,44,34,0.06)' }}>
                                 <RefreshCw className="w-3.5 h-3.5" /> Reschedule
                               </button>
                               <button
                                 onClick={() => setCancelTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-red-600 transition-all hover:scale-[1.03] active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-red-600 transition-all hover:scale-[1.02] active:scale-95"
                                 style={{ background: 'linear-gradient(145deg,rgba(220,38,38,0.06),rgba(220,38,38,0.03))', border: '1px solid rgba(220,38,38,0.12)', boxShadow: '2px 2px 6px rgba(220,38,38,0.06)' }}>
-                                <XCircle className="w-3.5 h-3.5" /> Cancel
+                                <XCircle className="w-3.5 h-3.5" /> Cancel Appointment
                               </button>
-                            </div>
-                          )}
-
-                          {/* Completed/Cancelled notice */}
-                          {!canManage && b.status !== 'Completed' && (
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400 pt-1 border-t border-black/[0.04]">
-                              <Ban className="w-3 h-3" /> This appointment has been cancelled and cannot be modified.
                             </div>
                           )}
                         </div>
