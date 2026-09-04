@@ -233,19 +233,24 @@ class AuthController extends Controller
         $email = strtolower(trim($request->email));
         $user = User::where('email', $email)->first();
 
+        // SECURITY: always return the same generic response whether or not the
+        // account exists, so attackers cannot enumerate registered emails.
+        $genericResponse = response()->json([
+            'message' => 'If an account exists for that email address, a password reset link has been sent. Please check your inbox.'
+        ]);
+
         if (!$user) {
-            return response()->json([
-                'message' => 'No account found with this email address. Please register or check your email.'
-            ], 404);
+            Log::info('Password reset requested for unknown email', ['email' => $email, 'ip' => $request->ip()]);
+            return $genericResponse;
         }
 
-        // Check if Gmail SMTP credentials are set in .env
+        // Check if Gmail SMTP credentials are set in .env (never disclose
+        // configuration details to the client)
         $mailUsername = config('mail.mailers.smtp.username');
         $mailPassword = config('mail.mailers.smtp.password');
         if (empty($mailUsername) || str_contains($mailUsername, 'YOUR_GMAIL') || empty($mailPassword) || str_contains($mailPassword, 'YOUR_16_DIGIT')) {
-            return response()->json([
-                'message' => 'Please enter your 16-character Google App Password in backend/.env under MAIL_PASSWORD to enable email sending.'
-            ], 422);
+            Log::error('Password reset email not configured', ['hint' => 'Set MAIL_USERNAME / MAIL_PASSWORD in backend/.env']);
+            return $genericResponse;
         }
 
         try {
@@ -273,8 +278,9 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to send password reset email: ' . $e->getMessage());
 
+            // SECURITY: never expose internal exception details to clients
             return response()->json([
-                'message' => 'SMTP Error: Unable to send email. ' . $e->getMessage()
+                'message' => 'Unable to send the reset email right now. Please try again later.'
             ], 500);
         }
     }

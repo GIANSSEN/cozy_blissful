@@ -184,7 +184,8 @@ input::-webkit-credentials-auto-fill-button {
   height: 0 !important;
 }
 
-/* Fix browser autofill styling for high contrast, clean white background and readable text */
+/* Fix browser autofill styling — keep white background with visible dark text
+   (Chrome/Edge/Safari force a blue-gray fill + light text unless overridden) */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -196,7 +197,8 @@ textarea:-webkit-autofill:active,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus,
-select:-webkit-autofill:active {
+select:-webkit-autofill:active,
+input:autofill {
   -webkit-text-fill-color: #1a2332 !important;
   color: #1a2332 !important;
   -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
@@ -205,6 +207,16 @@ select:-webkit-autofill:active {
   transition: background-color 50000s ease-in-out 0s;
   caret-color: #1a2332 !important;
   font-weight: 500 !important;
+}
+
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f8fafc;
+  -webkit-box-shadow: 0 0 0 1000px #1f2937 inset;
+  caret-color: #e8cc8a;
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 /* Premium Shimmer Loading Animation */
@@ -232,4 +244,104 @@ select:-webkit-autofill:active {
 .dark {
   --shimmer-bg: #1e2638;
   --shimmer-light: #28334a;
+}
+
+/* Gold & Spa Emerald custom utilities */
+.gold-gradient-btn {
+  background: linear-gradient(135deg, #e5be70 0%, #edd89e 50%, #cba04b 100%);
+  color: #121e17;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(203, 160, 75, 0.25);
+  transition: all 0.25s ease;
+}
+.gold-gradient-btn:hover {
+  background: linear-gradient(135deg, #f0ca7c 0%, #f7e4b2 50%, #d8ac56 100%);
+  box-shadow: 0 6px 20px rgba(203, 160, 75, 0.4);
+  transform: translateY(-1px);
+}
+.gold-gradient-btn:active {
+  transform: translateY(0);
+}
+.gold-border {
+  border: 1px solid rgba(223, 186, 115, 0.35);
+}
+.gold-text-gradient {
+  background: linear-gradient(135deg, #f6e6be 0%, #dfba73 50%, #cba04b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+:root {
+  --bg-main: #071913;
+  --bg-panel: #0a221a;
+  --bg-card: #0c281e;
+  --border-color: rgba(16, 185, 129, 0.15);
+  --accent-gold: #f59e0b;
+  --accent-gold-light: #fde68a;
+  --text-main: #ecfdf5;
+  --text-muted: #6ee7b7;
+}
+
+/* Sidebar Custom Styling */
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #a7f3d0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn.active {
+  background: rgba(6, 78, 59, 0.6);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: var(--accent-gold-light);
+}
+
+.nav-btn:hover:not(.active) {
+  background: rgba(6, 78, 59, 0.3);
+}
+
+/* Input Fields Styling */
+.form-control {
+  width: 100%;
+  background: var(--bg-main);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text-main);
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+/* Primary Button */
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #022c22;
+  font-weight: 600;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  transition: transform 0.1s ease, filter 0.2s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
 }
