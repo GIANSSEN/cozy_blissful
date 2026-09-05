@@ -259,6 +259,35 @@ function FormField({ label, required, error, icon: Ic, children, hint }) {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
+/*  PASSWORD STRENGTH HELPER                                        */
+/* ─────────────────────────────────────────────────────────────── */
+function getPasswordStrength(pw) {
+  if (!pw) return { label: '', color: '#94a3b8', percent: 0 };
+  let score = 0;
+  if (pw.length >= 8)  score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+  if (score <= 1) return { label: 'Very Weak',  color: '#ef4444', percent: 20 };
+  if (score === 2) return { label: 'Weak',       color: '#f97316', percent: 40 };
+  if (score === 3) return { label: 'Fair',       color: '#eab308', percent: 60 };
+  if (score === 4) return { label: 'Strong',     color: '#22c55e', percent: 80 };
+  return              { label: 'Very Strong', color: '#10b981', percent: 100 };
+}
+
+const THERAPIST_SPECIALTY_PRESETS = [
+  'Swedish & Deep Tissue', 'Hot Stone Massage', 'Shiatsu & Hilot',
+  'Sports & Recovery', 'Aromatherapy', 'Prenatal Massage',
+  'Foot Reflexology', 'Thai Massage',
+];
+
+const STAFF_POSITION_PRESETS = [
+  'Front Desk Coordinator', 'Operations Lead', 'Booking Coordinator',
+  'Guest Relations', 'Shift Supervisor', 'Billing & Finance',
+];
+
+/* ─────────────────────────────────────────────────────────────── */
 /*  MODAL: ADD / EDIT USER                                           */
 /* ─────────────────────────────────────────────────────────────── */
 function AddEditUserModal({ user, onClose, onSave }) {
@@ -984,7 +1013,7 @@ function TabProfiles({ users, onUsersChange }) {
   return (
     <div className="space-y-4">
       {viewingUser && <UserDetailModal user={viewingUser} onClose={() => setViewingUser(null)} onEdit={u => { setViewingUser(null); setEditingUser(u); }} C={C} />}
-      {(addingUser || editingUser) && <UserFormModal user={editingUser} onClose={() => { setAddingUser(false); setEditingUser(null); }} onSave={handleSave} C={C} />}
+      {(addingUser || editingUser) && <AddEditUserModal user={editingUser} onClose={() => { setAddingUser(false); setEditingUser(null); }} onSave={handleSave} />}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
