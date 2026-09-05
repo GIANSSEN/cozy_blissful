@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useTheme } from '../../context/ThemeContext';
@@ -10,7 +10,7 @@ import {
   Calendar, Clock, CheckCircle, AlertCircle,
   XCircle, Check, X, ChevronLeft, ChevronRight, UserCheck,
   Zap, Mail, CalendarDays,
-  Search, RotateCcw, CheckCircle2, CalendarCheck,
+  Search, RotateCcw, CheckCircle2, CalendarCheck, Sparkles,
 } from 'lucide-react';
 import { MiniCalendar } from '../../components/ui/mini-calendar';
 import { DatePickerInput } from '../../components/ui/date-picker';
@@ -50,6 +50,13 @@ const getStatusStyle = (status, isDark = false) => {
         color: isDark ? '#f87171' : '#b91c1c',
         border: isDark ? 'rgba(248, 113, 113, 0.4)' : 'rgba(185, 28, 28, 0.3)',
         dot: isDark ? '#f87171' : '#dc2626'
+      };
+    case 'Completed by Therapist':
+      return {
+        bg: isDark ? 'rgba(217, 119, 6, 0.22)' : 'rgba(217, 119, 6, 0.12)',
+        color: isDark ? '#fbbf24' : '#b45309',
+        border: isDark ? 'rgba(251, 191, 36, 0.45)' : 'rgba(217, 119, 6, 0.35)',
+        dot: isDark ? '#fbbf24' : '#d97706'
       };
     case 'Completed':
       return {
@@ -203,6 +210,24 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
               <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5 }}>{appt.notes}</p>
             </div>
           )}
+
+          {/* Therapist Completion Notice */}
+          {appt.status === 'Completed by Therapist' && (
+            <div style={{
+              padding: 14, borderRadius: 16, background: isDark ? 'rgba(217,119,6,0.15)' : '#fefce8',
+              border: '1.5px solid rgba(217,119,6,0.35)', display: 'flex', flexDirection: 'column', gap: 6,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Sparkles size={16} style={{ color: '#d97706' }} />
+                <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>
+                  Therapist Concluded Treatment Session
+                </p>
+              </div>
+              <p style={{ fontSize: 11, color: isDark ? '#fef3c7' : '#78350f', margin: 0, lineHeight: 1.5 }}>
+                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> marked this treatment as complete. Confirm completion below to finalize session fees and archive to the <strong>History</strong> menu.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer with contextual actions */}
@@ -241,7 +266,7 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
             </>
           )}
 
-          {(appt.status === 'Confirmed' || appt.status === 'In Progress') && (
+          {(appt.status === 'Confirmed' || appt.status === 'In Progress' || appt.status === 'Completed by Therapist') && (
             <>
               {appt.status === 'Confirmed' && onOpenAccept && (
                 <button type="button" onClick={() => { onClose(); onOpenAccept(appt); }} style={{
@@ -264,11 +289,15 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
               {onComplete && (
                 <button type="button" onClick={() => { onClose(); onComplete(appt); }} style={{
                   flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none',
-                  background: 'linear-gradient(135deg,#062c22,#0f5040)', color: '#ffffff',
+                  background: appt.status === 'Completed by Therapist'
+                    ? 'linear-gradient(135deg,#059669,#047857)'
+                    : 'linear-gradient(135deg,#062c22,#0f5040)',
+                  color: '#ffffff',
                   fontSize: 12, fontWeight: 900, cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  boxShadow: '0 4px 14px rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
-                  <CheckCircle size={15} style={{ color: '#6ee7b7' }} /> Complete Session
+                  <CheckCircle size={15} style={{ color: '#6ee7b7' }} />
+                  {appt.status === 'Completed by Therapist' ? 'Verify & Confirm Completion (Move to History)' : 'Complete Session'}
                 </button>
               )}
             </>
@@ -1470,22 +1499,15 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
                       onClick={() => onOpenReschedule(item)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
-                        fontSize: 12, fontWeight: 900, color: '#fff',
-                        background: '#2563eb', border: 'none',
-                        boxShadow: '0 3px 10px rgba(37,99,235,0.25)',
+                        height: 36, padding: '0 14px', borderRadius: 12, cursor: 'pointer',
+                        fontSize: 12, fontWeight: 800, color: '#2563eb',
+                        background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)',
                       }}
-                    ><RotateCcw size={14} /> Reschedule</button>
+                    >
+                      <RotateCcw size={14} /> Reschedule
+                    </button>
                   ) : (
-                    <span style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '9px 16px', borderRadius: 14,
-                      fontSize: 11, fontWeight: 800,
-                      color: C.textMuted, background: C.pillBg,
-                      border: `1px solid ${C.pillBorder}`,
-                    }}>
-                      <Check size={14} /> Processed — view in History
-                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted }}>Cancelled Final</span>
                   )}
                 </div>
               </motion.div>
@@ -1498,8 +1520,7 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  VIEW 4: CONFIRMED SESSIONS (ACTIVE BOOKINGS)                        */
-/*  Completed sessions leave this module and flow into History.         */
+/*  VIEW 4: ACTIVE & CONFIRMED TREATMENTS                              */
 /* ─────────────────────────────────────────────────────────────────── */
 
 const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, onOpenCancel, onComplete, onSelectAppt }) => {
@@ -1519,15 +1540,22 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 
   const [search, setSearch] = useState('');
 
+  const awaitingVerification = useMemo(() => {
+    return appointments.filter(a => a.status === 'Completed by Therapist');
+  }, [appointments]);
+
   const confirmed = useMemo(() => {
     return appointments.filter(a => {
-      if (a.status !== 'Confirmed' && a.status !== 'In Progress') return false;
+      if (a.status !== 'Confirmed' && a.status !== 'In Progress' && a.status !== 'Completed by Therapist') return false;
       const q = search.toLowerCase();
       if (!q) return true;
       return (a.service || '').toLowerCase().includes(q) ||
              (a.client_name || a.client || '').toLowerCase().includes(q) ||
              (a.therapist_name || '').toLowerCase().includes(q) ||
              String(a.id).includes(q);
+    }).sort((a, b) => {
+      const order = { 'Completed by Therapist': 1, 'In Progress': 2, 'Confirmed': 3 };
+      return (order[a.status] || 4) - (order[b.status] || 4);
     });
   }, [appointments, search]);
 
@@ -1547,6 +1575,35 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Top Banner if therapists marked sessions completed */}
+      {awaitingVerification.length > 0 && (
+        <div style={{
+          padding: '14px 20px', borderRadius: 18,
+          background: isDark ? 'rgba(217,119,6,0.15)' : 'linear-gradient(135deg,#fef3c7,#fefce8)',
+          border: '1.5px solid rgba(217,119,6,0.35)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+          boxShadow: '0 4px 12px rgba(217,119,6,0.1)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12, background: '#d97706', color: '#ffffff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              boxShadow: '0 2px 6px rgba(217,119,6,0.3)',
+            }}>
+              <Sparkles size={20} className="animate-pulse" />
+            </div>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>
+                {awaitingVerification.length} Session{awaitingVerification.length > 1 ? 's' : ''} Finished by Therapist • Awaiting Admin Confirmation
+              </p>
+              <p style={{ fontSize: 11, color: isDark ? '#fde68a' : '#78350f', margin: '2px 0 0', fontWeight: 600 }}>
+                Therapist concluded treatment. Confirm below to finalize and automatically archive record into History.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{
@@ -1581,6 +1638,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
       {confirmed.length === 0 ? emptyState : (
         <div style={{ display: 'grid', gap: 12 }}>
           {confirmed.map((appt) => {
+            const isCompletedByTherapist = appt.status === 'Completed by Therapist';
             const isInProgress = appt.status === 'In Progress';
             return (
               <motion.div
@@ -1588,14 +1646,16 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{
-                  background: isInProgress
+                  background: isCompletedByTherapist
+                    ? (isDark ? 'linear-gradient(135deg,#231b08,#141927)' : 'linear-gradient(135deg,#fffbeb,#ffffff)')
+                    : isInProgress
                     ? (isDark ? 'linear-gradient(135deg,#0c2233,#141927)' : 'linear-gradient(135deg,#f0f9ff,#ffffff)')
                     : C.cardBg,
-                  border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.3)' : C.cardBorder}`,
+                  border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.45)' : isInProgress ? 'rgba(14,165,233,0.3)' : C.cardBorder}`,
                   borderRadius: 20, padding: '16px 20px',
                   display: 'flex', flexWrap: 'wrap',
                   alignItems: 'center', justifyContent: 'space-between', gap: 16,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  boxShadow: isCompletedByTherapist ? '0 4px 14px rgba(217,119,6,0.12)' : '0 2px 8px rgba(0,0,0,0.04)',
                   transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
               >
@@ -1607,18 +1667,31 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                 >
                   <div style={{
                     width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                    background: isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
-                    color: isInProgress ? '#0284c7' : '#059669',
-                    border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.25)' : 'rgba(5,150,105,0.2)'}`,
+                    background: isCompletedByTherapist
+                      ? 'rgba(217,119,6,0.15)'
+                      : isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
+                    color: isCompletedByTherapist
+                      ? '#d97706'
+                      : isInProgress ? '#0284c7' : '#059669',
+                    border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.35)' : isInProgress ? 'rgba(14,165,233,0.25)' : 'rgba(5,150,105,0.2)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {isInProgress ? <Zap size={20} className="animate-pulse" /> : <CheckCircle2 size={20} />}
+                    {isCompletedByTherapist ? <Sparkles size={20} className="animate-pulse" /> : isInProgress ? <Zap size={20} className="animate-pulse" /> : <CheckCircle2 size={20} />}
                   </div>
 
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
-                      {isInProgress ? (
+                      {isCompletedByTherapist ? (
+                        <span style={{
+                          fontSize: 10, fontWeight: 900, padding: '2px 9px', borderRadius: 999,
+                          background: 'rgba(217,119,6,0.15)', color: '#d97706', border: '1px solid rgba(217,119,6,0.3)',
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                        }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#d97706' }} className="animate-ping" />
+                          Therapist Finished • Needs Verification
+                        </span>
+                      ) : isInProgress ? (
                         <span style={{
                           fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999,
                           background: 'rgba(14,165,233,0.12)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)',
@@ -1647,9 +1720,13 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8,
-                        background: isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)',
-                        color: isInProgress ? '#0284c7' : '#047857',
-                        border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}`,
+                        background: isCompletedByTherapist
+                          ? 'rgba(217,119,6,0.1)'
+                          : isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)',
+                        color: isCompletedByTherapist
+                          ? '#d97706'
+                          : isInProgress ? '#0284c7' : '#047857',
+                        border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.25)' : isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}`,
                       }}>
                         <UserCheck size={12} /> Specialist: {appt.therapist_name || 'Unassigned'}
                       </span>
@@ -1657,7 +1734,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 
                     {/* Schedule Date & Time */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isInProgress ? '#0284c7' : '#059669' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isCompletedByTherapist ? '#d97706' : isInProgress ? '#0284c7' : '#059669' }}>
                         <Calendar size={13} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
                       </span>
                       {appt.service_duration && (
@@ -1676,7 +1753,21 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 
                 {/* Right: Pro Unified Action Controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  {isInProgress ? (
+                  {isCompletedByTherapist ? (
+                    <button
+                      onClick={() => onComplete(appt)}
+                      title="Verify and confirm session completion — archives into History"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        height: 36, padding: '0 18px', borderRadius: 12, cursor: 'pointer',
+                        fontSize: 12, fontWeight: 900, color: '#ffffff',
+                        background: 'linear-gradient(135deg,#059669,#047857)', border: 'none',
+                        boxShadow: '0 2px 10px rgba(5,150,105,0.35)',
+                      }}
+                    >
+                      <CheckCircle size={15} /> Confirm &amp; Move to History
+                    </button>
+                  ) : isInProgress ? (
                     <>
                       <button
                         onClick={() => onComplete(appt)}
@@ -1781,6 +1872,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 const AdminAppointments = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const navigate = useNavigate();
 
   // ── Guaranteed color tokens (inline styles, never purged) ──
   const C = {
@@ -1899,10 +1991,11 @@ const AdminAppointments = () => {
     }
   };
 
-  // Summary Metrics — 4 distinct operational indicators
+  // Summary Metrics — 5 distinct operational indicators
   const confirmedOnlyCount = appointments.filter((a) => a.status === 'Confirmed').length;
   const inProgressCount = appointments.filter((a) => a.status === 'In Progress').length;
   const pendingCount = appointments.filter((a) => a.status === 'Pending').length;
+  const awaitingSignoffCount = appointments.filter((a) => a.status === 'Completed by Therapist').length;
   const completedCount = appointments.filter((a) => a.status === 'Completed').length;
   const cancelledCount = appointments.filter((a) => a.status === 'Cancelled').length;
 
@@ -1919,7 +2012,7 @@ const AdminAppointments = () => {
   const TABS = [
     { id: 'calendar',  label: 'Schedule Calendar',    icon: CalendarDays },
     { id: 'pending',   label: 'Pending Queue',        icon: Clock, badge: pendingCount },
-    { id: 'confirmed', label: 'Active Treatments',    icon: CheckCircle2, badge: confirmedOnlyCount + inProgressCount },
+    { id: 'confirmed', label: 'Active Treatments',    icon: CheckCircle2, badge: confirmedOnlyCount + inProgressCount + awaitingSignoffCount },
     { id: 'requests',  label: 'Cancelled & Logs',     icon: RotateCcw, badge: cancelledCount },
   ];
 
@@ -1933,35 +2026,51 @@ const AdminAppointments = () => {
     >
       <div className="space-y-4 sm:space-y-6">
 
-        {/* ── Top Summary Metric Cards (Zero Redundancy) ── */}
+        {/* ── Top Summary Metric Cards (Interactive, Zero Redundancy) ── */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isWide ? 'repeat(4,1fr)' : 'repeat(2,1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: isWide ? 12 : 8,
         }}>
           {[
-            { label: 'Upcoming Scheduled',  value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck },
-            { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock },
-            { label: 'In Treatment Now',    value: inProgressCount,     color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap },
-            { label: 'Completed History',   value: completedCount,      color: '#6366f1', accent: 'rgba(99,102,241,0.12)', Icon: CheckCircle },
-          ].map(({ label, value, color, accent, Icon }) => (
-            <div key={label} style={{
-              background: C.cardBg,
-              border: `1px solid ${C.cardBorder}`,
-              borderRadius: isWide ? 20 : 16,
-              padding: isWide ? 16 : '12px 10px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: isWide ? 12 : 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              minWidth: 0,
-            }}>
+            { label: 'Upcoming Scheduled',  value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck, onClick: () => setSearchParams({ tab: 'confirmed' }) },
+            { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock, onClick: () => setSearchParams({ tab: 'pending' }) },
+            { label: 'In Treatment Now',    value: inProgressCount,     color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap, onClick: () => setSearchParams({ tab: 'confirmed' }) },
+            { label: 'Awaiting Sign-off',   value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, onClick: () => setSearchParams({ tab: 'confirmed' }) },
+            { label: 'Completed History',   value: completedCount,      color: '#6366f1', accent: 'rgba(99,102,241,0.12)', Icon: CheckCircle, onClick: () => navigate('/admin/history') },
+          ].map(({ label, value, color, accent, Icon, pulse, onClick }) => (
+            <div
+              key={label}
+              onClick={onClick}
+              title={label === 'Completed History' ? 'Open Master Archived History' : `Filter to ${label}`}
+              style={{
+                background: C.cardBg,
+                border: pulse ? '1px solid rgba(245,158,11,0.6)' : `1px solid ${C.cardBorder}`,
+                borderRadius: isWide ? 20 : 16,
+                padding: isWide ? 16 : '12px 10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: isWide ? 12 : 8,
+                boxShadow: pulse ? '0 0 16px rgba(245,158,11,0.18)' : '0 2px 8px rgba(0,0,0,0.04)',
+                minWidth: 0,
+                cursor: onClick ? 'pointer' : 'default',
+                transition: 'all 0.2s ease',
+              }}
+            >
               <div style={{
                 width: isWide ? 44 : 34, height: isWide ? 44 : 34, borderRadius: isWide ? 14 : 10, flexShrink: 0,
                 background: accent, color,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative',
               }}>
                 <Icon size={isWide ? 20 : 16} />
+                {pulse && (
+                  <span style={{
+                    position: 'absolute', top: -2, right: -2, width: 8, height: 8,
+                    borderRadius: '50%', backgroundColor: '#f59e0b',
+                    boxShadow: '0 0 6px #f59e0b'
+                  }} />
+                )}
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <p style={{
@@ -1969,7 +2078,14 @@ const AdminAppointments = () => {
                   textTransform: 'uppercase', color: C.textMuted, margin: 0,
                   lineHeight: 1.2, wordBreak: 'break-word',
                 }}>{label}</p>
-                <p style={{ fontSize: isWide ? 26 : 20, fontWeight: 900, color, margin: '2px 0 0', lineHeight: 1 }}>{value}</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                  <p style={{ fontSize: isWide ? 26 : 20, fontWeight: 900, color, margin: '2px 0 0', lineHeight: 1 }}>{value}</p>
+                  {pulse && (
+                    <span style={{ fontSize: 9, fontWeight: 800, color: '#b45309', background: 'rgba(245,158,11,0.2)', padding: '1px 5px', borderRadius: 6 }}>
+                      Action
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           ))}

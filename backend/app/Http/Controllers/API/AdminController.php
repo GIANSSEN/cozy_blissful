@@ -184,7 +184,7 @@ class AdminController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:Pending,Confirmed,In Progress,Completed,Cancelled',
+            'status' => 'required|in:Pending,Confirmed,In Progress,Completed by Therapist,Completed,Cancelled',
             'reason' => 'nullable|string',
         ]);
 
@@ -226,11 +226,20 @@ class AdminController extends Controller
             ]);
         }
 
+        if ($appt->status === 'Completed by Therapist') {
+            Notification::create([
+                'type'           => 'completed_by_therapist',
+                'title'          => 'Session Awaiting Admin Confirmation',
+                'description'    => ($appt->therapist?->name ?? 'Therapist') . ' completed session #' . $appt->id . ' for ' . ($appt->client->name ?? 'Client') . '. Ready to verify.',
+                'appointment_id' => $appt->id,
+            ]);
+        }
+
         if ($oldStatus !== 'Completed' && $appt->status === 'Completed') {
             Notification::create([
                 'type'           => 'completed',
-                'title'          => 'Session Completed',
-                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'title'          => 'Session Verified & Completed',
+                'description'    => 'Admin confirmed completion of ' . ($appt->client->name ?? 'Client') . ' (' . ($appt->service->name ?? 'Service') . ') by ' . ($appt->therapist?->name ?? 'Therapist') . '. Moved to History.',
                 'appointment_id' => $appt->id,
             ]);
         }

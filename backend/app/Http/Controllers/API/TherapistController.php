@@ -19,24 +19,24 @@ class TherapistController extends Controller
 
         // 1. Calculate stats
         $myAppointmentsCount = Appointment::where('therapist_id', $user->id)
-            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress'])
+            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress', 'Completed by Therapist'])
             ->count();
 
         $completedSessions = Appointment::where('therapist_id', $user->id)
-            ->where('status', 'Completed')
+            ->whereIn('status', ['Completed by Therapist', 'Completed'])
             ->count();
 
         // Total hours worked based on completed appointments
         $hoursWorked = Appointment::where('therapist_id', $user->id)
-            ->where('appointments.status', 'Completed')
+            ->whereIn('appointments.status', ['Completed by Therapist', 'Completed'])
             ->join('services', 'appointments.service_id', '=', 'services.id')
             ->sum('services.duration') / 60.0;
         $hoursWorked = round($hoursWorked, 1);
 
-        // 2. Fetch all appointments (both upcoming and completed) for full history view
+        // 2. Fetch all appointments (both upcoming, in progress, awaiting admin confirmation, and completed) for full history view
         $appointments = Appointment::with(['client', 'service'])
             ->where('therapist_id', $user->id)
-            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress', 'Completed'])
+            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])
             ->orderBy('datetime', 'desc')
             ->get()
             ->map(function ($appt) {
@@ -156,12 +156,12 @@ class TherapistController extends Controller
     }
 
     /**
-     * Update session status by therapist (In Progress, Completed).
+     * Update session status by therapist (In Progress, Completed by Therapist).
      */
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:In Progress,Completed',
+            'status' => 'required|in:In Progress,Completed,Completed by Therapist',
         ]);
 
         $user = $request->user();
@@ -170,28 +170,33 @@ class TherapistController extends Controller
             ->firstOrFail();
 
         $oldStatus = $appt->status;
-        $appt->status = $request->status;
+        $targetStatus = $request->status;
+        // If therapist submits Completed, transition to Completed by Therapist for Admin confirmation
+        if ($targetStatus === 'Completed' || $targetStatus === 'Completed by Therapist') {
+            $targetStatus = 'Completed by Therapist';
+        }
+        $appt->status = $targetStatus;
         $appt->save();
 
         $appt->load(['client', 'service']);
 
-        if ($request->status === 'In Progress') {
+        if ($targetStatus === 'In Progress') {
             \App\Models\Notification::create([
                 'type'           => 'in_progress',
                 'title'          => 'Session Started',
                 'description'    => "Therapist {$user->name} began session with " . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ')',
                 'appointment_id' => $appt->id,
             ]);
-        } elseif ($request->status === 'Completed') {
+        } elseif ($targetStatus === 'Completed by Therapist') {
             \App\Models\Notification::create([
-                'type'           => 'completed',
-                'title'          => 'Session Completed',
-                'description'    => "Therapist {$user->name} concluded session with " . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ')',
+                'type'           => 'completed_by_therapist',
+                'title'          => 'Session Concluded by Therapist',
+                'description'    => "Therapist {$user->name} completed session #{$appt->id} with " . ($appt->client?->name ?? 'Client') . '. Awaiting Admin verification.',
                 'appointment_id' => $appt->id,
             ]);
         }
 
-        \App\Models\AuditLog::log('update', 'Appointment', "Therapist {$user->name} updated booking #{$appt->id} status from {$oldStatus} to {$request->status}", [
+        \App\Models\AuditLog::log('update', 'Appointment', "Therapist {$user->name} marked booking #{$appt->id} as {$targetStatus} (was {$oldStatus})", [
             'actor' => $user->name,
             'actor_role' => 'therapist',
             'module' => 'Therapist Portal',
@@ -199,16 +204,21 @@ class TherapistController extends Controller
             'metadata' => [
                 'appointment_id' => $appt->id,
                 'old_status' => $oldStatus,
-                'new_status' => $request->status,
+                'new_status' => $targetStatus,
             ]
         ]);
 
         return response()->json([
-            'message' => 'Session status updated to ' . $request->status,
+            'message' => $targetStatus === 'Completed by Therapist' 
+                ? 'Session marked completed! Sent to Admin for final verification.' 
+                : 'Session status updated to In Progress',
             'appointment' => [
                 'id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',
+                'client_phone' => $appt->client && $appt->client->phone ? $appt->client->phone : 'Not provided',
                 'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                'duration' => $appt->service ? $appt->service->duration : 60,
+                'price' => $appt->service ? $appt->service->price : 0,
                 'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
                 'notes' => $appt->notes ?? '',
                 'status' => $appt->status

@@ -11,7 +11,7 @@ import {
   UserCheck, Sparkles, Heart, AlertCircle, Bell, Plus, Check,
   Lock, Phone, User, Hash, Ban, Info, Zap, RefreshCw,
   Search, X, Shield, Award, Edit3, Key, CheckCircle2,
-  ChevronDown, Copy, Eye, EyeOff, CheckCheck, Sparkle,
+  ChevronDown, Copy, Eye, EyeOff, CheckCheck, Sparkle, Handshake,
 } from 'lucide-react';
 
 // ─── Brand & Theme Tokens ──────────────────────────────────────────────────
@@ -296,7 +296,7 @@ const TherapistDashboard = () => {
       if (activeTab === 'today' && apptDate !== todayStr) return false;
       if (activeTab === 'confirmed' && appt.status !== 'Confirmed') return false;
       if (activeTab === 'in_progress' && appt.status !== 'In Progress') return false;
-      if (activeTab === 'completed' && appt.status !== 'Completed') return false;
+      if (activeTab === 'completed' && appt.status !== 'Completed' && appt.status !== 'Completed by Therapist') return false;
 
       // Search query filter
       if (searchQuery.trim()) {
@@ -317,7 +317,7 @@ const TherapistDashboard = () => {
       today: appointments.filter(a => (a.datetime || '').split(' ')[0] === todayStr).length,
       confirmed: appointments.filter(a => a.status === 'Confirmed').length,
       in_progress: appointments.filter(a => a.status === 'In Progress').length,
-      completed: appointments.filter(a => a.status === 'Completed').length,
+      completed: appointments.filter(a => a.status === 'Completed' || a.status === 'Completed by Therapist').length,
     };
   }, [appointments, todayStr]);
 
@@ -653,6 +653,7 @@ const TherapistDashboard = () => {
                     {filteredAppointments.map((appt, i) => {
                       const isInProgress = appt.status === 'In Progress';
                       const isConfirmed = appt.status === 'Confirmed';
+                      const isAwaitingAdmin = appt.status === 'Completed by Therapist';
                       const isCompleted = appt.status === 'Completed';
 
                       return (
@@ -667,6 +668,8 @@ const TherapistDashboard = () => {
                             style={
                               isInProgress
                                 ? { borderColor: 'rgba(2,132,199,0.4)', background: '#f0f9ff' }
+                                : isAwaitingAdmin
+                                ? { borderColor: 'rgba(245,158,11,0.4)', background: '#fffdfa' }
                                 : {}
                             }
                           >
@@ -702,6 +705,8 @@ const TherapistDashboard = () => {
                                     ? { background: 'rgba(2,132,199,0.12)', color: '#0369a1', borderColor: 'rgba(2,132,199,0.3)' }
                                     : isConfirmed
                                     ? { background: 'rgba(6,44,34,0.08)', color: B.deep, borderColor: 'rgba(6,44,34,0.2)' }
+                                    : isAwaitingAdmin
+                                    ? { background: 'rgba(245,158,11,0.14)', color: '#b45309', borderColor: 'rgba(245,158,11,0.35)' }
                                     : isCompleted
                                     ? { background: 'rgba(16,185,129,0.1)', color: '#047857', borderColor: 'rgba(16,185,129,0.25)' }
                                     : { background: 'rgba(191,161,95,0.12)', color: B.goldDark, borderColor: 'rgba(191,161,95,0.3)' }
@@ -716,6 +721,11 @@ const TherapistDashboard = () => {
                                   <>
                                     <CheckCircle className="w-3.5 h-3.5" />
                                     Confirmed
+                                  </>
+                                ) : isAwaitingAdmin ? (
+                                  <>
+                                    <Clock className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                                    Awaiting Admin Confirmation
                                   </>
                                 ) : isCompleted ? (
                                   <>
@@ -827,7 +837,7 @@ const TherapistDashboard = () => {
                                   onClick={() =>
                                     setModal({
                                       type: 'complete_session',
-                                      data: { id: appt.id, client_name: appt.client_name, service: appt.service, newStatus: 'Completed' },
+                                      data: { id: appt.id, client_name: appt.client_name, service: appt.service, newStatus: 'Completed by Therapist' },
                                     })
                                   }
                                   className="px-4 py-2 rounded-xl text-xs font-black text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
@@ -841,15 +851,29 @@ const TherapistDashboard = () => {
                               </div>
                             )}
 
+                            {isAwaitingAdmin && (
+                              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-amber-50/80 border border-amber-200">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4 text-amber-600 shrink-0 animate-pulse" />
+                                  <span className="text-xs font-bold text-amber-900">
+                                    Treatment concluded. Sent to Admin Booking queue for final sign-off &amp; history archival.
+                                  </span>
+                                </div>
+                                <span className="text-[11px] font-extrabold text-amber-800 bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-300/60 whitespace-nowrap self-start sm:self-auto">
+                                  Pending Admin Sign-off
+                                </span>
+                              </div>
+                            )}
+
                             {isCompleted && (
                               <div className="pt-1 text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5">
                                 <CheckCheck className="w-4 h-4 text-emerald-600" />
-                                <span>Treatment concluded &amp; logged to audit records.</span>
+                                <span>Treatment confirmed by Admin &amp; archived in system history.</span>
                               </div>
                             )}
 
                             {/* Standard Policy notice */}
-                            {!isCompleted && (
+                            {!isCompleted && !isAwaitingAdmin && (
                               <div className="flex items-start gap-2 rounded-xl px-3 py-2 bg-red-50/60 border border-red-100 text-[10px] text-red-700/90 leading-relaxed">
                                 <Lock className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
                                 <span>
@@ -1170,7 +1194,7 @@ const TherapistDashboard = () => {
                   <div className="p-3 bg-emerald-50 rounded-2xl text-xs text-emerald-900 border border-emerald-100">
                     <p className="font-bold">Next steps:</p>
                     <p className="text-[11px] text-emerald-800 mt-0.5">
-                      Status will be marked <strong>Completed</strong>, your logged hours will update, and the client will receive an invitation to leave a review.
+                      The session will be marked <strong>Completed by Therapist</strong> and automatically appear in Admin Bookings for final verification and archival to History.
                     </p>
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-2">
