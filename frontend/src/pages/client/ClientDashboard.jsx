@@ -42,7 +42,7 @@ const GoldBtn = ({ children, onClick, disabled, className = '', type = 'button' 
   </button>
 );
 
-const STEP_LABELS = ['Choose Service', 'Pick Date & Time', 'Review & Notes', 'Confirmation'];
+const STEP_LABELS = ['Choose Service', 'Date & Time', 'Review & Notes', 'Confirmation'];
 
 // ─── STATUS COLORS ───────────────────────────────────────────────────────────
 
@@ -157,7 +157,7 @@ const ServiceCards = ({ services, selectedId, onSelect }) => (
 
 // ─── STEP 2: DATE & TIME PICKER ──────────────────────────────────────────────
 
-const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots, therapists = [], selectedTherapist, onTherapistSelect }) => {
+const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots }) => {
   // Generate next 14 days
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
@@ -167,61 +167,87 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
 
   const dayKey = (d) => d.toISOString().split('T')[0];
 
+  // Helper to categorize slots by period
+  const categorizeSlot = (slot) => {
+    const [h] = slot.split(':');
+    const hr = parseInt(h, 10);
+    if (hr < 12) return 'morning';
+    if (hr < 17) return 'afternoon';
+    return 'evening';
+  };
+
+  const morningSlots = (slots.all_slots || []).filter(s => categorizeSlot(s) === 'morning');
+  const afternoonSlots = (slots.all_slots || []).filter(s => categorizeSlot(s) === 'afternoon');
+  const eveningSlots = (slots.all_slots || []).filter(s => categorizeSlot(s) === 'evening');
+
+  const renderSlotGroup = (title, icon, groupSlots) => {
+    if (!groupSlots || groupSlots.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          {icon} {title}
+        </p>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {groupSlots.map((slot) => {
+            const isBooked = slots.booked_slots?.includes(slot);
+            const isSelected = selectedTime === slot;
+            const [h, m] = slot.split(':');
+            const hour = parseInt(h, 10);
+            const label = `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+            return (
+              <button
+                key={slot}
+                type="button"
+                disabled={isBooked}
+                onClick={() => !isBooked && onTimeSelect(slot)}
+                className="py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-200 hover:scale-[1.02] active:scale-95 text-center flex items-center justify-center gap-1"
+                style={
+                  isBooked
+                    ? { background: 'rgba(0,0,0,0.03)', color: '#cbd5e1', border: '1px solid rgba(0,0,0,0.04)', cursor: 'not-allowed', textDecoration: 'line-through' }
+                    : isSelected
+                    ? { background: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#fff', boxShadow: '0 4px 12px rgba(6,44,34,0.25)', border: '1.5px solid rgba(255,255,255,0.2)' }
+                    : { background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', color: '#1e293b', boxShadow: '2px 2px 6px #eae6df, -2px -2px 6px #fff', border: '1px solid rgba(255,255,255,0.8)' }
+                }
+              >
+                {label}
+                {isBooked && <span className="text-[8px] opacity-40 ml-0.5">●</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-black text-slate-800">Pick Your Specialist, Date & Time</h3>
-        <p className="text-xs text-slate-400 mt-0.5">We're open 9:00 AM – 9:00 PM</p>
+        <h3 className="text-base font-black text-slate-800">Select Preferred Date &amp; Time</h3>
+        <p className="text-xs text-slate-400 mt-0.5">Cozy Blissful Salon Hours: 9:00 AM – 9:00 PM Daily</p>
       </div>
 
-      {/* Specialist preference selector */}
-      {therapists.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Preferred Specialist (Optional)</p>
-            <span className="text-[10px] text-emerald-700 font-bold">
-              {selectedTherapist ? selectedTherapist.name : 'Any Specialist'}
-            </span>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <button
-              type="button"
-              onClick={() => onTherapistSelect && onTherapistSelect(null)}
-              className="flex-shrink-0 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200"
-              style={
-                !selectedTherapist
-                  ? { background: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#fff', boxShadow: '0 4px 12px rgba(6,44,34,0.25)' }
-                  : { background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', color: '#475569', boxShadow: '3px 3px 6px #eae6df, -3px -3px 6px #fff', border: '1px solid rgba(255,255,255,0.8)' }
-              }
-            >
-              Any Specialist
-            </button>
-            {therapists.map((t) => {
-              const isSelected = selectedTherapist?.id === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => onTherapistSelect && onTherapistSelect(t)}
-                  className="flex-shrink-0 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200"
-                  style={
-                    isSelected
-                      ? { background: 'linear-gradient(135deg,#bfa15f,#d4b87a)', color: '#fff', boxShadow: '0 3px 10px rgba(191,161,95,0.3)' }
-                      : { background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', color: '#475569', boxShadow: '3px 3px 6px #eae6df, -3px -3px 6px #fff', border: '1px solid rgba(255,255,255,0.8)' }
-                  }
-                >
-                  {t.name}
-                </button>
-              );
-            })}
-          </div>
+      {/* Concierge Matching Notice */}
+      <div className="p-4 rounded-2xl flex items-start gap-3.5"
+        style={{ background: 'linear-gradient(135deg,rgba(6,44,34,0.06),rgba(6,44,34,0.02))', border: '1px solid rgba(6,44,34,0.12)' }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', color: '#6ee7b7' }}>
+          <UserCheck className="w-4 h-4" />
         </div>
-      )}
+        <div>
+          <p className="text-xs font-black text-emerald-950">Expert Specialist Assigned by Admin &amp; Staff</p>
+          <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
+            To ensure the highest standard of care, our concierge desk carefully reviews your appointment and matches you with a certified therapist on shift. You will receive an instant notification once assigned!
+          </p>
+        </div>
+      </div>
 
       {/* Date chips */}
       <div>
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Select Date</p>
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. Choose Date</p>
+          <span className="text-[10px] font-bold text-emerald-800">Next 14 Days</span>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
           {days.map((d) => {
             const key = dayKey(d);
             const isSelected = selectedDate === key;
@@ -230,21 +256,21 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
                 key={key}
                 type="button"
                 onClick={() => onDateSelect(key)}
-                className="flex-shrink-0 flex flex-col items-center px-3 py-2.5 rounded-2xl transition-all duration-200 hover:scale-105"
+                className="flex-shrink-0 flex flex-col items-center px-3.5 py-3 rounded-2xl transition-all duration-200 hover:scale-105"
                 style={{
                   background: isSelected ? 'linear-gradient(135deg,#062c22,#0a3d30)' : 'linear-gradient(145deg,#fdfcfa,#f5f0e8)',
-                  boxShadow: isSelected ? '0 4px 12px rgba(6,44,34,0.25)' : '4px 4px 10px #eae6df, -4px -4px 10px #ffffff',
-                  border: isSelected ? '1.5px solid rgba(255,255,255,0.1)' : '1px solid rgba(255,255,255,0.8)',
-                  minWidth: 58,
+                  boxShadow: isSelected ? '0 6px 16px rgba(6,44,34,0.25)' : '4px 4px 10px #eae6df, -4px -4px 10px #ffffff',
+                  border: isSelected ? '1.5px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.8)',
+                  minWidth: 62,
                 }}
               >
-                <span className="text-[9px] font-bold uppercase" style={{ color: isSelected ? 'rgba(255,255,255,0.6)' : '#94a3b8' }}>
+                <span className="text-[9px] font-bold uppercase" style={{ color: isSelected ? 'rgba(255,255,255,0.65)' : '#94a3b8' }}>
                   {d.toLocaleDateString('en-US', { weekday: 'short' })}
                 </span>
-                <span className="text-base font-black" style={{ color: isSelected ? '#fff' : '#1e293b' }}>
+                <span className="text-lg font-black my-0.5" style={{ color: isSelected ? '#fff' : '#1e293b' }}>
                   {d.getDate()}
                 </span>
-                <span className="text-[9px] font-semibold" style={{ color: isSelected ? 'rgba(255,255,255,0.6)' : '#94a3b8' }}>
+                <span className="text-[9px] font-semibold" style={{ color: isSelected ? 'rgba(255,255,255,0.65)' : '#94a3b8' }}>
                   {d.toLocaleDateString('en-US', { month: 'short' })}
                 </span>
               </button>
@@ -253,79 +279,48 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
         </div>
       </div>
 
-      {/* Time slots */}
+      {/* Time slots categorized by period */}
       {selectedDate && (
-        <div>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            Available Time Slots
-            {loadingSlots && <span className="ml-2 text-amber-500 animate-pulse">• Loading…</span>}
-          </p>
+        <div className="space-y-4 pt-1">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              2. Choose Appointment Time
+            </p>
+            {loadingSlots && (
+              <span className="text-[11px] font-bold text-amber-600 animate-pulse flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Checking slot availability…
+              </span>
+            )}
+          </div>
+
           {loadingSlots ? (
-            <div className="flex gap-2 flex-wrap">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="h-9 w-20 rounded-xl animate-pulse" style={{ background: 'rgba(0,0,0,0.06)' }} />
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-10 rounded-2xl animate-pulse" style={{ background: 'rgba(0,0,0,0.05)' }} />
               ))}
             </div>
           ) : slots.all_slots?.length > 0 ? (
-            <div className="flex gap-2 flex-wrap">
-              {slots.all_slots.map((slot) => {
-                const isBooked = slots.booked_slots?.includes(slot);
-                const isSelected = selectedTime === slot;
-                const [h, m] = slot.split(':');
-                const hour = parseInt(h);
-                const label = `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    disabled={isBooked}
-                    onClick={() => !isBooked && onTimeSelect(slot)}
-                    className="px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200"
-                    style={
-                      isBooked
-                        ? { background: 'rgba(0,0,0,0.04)', color: '#cbd5e1', border: '1px solid rgba(0,0,0,0.05)', cursor: 'not-allowed', textDecoration: 'line-through' }
-                        : isSelected
-                        ? { background: 'linear-gradient(135deg,#bfa15f,#d4b87a)', color: '#fff', boxShadow: '0 3px 10px rgba(191,161,95,0.3)', border: '1px solid rgba(255,255,255,0.2)' }
-                        : { background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', color: '#1e293b', boxShadow: '3px 3px 6px #eae6df, -3px -3px 6px #fff', border: '1px solid rgba(255,255,255,0.8)' }
-                    }
-                  >
-                    {label}
-                    {isBooked && <span className="ml-1 text-[9px]">●</span>}
-                  </button>
-                );
-              })}
+            <div className="space-y-4">
+              {renderSlotGroup('Morning Sessions', <Sparkles className="w-3 h-3 text-amber-500" />, morningSlots)}
+              {renderSlotGroup('Afternoon Sessions', <Clock className="w-3 h-3 text-emerald-600" />, afternoonSlots)}
+              {renderSlotGroup('Evening Sessions', <Zap className="w-3 h-3 text-indigo-500" />, eveningSlots)}
             </div>
           ) : (
-            <p className="text-sm text-slate-400 italic">No slots available for this date. Please pick another day.</p>
+            <div className="p-5 rounded-2xl text-center text-xs text-slate-400 bg-slate-50 border border-slate-200">
+              No available slots for this date. Please pick another day.
+            </div>
           )}
         </div>
       )}
-
-      {/* Therapist assignment notice */}
-      <div className="p-3 rounded-2xl flex items-start gap-2.5"
-        style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.08)' }}>
-        <UserCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-slate-600 leading-relaxed">
-          {selectedTherapist ? (
-            <>
-              <span className="font-bold text-emerald-800">Specialist Requested:</span> You have selected <span className="font-semibold text-slate-800">{selectedTherapist.name}</span>. Our desk will prioritize assigning this specialist to your booking.
-            </>
-          ) : (
-            <>
-              <span className="font-bold text-emerald-800">Therapist Assigned by Us.</span> Our admin team will carefully match you with the best available specialist for your chosen service. You'll be notified by email once confirmed.
-            </>
-          )}
-        </p>
-      </div>
     </div>
   );
 };
 
 // ─── STEP 3: REVIEW & NOTES ──────────────────────────────────────────────────
 
-const ReviewStep = ({ service, date, time, therapist, notes, onNotesChange }) => {
+const ReviewStep = ({ service, date, time, notes, onNotesChange }) => {
   const [h, m] = time.split(':');
-  const hour = parseInt(h);
+  const hour = parseInt(h, 10);
   const timeLabel = `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
   const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -333,12 +328,12 @@ const ReviewStep = ({ service, date, time, therapist, notes, onNotesChange }) =>
     <div className="space-y-5">
       <div>
         <h3 className="text-base font-black text-slate-800">Review Your Booking</h3>
-        <p className="text-xs text-slate-400 mt-0.5">Confirm your details below before submitting</p>
+        <p className="text-xs text-slate-400 mt-0.5">Confirm your schedule details and specify any preferences</p>
       </div>
 
       {/* Summary Card */}
-      <div className="rounded-3xl p-5 space-y-3"
-        style={{ background: 'linear-gradient(135deg,#062c22 0%,#0a3d30 100%)', boxShadow: '0 8px 24px rgba(6,44,34,0.2)' }}>
+      <div className="rounded-3xl p-5 space-y-3.5"
+        style={{ background: 'linear-gradient(135deg,#062c22 0%,#0a3d30 100%)', boxShadow: '0 10px 28px rgba(6,44,34,0.25)' }}>
         <div className="flex items-start justify-between">
           <div>
             <p className="text-white font-black text-lg leading-tight">{service.name}</p>
@@ -350,40 +345,44 @@ const ReviewStep = ({ service, date, time, therapist, notes, onNotesChange }) =>
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-3 space-y-2">
+        <div className="border-t border-white/10 pt-3 space-y-2.5">
           <div className="flex items-center gap-2 text-xs">
-            <Calendar className="w-3.5 h-3.5 text-emerald-300/70 flex-shrink-0" />
+            <Calendar className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
             <span className="text-white font-semibold">{dateLabel}</span>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <Clock className="w-3.5 h-3.5 text-emerald-300/70 flex-shrink-0" />
+            <Clock className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
             <span className="text-white font-semibold">{timeLabel}</span>
           </div>
           <div className="flex items-center gap-2 text-xs">
-            <UserCheck className="w-3.5 h-3.5 text-emerald-300/70 flex-shrink-0" />
+            <UserCheck className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
             <span className="text-white font-semibold">
-              {therapist ? `Requested Specialist: ${therapist.name}` : 'Specialist: Assigned by Spa Team'}
+              Specialist: <strong className="text-emerald-300">Assigned by Admin &amp; Staff Desk</strong>
             </span>
           </div>
         </div>
 
         <div className="border-t border-white/10 pt-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-emerald-200/60 font-semibold uppercase tracking-wider">Status After Booking</span>
-            <span className="bg-amber-500/20 text-amber-300 font-bold px-2.5 py-1 rounded-full border border-amber-500/20">⏳ Pending Approval</span>
+            <span className="text-emerald-200/70 font-semibold uppercase tracking-wider text-[10px]">Status After Booking</span>
+            <span className="bg-amber-400/20 text-amber-300 font-bold px-2.5 py-1 rounded-full border border-amber-400/30 text-[11px]">
+              ⏳ Pending Approval &amp; Assignment
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Special Requests */}
+      {/* Special Requests & Preferences */}
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Special Requests / Notes</label>
+        <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+          Treatment Preferences &amp; Special Requests (Optional)
+        </label>
         <textarea
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
-          placeholder="e.g. Bring lavender oils, focus on lower back, need extra blanket…"
+          placeholder="e.g. Desired pressure (light/medium/firm), focus on neck/lower back, preferred aromatherapy scent (lavender/eucalyptus)..."
           rows={3}
-          className="w-full px-4 py-3 rounded-2xl text-sm text-slate-700 bg-transparent outline-none resize-none"
+          className="w-full px-4 py-3 rounded-2xl text-xs text-slate-700 bg-transparent outline-none resize-none leading-relaxed"
           style={{ background: 'linear-gradient(145deg,#f5f0e8,#ece8e0)', boxShadow: 'inset 3px 3px 6px #e0dbd3, inset -3px -3px 6px #ffffff' }}
         />
       </div>
@@ -399,15 +398,15 @@ const ConfirmationStep = ({ booking, onDone }) => (
       initial={{ scale: 0.5, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-      className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
+      className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
       style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 8px 24px rgba(6,44,34,0.3)' }}
     >
-      <CheckCircle className="w-10 h-10 text-emerald-300" />
+      <CheckCircle className="w-8 h-8 text-emerald-300" />
     </motion.div>
     <div>
-      <h3 className="text-xl font-black text-slate-800">Booking Submitted!</h3>
-      <p className="text-xs text-slate-400 mt-1.5 max-w-xs mx-auto">
-        Your appointment is pending approval. We'll notify you by email once confirmed.
+      <h3 className="text-xl font-black text-slate-800">Booking Request Submitted!</h3>
+      <p className="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
+        Your appointment is in our pending queue. Admin &amp; Staff will assign your specialist and confirm your session.
       </p>
     </div>
     <div className="rounded-2xl p-4 text-left space-y-2 max-w-xs mx-auto"
@@ -416,11 +415,14 @@ const ConfirmationStep = ({ booking, onDone }) => (
       <p className="text-lg font-black text-slate-800">#{String(booking?.id).padStart(4, '0')}</p>
       <p className="text-xs text-slate-600 font-semibold">{booking?.service}</p>
       <p className="text-xs text-slate-500">{booking?.datetime}</p>
+      <div className="pt-2 border-t border-black/5 flex items-center gap-1.5 text-[10px] font-bold text-emerald-800">
+        <UserCheck className="w-3 h-3" /> Specialist will be assigned shortly
+      </div>
     </div>
-    <p className="text-xs text-slate-400">📧 A confirmation email has been sent to your inbox.</p>
+    <p className="text-xs text-slate-400">📧 A confirmation email will be sent to your inbox once approved.</p>
     <button
       onClick={onDone}
-      className="inline-flex items-center gap-2 py-3 px-8 text-white font-bold rounded-2xl text-sm transition-all duration-200 hover:scale-105"
+      className="inline-flex items-center gap-2 py-3 px-8 text-white font-bold rounded-2xl text-xs transition-all duration-200 hover:scale-105"
       style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 6px 18px rgba(6,44,34,0.25)' }}
     >
       <Sparkles className="w-4 h-4" /> Back to Dashboard
@@ -720,7 +722,6 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
   const [selectedService, setSelectedService] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [selectedTherapist, setSelectedTherapist] = useState(null);
   const [notes, setNotes] = useState('');
   const [slots, setSlots] = useState({ all_slots: [], booked_slots: [], available_slots: [] });
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -728,7 +729,7 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [error, setError] = useState('');
 
-  // Fetch available slots whenever date, service, or preferred therapist changes
+  // Fetch available slots whenever date or service changes
   useEffect(() => {
     if (selectedDate && selectedService) {
       setLoadingSlots(true);
@@ -737,14 +738,13 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
         params: {
           date: selectedDate,
           service_id: selectedService.id,
-          therapist_id: selectedTherapist?.id || undefined,
         },
       })
         .then((r) => setSlots(r.data))
         .catch(() => setSlots({ all_slots: [], booked_slots: [], available_slots: [] }))
         .finally(() => setLoadingSlots(false));
     }
-  }, [selectedDate, selectedService, selectedTherapist]);
+  }, [selectedDate, selectedService]);
 
   const canNext = () => {
     if (step === 0) return !!selectedService;
@@ -762,8 +762,7 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
     try {
       const datetime = `${selectedDate}T${selectedTime}:00`;
       const res = await API.post('/booking/store', {
-        service_id:   selectedService.id,
-        therapist_id: selectedTherapist?.id || null,
+        service_id: selectedService.id,
         datetime,
         notes,
       });
@@ -837,9 +836,6 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
                   onDateSelect={setSelectedDate}
                   selectedTime={selectedTime}
                   onTimeSelect={setSelectedTime}
-                  therapists={data?.available_therapists || []}
-                  selectedTherapist={selectedTherapist}
-                  onTherapistSelect={setSelectedTherapist}
                   slots={slots}
                   loadingSlots={loadingSlots}
                 />
@@ -849,7 +845,6 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
                   service={selectedService}
                   date={selectedDate}
                   time={selectedTime}
-                  therapist={selectedTherapist}
                   notes={notes}
                   onNotesChange={setNotes}
                 />

@@ -43,6 +43,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Availabilities as a therapist.
+     */
+    public function availabilities()
+    {
+        return $this->hasMany(TherapistAvailability::class, 'therapist_id');
+    }
+
+    /**
      * The attributes that should be hidden for serialization.
      *
      * @var list<string>

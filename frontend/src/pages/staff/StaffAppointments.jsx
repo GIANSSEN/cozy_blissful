@@ -581,36 +581,59 @@ const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, isDark, index }) =>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => onOpenAccept(appt)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 transition hover:scale-105"
-                      >
-                        <UserCheck className="w-3 h-3" /> Reassign Specialist
-                      </button>
-                      <button
-                        onClick={() => onStatus(appt.id, 'In Progress')}
-                        disabled={appt.status === 'In Progress' || appt.status === 'Completed' || appt.status === 'Cancelled'}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: 'rgba(14,165,233,0.15)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.25)' }}
-                      >
-                        <Zap className="w-3 h-3" /> Mark In Progress
-                      </button>
-                      <button
-                        onClick={() => onStatus(appt.id, 'Completed')}
-                        disabled={appt.status === 'Completed' || appt.status === 'Cancelled'}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.1)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)' }}
-                      >
-                        <CheckCircle className="w-3 h-3" /> Mark Completed
-                      </button>
-                      <button
-                        onClick={() => onStatus(appt.id, 'Cancelled')}
-                        disabled={appt.status === 'Cancelled' || appt.status === 'Completed'}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold transition hover:scale-105 disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}
-                      >
-                        <X className="w-3 h-3" /> Cancel
-                      </button>
+                      {appt.status === 'Confirmed' && (
+                        <>
+                          <button
+                            onClick={() => onStatus(appt.id, 'In Progress')}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105"
+                            style={{ background: 'linear-gradient(135deg,#0284c7,#0369a1)', boxShadow: '0 2px 8px rgba(2,132,199,0.25)' }}
+                          >
+                            <Zap className="w-3.5 h-3.5" /> Start Treatment
+                          </button>
+                          <button
+                            onClick={() => onOpenAccept(appt)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 transition hover:scale-105"
+                          >
+                            <UserCheck className="w-3 h-3" /> Reassign Specialist
+                          </button>
+                          <button
+                            onClick={() => onStatus(appt.id, 'Cancelled')}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 transition hover:scale-105"
+                          >
+                            <X className="w-3 h-3" /> Cancel
+                          </button>
+                        </>
+                      )}
+
+                      {appt.status === 'In Progress' && (
+                        <>
+                          <button
+                            onClick={() => onStatus(appt.id, 'Completed')}
+                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105"
+                            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-300" /> Complete Treatment
+                          </button>
+                          <button
+                            onClick={() => onStatus(appt.id, 'Cancelled')}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 transition hover:scale-105"
+                          >
+                            <X className="w-3 h-3" /> Cancel
+                          </button>
+                        </>
+                      )}
+
+                      {appt.status === 'Completed' && (
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200 flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5" /> Treatment Finished &amp; Finalized
+                        </span>
+                      )}
+
+                      {appt.status === 'Cancelled' && (
+                        <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
+                          Cancelled Appointment
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

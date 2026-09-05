@@ -1502,7 +1502,7 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
 /*  Completed sessions leave this module and flow into History.         */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, onOpenCancel, onComplete }) => {
+const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, onOpenCancel, onComplete, onSelectAppt }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -1511,10 +1511,10 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
     textMuted:     isDark ? '#94a3b8' : '#334155',
     cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
+    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
     inputBg:       isDark ? '#0f1420' : '#ffffff',
-    pillBg:        isDark ? '#1e2a3a' : '#f1f5f9',
-    pillBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)',
+    pillBg:        isDark ? '#1e2a3a' : '#f8fafc',
+    pillBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
   };
 
   const [search, setSearch] = useState('');
@@ -1553,7 +1553,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
           flex: '1 1 260px', maxWidth: 480, display: 'flex', alignItems: 'center', gap: 10,
           padding: '10px 16px', borderRadius: 16,
           background: C.inputBg, border: `1px solid ${C.cardBorder}`,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
         }}>
           <Search size={15} style={{ color: C.textMuted, flexShrink: 0 }} />
           <input
@@ -1571,149 +1571,199 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
         </div>
         <span style={{
           fontSize: 11, fontWeight: 900, padding: '7px 14px', borderRadius: 12,
-          background: 'rgba(5,150,105,0.12)', color: '#059669', border: '1px solid rgba(5,150,105,0.25)',
+          background: 'rgba(5,150,105,0.1)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)',
         }}>
-          {confirmed.length} Active Session{confirmed.length !== 1 ? 's' : ''}
+          {confirmed.length} Active Treatment{confirmed.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {/* Empty state */}
       {confirmed.length === 0 ? emptyState : (
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 12 }}>
           {confirmed.map((appt) => {
             const isInProgress = appt.status === 'In Progress';
             return (
               <motion.div
                 key={appt.id}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{
                   background: isInProgress
-                    ? 'linear-gradient(135deg,' + (isDark ? '#0c2233,#141927' : '#f0f9ff,#ffffff') + ')'
-                    : 'linear-gradient(135deg,' + (isDark ? '#101d2c,#141927' : '#f0fdf9,#ffffff') + ')',
-                  border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.35)' : 'rgba(16,185,129,0.35)'}`,
-                  borderRadius: 24, padding: '18px 20px',
+                    ? (isDark ? 'linear-gradient(135deg,#0c2233,#141927)' : 'linear-gradient(135deg,#f0f9ff,#ffffff)')
+                    : C.cardBg,
+                  border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.3)' : C.cardBorder}`,
+                  borderRadius: 20, padding: '16px 20px',
                   display: 'flex', flexWrap: 'wrap',
-                  alignItems: 'flex-start', gap: 16,
-                  boxShadow: '0 2px 10px rgba(5,150,105,0.08)',
+                  alignItems: 'center', justifyContent: 'space-between', gap: 16,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
               >
-                {/* Icon + Info */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1 }}>
+                {/* Left: Icon + Detailed Info */}
+                <div
+                  onClick={() => onSelectAppt && onSelectAppt(appt)}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1, cursor: 'pointer' }}
+                  title="Click to view full appointment details"
+                >
                   <div style={{
                     width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                    background: isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.12)',
+                    background: isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
                     color: isInProgress ? '#0284c7' : '#059669',
-                    border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.3)' : 'rgba(5,150,105,0.3)'}`,
+                    border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.25)' : 'rgba(5,150,105,0.2)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {isInProgress ? <Zap size={20} /> : <CheckCircle2 size={20} />}
+                    {isInProgress ? <Zap size={20} className="animate-pulse" /> : <CheckCircle2 size={20} />}
                   </div>
 
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
                       {isInProgress ? (
                         <span style={{
-                          fontSize: 10, fontWeight: 900, padding: '2px 10px', borderRadius: 999,
-                          background: 'rgba(14,165,233,0.15)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)',
+                          fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999,
+                          background: 'rgba(14,165,233,0.12)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)',
                           display: 'inline-flex', alignItems: 'center', gap: 4,
                         }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0284c7' }} />
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#0284c7' }} className="animate-ping" />
                           In Progress
                         </span>
                       ) : (
                         <span style={{
-                          fontSize: 10, fontWeight: 900, padding: '2px 10px', borderRadius: 999,
-                          background: 'rgba(5,150,105,0.12)', color: '#059669', border: '1px solid rgba(5,150,105,0.3)',
+                          fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999,
+                          background: 'rgba(5,150,105,0.08)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)',
                         }}>Confirmed</span>
                       )}
-                      <span style={{ fontSize: 10, fontWeight: 900, color: C.textMuted, fontFamily: 'monospace' }}>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>
                         #{String(appt.id).padStart(4, '0')}
                       </span>
                     </div>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '6px 0 0' }}>
-                      Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{appt.client_name || appt.client}</span>
-                      <span style={{ color: C.textMuted }}> • </span>
-                      Therapist: <span style={{ fontWeight: 900, color: isInProgress ? '#0284c7' : '#059669' }}>{appt.therapist_name || 'Unassigned'}</span>
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: isInProgress ? '#0284c7' : '#059669' }}>
-                        <Calendar size={14} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
+
+                    {/* Client & Assigned Specialist Meta */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary }}>
+                        Client: <strong style={{ color: C.textPrimary }}>{appt.client_name || appt.client}</strong>
+                      </span>
+                      <span style={{ color: C.textMuted, opacity: 0.5 }}>•</span>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8,
+                        background: isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)',
+                        color: isInProgress ? '#0284c7' : '#047857',
+                        border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}`,
+                      }}>
+                        <UserCheck size={12} /> Specialist: {appt.therapist_name || 'Unassigned'}
+                      </span>
+                    </div>
+
+                    {/* Schedule Date & Time */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isInProgress ? '#0284c7' : '#059669' }}>
+                        <Calendar size={13} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
                       </span>
                       {appt.service_duration && (
                         <span style={{
-                          display: 'flex', alignItems: 'center', gap: 5,
-                          fontSize: 12, fontWeight: 700, color: C.textSecondary,
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          fontSize: 11, fontWeight: 700, color: C.textSecondary,
                           background: C.pillBg, border: `1px solid ${C.pillBorder}`,
-                          padding: '3px 10px', borderRadius: 8,
+                          padding: '2px 8px', borderRadius: 6,
                         }}>
-                          <Clock size={13} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
+                          <Clock size={11} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
                         </span>
                       )}
                     </div>
-                    {appt.notes && (
-                      <p style={{
-                        fontSize: 11, fontWeight: 500, fontStyle: 'italic',
-                        color: C.textSecondary, margin: '10px 0 0',
-                        padding: '10px 14px', borderRadius: 14,
-                        background: C.pillBg, border: `1px solid ${C.pillBorder}`,
-                      }}>📝 "{appt.notes}"</p>
-                    )}
                   </div>
                 </div>
 
-                {/* Actions — clearly partitioned next steps */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => onComplete(appt)}
-                    title="Mark session as completed — it will be archived into History"
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
-                      fontSize: 12, fontWeight: 900, color: '#fff',
-                      background: 'linear-gradient(135deg,#062c22,#0f5040)', border: 'none',
-                      boxShadow: '0 3px 10px rgba(5,150,105,0.3)',
-                    }}
-                  ><Check size={15} /> Complete</button>
+                {/* Right: Pro Unified Action Controls */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  {isInProgress ? (
+                    <>
+                      <button
+                        onClick={() => onComplete(appt)}
+                        title="Mark session complete — archives into History"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          height: 36, padding: '0 16px', borderRadius: 12, cursor: 'pointer',
+                          fontSize: 12, fontWeight: 800, color: '#ffffff',
+                          background: 'linear-gradient(135deg,#062c22,#0a3d30)', border: 'none',
+                          boxShadow: '0 2px 8px rgba(6,44,34,0.2)',
+                        }}
+                      >
+                        <Check size={14} /> Complete Session
+                      </button>
+                      <button
+                        onClick={() => onOpenCancel(appt)}
+                        title="Cancel Appointment"
+                        style={{
+                          width: 36, height: 36, borderRadius: 12, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2',
+                          border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}`,
+                        }}
+                      >
+                        <X size={15} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => onComplete(appt)}
+                        title="Complete and checkout appointment"
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          height: 36, padding: '0 16px', borderRadius: 12, cursor: 'pointer',
+                          fontSize: 12, fontWeight: 800, color: '#ffffff',
+                          background: 'linear-gradient(135deg,#062c22,#0a3d30)', border: 'none',
+                          boxShadow: '0 2px 8px rgba(6,44,34,0.2)',
+                        }}
+                      >
+                        <Check size={14} /> Complete
+                      </button>
 
-                  {!isInProgress && onOpenReassign && (
-                    <button
-                      onClick={() => onOpenReassign(appt)}
-                      title="Change assigned therapist"
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '9px 14px', borderRadius: 14, cursor: 'pointer',
-                        fontSize: 12, fontWeight: 900,
-                        color: '#059669', background: 'rgba(5,150,105,0.1)',
-                        border: '1px solid rgba(5,150,105,0.25)',
-                      }}
-                    ><UserCheck size={14} /> Reassign</button>
+                      {onOpenReassign && (
+                        <button
+                          onClick={() => onOpenReassign(appt)}
+                          title="Switch assigned specialist"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            height: 36, padding: '0 12px', borderRadius: 12, cursor: 'pointer',
+                            fontSize: 12, fontWeight: 700, color: C.textPrimary,
+                            background: C.pillBg, border: `1px solid ${C.cardBorder}`,
+                          }}
+                        >
+                          <UserCheck size={13} style={{ color: '#059669' }} /> Reassign
+                        </button>
+                      )}
+
+                      {onOpenReschedule && (
+                        <button
+                          onClick={() => onOpenReschedule(appt)}
+                          title="Reschedule date or time"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            height: 36, padding: '0 12px', borderRadius: 12, cursor: 'pointer',
+                            fontSize: 12, fontWeight: 700, color: C.textPrimary,
+                            background: C.pillBg, border: `1px solid ${C.cardBorder}`,
+                          }}
+                        >
+                          <RotateCcw size={13} style={{ color: '#2563eb' }} /> Reschedule
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => onOpenCancel(appt)}
+                        title="Cancel Appointment"
+                        style={{
+                          width: 36, height: 36, borderRadius: 12, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2',
+                          border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}`,
+                        }}
+                      >
+                        <X size={15} />
+                      </button>
+                    </>
                   )}
-
-                  {!isInProgress && (
-                    <button
-                      onClick={() => onOpenReschedule(appt)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
-                        fontSize: 12, fontWeight: 900,
-                        color: '#2563eb', background: 'rgba(37,99,235,0.1)',
-                        border: '1px solid rgba(37,99,235,0.25)',
-                      }}
-                    ><RotateCcw size={14} /> Reschedule</button>
-                  )}
-
-                  <button
-                    onClick={() => onOpenCancel(appt)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
-                      fontSize: 12, fontWeight: 900,
-                      color: '#dc2626', background: 'rgba(239,68,68,0.1)',
-                      border: '1px solid rgba(239,68,68,0.25)',
-                    }}
-                  ><X size={15} /> Cancel</button>
                 </div>
               </motion.div>
             );
@@ -1849,11 +1899,12 @@ const AdminAppointments = () => {
     }
   };
 
-  // Summary Metrics — completed sessions live in the History module
-  const activeBookings = appointments.filter((a) => a.status === 'Pending' || a.status === 'Confirmed' || a.status === 'In Progress').length;
+  // Summary Metrics — 4 distinct operational indicators
+  const confirmedOnlyCount = appointments.filter((a) => a.status === 'Confirmed').length;
+  const inProgressCount = appointments.filter((a) => a.status === 'In Progress').length;
   const pendingCount = appointments.filter((a) => a.status === 'Pending').length;
-  const confirmedCount = appointments.filter((a) => a.status === 'Confirmed' || a.status === 'In Progress').length;
-  const requestsCount = appointments.filter((a) => a.status === 'Cancelled' || (a.notes && a.notes.toLowerCase().includes('reschedule'))).length;
+  const completedCount = appointments.filter((a) => a.status === 'Completed').length;
+  const cancelledCount = appointments.filter((a) => a.status === 'Cancelled').length;
 
   // ── System-wide search data: live appointments for global search ──
   const searchData = useMemo(() => appointments.map((a, i) => ({
@@ -1866,10 +1917,10 @@ const AdminAppointments = () => {
   })), [appointments]);
 
   const TABS = [
-    { id: 'calendar',  label: 'Master Calendar',     icon: CalendarDays },
-    { id: 'pending',   label: 'Pending Approvals',   icon: Clock, badge: pendingCount },
-    { id: 'confirmed', label: 'Confirmed / Active',  icon: CheckCircle2, badge: confirmedCount },
-    { id: 'requests',  label: 'Reschedule & Cancel', icon: RotateCcw, badge: requestsCount },
+    { id: 'calendar',  label: 'Schedule Calendar',    icon: CalendarDays },
+    { id: 'pending',   label: 'Pending Queue',        icon: Clock, badge: pendingCount },
+    { id: 'confirmed', label: 'Active Treatments',    icon: CheckCircle2, badge: confirmedOnlyCount + inProgressCount },
+    { id: 'requests',  label: 'Cancelled & Logs',     icon: RotateCcw, badge: cancelledCount },
   ];
 
   return (
@@ -1882,18 +1933,17 @@ const AdminAppointments = () => {
     >
       <div className="space-y-4 sm:space-y-6">
 
-
-        {/* ── Top Summary Metric Cards ── */}
+        {/* ── Top Summary Metric Cards (Zero Redundancy) ── */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: isWide ? 'repeat(4,1fr)' : 'repeat(2,1fr)',
           gap: isWide ? 12 : 8,
         }}>
           {[
-            { label: 'Active Bookings',     value: activeBookings,      color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: Calendar },
+            { label: 'Upcoming Scheduled',  value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck },
             { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock },
-            { label: 'Confirmed Sessions',  value: confirmedCount,      color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CheckCircle },
-            { label: 'Reschedule / Cancel', value: requestsCount,       color: '#2563eb', accent: 'rgba(37,99,235,0.12)', Icon: RotateCcw },
+            { label: 'In Treatment Now',    value: inProgressCount,     color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap },
+            { label: 'Completed History',   value: completedCount,      color: '#6366f1', accent: 'rgba(99,102,241,0.12)', Icon: CheckCircle },
           ].map(({ label, value, color, accent, Icon }) => (
             <div key={label} style={{
               background: C.cardBg,
@@ -1903,7 +1953,7 @@ const AdminAppointments = () => {
               display: 'flex',
               alignItems: 'center',
               gap: isWide ? 12 : 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               minWidth: 0,
             }}>
               <div style={{
@@ -1925,51 +1975,13 @@ const AdminAppointments = () => {
           ))}
         </div>
 
-        {/* ── Workflow Guide ── */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexWrap: 'wrap', gap: 10, padding: '12px 18px',
-          background: C.pillBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20,
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: isDark ? '#34d399' : '#059669', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Zap size={14} /> End-to-End Booking Flow:
-          </span>
-          {[
-            { step: '1', role: 'Client', action: 'Books Service', status: 'Pending', color: '#d97706' },
-            { step: '2', role: 'Admin / Staff', action: 'Assigns Specialist', status: 'Confirmed', color: '#059669' },
-            { step: '3', role: 'Therapist', action: 'Begins Session', status: 'In Progress', color: '#0284c7' },
-            { step: '4', role: 'Concluded', action: 'Session Complete', status: 'Completed', color: '#6366f1' },
-          ].map((s, i) => (
-            <React.Fragment key={s.status}>
-              {i > 0 && <ChevronRight size={13} style={{ color: C.textMuted, opacity: 0.5 }} />}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 900, width: 20, height: 20, borderRadius: '50%',
-                  background: s.color, color: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-                }}>{s.step}</span>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: C.textPrimary, lineHeight: 1.1 }}>
-                    {s.role} <span style={{ color: C.textMuted, fontWeight: 600, fontSize: 10 }}>({s.action})</span>
-                  </span>
-                  <span style={{ fontSize: 9, fontWeight: 900, color: s.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    ➔ {s.status}
-                  </span>
-                </div>
-              </div>
-            </React.Fragment>
-          ))}
-          <span style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, paddingLeft: 8, borderLeft: `1px solid ${C.cardBorder}` }}>
-            Reschedule &amp; Cancellations handled in dedicated tab
-          </span>
-        </div>
-
         {/* ── Tab Navigation ── */}
         <div style={{
           background: C.pillBg, border: `1px solid ${C.cardBorder}`,
-          borderRadius: 24, padding: 8,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+          borderRadius: 20, padding: 6,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
         }}>
-          {/* Scrollable on mobile, grid on desktop */}
+          {/* Scrollable on mobile, flex on desktop */}
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -1983,7 +1995,7 @@ const AdminAppointments = () => {
                     flex: '1 0 auto',
                     minWidth: 'max-content',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    borderRadius: 16, padding: '10px 16px',
+                    borderRadius: 14, padding: '9px 16px',
                     fontSize: 12, fontWeight: 800, cursor: 'pointer', transition: 'all 0.18s',
                     border: active ? `2px solid ${isDark ? '#34d399' : '#059669'}` : '2px solid transparent',
                     background: active ? (isDark ? 'rgba(52,211,153,0.15)' : '#059669') : 'transparent',
@@ -2046,6 +2058,7 @@ const AdminAppointments = () => {
               <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <ConfirmedSessionsTab
                   appointments={appointments}
+                  onSelectAppt={(appt) => setSelectedAppt(appt)}
                   onOpenReassign={(appt) => setAcceptTarget(appt)}
                   onOpenReschedule={(appt) => setRescheduleTarget(appt)}
                   onOpenCancel={(appt) => setRejectTarget(appt)}
