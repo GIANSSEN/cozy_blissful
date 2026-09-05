@@ -124,7 +124,7 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
           background: C.modalBg, border: `1px solid ${C.cardBorder}`,
           borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
           width: '100%', maxWidth: 512, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column',
+          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
         }}
       >
         {/* Header */}
@@ -626,7 +626,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
           background: C.modalBg, border: `1px solid ${C.cardBorder}`,
           borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
           width: '100%', maxWidth: 448, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column',
+          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
         }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#7f1d1d,#991b1b)', flexShrink: 0 }}>
@@ -654,7 +654,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
+        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left', overflowY: 'auto', flex: 1 }}>
           <div style={{
             padding: 14, borderRadius: 16, background: 'rgba(239,68,68,0.08)',
             border: '1px solid rgba(239,68,68,0.2)', display: 'flex', flexDirection: 'column', gap: 4,
@@ -800,7 +800,7 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
           background: C.modalBg, border: `1px solid ${C.cardBorder}`,
           borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
           width: '100%', maxWidth: 448, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column',
+          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
         }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#1e3a8a,#3b55e6)', flexShrink: 0 }}>
@@ -808,8 +808,8 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
                 width: 40, height: 40, borderRadius: 14,
-                background: 'rgba(255,255,255,0.2)', color: '#ffffff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)',
+                color: '#93c5fd', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <RotateCcw size={20} />
               </div>
@@ -1752,7 +1752,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                 </div>
 
                 {/* Right: Pro Unified Action Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   {isCompletedByTherapist ? (
                     <button
                       onClick={() => onComplete(appt)}

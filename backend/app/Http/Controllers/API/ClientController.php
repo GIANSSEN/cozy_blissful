@@ -40,6 +40,10 @@ class ClientController extends Controller
                 'datetime'        => $appt->datetime->format('Y-m-d H:i:s'),
                 'status'          => $appt->status,
                 'notes'           => $appt->notes,
+                'payment_status'  => $appt->payment_status ?? 'unpaid',
+                'payment_method'  => $appt->payment_method,
+                'amount_paid'     => $appt->amount_paid ? (float)$appt->amount_paid : null,
+                'paymongo_session_id' => $appt->paymongo_session_id,
             ];
         });
 
@@ -299,6 +303,7 @@ class ClientController extends Controller
                 'datetime'         => $appt->datetime->format('Y-m-d H:i:s'),
                 'status'           => 'Pending',
                 'notes'            => $appt->notes,
+                'payment_status'   => 'unpaid',
             ],
         ], 201);
     }

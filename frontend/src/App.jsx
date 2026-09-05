@@ -36,6 +36,9 @@ import StaffAppointments from './pages/staff/StaffAppointments';
 
 // Client Pages
 import ClientDashboard from './pages/client/ClientDashboard';
+import BookingSuccess from './pages/booking/BookingSuccess';
+import BookingCancel from './pages/booking/BookingCancel';
+
 // Page transition wrapper
 const PageTransition = ({ children }) => (
   <motion.div
@@ -79,9 +82,11 @@ function AnimatedRoutes() {
         <Route path="/staff/therapists" element={<ProtectedRoute allowedRoles={['staff']}><PageTransition><StaffTherapists /></PageTransition></ProtectedRoute>} />
         <Route path="/staff/appointments" element={<ProtectedRoute allowedRoles={['staff']}><PageTransition><StaffAppointments /></PageTransition></ProtectedRoute>} />
 
-        {/* ── Client ──────────────────────────────────── */}
+        {/* ── Client & Payment ──────────────────────── */}
         <Route path="/booking/dashboard" element={<ProtectedRoute allowedRoles={['client']}><PageTransition><ClientDashboard /></PageTransition></ProtectedRoute>} />
         <Route path="/client/dashboard" element={<ProtectedRoute allowedRoles={['client']}><PageTransition><ClientDashboard /></PageTransition></ProtectedRoute>} />
+        <Route path="/booking/success" element={<PageTransition><BookingSuccess /></PageTransition>} />
+        <Route path="/booking/cancel" element={<PageTransition><BookingCancel /></PageTransition>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

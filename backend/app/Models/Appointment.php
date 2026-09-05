@@ -18,6 +18,11 @@ class Appointment extends Model
         'datetime',
         'status',
         'notes',
+        'payment_status',
+        'payment_method',
+        'paymongo_session_id',
+        'paymongo_payment_id',
+        'amount_paid',
         'reminder_24h_sent_at',
         'reminder_2h_sent_at',
     ];

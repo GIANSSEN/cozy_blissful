@@ -11,6 +11,7 @@ use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\TherapistController;
 use App\Http\Controllers\API\StaffController;
 use App\Http\Controllers\API\SocialAuthController;
+use App\Http\Controllers\API\PaymentController;
 
 // Public auth routes with custom rate limiting for enhanced security
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle.register');
@@ -21,6 +22,11 @@ Route::post('/auth/google', [SocialAuthController::class, 'google'])->middleware
 Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middleware('throttle.login');
 Route::get('/auth/facebook/redirect', [SocialAuthController::class, 'redirectFacebook']);
 Route::get('/auth/facebook/callback', [SocialAuthController::class, 'callbackFacebook']);
+
+// PayMongo Webhook & Public Verification routes
+Route::post('/payment/webhook', [PaymentController::class, 'handleWebhook']);
+Route::get('/payment/verify-session/{sessionId}', [PaymentController::class, 'verifySession']);
+Route::post('/payment/checkout-session', [PaymentController::class, 'createCheckoutSession']);
 
 
 // Protected routes group

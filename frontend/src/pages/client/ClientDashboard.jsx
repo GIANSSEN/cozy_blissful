@@ -10,7 +10,8 @@ import {
   LogOut, Plus, ChevronRight, ChevronLeft,
   Sparkles, Award, Gift, Send, UserCheck, Star, X,
   Zap, MessageSquare, Scissors, XCircle, RefreshCw,
-  CalendarX, CalendarCheck, Ban, Info,
+  CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
+  CheckCircle2, Compass, Heart, PhoneCall, MapPin
 } from 'lucide-react';
 
 // ─── Design system helpers ─────────────────────────────────────────────────
@@ -35,7 +36,7 @@ const GoldBtn = ({ children, onClick, disabled, className = '', type = 'button' 
     type={type}
     onClick={onClick}
     disabled={disabled}
-    className={`inline-flex items-center gap-2 py-3 px-6 text-white font-bold rounded-2xl text-sm transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 ${className}`}
+    className={`inline-flex items-center justify-center gap-2 py-3 px-6 text-white font-bold rounded-2xl text-xs sm:text-sm transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 cursor-pointer shadow-md ${className}`}
     style={{ background: 'linear-gradient(135deg,#062c22 0%,#0f5040 100%)', boxShadow: '0 6px 18px rgba(6,44,34,0.25)' }}
   >
     {children}
@@ -101,17 +102,20 @@ const ServiceCards = ({ services, selectedId, onSelect }) => (
   <div className="space-y-4">
     <div>
       <h3 className="text-base font-black text-slate-800">Choose Your Treatment</h3>
-      <p className="text-xs text-slate-400 mt-0.5">Select the service you'd like to book today</p>
+      <p className="text-xs text-slate-400 mt-0.5">Select from our signature wellness and spa rituals</p>
     </div>
     <div className="grid sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
       {services.map((s) => {
         const isSelected = s.id === selectedId;
+        const price = Number(s.price ?? 0);
+        const formattedPrice = `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
         return (
           <button
             key={s.id}
             type="button"
             onClick={() => onSelect(s)}
-            className="text-left rounded-3xl p-4 transition-all duration-200 hover:scale-[1.02]"
+            className="text-left rounded-3xl p-4 transition-all duration-200 hover:scale-[1.02] cursor-pointer"
             style={{
               background: isSelected ? 'linear-gradient(135deg,#062c22,#0a3d30)' : 'linear-gradient(145deg,#fdfcfa,#f5f0e8)',
               boxShadow: isSelected ? '0 8px 24px rgba(6,44,34,0.25), inset 2px 2px 6px rgba(255,255,255,0.1)' : '8px 8px 20px #eae6df, -8px -8px 20px #ffffff',
@@ -122,16 +126,16 @@ const ServiceCards = ({ services, selectedId, onSelect }) => (
               <div className="flex-1 min-w-0">
                 <p className="font-black text-sm leading-tight" style={{ color: isSelected ? '#fff' : '#1e293b' }}>{s.name}</p>
                 {s.category && (
-                  <p className="text-[10px] mt-0.5 font-semibold uppercase tracking-wider" style={{ color: isSelected ? 'rgba(255,255,255,0.55)' : '#94a3b8' }}>{s.category}</p>
+                  <p className="text-[10px] mt-0.5 font-semibold uppercase tracking-wider" style={{ color: isSelected ? 'rgba(255,255,255,0.6)' : '#94a3b8' }}>{s.category}</p>
                 )}
                 {s.description && (
-                  <p className="text-[11px] mt-1.5 leading-relaxed line-clamp-2" style={{ color: isSelected ? 'rgba(255,255,255,0.7)' : '#64748b' }}>{s.description}</p>
+                  <p className="text-[11px] mt-1.5 leading-relaxed line-clamp-2" style={{ color: isSelected ? 'rgba(255,255,255,0.75)' : '#64748b' }}>{s.description}</p>
                 )}
               </div>
               <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                 <span className="text-xs font-black px-2.5 py-1 rounded-xl"
-                  style={{ background: isSelected ? 'rgba(255,255,255,0.15)' : 'rgba(6,44,34,0.08)', color: isSelected ? '#fff' : '#062c22' }}>
-                  ₱{s.price ?? 'TBD'}
+                  style={{ background: isSelected ? 'rgba(255,255,255,0.15)' : 'rgba(6,44,34,0.08)', color: isSelected ? '#f5d88a' : '#062c22' }}>
+                  {formattedPrice}
                 </span>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1"
                   style={{ background: isSelected ? 'rgba(191,161,95,0.25)' : 'rgba(191,161,95,0.1)', color: isSelected ? '#f5d88a' : '#a08742' }}>
@@ -142,14 +146,14 @@ const ServiceCards = ({ services, selectedId, onSelect }) => (
             {isSelected && (
               <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
-                <span className="text-[10px] font-bold text-emerald-300">Selected</span>
+                <span className="text-[10px] font-bold text-emerald-300">Selected Treatment</span>
               </div>
             )}
           </button>
         );
       })}
       {services.length === 0 && (
-        <div className="col-span-2 text-center py-10 text-slate-400 text-sm">No services available.</div>
+        <div className="col-span-2 text-center py-10 text-slate-400 text-sm">No services currently available.</div>
       )}
     </div>
   </div>
@@ -158,7 +162,6 @@ const ServiceCards = ({ services, selectedId, onSelect }) => (
 // ─── STEP 2: DATE & TIME PICKER ──────────────────────────────────────────────
 
 const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots }) => {
-  // Generate next 14 days
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i + 1);
@@ -167,7 +170,6 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
 
   const dayKey = (d) => d.toISOString().split('T')[0];
 
-  // Helper to categorize slots by period
   const categorizeSlot = (slot) => {
     const [h] = slot.split(':');
     const hr = parseInt(h, 10);
@@ -200,7 +202,7 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
                 type="button"
                 disabled={isBooked}
                 onClick={() => !isBooked && onTimeSelect(slot)}
-                className="py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-200 hover:scale-[1.02] active:scale-95 text-center flex items-center justify-center gap-1"
+                className="py-2.5 px-3 rounded-2xl text-xs font-bold transition-all duration-200 hover:scale-[1.02] active:scale-95 text-center flex items-center justify-center gap-1 cursor-pointer"
                 style={
                   isBooked
                     ? { background: 'rgba(0,0,0,0.03)', color: '#cbd5e1', border: '1px solid rgba(0,0,0,0.04)', cursor: 'not-allowed', textDecoration: 'line-through' }
@@ -222,8 +224,8 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-black text-slate-800">Select Preferred Date &amp; Time</h3>
-        <p className="text-xs text-slate-400 mt-0.5">Cozy Blissful Salon Hours: 9:00 AM – 9:00 PM Daily</p>
+        <h3 className="text-base font-black text-slate-800">Select Date &amp; Appointment Time</h3>
+        <p className="text-xs text-slate-400 mt-0.5">Salon Hours: 9:00 AM – 9:00 PM Daily</p>
       </div>
 
       {/* Concierge Matching Notice */}
@@ -234,9 +236,9 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
           <UserCheck className="w-4 h-4" />
         </div>
         <div>
-          <p className="text-xs font-black text-emerald-950">Expert Specialist Assigned by Admin &amp; Staff</p>
+          <p className="text-xs font-black text-emerald-950">Specialist Matching by Reception Concierge</p>
           <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
-            To ensure the highest standard of care, our concierge desk carefully reviews your appointment and matches you with a certified therapist on shift. You will receive an instant notification once assigned!
+            To guarantee premium personalized service, our front desk carefully reviews your appointment and matches you with a certified therapist on shift.
           </p>
         </div>
       </div>
@@ -256,7 +258,7 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
                 key={key}
                 type="button"
                 onClick={() => onDateSelect(key)}
-                className="flex-shrink-0 flex flex-col items-center px-3.5 py-3 rounded-2xl transition-all duration-200 hover:scale-105"
+                className="flex-shrink-0 flex flex-col items-center px-3.5 py-3 rounded-2xl transition-all duration-200 hover:scale-105 cursor-pointer"
                 style={{
                   background: isSelected ? 'linear-gradient(135deg,#062c22,#0a3d30)' : 'linear-gradient(145deg,#fdfcfa,#f5f0e8)',
                   boxShadow: isSelected ? '0 6px 16px rgba(6,44,34,0.25)' : '4px 4px 10px #eae6df, -4px -4px 10px #ffffff',
@@ -323,12 +325,14 @@ const ReviewStep = ({ service, date, time, notes, onNotesChange }) => {
   const hour = parseInt(h, 10);
   const timeLabel = `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
   const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const price = Number(service?.price ?? 0);
+  const formattedPrice = `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
   return (
     <div className="space-y-5">
       <div>
         <h3 className="text-base font-black text-slate-800">Review Your Booking</h3>
-        <p className="text-xs text-slate-400 mt-0.5">Confirm your schedule details and specify any preferences</p>
+        <p className="text-xs text-slate-400 mt-0.5">Confirm your schedule details and specify any treatment preferences</p>
       </div>
 
       {/* Summary Card */}
@@ -340,7 +344,7 @@ const ReviewStep = ({ service, date, time, notes, onNotesChange }) => {
             <p className="text-emerald-300/70 text-xs font-semibold mt-0.5">{service.category}</p>
           </div>
           <div className="text-right">
-            <p className="text-white font-black text-xl">₱{service.price ?? 'TBD'}</p>
+            <p className="text-amber-300 font-black text-xl">{formattedPrice}</p>
             <p className="text-emerald-300/70 text-[10px] font-semibold">{service.duration} minutes</p>
           </div>
         </div>
@@ -357,16 +361,16 @@ const ReviewStep = ({ service, date, time, notes, onNotesChange }) => {
           <div className="flex items-center gap-2 text-xs">
             <UserCheck className="w-3.5 h-3.5 text-emerald-300 flex-shrink-0" />
             <span className="text-white font-semibold">
-              Specialist: <strong className="text-emerald-300">Assigned by Admin &amp; Staff Desk</strong>
+              Specialist: <strong className="text-emerald-300">Assigned by Reception Desk</strong>
             </span>
           </div>
         </div>
 
         <div className="border-t border-white/10 pt-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-emerald-200/70 font-semibold uppercase tracking-wider text-[10px]">Status After Booking</span>
-            <span className="bg-amber-400/20 text-amber-300 font-bold px-2.5 py-1 rounded-full border border-amber-400/30 text-[11px]">
-              ⏳ Pending Approval &amp; Assignment
+            <span className="text-emerald-200/70 font-semibold uppercase tracking-wider text-[10px]">Payment Method</span>
+            <span className="bg-white/15 text-white font-bold px-2.5 py-1 rounded-full border border-white/20 text-[11px]">
+              💵 Settle at Salon Reception (Cash or Card)
             </span>
           </div>
         </div>
@@ -380,11 +384,16 @@ const ReviewStep = ({ service, date, time, notes, onNotesChange }) => {
         <textarea
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
-          placeholder="e.g. Desired pressure (light/medium/firm), focus on neck/lower back, preferred aromatherapy scent (lavender/eucalyptus)..."
+          placeholder="e.g. Desired pressure (light/medium/firm), focus on neck/lower back, preferred aromatherapy scent (lavender/chamomile/eucalyptus)..."
           rows={3}
           className="w-full px-4 py-3 rounded-2xl text-xs text-slate-700 bg-transparent outline-none resize-none leading-relaxed"
           style={{ background: 'linear-gradient(145deg,#f5f0e8,#ece8e0)', boxShadow: 'inset 3px 3px 6px #e0dbd3, inset -3px -3px 6px #ffffff' }}
         />
+      </div>
+
+      <div className="flex items-center gap-2 p-3 rounded-2xl text-xs text-slate-600 bg-emerald-50/50 border border-emerald-100">
+        <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0" />
+        <span>No advance payment needed today. Your appointment will be confirmed by staff immediately.</span>
       </div>
     </div>
   );
@@ -406,15 +415,21 @@ const ConfirmationStep = ({ booking, onDone }) => (
     <div>
       <h3 className="text-xl font-black text-slate-800">Booking Request Submitted!</h3>
       <p className="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
-        Your appointment is in our pending queue. Admin &amp; Staff will assign your specialist and confirm your session.
+        Your appointment is registered in our queue. Our reception concierge will assign your specialist and confirm your session.
       </p>
     </div>
     <div className="rounded-2xl p-4 text-left space-y-2 max-w-xs mx-auto"
       style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking Reference</p>
-      <p className="text-lg font-black text-slate-800">#{String(booking?.id).padStart(4, '0')}</p>
+      <p className="text-lg font-black text-slate-800">#{String(booking?.id).padStart(5, '0')}</p>
       <p className="text-xs text-slate-600 font-semibold">{booking?.service}</p>
       <p className="text-xs text-slate-500">{booking?.datetime}</p>
+      <div className="pt-2 border-t border-black/5 flex items-center justify-between text-[11px]">
+        <span className="text-slate-500 font-semibold">Payment:</span>
+        <span className="font-bold text-emerald-900 bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200">
+          Pay at Reception
+        </span>
+      </div>
       <div className="pt-2 border-t border-black/5 flex items-center gap-1.5 text-[10px] font-bold text-emerald-800">
         <UserCheck className="w-3 h-3" /> Specialist will be assigned shortly
       </div>
@@ -422,7 +437,7 @@ const ConfirmationStep = ({ booking, onDone }) => (
     <p className="text-xs text-slate-400">📧 A confirmation email will be sent to your inbox once approved.</p>
     <button
       onClick={onDone}
-      className="inline-flex items-center gap-2 py-3 px-8 text-white font-bold rounded-2xl text-xs transition-all duration-200 hover:scale-105"
+      className="inline-flex items-center gap-2 py-3 px-8 text-white font-bold rounded-2xl text-xs transition-all duration-200 hover:scale-105 cursor-pointer shadow-md"
       style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 6px 18px rgba(6,44,34,0.25)' }}
     >
       <Sparkles className="w-4 h-4" /> Back to Dashboard
@@ -471,25 +486,23 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.92, opacity: 0, y: 24 }}
         transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-        className="w-full max-w-md rounded-[2rem] overflow-hidden"
+        className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-[2rem]"
         style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.8)' }}
       >
-        {/* Red danger header */}
         <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg,#7f1d1d,#991b1b)' }}>
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
               <CalendarX className="w-6 h-6 text-red-200" />
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-red-200 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-red-200 hover:text-white transition cursor-pointer" style={{ background: 'rgba(255,255,255,0.1)' }}>
               <X className="w-4 h-4" />
             </button>
           </div>
           <h2 className="text-white font-black text-lg">Cancel Appointment</h2>
-          <p className="text-red-200/70 text-xs mt-0.5">This action cannot be undone</p>
+          <p className="text-red-200/70 text-xs mt-0.5">This action will release your scheduled time slot</p>
         </div>
 
         <div className="p-7 space-y-5">
-          {/* Booking Summary */}
           <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(127,29,29,0.05)', border: '1px solid rgba(127,29,29,0.12)' }}>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Appointment to Cancel</p>
             <p className="font-black text-slate-800 text-sm">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
@@ -503,11 +516,10 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* Warning note */}
           <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
             <Info className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-slate-600 leading-relaxed">
-              <span className="font-bold text-amber-600">Note:</span> Once cancelled, your time slot will be released. To re-book, you'll need to schedule a new appointment.
+              <span className="font-bold text-amber-600">Note:</span> Once cancelled, you can always schedule a fresh appointment at your convenience.
             </p>
           </div>
 
@@ -518,12 +530,12 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
           )}
 
           <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 transition hover:bg-slate-100"
+            <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 transition hover:bg-slate-100 cursor-pointer"
               style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
-              Keep Appointment
+              Keep Booking
             </button>
             <button onClick={handleCancel} disabled={loading}
-              className="flex-1 py-3 rounded-2xl text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-2xl text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer shadow-md"
               style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 6px 18px rgba(220,38,38,0.3)' }}>
               {loading
                 ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cancelling…</>
@@ -567,7 +579,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
       await API.post(`/booking/${booking.id}/reschedule`, {
         datetime: `${selectedDate}T${selectedTime}:00`,
       });
-      onSuccess('Appointment rescheduled! You will receive a fresh reminder email.');
+      onSuccess('Appointment rescheduled! Fresh reminder emails will be dispatched.');
       onClose();
     } catch (err) {
       setError(err.response?.data?.message || 'Rescheduling failed. Please try again.');
@@ -578,7 +590,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
 
   const formatSlot = (slot) => {
     const [h, m] = slot.split(':');
-    const hr = parseInt(h);
+    const hr = parseInt(h, 10);
     return `${hr > 12 ? hr - 12 : hr === 0 ? 12 : hr}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
   };
 
@@ -597,13 +609,12 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
         className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-[2rem]"
         style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.8)' }}
       >
-        {/* Header */}
         <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}>
           <div className="flex items-center justify-between mb-3">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
               <CalendarCheck className="w-6 h-6 text-emerald-300" />
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-emerald-200 hover:text-white transition" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-emerald-200 hover:text-white transition cursor-pointer" style={{ background: 'rgba(255,255,255,0.1)' }}>
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -612,7 +623,6 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
         </div>
 
         <div className="p-7 space-y-5">
-          {/* Current booking info */}
           <div className="rounded-2xl p-4 space-y-1.5" style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Schedule</p>
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -621,7 +631,6 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* Date Picker */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-emerald-700" /> Pick New Date
@@ -636,7 +645,6 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
             />
           </div>
 
-          {/* Time Slots */}
           {selectedDate && (
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -658,7 +666,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
                     const isSelected = selectedTime === slot;
                     return (
                       <button key={slot} disabled={!isAvailable} onClick={() => setSelectedTime(slot)}
-                        className="py-2.5 rounded-xl text-xs font-bold transition-all"
+                        className="py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
                         style={{
                           background: isSelected
                             ? 'linear-gradient(135deg,#062c22,#0a3d30)'
@@ -681,7 +689,6 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Reminder notice */}
           <div className="flex items-start gap-2.5 p-3 rounded-xl" style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
             <Info className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-slate-600 leading-relaxed">
@@ -696,12 +703,12 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
           )}
 
           <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 transition hover:bg-slate-100"
+            <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-sm font-bold text-slate-500 transition hover:bg-slate-100 cursor-pointer"
               style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
               Cancel
             </button>
             <button onClick={handleReschedule} disabled={submitting || !selectedDate || !selectedTime}
-              className="flex-1 py-3 rounded-2xl text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded-2xl text-sm font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer shadow-md"
               style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 6px 18px rgba(6,44,34,0.28)' }}>
               {submitting
                 ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Rescheduling…</>
@@ -715,7 +722,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
   );
 };
 
-// ─── BOOKING MODAL ───────────────────────────────────────────────────────────
+// ─── BOOKING MODAL WIZARD ───────────────────────────────────────────────────
 
 const BookingWizard = ({ data, onClose, onSuccess }) => {
   const [step, setStep] = useState(0);
@@ -729,7 +736,6 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [error, setError] = useState('');
 
-  // Fetch available slots whenever date or service changes
   useEffect(() => {
     if (selectedDate && selectedService) {
       setLoadingSlots(true);
@@ -770,7 +776,7 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
       setStep(3);
       onSuccess();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Booking failed. Please try again.';
+      const msg = err.response?.data?.message || 'Booking failed. Please check slot availability and try again.';
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -782,21 +788,21 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(6px)' }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => e.target === e.currentTarget && step < 3 && onClose()}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 20 }}
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-[2rem]"
+        className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-[2rem]"
         style={{
           background: 'linear-gradient(145deg,#fdfcfa 0%,#f5f0e8 100%)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.8)',
         }}
       >
-        <div className="p-6">
+        <div className="p-5 sm:p-7">
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
             <div>
@@ -804,7 +810,7 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
               <p className="text-[10px] text-slate-400 font-semibold">Step {step + 1} of {STEP_LABELS.length}</p>
             </div>
             {step < 3 && (
-              <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 transition"
+              <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 transition cursor-pointer"
                 style={{ background: 'rgba(0,0,0,0.05)' }}>
                 <X className="w-4 h-4" />
               </button>
@@ -871,7 +877,7 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
                 type="button"
                 onClick={handleBack}
                 disabled={step === 0}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-700 disabled:opacity-30"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-700 disabled:opacity-30 cursor-pointer"
                 style={{ background: 'rgba(0,0,0,0.04)' }}
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Back
@@ -884,9 +890,9 @@ const BookingWizard = ({ data, onClose, onSuccess }) => {
               ) : (
                 <GoldBtn onClick={handleSubmit} disabled={submitting}>
                   {submitting ? (
-                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Booking…</>
+                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Securing Slot…</>
                   ) : (
-                    <><CheckCircle className="w-4 h-4" /> Confirm Booking</>
+                    <><CheckCircle className="w-4 h-4" /> Confirm Appointment</>
                   )}
                 </GoldBtn>
               )}
@@ -909,15 +915,16 @@ const ClientDashboard = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [bookingFilter, setBookingFilter] = useState('all'); // 'all' | 'active' | 'completed' | 'cancelled'
 
   const showToast = (msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg);
 
-  // Therapist chat
+  // Therapist chat messages
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'therapist', text: "Hello! I am preparing the massage table and oils. I will arrive at your home around 2:00 PM." },
-    { sender: 'client',    text: "Thank you! Please bring the Lavender scent if available." },
-    { sender: 'therapist', text: "Of course! I have pre-packed Lavender and Chamomile for your Swedish massage. See you shortly!" },
+    { sender: 'therapist', text: "Hello! I am preparing the treatment suite and essential aromatherapy oils for your session." },
+    { sender: 'client',    text: "Thank you! Please prepare the Lavender & Eucalyptus scent if available." },
+    { sender: 'therapist', text: "Of course! I have pre-warmed organic Lavender oils ready for your Swedish massage. Looking forward to welcoming you!" },
   ]);
 
   const fetchDashboardData = () => {
@@ -934,65 +941,155 @@ const ClientDashboard = () => {
   const sendChatMessage = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    setChatMessages((prev) => [...prev, { sender: 'client', text: chatInput }]);
+    const msg = chatInput.trim();
+    setChatMessages((prev) => [...prev, { sender: 'client', text: msg }]);
     setChatInput('');
     setTimeout(() => {
-      setChatMessages((prev) => [...prev, { sender: 'therapist', text: "Understood! I am on my way now. See you soon!" }]);
-    }, 1500);
+      setChatMessages((prev) => [...prev, { sender: 'therapist', text: "Noted with pleasure! Everything is set for your absolute relaxation. See you soon!" }]);
+    }, 1200);
   };
 
-  const completedCount = data?.bookings?.filter(b => b.status === 'Confirmed' || b.status === 'In Progress' || b.status === 'Completed').length || 0;
+  const completedCount = data?.bookings?.filter(b => b.status === 'Completed').length || 0;
+  const activeCount = data?.bookings?.filter(b => b.status === 'Pending' || b.status === 'Confirmed' || b.status === 'In Progress').length || 0;
   const stamps = Math.min(completedCount + 3, 10);
   const latestConfirmedBooking = data?.bookings?.find(b => (b.status === 'Confirmed' || b.status === 'In Progress') && b.therapist_name && b.therapist_name !== 'Awaiting Assignment');
   const assignedTherapistName = latestConfirmedBooking?.therapist_name || null;
 
+  // Filtered bookings
+  const filteredBookings = (data?.bookings || []).filter((b) => {
+    if (bookingFilter === 'active') return b.status === 'Pending' || b.status === 'Confirmed' || b.status === 'In Progress';
+    if (bookingFilter === 'completed') return b.status === 'Completed';
+    if (bookingFilter === 'cancelled') return b.status === 'Cancelled';
+    return true;
+  });
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#faf8f5', fontFamily: "'Inter', sans-serif" }}>
 
-      {/* ═══ HEADER ══════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 flex items-center justify-between px-6 py-4"
-        style={{ background: 'rgba(250,248,245,0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+      {/* ═══ LUXURY STICKY NAVBAR ══════════════════════════════════════════ */}
+      <header className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-8 py-3.5 border-b border-black/[0.04]"
+        style={{ background: 'rgba(250,248,245,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
         <div className="flex items-center space-x-3">
-          <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-full object-cover" />
+          <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-[#bfa15f]/30" />
           <div>
-            <span className="font-bold text-slate-800 tracking-wide block text-sm leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Cozy Blissful</span>
-            <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: '#bfa15f' }}>Salon & Spa</span>
+            <span className="font-bold text-slate-800 tracking-wide block text-sm leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Cozy Blissful
+            </span>
+            <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#bfa15f' }}>
+              Salon &amp; Spa Luxury Sanctuary
+            </span>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+
+        <div className="flex items-center space-x-3 sm:space-x-4">
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold text-slate-700">{user?.name || 'Client'}</p>
-            <p className="text-[10px] text-slate-400">{user?.email || ''}</p>
+            <p className="text-xs font-bold text-slate-800">{user?.name || 'Valued Client'}</p>
+            <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+              ✦ CB Club Member
+            </span>
           </div>
-          <button onClick={handleLogout}
-            className="w-9 h-9 rounded-2xl flex items-center justify-center text-slate-400 hover:text-red-500 transition duration-200"
-            style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '3px 3px 8px #ddd8cf, -3px -3px 8px #ffffff' }}>
+          <button
+            onClick={handleLogout}
+            title="Sign Out"
+            className="w-9 h-9 rounded-2xl flex items-center justify-center text-slate-400 hover:text-red-500 transition duration-200 cursor-pointer"
+            style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '3px 3px 8px #ddd8cf, -3px -3px 8px #ffffff' }}
+          >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/* ═══ MAIN ════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-8 space-y-8">
+      {/* ═══ MAIN CONTENT ══════════════════════════════════════════════════ */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
-        {/* Welcome Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Welcome back, {user?.name?.split(' ')[0] || 'Guest'} ✨</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Manage your appointments, view loyalty rewards, and book your next in-salon treatment</p>
+        {/* ── Welcome Banner with Quick Metrics ────────────────────────────── */}
+        <div className="rounded-[2.5rem] p-6 sm:p-8 relative overflow-hidden text-white"
+          style={{
+            background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 50%, #0f5040 100%)',
+            boxShadow: '0 20px 40px rgba(6,44,34,0.22)'
+          }}>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/10 text-amber-300 border border-white/15">
+                <Sparkles className="w-3 h-3 text-amber-300" /> Client Wellness Lounge
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Welcome back, {user?.name?.split(' ')[0] || 'Guest'} ✨
+              </h1>
+              <p className="text-xs sm:text-sm text-emerald-100/85 leading-relaxed">
+                Enjoy your personalized spa journey, manage your reservations, and claim exclusive loyalty treatment rewards.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setShowWizard(true)}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl text-xs sm:text-sm font-black text-emerald-950 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #d4b87a 100%)' }}
+              >
+                <Plus className="w-4 h-4" /> Book a Treatment
+              </button>
+            </div>
           </div>
-          <GoldBtn onClick={() => setShowWizard(true)}>
-            <Plus className="w-4 h-4" /> Book a Session
-          </GoldBtn>
+
+          {/* Ambient soft glow */}
+          <div className="absolute right-0 bottom-0 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ background: '#bfa15f' }} />
+        </div>
+
+        {/* ── 4-Stat Metric Strip ──────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <ClayCard className="p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(6,44,34,0.08)', color: '#062c22' }}>
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Bookings</p>
+              <p className="text-lg font-black text-slate-800">{activeCount} Sessions</p>
+            </div>
+          </ClayCard>
+
+          <ClayCard className="p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(16,185,129,0.1)', color: '#047857' }}>
+              <CheckCircle className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Completed</p>
+              <p className="text-lg font-black text-slate-800">{completedCount} Treatments</p>
+            </div>
+          </ClayCard>
+
+          <ClayCard className="p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(191,161,95,0.15)', color: '#a08742' }}>
+              <Award className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loyalty Club</p>
+              <p className="text-lg font-black text-amber-700">{stamps} / 10 Stamps</p>
+            </div>
+          </ClayCard>
+
+          <ClayCard className="p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1' }}>
+              <Sparkles className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VIP Status</p>
+              <p className="text-lg font-black text-slate-800">Gold Tier</p>
+            </div>
+          </ClayCard>
         </div>
 
         {loading ? <LoadingSpinner /> : (
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
 
-            {/* ── LEFT/MAIN COLUMN ──────────────────────────────────────── */}
+            {/* ── LEFT/MAIN COLUMN (2 Cols) ─────────────────────────────── */}
             <div className="lg:col-span-2 space-y-6">
 
-              {/* Loyalty Card */}
+              {/* ── Loyalty Passport Card ───────────────────────────────── */}
               <ClayCard className="p-6 relative overflow-hidden" style={{
                 background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 60%, #0f5040 100%)',
                 boxShadow: '12px 12px 32px rgba(6,44,34,0.25), -6px -6px 16px rgba(255,255,255,0.08)'
@@ -1003,9 +1100,9 @@ const ClientDashboard = () => {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-white font-bold text-base tracking-tight flex items-center gap-1.5" style={{ fontFamily: "'Playfair Display', serif" }}>
-                      <Award className="w-4 h-4 text-amber-400" /> Cozy Blissful Loyalty Club
+                      <Award className="w-4 h-4 text-amber-400" /> Cozy Blissful Loyalty Passport
                     </h2>
-                    <p className="text-[10px] text-emerald-200/70 mt-0.5">Collect 10 stamps — redeem for a FREE in-salon Swedish Massage!</p>
+                    <p className="text-[10px] text-emerald-200/70 mt-0.5">Collect 10 treatment stamps to receive a complimentary 60-minute Swedish Massage!</p>
                   </div>
                   <span className="text-[11px] font-bold text-amber-400 bg-white/10 px-2.5 py-1 rounded-full border border-white/15">
                     {stamps} / 10 Stamps
@@ -1028,23 +1125,23 @@ const ClientDashboard = () => {
                 </div>
                 <p className="text-xs text-emerald-200/80 font-medium">
                   {stamps < 10
-                    ? <span>💆 Book and complete <strong>{10 - stamps} more sessions</strong> at our salon to redeem your free massage!</span>
-                    : <span className="text-amber-300 font-bold">🎉 Congratulations! You have a FREE in-salon treatment ready to claim!</span>}
+                    ? <span>💆 Complete <strong>{10 - stamps} more sessions</strong> at our salon to claim your complimentary massage!</span>
+                    : <span className="text-amber-300 font-bold">🎉 Congratulations! You have a complimentary massage reward ready to redeem at front desk!</span>}
                 </p>
               </ClayCard>
 
-              {/* Active Rewards */}
+              {/* ── Active Rewards & Vouchers ───────────────────────────── */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Gift className="w-4 h-4" style={{ color: '#bfa15f' }} /> Active Rewards & Vouchers
+                  <Gift className="w-4 h-4" style={{ color: '#bfa15f' }} /> Active Rewards &amp; Vouchers
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {[
-                    { code: 'CBWELCOME20', title: '20% Off First Treatment', desc: 'Valid for new client accounts', exp: 'Exp: Aug 30' },
-                    { code: 'MIDWEEK150',  title: '₱150 Off Midweek Bliss',  desc: 'Bookings scheduled Wed or Thu', exp: 'Exp: Aug 15' },
+                    { code: 'CBWELCOME20', title: '20% Off First Treatment', desc: 'Valid for all first-time bookings', exp: 'Valid: Ongoing' },
+                    { code: 'MIDWEEK150',  title: '₱150 Off Midweek Bliss',  desc: 'Applicable Wednesday & Thursday', exp: 'Valid: Active' },
                   ].map((voucher) => (
                     <div key={voucher.code} className="rounded-3xl p-4 flex flex-col justify-between relative overflow-hidden transition hover:scale-[1.01]"
-                      style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '8px 8px 20px #eae6df, -8px -8px 20px #ffffff', border: '1px solid rgba(191,161,95,0.15)' }}>
+                      style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '8px 8px 20px #eae6df, -8px -8px 20px #ffffff', border: '1px solid rgba(191,161,95,0.2)' }}>
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#bfa15f' }}>Voucher Code</span>
@@ -1055,8 +1152,8 @@ const ClientDashboard = () => {
                         <p className="text-[10px] text-slate-400">{voucher.desc}</p>
                       </div>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(voucher.code); showToast(`Code "${voucher.code}" copied!`); }}
-                        className="w-full mt-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-950 transition hover:bg-slate-200"
+                        onClick={() => { navigator.clipboard.writeText(voucher.code); showToast(`Voucher code "${voucher.code}" copied!`); }}
+                        className="w-full mt-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-950 transition hover:bg-slate-200 cursor-pointer"
                         style={{ background: 'linear-gradient(135deg,#fdfcfa,#ece8e0)', border: '1px solid rgba(0,0,0,0.05)' }}>
                         Copy Promo Code
                       </button>
@@ -1065,40 +1162,64 @@ const ClientDashboard = () => {
                 </div>
               </div>
 
-              {/* My Bookings */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-emerald-800" /> My Appointments &amp; Cancellations
-                </h3>
-                {data?.bookings?.length === 0 ? (
+              {/* ── My Appointments & Workflow Tracker ─────────────────── */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-emerald-800" /> My Appointments &amp; Treatment History
+                  </h3>
+
+                  {/* Filter tabs */}
+                  <div className="flex items-center gap-1 bg-black/[0.04] p-1 rounded-2xl self-start sm:self-auto">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'active', label: 'Upcoming' },
+                      { id: 'completed', label: 'Completed' },
+                      { id: 'cancelled', label: 'Cancelled' },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setBookingFilter(tab.id)}
+                        className={`px-3 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                          bookingFilter === tab.id
+                            ? 'bg-white text-slate-800 shadow-sm'
+                            : 'text-slate-400 hover:text-slate-700'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {filteredBookings.length === 0 ? (
                   <div className="rounded-3xl p-8 text-center"
                     style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '8px 8px 20px #eae6df, -8px -8px 20px #ffffff' }}>
                     <Scissors className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="font-bold text-slate-700 text-sm">No bookings yet</p>
-                    <p className="text-xs text-slate-400 mt-1">Tap "Book a Session" to get started!</p>
+                    <p className="font-bold text-slate-700 text-sm">No bookings in this category</p>
+                    <p className="text-xs text-slate-400 mt-1">Tap "Book a Treatment" to schedule your wellness session!</p>
                     <button onClick={() => setShowWizard(true)}
-                      className="mt-4 px-6 py-2.5 rounded-2xl text-white text-xs font-bold transition hover:scale-105"
+                      className="mt-4 px-6 py-2.5 rounded-2xl text-white text-xs font-bold transition hover:scale-105 cursor-pointer shadow-md"
                       style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 4px 12px rgba(6,44,34,0.2)' }}>
-                      Book Now
+                      Book Treatment Now
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {data.bookings.map((b, i) => {
+                  <div className="space-y-4">
+                    {filteredBookings.map((b, i) => {
                       const ss = statusStyle(b.status);
                       const canManage = b.status === 'Pending' || b.status === 'Confirmed';
                       const hasTherapist = b.therapist_name && b.therapist_name !== 'Awaiting Assignment';
-
-                      // Determine active progress step (1 to 4)
                       const activeStep = b.status === 'Completed' ? 4 : b.status === 'In Progress' ? 3 : b.status === 'Confirmed' ? 2 : 1;
 
                       return (
-                        <div key={b.id || i} className="rounded-3xl p-5 flex flex-col gap-4 transition hover:scale-[1.005]"
+                        <div key={b.id || i} className="rounded-3xl p-5 sm:p-6 flex flex-col gap-4 transition hover:scale-[1.005]"
                           style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '10px 10px 24px #eae6df, -10px -10px 24px #ffffff', border: '1px solid rgba(255,255,255,0.8)' }}>
+                          
                           {/* Booking info row */}
                           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                             <div className="flex items-start gap-4">
-                              <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5"
                                 style={{
                                   background: b.status === 'In Progress'
                                     ? 'rgba(2,132,199,0.1)'
@@ -1108,7 +1229,7 @@ const ClientDashboard = () => {
                                     ? '#062c2212'
                                     : b.status === 'Cancelled'
                                     ? 'rgba(239,68,68,0.08)'
-                                    : '#bfa15f15'
+                                    : '#bfa15f18'
                                 }}>
                                 {b.status === 'Cancelled' ? (
                                   <Ban className="w-5 h-5 text-red-500" />
@@ -1124,10 +1245,15 @@ const ClientDashboard = () => {
                               </div>
                               <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-bold text-slate-800 text-base leading-snug">{b.service}</p>
-                                  <span className="font-mono text-[10px] text-slate-400 bg-black/[0.04] px-2 py-0.5 rounded-md font-semibold">
+                                  <p className="font-black text-slate-800 text-base leading-snug">{b.service}</p>
+                                  <span className="font-mono text-[10px] text-slate-500 bg-black/[0.04] px-2 py-0.5 rounded-md font-bold">
                                     #{String(b.id).padStart(5,'0')}
                                   </span>
+                                  {b.service_price && (
+                                    <span className="text-[11px] font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                      ₱{Number(b.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  )}
                                 </div>
 
                                 {/* Specialist Assignment Tag */}
@@ -1140,34 +1266,34 @@ const ClientDashboard = () => {
                                   ) : (
                                     <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-900 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/60">
                                       <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                      Specialist: <span className="font-semibold">Awaiting Assignment by Admin/Staff</span>
+                                      Specialist: <span className="font-semibold">Awaiting Assignment by Reception Desk</span>
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
-                                  <span className="flex items-center gap-1 text-slate-700 font-medium">
+                                  <span className="flex items-center gap-1 text-slate-700 font-semibold">
                                     <Calendar className="w-3.5 h-3.5 text-emerald-800" />
                                     {new Date(b.datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                                   </span>
                                   <span>·</span>
-                                  <span className="flex items-center gap-1 text-slate-700 font-medium">
+                                  <span className="flex items-center gap-1 text-slate-700 font-semibold">
                                     <Clock className="w-3.5 h-3.5 text-emerald-800" />
                                     {new Date(b.datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                   </span>
                                   {b.service_duration && (
                                     <>
                                       <span>·</span>
-                                      <span className="flex items-center gap-1 text-amber-700 font-medium">
+                                      <span className="flex items-center gap-1 text-amber-700 font-semibold">
                                         <Zap className="w-3 h-3 text-amber-500" /> {b.service_duration} min
                                       </span>
                                     </>
                                   )}
                                 </div>
-                                {b.notes && <p className="text-[11px] text-slate-400 italic pt-0.5">📋 Note: {b.notes}</p>}
+                                {b.notes && <p className="text-[11px] text-slate-500 italic pt-0.5">📋 Treatment Request: {b.notes}</p>}
                               </div>
                             </div>
-                            <span className="text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 self-start sm:self-auto border whitespace-nowrap uppercase tracking-wider"
+                            <span className="text-[10px] font-black px-3 py-1.5 rounded-full flex items-center gap-1.5 self-start sm:self-auto border whitespace-nowrap uppercase tracking-wider shadow-sm"
                               style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
                               {ss.icon} {b.status}
                             </span>
@@ -1188,7 +1314,7 @@ const ClientDashboard = () => {
                               <div className="grid grid-cols-4 gap-2">
                                 {[
                                   { num: 1, label: 'Requested', desc: 'Received by Desk' },
-                                  { num: 2, label: 'Assigned', desc: hasTherapist ? b.therapist_name.split(' ')[0] : 'Admin Review' },
+                                  { num: 2, label: 'Assigned', desc: hasTherapist ? b.therapist_name.split(' ')[0] : 'Reception Desk' },
                                   { num: 3, label: 'In Treatment', desc: 'Therapist Session' },
                                   { num: 4, label: 'Completed', desc: 'Service Done' },
                                 ].map((st) => {
@@ -1219,15 +1345,15 @@ const ClientDashboard = () => {
                           ) : (
                             <div className="p-3 rounded-2xl bg-red-50/60 border border-red-100 flex items-center gap-2 text-xs text-red-600">
                               <Ban className="w-4 h-4 flex-shrink-0" />
-                              <span>This appointment was cancelled. Please book a new slot if you wish to reschedule.</span>
+                              <span>This appointment was cancelled. You may book a fresh slot at any time.</span>
                             </div>
                           )}
 
-                          {/* Contextual Status Alerts & Actions */}
+                          {/* Contextual Status Alerts */}
                           {b.status === 'In Progress' && (
                             <div className="flex items-center gap-2 text-xs font-semibold text-sky-800 p-3 rounded-2xl bg-sky-50/80 border border-sky-200/70">
                               <Sparkles className="w-4 h-4 text-sky-600 animate-pulse flex-shrink-0" />
-                              <span>Your treatment is currently in progress with <strong className="text-sky-900">{b.therapist_name}</strong>. Relax and enjoy your wellness experience!</span>
+                              <span>Your treatment session is currently in progress with <strong className="text-sky-900">{b.therapist_name}</strong>. Enjoy your spa experience!</span>
                             </div>
                           )}
 
@@ -1235,12 +1361,12 @@ const ClientDashboard = () => {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-900 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60">
                               <span className="flex items-center gap-1.5 font-medium">
                                 <CheckCircle className="w-4 h-4 text-emerald-700 flex-shrink-0" />
-                                Treatment successfully completed. We hope to welcome you back soon!
+                                Treatment successfully completed! We look forward to welcoming you again.
                               </span>
                               <button
                                 onClick={() => setShowWizard(true)}
-                                className="px-3 py-1.5 rounded-xl text-xs font-bold text-white transition hover:scale-105 self-start sm:self-auto flex-shrink-0"
-                                style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}>
+                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition hover:scale-105 self-start sm:self-auto flex-shrink-0 cursor-pointer shadow-sm"
+                                style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
                                 Book Again
                               </button>
                             </div>
@@ -1248,16 +1374,16 @@ const ClientDashboard = () => {
 
                           {/* Action buttons — only for Pending or Confirmed */}
                           {canManage && (
-                            <div className="flex gap-2 pt-1 border-t border-black/[0.04]">
+                            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-black/[0.04]">
                               <button
                                 onClick={() => setRescheduleTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-emerald-800 transition-all hover:scale-[1.02] active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-emerald-800 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                                 style={{ background: 'linear-gradient(145deg,rgba(6,44,34,0.07),rgba(6,44,34,0.04))', border: '1px solid rgba(6,44,34,0.1)', boxShadow: '2px 2px 6px rgba(6,44,34,0.06)' }}>
                                 <RefreshCw className="w-3.5 h-3.5" /> Reschedule
                               </button>
                               <button
                                 onClick={() => setCancelTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-red-600 transition-all hover:scale-[1.02] active:scale-95"
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-red-600 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
                                 style={{ background: 'linear-gradient(145deg,rgba(220,38,38,0.06),rgba(220,38,38,0.03))', border: '1px solid rgba(220,38,38,0.12)', boxShadow: '2px 2px 6px rgba(220,38,38,0.06)' }}>
                                 <XCircle className="w-3.5 h-3.5" /> Cancel Appointment
                               </button>
@@ -1271,16 +1397,16 @@ const ClientDashboard = () => {
               </div>
             </div>
 
-            {/* ── RIGHT COLUMN ──────────────────────────────────────────── */}
+            {/* ── RIGHT COLUMN (1 Col) ──────────────────────────────────── */}
             <div className="space-y-6">
 
-              {/* Assigned Therapist */}
+              {/* Assigned Therapist Card */}
               <div className="space-y-3">
                 <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-emerald-800" /> My Assigned Therapist
+                  <UserCheck className="w-4 h-4 text-emerald-800" /> My Assigned Specialist
                 </h3>
                 {assignedTherapistName ? (
-                  <ClayCard className="p-5 flex flex-col items-center text-center space-y-4">
+                  <ClayCard className="p-6 flex flex-col items-center text-center space-y-4">
                     <div className="relative">
                       <div className="w-20 h-20 rounded-full overflow-hidden" style={{ border: '2.5px solid #bfa15f', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
                         <img src="/therapist-hero.jpg" alt="Therapist" className="w-full h-full object-cover object-top" />
@@ -1289,33 +1415,35 @@ const ClientDashboard = () => {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm">{assignedTherapistName}</h4>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Swedish & Hilot Expert</p>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Licensed Massage &amp; Bodywork Specialist</p>
                       <div className="flex justify-center items-center gap-1.5 mt-1.5">
                         <div className="flex gap-0.5">{[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 text-amber-400 fill-amber-400" />)}</div>
-                        <span className="text-[10px] font-bold text-slate-500">4.9 (120+ trips)</span>
+                        <span className="text-[10px] font-bold text-slate-500">4.9 ★ (150+ reviews)</span>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 flex items-center gap-1">✦ Cozy Vetted Specialist</span>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 flex items-center gap-1">
+                      ✦ Certified Cozy Blissful Expert
+                    </span>
                   </ClayCard>
                 ) : (
-                  <ClayCard className="p-5 text-center space-y-3">
+                  <ClayCard className="p-6 text-center space-y-3">
                     <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                       <UserCheck className="w-6 h-6" />
                     </div>
-                    <p className="font-bold text-slate-700 text-sm">No Active Assignment</p>
-                    <p className="text-xs text-slate-400 leading-relaxed">Once the Admin assigns your specialist for your confirmed in-salon session, they will appear here.</p>
+                    <p className="font-bold text-slate-700 text-sm">No Active Specialist Assigned</p>
+                    <p className="text-xs text-slate-400 leading-relaxed">Once the reception concierge desk reviews your booking and assigns your specialist, their profile will appear here.</p>
                   </ClayCard>
                 )}
               </div>
 
-              {/* Connection Chat */}
+              {/* Interactive Connection Chat */}
               {assignedTherapistName && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                    <MessageSquare className="w-4 h-4 text-emerald-800" /> Connection Chat
+                    <MessageSquare className="w-4 h-4 text-emerald-800" /> Specialist Connection Chat
                   </h3>
-                  <ClayCard className="p-4 flex flex-col" style={{ height: '300px' }}>
-                    <div className="flex-1 overflow-y-auto space-y-3.5 pr-1.5 text-left">
+                  <ClayCard className="p-4 flex flex-col" style={{ height: '320px' }}>
+                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-left">
                       {chatMessages.map((msg, i) => {
                         const isClient = msg.sender === 'client';
                         return (
@@ -1330,12 +1458,27 @@ const ClientDashboard = () => {
                         );
                       })}
                     </div>
-                    <form onSubmit={sendChatMessage} className="mt-3.5 pt-3 border-t border-slate-100 flex gap-2">
+
+                    {/* Quick suggestions */}
+                    <div className="flex gap-1.5 overflow-x-auto py-2 scrollbar-none text-[9px] font-bold text-slate-500">
+                      {['Please bring lavender oil', 'I will arrive 5 mins early', 'Thank you!'].map((quickText, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setChatInput(quickText)}
+                          className="whitespace-nowrap px-2 py-0.5 rounded-lg bg-black/[0.03] hover:bg-black/[0.06] border border-black/[0.05] transition cursor-pointer"
+                        >
+                          {quickText}
+                        </button>
+                      ))}
+                    </div>
+
+                    <form onSubmit={sendChatMessage} className="pt-2 border-t border-slate-100 flex gap-2">
                       <input value={chatInput} onChange={(e) => setChatInput(e.target.value)}
                         placeholder={`Message ${assignedTherapistName.split(' ')[0]}...`}
                         className="flex-1 px-3 py-2 rounded-xl text-xs text-slate-700 placeholder-slate-400 outline-none"
                         style={{ background: 'linear-gradient(145deg,#f5f0e8,#ece8e0)', boxShadow: 'inset 2px 2px 5px #e0dbd3, inset -2px -2px 5px #ffffff' }} />
-                      <button type="submit" className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all hover:scale-105 flex-shrink-0"
+                      <button type="submit" className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all hover:scale-105 flex-shrink-0 cursor-pointer"
                         style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)', boxShadow: '3px 3px 8px rgba(6,44,34,0.2)' }}>
                         <Send className="w-3.5 h-3.5" />
                       </button>
@@ -1343,6 +1486,31 @@ const ClientDashboard = () => {
                   </ClayCard>
                 </div>
               )}
+
+              {/* Salon Concierge & Operating Hours */}
+              <ClayCard className="p-5 space-y-3">
+                <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs uppercase tracking-wider">
+                  <Compass className="w-4 h-4 text-emerald-800" /> Salon Hours &amp; Concierge
+                </div>
+                <div className="space-y-2 text-xs text-slate-600">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Daily Operating Hours:</span>
+                    <span className="font-bold text-slate-800">9:00 AM – 9:00 PM</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Concierge Desk:</span>
+                    <span className="font-bold text-emerald-800">Available 7 Days</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Payment on Site:</span>
+                    <span className="font-bold text-slate-800">Cash, Maya, GCash, Card</span>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-black/[0.04] flex items-center gap-2 text-[11px] text-slate-500">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                  <span>Cozy Blissful Spa &amp; Salon Suite</span>
+                </div>
+              </ClayCard>
 
             </div>
           </div>
@@ -1357,7 +1525,7 @@ const ClientDashboard = () => {
             onClose={() => setShowWizard(false)}
             onSuccess={() => {
               fetchDashboardData();
-              showToast('🎉 Booking submitted! Check your email for confirmation.');
+              showToast('🎉 Booking registered! Reception desk is assigning your specialist.');
             }}
           />
         )}
@@ -1384,7 +1552,6 @@ const ClientDashboard = () => {
           />
         )}
       </AnimatePresence>
-
 
     </div>
   );

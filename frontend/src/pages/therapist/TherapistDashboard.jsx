@@ -367,11 +367,11 @@ const TherapistDashboard = () => {
 
         {/* Right side controls */}
         <div className="flex items-center space-x-2.5">
-          {/* Real-time Duty status badge */}
+          {/* Real-time Duty status badge (Visible on all devices) */}
           <button
             onClick={() => toggleAvailability(todayStr)}
             title="Click to toggle today's availability"
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer border"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 cursor-pointer border"
             style={
               isAvailableToday
                 ? { background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)', color: '#047857' }
@@ -379,7 +379,7 @@ const TherapistDashboard = () => {
             }
           >
             <span className={`w-2 h-2 rounded-full ${isAvailableToday ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span>{isAvailableToday ? 'On Duty Today' : 'Off Duty Today'}</span>
+            <span>{isAvailableToday ? 'On Duty' : 'Off Duty'}</span>
           </button>
 
           {/* Refresh Button */}
@@ -1131,7 +1131,7 @@ const TherapistDashboard = () => {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 overflow-hidden relative"
+              className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 overflow-hidden relative max-h-[92vh] flex flex-col"
             >
               {/* Close icon button */}
               <button
