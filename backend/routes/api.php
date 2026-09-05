@@ -63,6 +63,13 @@ Route::middleware('auth:sanctum')->group(function () {
         // RBAC Permissions
         Route::post('/rbac/permissions', [AdminController::class, 'updatePermissions']);
 
+        // Team Members CRUD (Therapists & Staff Coordinator - NO Admin allowed)
+        Route::get('/team-members', [AdminController::class, 'getTeamMembers']);
+        Route::post('/team-members', [AdminController::class, 'storeTeamMember']);
+        Route::put('/team-members/{id}', [AdminController::class, 'updateTeamMember']);
+        Route::post('/team-members/{id}/toggle-status', [AdminController::class, 'toggleTeamMemberStatus']);
+        Route::delete('/team-members/{id}', [AdminController::class, 'deleteTeamMember']);
+
         // Notifications
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);

@@ -592,5 +592,255 @@ class AdminController extends Controller
             'message' => 'RBAC permissions updated and logged successfully',
         ]);
     }
+
+    /**
+     * Get team members (therapists and staff coordinators).
+     */
+    public function getTeamMembers()
+    {
+        $members = User::whereHas('roles', function ($q) {
+            $q->whereIn('name', ['therapist', 'staff']);
+        })
+        ->with('roles')
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($u) {
+            $roleName = $u->roles->first()?->name ?? 'therapist';
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'phone' => $u->phone ?? '',
+                'role' => $roleName,
+                'specialty' => $u->specialty ?: ($roleName === 'therapist' ? 'General Wellness & Spa' : 'Front Desk Coordinator'),
+                'status' => $u->status ?? 'active',
+                'joined' => $u->created_at ? $u->created_at->format('Y-m-d') : date('Y-m-d'),
+                'commRate' => $roleName === 'therapist' ? 40 : null,
+            ];
+        });
+
+        return response()->json([
+            'team_members' => $members
+        ]);
+    }
+
+    /**
+     * Store new team member (therapist or staff only - strictly NO admin allowed).
+     */
+    public function storeTeamMember(Request $request)
+    {
+        // Explicit security check: Admin roles cannot be added via team member onboarding
+        if (strtolower($request->input('role', '')) === 'admin') {
+            return response()->json([
+                'message' => 'Security Policy: Administrator accounts cannot be provisioned through team onboarding.',
+                'errors' => [
+                    'role' => ['Administrator role cannot be assigned here for security and governance.']
+                ]
+            ], 422);
+        }
+
+        // Bridge confirmPassword to password_confirmation for Laravel confirmed rule
+        if ($request->filled('confirmPassword') && !$request->filled('password_confirmation')) {
+            $request->merge(['password_confirmation' => $request->input('confirmPassword')]);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|min:2|max:100',
+            'email' => 'required|email|max:150|unique:users,email',
+            'phone' => ['nullable', 'string', 'max:25', 'regex:/^[0-9+()\- ]{7,25}$/'],
+            'role' => 'required|string|in:therapist,staff',
+            'specialty' => 'nullable|string|max:150',
+            'status' => 'required|string|in:active,inactive',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'role.in' => 'Selected role must be either Therapist or Staff Coordinator.',
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.confirmed' => 'Password confirmation does not match.',
+            'email.unique' => 'This email address is already registered in the system.',
+            'phone.regex' => 'Please enter a valid phone number (e.g., +63 917 123 4567).',
+        ]);
+
+        $user = User::create([
+            'name' => trim($validated['name']),
+            'email' => strtolower(trim($validated['email'])),
+            'phone' => !empty($validated['phone']) ? trim($validated['phone']) : null,
+            'specialty' => !empty($validated['specialty']) ? trim($validated['specialty']) : null,
+            'status' => $validated['status'],
+            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+        ]);
+
+        $user->assignRole($validated['role']);
+
+        $roleLabel = $validated['role'] === 'therapist' ? 'Therapist' : 'Staff Coordinator';
+        \App\Models\AuditLog::log('create', 'User Management', "Admin provisioned new {$roleLabel} account: {$user->name} ({$user->email})", [
+            'actor' => auth()->user()?->name ?? 'System Admin',
+            'actor_role' => 'admin',
+            'module' => 'Team Members',
+            'severity' => 'info',
+            'metadata' => [
+                'user_id' => $user->id,
+                'role' => $validated['role'],
+                'specialty' => $user->specialty,
+                'status' => $user->status,
+            ]
+        ]);
+
+        return response()->json([
+            'message' => "New {$roleLabel} account successfully created!",
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'role' => $validated['role'],
+                'specialty' => $user->specialty ?: ($validated['role'] === 'therapist' ? 'General Wellness & Spa' : 'Front Desk Coordinator'),
+                'status' => $user->status,
+                'joined' => $user->created_at->format('Y-m-d'),
+                'commRate' => $validated['role'] === 'therapist' ? 40 : null,
+            ]
+        ], 201);
+    }
+
+    /**
+     * Update team member.
+     */
+    public function updateTeamMember(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        // Security check: ensure target is not an admin
+        if ($user->hasRole('admin')) {
+            return response()->json([
+                'message' => 'Security Policy: Administrator accounts cannot be modified through team member maintenance.',
+            ], 403);
+        }
+
+        // Security check: cannot elevate to admin
+        if (strtolower($request->input('role', '')) === 'admin') {
+            return response()->json([
+                'message' => 'Security Policy: Cannot assign Administrator role.',
+                'errors' => [
+                    'role' => ['Administrator role cannot be assigned here.']
+                ]
+            ], 422);
+        }
+
+        // Bridge confirmPassword to password_confirmation if password is provided
+        if ($request->filled('confirmPassword') && !$request->filled('password_confirmation')) {
+            $request->merge(['password_confirmation' => $request->input('confirmPassword')]);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|min:2|max:100',
+            'email' => 'required|email|max:150|unique:users,email,' . $id,
+            'phone' => ['nullable', 'string', 'max:25', 'regex:/^[0-9+()\- ]{7,25}$/'],
+            'role' => 'required|string|in:therapist,staff',
+            'specialty' => 'nullable|string|max:150',
+            'status' => 'required|string|in:active,inactive',
+            'password' => 'nullable|string|min:8|confirmed',
+        ], [
+            'role.in' => 'Selected role must be either Therapist or Staff Coordinator.',
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.confirmed' => 'Password confirmation does not match.',
+            'email.unique' => 'This email address is already registered in the system.',
+            'phone.regex' => 'Please enter a valid phone number (e.g., +63 917 123 4567).',
+        ]);
+
+        $updateData = [
+            'name' => trim($validated['name']),
+            'email' => strtolower(trim($validated['email'])),
+            'phone' => !empty($validated['phone']) ? trim($validated['phone']) : null,
+            'specialty' => !empty($validated['specialty']) ? trim($validated['specialty']) : null,
+            'status' => $validated['status'],
+        ];
+
+        if (!empty($validated['password'])) {
+            $updateData['password'] = \Illuminate\Support\Facades\Hash::make($validated['password']);
+        }
+
+        $user->update($updateData);
+        $user->syncRoles([$validated['role']]);
+
+        \App\Models\AuditLog::log('update', 'User Management', "Admin updated team member #{$user->id}: {$user->name}", [
+            'actor' => auth()->user()?->name ?? 'System Admin',
+            'actor_role' => 'admin',
+            'module' => 'Team Members',
+            'severity' => 'info',
+            'metadata' => [
+                'user_id' => $user->id,
+                'role' => $validated['role'],
+                'status' => $user->status,
+            ]
+        ]);
+
+        return response()->json([
+            'message' => 'Team member profile updated successfully',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'role' => $validated['role'],
+                'specialty' => $user->specialty ?: ($validated['role'] === 'therapist' ? 'General Wellness & Spa' : 'Front Desk Coordinator'),
+                'status' => $user->status,
+                'joined' => $user->created_at->format('Y-m-d'),
+                'commRate' => $validated['role'] === 'therapist' ? 40 : null,
+            ]
+        ]);
+    }
+
+    /**
+     * Toggle team member status (active / inactive).
+     */
+    public function toggleTeamMemberStatus($id)
+    {
+        $user = User::findOrFail($id);
+        if ($user->hasRole('admin')) {
+            return response()->json(['message' => 'Cannot alter administrator status.'], 403);
+        }
+
+        $nextStatus = ($user->status === 'active') ? 'inactive' : 'active';
+        $user->status = $nextStatus;
+        $user->save();
+
+        \App\Models\AuditLog::log('update', 'User Management', "Admin changed status of #{$user->id} ({$user->name}) to {$nextStatus}", [
+            'actor' => auth()->user()?->name ?? 'System Admin',
+            'actor_role' => 'admin',
+            'module' => 'Team Members',
+            'severity' => 'info',
+        ]);
+
+        return response()->json([
+            'message' => "User status set to {$nextStatus}",
+            'status' => $nextStatus
+        ]);
+    }
+
+    /**
+     * Delete team member account.
+     */
+    public function deleteTeamMember($id)
+    {
+        $user = User::findOrFail($id);
+        if ($user->hasRole('admin')) {
+            return response()->json(['message' => 'Administrator accounts cannot be deleted.'], 403);
+        }
+
+        $userName = $user->name;
+        $user->tokens()->delete();
+        $user->delete();
+
+        \App\Models\AuditLog::log('delete', 'User Management', "Admin removed team member: {$userName} (#{$id})", [
+            'actor' => auth()->user()?->name ?? 'System Admin',
+            'actor_role' => 'admin',
+            'module' => 'Team Members',
+            'severity' => 'warning',
+        ]);
+
+        return response()->json([
+            'message' => "Team member {$userName} removed successfully"
+        ]);
+    }
 }
+
 

@@ -32,6 +32,8 @@ class User extends Authenticatable
         'phone',
         'notes',
         'tier',
+        'status',
+        'specialty',
     ];
 
     /**

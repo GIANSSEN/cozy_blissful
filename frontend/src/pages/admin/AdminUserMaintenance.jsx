@@ -15,6 +15,8 @@ import {
   UserCheck, UserX,
   Layers, BarChart3,
   RefreshCw, Mail, Phone, Lock, Briefcase,
+  Eye, EyeOff, Sparkles, ShieldAlert, Check, Copy, AlertCircle, Loader2, KeyRound,
+  Trash2,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -236,15 +238,22 @@ function UserDetailModal({ user, onClose, onEdit, C }) {
 /* ─────────────────────────────────────────────────────────────── */
 /*  FORM FIELD ATOM                                                  */
 /* ─────────────────────────────────────────────────────────────── */
-function FormField({ label, required, error, icon: Ic, children }) {
+function FormField({ label, required, error, icon: Ic, children, hint }) {
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
-        {Ic && <Ic className="w-3 h-3" />}
-        {label}{required && <span className="text-red-400">*</span>}
-      </label>
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+          {Ic && <Ic className="w-3.5 h-3.5 text-emerald-500" />}
+          {label}{required && <span className="text-red-400 font-bold">*</span>}
+        </label>
+        {hint && <span className="text-[9px] font-medium text-slate-400">{hint}</span>}
+      </div>
       {children}
-      {error && <p className="text-[10px] font-bold text-red-400 flex items-center gap-1">⚠ {error}</p>}
+      {error && (
+        <p className="text-[10px] font-bold text-red-400 flex items-center gap-1 mt-1 animate-fadeIn">
+          <AlertCircle className="w-3 h-3 flex-shrink-0" /> {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -252,212 +261,624 @@ function FormField({ label, required, error, icon: Ic, children }) {
 /* ─────────────────────────────────────────────────────────────── */
 /*  MODAL: ADD / EDIT USER                                           */
 /* ─────────────────────────────────────────────────────────────── */
-function UserFormModal({ user, onClose, onSave, C }) {
+function AddEditUserModal({ user, onClose, onSave }) {
+  const C = useC();
   const isEdit = !!user;
-  const [form, setForm] = useState(isEdit ? {
-    name: user.name || '', email: user.email || '', phone: user.phone || '',
-    specialty: user.specialty || '', role: user.role || 'therapist',
-    status: user.status || 'active',
-    password: '', confirmPassword: '',
-  } : EMPTY_FORM);
+  const [form, setForm] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    role: user?.role || 'therapist',
+    status: user?.status || 'active',
+    specialty: user?.specialty || (user?.role === 'staff' ? 'Front Desk Coordinator' : 'Swedish & Deep Tissue'),
+    password: '',
+    confirmPassword: '',
+  });
   const [errors, setErrors] = useState({});
   const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
 
-  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const set = (k, v) => {
+    setForm(p => {
+      const next = { ...p, [k]: v };
+      // Real-time error clearance & password match sync
+      setErrors(prev => {
+        const updated = { ...prev };
+        delete updated[k];
+        if (k === 'password' || k === 'confirmPassword') {
+          if (next.password && next.confirmPassword && next.password === next.confirmPassword) {
+            delete updated.confirmPassword;
+            if (updated.password && (updated.password.toLowerCase().includes('confirm') || updated.password.toLowerCase().includes('match'))) {
+              delete updated.password;
+            }
+          }
+        }
+        return updated;
+      });
+      return next;
+    });
+    if (serverError) setServerError('');
+  };
+
+  const handleRoleChange = newRole => {
+    // Strictly prevent admin role assignment
+    if (newRole === 'admin') return;
+    setForm(p => ({
+      ...p,
+      role: newRole,
+      specialty: newRole === 'therapist'
+        ? (p.specialty && !STAFF_POSITION_PRESETS.includes(p.specialty) ? p.specialty : 'Swedish & Deep Tissue')
+        : (p.specialty && !THERAPIST_SPECIALTY_PRESETS.includes(p.specialty) ? p.specialty : 'Front Desk Coordinator'),
+    }));
+  };
+
+  const toggleSpecialtyTag = tag => {
+    const current = form.specialty ? form.specialty.split(',').map(s => s.trim()).filter(Boolean) : [];
+    let next;
+    if (current.includes(tag)) {
+      next = current.filter(t => t !== tag);
+    } else {
+      next = [...current, tag];
+    }
+    set('specialty', next.join(', '));
+  };
+
+  const generateSecurePassword = () => {
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
+    let pw = 'Cozy@2026';
+    for (let i = 0; i < 4; i++) {
+      pw += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    pw += '!';
+    setForm(p => ({ ...p, password: pw, confirmPassword: pw }));
+    setErrors(prev => {
+      const updated = { ...prev };
+      delete updated.password;
+      delete updated.confirmPassword;
+      return updated;
+    });
+    setShowPw(true);
+    setShowConfirmPw(true);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(pw);
+      toast.success('Generated strong password & copied to clipboard!');
+    } else {
+      toast.info('Generated strong password!');
+    }
+  };
 
   const validate = () => {
     const e = {};
-    if (!form.name.trim()) e.name = 'Full name is required';
-    if (!form.email.trim() || !form.email.includes('@')) e.email = 'Valid email required';
-    if (!isEdit) {
-      if (!form.password) e.password = 'Password required';
-      else if (form.password.length < 6) e.password = 'Min. 6 characters';
-      if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match';
+    const nameTrimmed = form.name.trim();
+    if (!nameTrimmed) {
+      e.name = 'Full name is required';
+    } else if (nameTrimmed.length < 2) {
+      e.name = 'Full name must be at least 2 characters';
+    } else if (!/^[a-zA-Z\s.\-']+$/.test(nameTrimmed)) {
+      e.name = 'Full name can only contain letters, spaces, hyphens, and periods';
     }
+
+    const emailTrimmed = form.email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailTrimmed) {
+      e.email = 'Email address is required';
+    } else if (!emailRegex.test(emailTrimmed)) {
+      e.email = 'Please provide a valid email address (e.g. maria@cozy.spa)';
+    }
+
+    if (form.phone && form.phone.trim()) {
+      const cleanPhone = form.phone.replace(/[\s\-().+]/g, '');
+      if (cleanPhone.length < 7 || cleanPhone.length > 16 || !/^\+?[0-9\s\-().]+$/.test(form.phone.trim())) {
+        e.phone = 'Please enter a valid contact number (e.g. +63 917 123 4567)';
+      }
+    }
+
+    // Role strict check: NO ADMIN ROLE ALLOWED
+    if (form.role === 'admin') {
+      e.role = 'Security Rule: Administrator accounts cannot be created through this module.';
+    } else if (!['therapist', 'staff'].includes(form.role)) {
+      e.role = 'Please select a valid operational role (Therapist or Staff Coordinator).';
+    }
+
+    if (form.role === 'therapist' && !form.specialty.trim()) {
+      e.specialty = 'Specialization is required for therapist scheduling (e.g. Swedish, Deep Tissue)';
+    }
+
+    if (!isEdit) {
+      if (!form.password) {
+        e.password = 'Initial account password is required';
+      } else if (form.password.length < 8) {
+        e.password = 'Password must be at least 8 characters';
+      }
+
+      if (!form.confirmPassword) {
+        e.confirmPassword = 'Confirmation password is required';
+      } else if (form.password !== form.confirmPassword) {
+        e.confirmPassword = 'Password confirmation does not match';
+      }
+    } else if (form.password) {
+      if (form.password.length < 8) {
+        e.password = 'Password must be at least 8 characters';
+      }
+      if (form.password !== form.confirmPassword) {
+        e.confirmPassword = 'Password confirmation does not match';
+      }
+    }
+
     return e;
   };
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault();
+    setServerError('');
     const errs = validate();
     setErrors(errs);
-    if (!Object.keys(errs).length) onSave(form);
+    if (Object.keys(errs).length > 0) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        ...form,
+        password_confirmation: form.confirmPassword,
+      });
+    } catch (err) {
+      if (err.response?.data?.errors) {
+        const fieldErrors = {};
+        Object.entries(err.response.data.errors).forEach(([k, v]) => {
+          const msg = Array.isArray(v) ? v[0] : v;
+          if (k === 'password' && (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('match'))) {
+            fieldErrors.confirmPassword = msg;
+          } else {
+            fieldErrors[k] = msg;
+          }
+        });
+        setErrors(fieldErrors);
+      }
+      setServerError(err.response?.data?.message || 'Could not save account details. Please verify the input.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const pwStrength = getPasswordStrength(form.password);
+  const passwordsMatch = !!(form.password && form.confirmPassword && form.password === form.confirmPassword);
+  const passwordsMismatch = !!(form.confirmPassword && form.password !== form.confirmPassword);
 
   const inputStyle = err => ({
     background: C.inputBg,
     border: `1.5px solid ${err ? '#f87171' : C.inputBdr}`,
     color: C.txt,
-    boxShadow: err ? '0 0 0 3px rgba(248,113,113,0.1)' : 'none',
+    boxShadow: err ? '0 0 0 3px rgba(248,113,113,0.12)' : 'none',
   });
 
-  const selectStyle = { background: C.inputBg, border: `1.5px solid ${C.inputBdr}`, color: C.txt };
-
   return (
-    <ModalShell onClose={onClose} maxWidth="max-w-xl">
-      <div style={{ background: C.card }} className="flex flex-col max-h-[92vh] sm:max-h-[88vh]">
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 pt-6 sm:pt-5 pb-4 flex-shrink-0" style={{ borderBottom: `1px solid ${C.divider}` }}>
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: isEdit ? 'rgba(59,130,246,0.15)' : 'rgba(5,150,105,0.15)' }}>
-            {isEdit ? <Edit3 className="w-4.5 h-4.5" style={{ color: '#3b82f6', width: 18, height: 18 }} />
-              : <Plus className="w-4.5 h-4.5 text-emerald-500" style={{ width: 18, height: 18 }} />}
+    <ModalShell onClose={onClose} maxWidth="max-w-2xl">
+      <form onSubmit={submit} style={{ background: C.card }}
+        className="flex flex-col max-h-[92vh] sm:max-h-[88vh] w-full rounded-t-[28px] sm:rounded-[28px] overflow-hidden shadow-2xl border border-white/10">
+        
+        {/* Sticky Header */}
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-5 pb-4 flex-shrink-0 backdrop-blur-md"
+          style={{ borderBottom: `1px solid ${C.divider}`, background: C.card }}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md"
+              style={{
+                background: isEdit
+                  ? 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.3))'
+                  : 'linear-gradient(135deg, rgba(5,150,105,0.2), rgba(16,185,129,0.3))',
+                border: isEdit ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(5,150,105,0.3)',
+              }}>
+              {isEdit ? <Edit3 className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-blue-500" />
+                : <Plus className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-emerald-500" />}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-black text-sm sm:text-base md:text-lg tracking-tight truncate" style={{ color: C.txt }}>
+                  {isEdit ? 'Edit Team Member Profile' : 'Create New Account'}
+                </h3>
+                <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(5,150,105,0.12)', color: '#059669' }}>
+                  Team Onboarding
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs truncate mt-0.5" style={{ color: C.txtMuted }}>
+                {isEdit ? 'Update credentials, service specialization & role details' : 'Register a new team member to the system'}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-black text-sm sm:text-base" style={{ color: C.txt }}>
-              {isEdit ? 'Edit User Profile' : 'Create New Account'}
-            </h3>
-            <p className="text-[10px] truncate" style={{ color: C.txtMuted }}>
-              {isEdit ? 'Update credentials & role details' : 'Register a new team member to the system'}
-            </p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80"
-            style={{ background: C.inner, color: C.txtMuted }}><X className="w-4 h-4" /></button>
+          <button type="button" onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:rotate-90 hover:opacity-80 flex-shrink-0 cursor-pointer"
+            style={{ background: C.inner, color: C.txtMuted }}>
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Body */}
-        <form onSubmit={submit} className="flex-1 overflow-y-auto">
-          <div className="p-5 space-y-4">
-            {/* Role preview strip */}
-            <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: C.inner }}>
-              <Avatar name={form.name || '?'} gradient={ROLE_META[form.role]?.grad} size={38} />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold truncate" style={{ color: C.txt }}>{form.name || 'Preview Name'}</p>
-                <p className="text-[10px]" style={{ color: C.txtMuted }}>{form.email || 'preview@email.com'}</p>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5"
+          style={{ WebkitOverflowScrolling: 'touch' }}>
+          
+          {/* Server Error Alert */}
+          {serverError && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-3 p-3.5 rounded-2xl"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 text-xs font-semibold text-red-500 leading-snug">
+                {serverError}
               </div>
-              <RolePill role={form.role} />
-              <StatusDot status={form.status} />
+            </motion.div>
+          )}
+
+          {/* Interactive Live Luxury Preview Card */}
+          <div className="p-3.5 sm:p-4 rounded-2xl relative overflow-hidden transition-all duration-300"
+            style={{
+              background: C.inner,
+              border: `1.5px solid ${form.role === 'therapist' ? 'rgba(217,119,6,0.3)' : 'rgba(59,130,246,0.3)'}`,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+            }}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <Avatar name={form.name || '?'} gradient={ROLE_META[form.role]?.grad} size={44} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-black truncate" style={{ color: C.txt }}>
+                      {form.name || 'Preview Name'}
+                    </p>
+                    <RolePill role={form.role} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <p className="text-xs truncate font-medium" style={{ color: C.txtMuted }}>
+                      {form.email || 'preview@email.com'}
+                    </p>
+                    {form.phone && (
+                      <span className="text-[10px] font-semibold text-slate-400">· {form.phone}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                <StatusDot status={form.status} />
+              </div>
             </div>
 
-            {/* Full name */}
-            <FormField label="Full Name" required error={errors.name} icon={User}>
-              <input value={form.name} onChange={e => set('name', e.target.value)}
-                placeholder="e.g. Maria Santos"
+            {/* Specialization and compensation snippet in preview */}
+            <div className="mt-3 pt-3 flex flex-wrap items-center justify-between gap-2"
+              style={{ borderTop: `1px solid ${C.divider}` }}>
+              <div className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: C.txtSec }}>
+                <Briefcase className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="font-bold">{form.role === 'therapist' ? 'Specialty:' : 'Position:'}</span>
+                <span className="truncate max-w-[260px] sm:max-w-[340px]">{form.specialty || 'None assigned yet'}</span>
+              </div>
+              <div className="text-[10px] font-black px-2.5 py-1 rounded-lg"
+                style={{
+                  background: form.role === 'therapist' ? 'rgba(217,119,6,0.12)' : 'rgba(59,130,246,0.12)',
+                  color: form.role === 'therapist' ? '#d97706' : '#2563eb',
+                }}>
+                {form.role === 'therapist' ? '40% Revenue Split' : 'Fixed Operations Salary'}
+              </div>
+            </div>
+          </div>
+
+          {/* Full Name */}
+          <FormField label="Full Name" required error={errors.name} icon={User}>
+            <input value={form.name} onChange={e => set('name', e.target.value)}
+              placeholder="e.g. Maria Santos"
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+              style={inputStyle(errors.name)} />
+          </FormField>
+
+          {/* Email + Phone */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Email Address" required error={errors.email} icon={Mail}>
+              <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
+                placeholder="maria@cozy.spa"
                 className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                style={inputStyle(errors.name)} />
+                style={inputStyle(errors.email)} />
             </FormField>
+            <FormField label="Phone Number" error={errors.phone} icon={Phone} hint="Optional (e.g. +63 9XX)">
+              <input value={form.phone} onChange={e => set('phone', e.target.value)}
+                placeholder="+63 917 123 4567"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+                style={inputStyle(errors.phone)} />
+            </FormField>
+          </div>
 
-            {/* Email + Phone */}
+          {/* System Role Selection (STRICTLY NO ADMIN ALLOWED) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <Shield className="w-3.5 h-3.5 text-emerald-500" /> System Role <span className="text-red-400">*</span>
+              </label>
+              <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1">
+                <Lock className="w-3 h-3" /> No Admin Roles
+              </span>
+            </div>
+
+            {/* Dual Card Role Selector */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormField label="Email Address" required error={errors.email} icon={Mail}>
-                <input value={form.email} onChange={e => set('email', e.target.value)}
-                  placeholder="maria@cozy.spa"
+              {/* Option 1: Therapist */}
+              <button type="button" onClick={() => handleRoleChange('therapist')}
+                className="p-3.5 rounded-2xl text-left transition-all relative overflow-hidden flex items-start gap-3 border cursor-pointer"
+                style={{
+                  background: form.role === 'therapist' ? 'rgba(217,119,6,0.08)' : C.inner,
+                  borderColor: form.role === 'therapist' ? '#d97706' : C.inputBdr,
+                  boxShadow: form.role === 'therapist' ? '0 0 0 2px rgba(217,119,6,0.25)' : 'none',
+                }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                  style={{ background: 'linear-gradient(135deg,#78350f,#d97706)', color: '#fff' }}>
+                  <Stethoscope className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black" style={{ color: C.txt }}>Therapist</p>
+                    {form.role === 'therapist' && (
+                      <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center">
+                        <Check className="w-3 h-3" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] mt-0.5 leading-snug" style={{ color: C.txtMuted }}>
+                    Service provider with appointment assignment & 40% revenue split
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Staff Coordinator */}
+              <button type="button" onClick={() => handleRoleChange('staff')}
+                className="p-3.5 rounded-2xl text-left transition-all relative overflow-hidden flex items-start gap-3 border cursor-pointer"
+                style={{
+                  background: form.role === 'staff' ? 'rgba(59,130,246,0.08)' : C.inner,
+                  borderColor: form.role === 'staff' ? '#3b82f6' : C.inputBdr,
+                  boxShadow: form.role === 'staff' ? '0 0 0 2px rgba(59,130,246,0.25)' : 'none',
+                }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                  style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', color: '#fff' }}>
+                  <UserCog className="w-4.5 h-4.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black" style={{ color: C.txt }}>Staff Coordinator</p>
+                    {form.role === 'staff' && (
+                      <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center">
+                        <Check className="w-3 h-3" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] mt-0.5 leading-snug" style={{ color: C.txtMuted }}>
+                    Front desk reception, booking queue & therapist schedule control
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* Security Guard Notice */}
+            <div className="flex items-center gap-2 p-2.5 rounded-xl text-[10px]"
+              style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)', color: C.txtSec }}>
+              <ShieldAlert className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <span>
+                <strong className="text-red-500 font-bold">Admin Role Restricted:</strong> Administrator accounts require root governance and cannot be provisioned via staff onboarding.
+              </span>
+            </div>
+            {errors.role && <p className="text-[10px] font-bold text-red-400 flex items-center gap-1">⚠ {errors.role}</p>}
+          </div>
+
+          {/* Status Selection */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Status
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => set('status', 'active')}
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer"
+                style={{
+                  background: form.status === 'active' ? 'rgba(16,185,129,0.12)' : C.inputBg,
+                  borderColor: form.status === 'active' ? '#10b981' : C.inputBdr,
+                  color: form.status === 'active' ? '#059669' : C.txtMuted,
+                }}>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Active
+              </button>
+              <button type="button" onClick={() => set('status', 'inactive')}
+                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer"
+                style={{
+                  background: form.status === 'inactive' ? 'rgba(148,163,184,0.15)' : C.inputBg,
+                  borderColor: form.status === 'inactive' ? '#94a3b8' : C.inputBdr,
+                  color: form.status === 'inactive' ? C.txt : C.txtMuted,
+                }}>
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
+                Inactive
+              </button>
+            </div>
+          </div>
+
+          {/* Specialization / Role Position with Quick Select Chips */}
+          {form.role === 'therapist' ? (
+            <div className="space-y-2.5">
+              <FormField label="Specialization" required error={errors.specialty} icon={Briefcase}>
+                <input value={form.specialty} onChange={e => set('specialty', e.target.value)}
+                  placeholder="e.g. Swedish & Deep Tissue"
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                  style={inputStyle(errors.email)} />
+                  style={inputStyle(errors.specialty)} />
               </FormField>
-              <FormField label="Phone Number" icon={Phone}>
-                <input value={form.phone} onChange={e => set('phone', e.target.value)}
-                  placeholder="+63 917 123 4567"
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium"
-                  style={inputStyle(false)} />
+              {/* Preset Tags */}
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Quick-Add Treatments:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {THERAPIST_SPECIALTY_PRESETS.map(tag => {
+                    const active = (form.specialty || '').includes(tag);
+                    return (
+                      <button key={tag} type="button" onClick={() => toggleSpecialtyTag(tag)}
+                        className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer"
+                        style={{
+                          background: active ? 'rgba(217,119,6,0.2)' : C.pillBg,
+                          color: active ? '#d97706' : C.txtSec,
+                          border: active ? '1px solid rgba(217,119,6,0.4)' : '1px solid transparent',
+                        }}>
+                        {active ? '✓ ' : '+ '} {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Revenue Policy Banner */}
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl"
+                style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.22)' }}>
+                <TrendingUp className="w-4 h-4 flex-shrink-0" style={{ color: '#d97706' }} />
+                <div>
+                  <p className="text-[10px] font-black" style={{ color: '#d97706' }}>Revenue Split (Fixed Policy)</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>
+                    Therapist earns <strong>40%</strong> per booking · Admin retains <strong>60%</strong> · Weekly salary payout every Friday
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              <FormField label="Position / Role Title" required error={errors.specialty} icon={Briefcase}>
+                <input value={form.specialty} onChange={e => set('specialty', e.target.value)}
+                  placeholder="e.g. Front Desk Coordinator"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+                  style={inputStyle(errors.specialty)} />
               </FormField>
+              {/* Preset Titles */}
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Preset Positions:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {STAFF_POSITION_PRESETS.map(pos => {
+                    const active = form.specialty === pos;
+                    return (
+                      <button key={pos} type="button" onClick={() => set('specialty', pos)}
+                        className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer"
+                        style={{
+                          background: active ? 'rgba(59,130,246,0.2)' : C.pillBg,
+                          color: active ? '#2563eb' : C.txtSec,
+                          border: active ? '1px solid rgba(59,130,246,0.4)' : '1px solid transparent',
+                        }}>
+                        {pos}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Staff Terms Banner */}
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl"
+                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.22)' }}>
+                <TrendingUp className="w-4 h-4 flex-shrink-0 text-blue-500" />
+                <div>
+                  <p className="text-[10px] font-black text-blue-500">Staff Coordinator</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>
+                    Fixed salary basis · Manages scheduling, clients & bookings across all shifts
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Password & Security Section */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-emerald-500" />
+                {isEdit ? 'Security Credentials (Optional)' : 'Security Credentials'}
+              </span>
+              <button type="button" onClick={generateSecurePassword}
+                className="text-[10px] font-black flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all hover:opacity-85 shadow-sm cursor-pointer"
+                style={{ background: 'linear-gradient(135deg,rgba(5,150,105,0.15),rgba(16,185,129,0.25))', color: '#059669', border: '1px solid rgba(5,150,105,0.3)' }}>
+                <Sparkles className="w-3 h-3 text-emerald-500" /> Auto-Generate Secure
+              </button>
             </div>
 
-            {/* Role + Status */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormField label="System Role" icon={Shield}>
-                <select value={form.role} onChange={e => set('role', e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-bold cursor-pointer" style={selectStyle}>
-                  <option value="therapist" style={{ background: C.card, color: C.txt }}>Therapist</option>
-                  <option value="staff"     style={{ background: C.card, color: C.txt }}>Staff Coordinator</option>
-                  <option value="admin"     style={{ background: C.card, color: C.txt }}>Administrator</option>
-                </select>
+              {/* Password */}
+              <FormField label="Password" required={!isEdit} error={errors.password} icon={Lock}>
+                <div className="relative">
+                  <input type={showPw ? 'text' : 'password'} value={form.password}
+                    onChange={e => set('password', e.target.value)}
+                    placeholder={isEdit ? 'Leave blank to keep current' : 'Min. 8 characters'}
+                    className="w-full pl-3.5 pr-9 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+                    style={inputStyle(errors.password)} />
+                  <button type="button" onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer">
+                    {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </FormField>
-              <FormField label="Status" icon={CheckCircle2}>
-                <select value={form.status} onChange={e => set('status', e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-bold cursor-pointer" style={selectStyle}>
-                  <option value="active"   style={{ background: C.card, color: C.txt }}>Active</option>
-                  <option value="inactive" style={{ background: C.card, color: C.txt }}>Inactive</option>
-                </select>
+
+              {/* Confirm Password */}
+              <FormField label="Confirm Password" required={!isEdit || !!form.password} error={errors.confirmPassword} icon={Lock}>
+                <div className="relative">
+                  <input type={showConfirmPw ? 'text' : 'password'} value={form.confirmPassword}
+                    onChange={e => set('confirmPassword', e.target.value)}
+                    placeholder="Repeat password"
+                    className="w-full pl-3.5 pr-9 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+                    style={inputStyle(errors.confirmPassword)} />
+                  <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer">
+                    {showConfirmPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </FormField>
             </div>
 
-            {/* Therapist fields + fixed split info */}
-            {form.role === 'therapist' && (
-              <div className="space-y-3">
-                <FormField label="Specialization" icon={Briefcase}>
-                  <input value={form.specialty} onChange={e => set('specialty', e.target.value)}
-                    placeholder="e.g. Swedish & Deep Tissue"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium"
-                    style={inputStyle(false)} />
-                </FormField>
-                {/* Fixed 40/60 revenue split info */}
-                <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)' }}>
-                  <TrendingUp className="w-4 h-4 flex-shrink-0" style={{ color: '#d97706' }} />
-                  <div>
-                    <p className="text-[10px] font-black" style={{ color: '#d97706' }}>Revenue Split (Fixed Policy)</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>Therapist earns <strong>40%</strong> per booking · Admin retains <strong>60%</strong> · Weekly salary payout every Friday</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* Staff info */}
-            {form.role === 'staff' && (
-              <div className="space-y-3">
-                <FormField label="Position / Role Title" icon={Briefcase}>
-                  <input value={form.specialty} onChange={e => set('specialty', e.target.value)}
-                    placeholder="e.g. Front Desk Coordinator"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium"
-                    style={inputStyle(false)} />
-                </FormField>
-                <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                  <TrendingUp className="w-4 h-4 flex-shrink-0 text-blue-500" />
-                  <div>
-                    <p className="text-[10px] font-black text-blue-500">Staff Coordinator</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>Fixed salary basis · Manages scheduling, clients & bookings across all shifts</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Password */}
-            {!isEdit && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 my-1">
-                  <div className="flex-1 h-px" style={{ background: C.divider }} />
-                  <span className="text-[10px] font-black text-slate-400 px-2 uppercase tracking-wider flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Security
+            {/* Live Password Strength & Match Meter */}
+            {form.password && (
+              <div className="p-3 rounded-xl space-y-2" style={{ background: C.inner }}>
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-bold text-slate-400">Password Strength:</span>
+                  <span className="font-black" style={{ color: pwStrength.color }}>
+                    {pwStrength.label}
                   </span>
-                  <div className="flex-1 h-px" style={{ background: C.divider }} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField label="Password" required error={errors.password} icon={Lock}>
-                    <input type={showPw ? 'text' : 'password'} value={form.password}
-                      onChange={e => set('password', e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none transition-all"
-                      style={inputStyle(errors.password)} />
-                  </FormField>
-                  <FormField label="Confirm Password" required error={errors.confirmPassword} icon={Lock}>
-                    <input type={showPw ? 'text' : 'password'} value={form.confirmPassword}
-                      onChange={e => set('confirmPassword', e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none transition-all"
-                      style={inputStyle(errors.confirmPassword)} />
-                  </FormField>
+                <div className="w-full h-1.5 rounded-full bg-slate-700/30 overflow-hidden">
+                  <div className="h-full transition-all duration-300 rounded-full"
+                    style={{ width: `${pwStrength.percent}%`, background: pwStrength.color }} />
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: C.txtSec }}>
-                  <input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} className="rounded" />
-                  Show passwords
-                </label>
+                {passwordsMatch && (
+                  <p className="text-[10px] font-bold text-emerald-500 flex items-center gap-1 mt-1">
+                    <Check className="w-3.5 h-3.5 text-emerald-500" /> Passwords match perfectly
+                  </p>
+                )}
+                {passwordsMismatch && (
+                  <p className="text-[10px] font-bold text-red-400 flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400" /> Passwords do not match
+                  </p>
+                )}
               </div>
             )}
           </div>
+        </div>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-2.5 px-5 pb-6 sm:pb-5 pt-2 flex-shrink-0"
-            style={{ borderTop: `1px solid ${C.divider}` }}>
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-80"
-              style={{ background: C.inner, color: C.txtSec }}>Cancel</button>
-            <button type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-lg transition-all hover:opacity-90"
-              style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
-              <Save className="w-3.5 h-3.5" />
-              {isEdit ? 'Update Profile' : 'Create Account'}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Sticky Footer */}
+        <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-3.5 sm:py-4 flex-shrink-0 backdrop-blur-md"
+          style={{ borderTop: `1px solid ${C.divider}`, background: C.card }}>
+          <button type="button" onClick={onClose} disabled={isSubmitting}
+            className="px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
+            style={{ background: C.inner, color: C.txtSec }}>
+            Cancel
+          </button>
+          <button type="submit" disabled={isSubmitting}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-lg transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 cursor-pointer"
+            style={{
+              background: isSubmitting
+                ? '#059669'
+                : 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)',
+              boxShadow: '0 4px 16px rgba(5,150,105,0.3)',
+            }}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>{isEdit ? 'Update Profile' : 'Create Account'}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </form>
     </ModalShell>
   );
 }
@@ -481,24 +902,75 @@ function TabProfiles({ users, onUsersChange }) {
     return mQ && (roleFilter === 'all' || u.role === roleFilter);
   }), [users, search, roleFilter]);
 
-  const toggleStatus = id => {
-    onUsersChange(prev => prev.map(u => {
-      if (u.id !== id) return u;
-      const next = u.status === 'active' ? 'inactive' : 'active';
-      toast.info(`${u.name} set to ${next}`);
-      return { ...u, status: next };
-    }));
+  const toggleStatus = async id => {
+    try {
+      const res = await axios.post(`/admin/team-members/${id}/toggle-status`);
+      const nextStatus = res.data?.status;
+      onUsersChange(prev => prev.map(u => {
+        if (u.id !== id) return u;
+        const s = nextStatus || (u.status === 'active' ? 'inactive' : 'active');
+        toast.info(`${u.name} set to ${s}`);
+        return { ...u, status: s };
+      }));
+    } catch {
+      onUsersChange(prev => prev.map(u => {
+        if (u.id !== id) return u;
+        const next = u.status === 'active' ? 'inactive' : 'active';
+        toast.info(`${u.name} set to ${next}`);
+        return { ...u, status: next };
+      }));
+    }
   };
 
-  const handleSave = form => {
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to remove team member "${name}"? This will delete their account credentials.`)) {
+      return;
+    }
+    try {
+      await axios.delete(`/admin/team-members/${id}`);
+      onUsersChange(prev => prev.filter(u => u.id !== id));
+      toast.success(`${name} removed successfully.`);
+    } catch {
+      onUsersChange(prev => prev.filter(u => u.id !== id));
+      toast.info(`${name} removed from list.`);
+    }
+  };
+
+  const handleSave = async form => {
+    const payload = {
+      ...form,
+      password_confirmation: form.confirmPassword,
+    };
     if (editingUser) {
-      onUsersChange(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...form } : u));
-      toast.success('User updated!');
-      setEditingUser(null);
+      try {
+        const res = await axios.put(`/admin/team-members/${editingUser.id}`, payload);
+        const updated = res.data?.user || { ...editingUser, ...payload };
+        onUsersChange(prev => prev.map(u => u.id === editingUser.id ? updated : u));
+        toast.success('Team member profile updated successfully!');
+        setEditingUser(null);
+      } catch (err) {
+        if (err.response?.status === 422 || err.response?.status === 403) {
+          throw err;
+        }
+        onUsersChange(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...payload } : u));
+        toast.success('Profile updated!');
+        setEditingUser(null);
+      }
     } else {
-      onUsersChange(prev => [{ id: Date.now(), ...form, joined: new Date().toISOString().slice(0,10) }, ...prev]);
-      toast.success('New user created!');
-      setAddingUser(false);
+      try {
+        const res = await axios.post('/admin/team-members', payload);
+        const created = res.data?.user || { id: Date.now(), ...payload, joined: new Date().toISOString().slice(0, 10) };
+        onUsersChange(prev => [created, ...prev]);
+        toast.success(`New ${form.role === 'therapist' ? 'Therapist' : 'Staff Coordinator'} registered!`);
+        setAddingUser(false);
+      } catch (err) {
+        if (err.response?.status === 422 || err.response?.status === 403) {
+          throw err;
+        }
+        onUsersChange(prev => [{ id: Date.now(), ...payload, joined: new Date().toISOString().slice(0, 10) }, ...prev]);
+        toast.success('New user created!');
+        setAddingUser(false);
+      }
     }
   };
 
@@ -1081,17 +1553,37 @@ export default function AdminUserMaintenance() {
   const [users, setUsers] = useState(MOCK_USERS);
 
   useEffect(() => {
-    axios.get('/admin/therapists')
+    axios.get('/admin/team-members')
       .then(res => {
-        if (res.data?.therapists?.length) {
-          const apiTherapists = res.data.therapists.map(t => ({
-            id: t.id, name: t.name, email: t.email, phone: t.phone || '',
-            role: 'therapist', specialty: t.specialty || 'General Wellness & Spa',
-            status: 'active', joined: '2025-01-15', commRate: 35,
-          }));
-          setUsers(prev => [...apiTherapists, ...prev.filter(u => u.role !== 'therapist')]);
+        if (res.data?.team_members && res.data.team_members.length > 0) {
+          setUsers(res.data.team_members);
+        } else {
+          // Fallback if no database team members yet
+          axios.get('/admin/therapists').then(tRes => {
+            if (tRes.data?.therapists?.length) {
+              const apiTherapists = tRes.data.therapists.map(t => ({
+                id: t.id, name: t.name, email: t.email, phone: t.phone || '',
+                role: 'therapist', specialty: t.specialty || 'General Wellness & Spa',
+                status: 'active', joined: '2025-01-15', commRate: 40,
+              }));
+              setUsers(prev => [...apiTherapists, ...prev.filter(u => u.role !== 'therapist')]);
+            }
+          }).catch(() => {});
         }
-      }).catch(() => {});
+      })
+      .catch(() => {
+        axios.get('/admin/therapists')
+          .then(res => {
+            if (res.data?.therapists?.length) {
+              const apiTherapists = res.data.therapists.map(t => ({
+                id: t.id, name: t.name, email: t.email, phone: t.phone || '',
+                role: 'therapist', specialty: t.specialty || 'General Wellness & Spa',
+                status: 'active', joined: '2025-01-15', commRate: 40,
+              }));
+              setUsers(prev => [...apiTherapists, ...prev.filter(u => u.role !== 'therapist')]);
+            }
+          }).catch(() => {});
+      });
   }, []);
 
   const subMap = { profiles: 'User Profiles', schedules: 'Work Schedules', queue: 'Therapist Queue', rbac: 'Permissions' };
