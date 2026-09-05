@@ -87,6 +87,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/availability', [TherapistController::class, 'getAvailability']);
         Route::post('/availability/toggle', [TherapistController::class, 'toggleAvailability']);
         Route::post('/appointments/{id}/status', [TherapistController::class, 'updateStatus']);
+        Route::post('/appointments/{id}/claim', [TherapistController::class, 'claimJob']);
+        Route::post('/profile', [TherapistController::class, 'updateProfile']);
     });
 
     // Group 3: /staff/* -> Staff only

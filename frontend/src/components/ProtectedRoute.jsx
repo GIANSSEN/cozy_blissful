@@ -15,7 +15,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  const userRole = String(role || '').trim().toLowerCase();
+  const normalizedAllowed = allowedRoles ? allowedRoles.map(r => String(r).trim().toLowerCase()) : null;
+
+  if (normalizedAllowed && !normalizedAllowed.includes(userRole)) {
     // If authenticated but role is not allowed, show an elegant Access Denied layout
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">

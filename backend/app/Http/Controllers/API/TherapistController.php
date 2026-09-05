@@ -33,17 +33,20 @@ class TherapistController extends Controller
             ->sum('services.duration') / 60.0;
         $hoursWorked = round($hoursWorked, 1);
 
-        // 2. Fetch upcoming appointments
+        // 2. Fetch all appointments (both upcoming and completed) for full history view
         $appointments = Appointment::with(['client', 'service'])
             ->where('therapist_id', $user->id)
-            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress'])
-            ->orderBy('datetime', 'asc')
+            ->whereIn('status', ['Pending', 'Confirmed', 'In Progress', 'Completed'])
+            ->orderBy('datetime', 'desc')
             ->get()
             ->map(function ($appt) {
                 return [
                     'id' => $appt->id,
                     'client_name' => $appt->client ? $appt->client->name : 'Client',
+                    'client_phone' => $appt->client && $appt->client->phone ? $appt->client->phone : 'Not provided',
                     'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                    'duration' => $appt->service ? $appt->service->duration : 60,
+                    'price' => $appt->service ? $appt->service->price : 0,
                     'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
                     'notes' => $appt->notes ?? '',
                     'status' => $appt->status
@@ -69,10 +72,12 @@ class TherapistController extends Controller
                 return [
                     'id' => $appt->id,
                     'title' => ($appt->service ? $appt->service->name : 'Massage') . ' Needed',
-                    'description' => $appt->notes ?? 'No additional notes.',
-                    'location' => 'Cozy Blissful - Home Service',
+                    'description' => $appt->notes ?? 'Standard appointment booking.',
+                    'location' => 'Cozy Blissful - Main Clinic / Home Service',
                     'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
-                    'compensation' => '₱' . ($appt->service ? $appt->service->price : 749.00)
+                    'duration' => $appt->service ? $appt->service->duration : 60,
+                    'compensation' => '₱' . number_format($appt->service ? (float)$appt->service->price : 749.00, 2),
+                    'client_name' => $appt->client ? $appt->client->name : 'Client',
                 ];
             })
             ->values();
@@ -84,6 +89,14 @@ class TherapistController extends Controller
                 'completed_sessions' => $completedSessions,
                 'rating' => 4.9,
                 'hours_worked' => $hoursWorked > 0 ? $hoursWorked : 0
+            ],
+            'therapist_profile' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'specialty' => $user->specialty ?? 'General Massage & Spa Therapy',
+                'notes' => $user->notes ?? '',
             ],
             'appointments' => $appointments,
             'available_jobs' => $availableJobs
@@ -202,4 +215,118 @@ class TherapistController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Claim an unassigned job order / appointment matching therapist availability.
+     */
+    public function claimJob(Request $request, $id)
+    {
+        $user = $request->user();
+        $appt = Appointment::where('id', $id)
+            ->whereNull('therapist_id')
+            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->first();
+
+        if (!$appt) {
+            return response()->json([
+                'message' => 'This job order has already been assigned or is no longer available.'
+            ], 404);
+        }
+
+        $oldStatus = $appt->status;
+        $appt->therapist_id = $user->id;
+        $appt->status = 'Confirmed';
+        $appt->save();
+
+        \App\Models\AuditLog::log('assign', 'Appointment', "Therapist '{$user->name}' claimed booking #{$appt->id}", [
+            'actor' => $user->name,
+            'actor_role' => 'therapist',
+            'module' => 'Therapist Portal',
+            'severity' => 'info',
+            'metadata' => [
+                'appointment_id' => $appt->id,
+                'therapist_id' => $user->id,
+            ]
+        ]);
+
+        \App\Models\Notification::create([
+            'type'           => 'therapist_assigned',
+            'title'          => 'Job Claimed by Therapist',
+            'description'    => "Therapist {$user->name} accepted booking #{$appt->id} (" . ($appt->service?->name ?? 'Service') . ')',
+            'appointment_id' => $appt->id,
+        ]);
+
+        return response()->json([
+            'message' => "Job order #{$appt->id} successfully assigned to you!",
+            'appointment' => [
+                'id' => $appt->id,
+                'client_name' => $appt->client ? $appt->client->name : 'Client',
+                'client_phone' => $appt->client && $appt->client->phone ? $appt->client->phone : 'Not provided',
+                'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                'duration' => $appt->service ? $appt->service->duration : 60,
+                'price' => $appt->service ? $appt->service->price : 0,
+                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'notes' => $appt->notes ?? '',
+                'status' => $appt->status
+            ]
+        ]);
+    }
+
+    /**
+     * Update therapist profile details (phone, specialty, notes, password).
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'phone' => 'nullable|string|max:30',
+            'specialty' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+            'current_password' => 'nullable|required_with:new_password|string',
+            'new_password' => 'nullable|string|min:8|max:255|confirmed',
+        ]);
+
+        if (!empty($validated['current_password'])) {
+            if (!\Illuminate\Support\Facades\Hash::check($validated['current_password'], $user->password)) {
+                return response()->json([
+                    'message' => 'Current password is incorrect.',
+                    'errors' => ['current_password' => ['The provided current password does not match.']]
+                ], 422);
+            }
+            $user->password = $validated['new_password'];
+        }
+
+        if (array_key_exists('phone', $validated)) {
+            $user->phone = $validated['phone'];
+        }
+        if (array_key_exists('specialty', $validated)) {
+            $user->specialty = $validated['specialty'];
+        }
+        if (array_key_exists('notes', $validated)) {
+            $user->notes = $validated['notes'];
+        }
+
+        $user->save();
+
+        \App\Models\AuditLog::log('update', 'User', "Therapist '{$user->name}' updated their profile settings", [
+            'actor' => $user->name,
+            'actor_role' => 'therapist',
+            'module' => 'Therapist Portal',
+            'severity' => 'info',
+        ]);
+
+        return response()->json([
+            'message' => 'Profile updated successfully!',
+            'therapist_profile' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'specialty' => $user->specialty ?? 'General Massage & Spa Therapy',
+                'notes' => $user->notes ?? '',
+            ]
+        ]);
+    }
 }
+

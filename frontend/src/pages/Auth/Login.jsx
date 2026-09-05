@@ -226,10 +226,11 @@ const Login = () => {
   const navigate = useNavigate();
 
   const redirect = useCallback((userRole) => {
-    if (userRole === 'admin') navigate('/admin/dashboard');
-    else if (userRole === 'therapist') navigate('/therapist/dashboard');
-    else if (userRole === 'staff') navigate('/staff/dashboard');
-    else if (userRole === 'client') navigate('/client/dashboard');
+    const r = String(userRole || '').trim().toLowerCase();
+    if (r === 'admin') navigate('/admin/dashboard');
+    else if (r === 'therapist') navigate('/therapist/dashboard');
+    else if (r === 'staff') navigate('/staff/dashboard');
+    else if (r === 'client') navigate('/client/dashboard');
     else navigate('/booking/dashboard');
   }, [navigate]);
 
