@@ -57,13 +57,27 @@ class PaymentController extends Controller
 
         $refNum = 'CB-' . str_pad($appointment->id, 5, '0', STR_PAD_LEFT) . '-' . time();
 
+        // Normalize phone to E.164 format (+63XXXXXXXXXX) required by PayMongo
+        $rawPhone = $appointment->client->phone ?? '';
+        $phone = preg_replace('/[^0-9+]/', '', $rawPhone);
+        if ($phone && !str_starts_with($phone, '+')) {
+            // Convert 09XXXXXXXX → +639XXXXXXXX
+            if (str_starts_with($phone, '09') && strlen($phone) === 11) {
+                $phone = '+63' . substr($phone, 1);
+            } elseif (str_starts_with($phone, '9') && strlen($phone) === 10) {
+                $phone = '+63' . $phone;
+            } elseif (str_starts_with($phone, '63') && strlen($phone) === 12) {
+                $phone = '+' . $phone;
+            }
+        }
+
         $payload = [
             'data' => [
                 'attributes' => [
                     'billing' => [
                         'name'  => $appointment->client->name   ?? 'Client',
                         'email' => $appointment->client->email  ?? '',
-                        'phone' => $appointment->client->phone  ?? '',
+                        'phone' => $phone ?: null,
                     ],
                     'send_email_receipt' => true,
                     'show_description'   => true,
@@ -102,9 +116,11 @@ class PaymentController extends Controller
                     'appt_id' => $appointment->id,
                 ]);
 
+                $pmErrors = $response->json('errors') ?? [];
+                $firstMsg = !empty($pmErrors) ? ($pmErrors[0]['detail'] ?? 'Payment gateway error.') : $response->body();
                 return response()->json([
-                    'message' => 'Payment gateway error. Please try again.',
-                    'details' => $response->json('errors'),
+                    'message' => $firstMsg,
+                    'errors'  => $pmErrors,
                 ], 422);
             }
 

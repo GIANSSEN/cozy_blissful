@@ -12,7 +12,8 @@ import {
   Sparkles, Award, Gift, Send, UserCheck, Star, X,
   Zap, MessageSquare, Scissors, XCircle, RefreshCw,
   CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
-  CheckCircle2, Compass, Heart, PhoneCall, MapPin, Banknote, Wallet, CreditCard
+  CheckCircle2, Compass, Heart, PhoneCall, MapPin,
+  Banknote, Wallet, CreditCard, Receipt, User, Mail, Check
 } from 'lucide-react';
 
 // ─── Design system helpers ─────────────────────────────────────────────────
@@ -44,7 +45,7 @@ const GoldBtn = ({ children, onClick, disabled, className = '', type = 'button' 
   </button>
 );
 
-const STEP_LABELS = ['Choose Service', 'Date & Time', 'Review & Notes', 'Confirmation'];
+const STEP_LABELS = ['Choose Service', 'Date & Time', 'Client Details & Billing', 'Confirmation'];
 
 // ─── STATUS COLORS ───────────────────────────────────────────────────────────
 
@@ -416,7 +417,7 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
   );
 };
 
-// ─── STEP 3: BILLING & REVIEW ──────────────────────────────────────────────────
+// ─── STEP 3: CLIENT DETAILS & BILLING ──────────────────────────────────────────
 
 const PAYMENT_OPTIONS = [
   {
@@ -476,7 +477,7 @@ const ReviewStep = ({
             Billing Details &amp; Order Summary
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Review your appointment schedule, confirm client details, and choose payment preference
+            Confirm client contact information, treatment address, and choose your payment preference
           </p>
         </div>
         <span className="self-start sm:self-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 flex items-center gap-1 shadow-xs">
@@ -2074,6 +2075,21 @@ const ClientDashboard = () => {
             booking={rescheduleTarget}
             onClose={() => setRescheduleTarget(null)}
             onSuccess={(msg) => { fetchDashboardData(); showToast(msg, 'success'); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ═══ PAYMENT MODAL (PayMongo) ════════════════════════════════════════ */}
+      <AnimatePresence>
+        {paymentTarget && (
+          <PaymentModal
+            appointment={paymentTarget}
+            onClose={() => setPaymentTarget(null)}
+            onSuccess={() => {
+              setPaymentTarget(null);
+              fetchDashboardData();
+              showToast('✅ Payment submitted! Your appointment is now confirmed.', 'success');
+            }}
           />
         )}
       </AnimatePresence>
