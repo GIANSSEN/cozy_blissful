@@ -41,9 +41,9 @@ class ClientController extends Controller
                 'status'          => $appt->status,
                 'notes'           => $appt->notes,
                 'payment_status'  => $appt->payment_status ?? 'unpaid',
-                'payment_method'  => $appt->payment_method,
+                'payment_method'  => $appt->payment_method ?? 'cash',
                 'amount_paid'     => $appt->amount_paid ? (float)$appt->amount_paid : null,
-                'paymongo_session_id' => $appt->paymongo_session_id,
+                'paid_at'         => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
             ];
         });
 
@@ -72,6 +72,8 @@ class ClientController extends Controller
         return response()->json([
             'message'               => 'Client bookings retrieved successfully',
             'client_name'           => $user->name,
+            'client_email'          => $user->email,
+            'client_phone'          => $user->phone ?? '',
             'bookings'              => $bookings,
             'available_services'    => $availableServices,
             'available_therapists'  => $therapists,
@@ -188,10 +190,14 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'service_id'   => 'required|exists:services,id',
-            'therapist_id' => 'nullable|exists:users,id',
-            'datetime'     => 'required|date|after:now',
-            'notes'        => 'nullable|string|max:1000',
+            'service_id'     => 'required|exists:services,id',
+            'therapist_id'   => 'nullable|exists:users,id',
+            'datetime'       => 'required|date|after:now',
+            'notes'          => 'nullable|string|max:2000',
+            'client_name'    => 'nullable|string|max:150',
+            'client_phone'   => 'nullable|string|max:50',
+            'client_address' => 'nullable|string|max:500',
+            'payment_method' => 'nullable|string|max:50',
         ]);
 
         $user = $request->user();
@@ -258,15 +264,46 @@ class ClientController extends Controller
             }
         }
 
+        // Auto-update user phone if provided and not yet saved
+        if ($request->filled('client_phone') && empty($user->phone)) {
+            $user->update(['phone' => $request->client_phone]);
+        }
+
+        // Validate and sanitize payment method
+        $validMethods = ['cash', 'gcash', 'maya', 'card'];
+        $chosenMethod = in_array(strtolower($request->payment_method ?? 'cash'), $validMethods)
+            ? strtolower($request->payment_method)
+            : 'cash';
+
+        // Build structured notes with client billing & address details
+        $billingDetails = [];
+        if ($request->filled('client_name') && $request->client_name !== $user->name) {
+            $billingDetails[] = 'Billing Name: ' . trim($request->client_name);
+        }
+        if ($request->filled('client_phone')) {
+            $billingDetails[] = 'Phone: ' . trim($request->client_phone);
+        }
+        if ($request->filled('client_address')) {
+            $billingDetails[] = 'Address: ' . trim($request->client_address);
+        }
+
+        $combinedNotes = trim($request->notes ?? '');
+        if (!empty($billingDetails)) {
+            $billingBlock = "[Billing & Contact Info]\n" . implode("\n", $billingDetails);
+            $combinedNotes = $combinedNotes ? $combinedNotes . "\n\n" . $billingBlock : $billingBlock;
+        }
+
         // ── Create appointment within transaction ─────────────────────────
-        $appt = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $service, $request, $parsedDatetime) {
+        $appt = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $service, $request, $parsedDatetime, $combinedNotes, $chosenMethod) {
             $appointment = Appointment::create([
-                'client_id'    => $user->id,
-                'therapist_id' => $request->therapist_id, // Assigned if requested, or left for staff
-                'service_id'   => $service->id,
-                'datetime'     => $parsedDatetime,
-                'status'       => 'Pending',
-                'notes'        => $request->notes,
+                'client_id'      => $user->id,
+                'therapist_id'   => $request->therapist_id, // Assigned if requested, or left for staff
+                'service_id'     => $service->id,
+                'datetime'       => $parsedDatetime,
+                'status'         => 'Pending',
+                'notes'          => $combinedNotes,
+                'payment_status' => 'unpaid',
+                'payment_method' => $chosenMethod,
             ]);
 
             // Create admin notification for new booking
@@ -304,6 +341,7 @@ class ClientController extends Controller
                 'status'           => 'Pending',
                 'notes'            => $appt->notes,
                 'payment_status'   => 'unpaid',
+                'payment_method'   => $chosenMethod,
             ],
         ], 201);
     }

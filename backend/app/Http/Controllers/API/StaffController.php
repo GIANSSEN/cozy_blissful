@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Appointment;
+use App\Models\Notification;
 use App\Models\TherapistAvailability;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -49,14 +50,18 @@ class StaffController extends Controller
                 'available_today' => $t->availabilities->isNotEmpty(),
             ]),
             'appointments' => $todayAppointments->map(fn($a) => [
-                'id'           => $a->id,
-                'client'       => $a->client?->name ?? 'Unknown',
-                'therapist'    => $a->therapist?->name ?? 'Unassigned',
-                'therapist_id' => $a->therapist_id,
-                'service'      => $a->service?->name ?? 'Unknown',
-                'datetime'     => $a->datetime,
-                'status'       => $a->status,
-                'notes'        => $a->notes,
+                'id'             => $a->id,
+                'client'         => $a->client?->name ?? 'Unknown',
+                'therapist'      => $a->therapist?->name ?? 'Unassigned',
+                'therapist_id'   => $a->therapist_id,
+                'service'        => $a->service?->name ?? 'Unknown',
+                'datetime'       => $a->datetime,
+                'status'         => $a->status,
+                'notes'          => $a->notes,
+                'payment_status' => $a->payment_status ?? 'unpaid',
+                'payment_method' => $a->payment_method ?? 'cash',
+                'amount_paid'    => $a->amount_paid ? (float)$a->amount_paid : null,
+                'paid_at'        => $a->paid_at ? $a->paid_at->format('Y-m-d H:i:s') : null,
             ]),
         ]);
     }
@@ -148,6 +153,10 @@ class StaffController extends Controller
                 'datetime'         => $a->datetime,
                 'status'           => $a->status,
                 'notes'            => $a->notes,
+                'payment_status'   => $a->payment_status ?? 'unpaid',
+                'payment_method'   => $a->payment_method ?? 'cash',
+                'amount_paid'      => $a->amount_paid ? (float)$a->amount_paid : null,
+                'paid_at'          => $a->paid_at ? $a->paid_at->format('Y-m-d H:i:s') : null,
             ]);
 
         return response()->json(['appointments' => $appointments]);
@@ -202,7 +211,7 @@ class StaffController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:Pending,Confirmed,In Progress,Completed,Cancelled',
+            'status' => 'required|in:Pending,Confirmed,In Progress,Completed by Therapist,Completed,Cancelled',
             'reason' => 'nullable|string',
         ]);
 
@@ -237,9 +246,17 @@ class StaffController extends Controller
         }
 
         if ($oldStatus !== 'Completed' && $appt->status === 'Completed') {
+            if ($appt->payment_status !== 'paid') {
+                $appt->payment_status = 'paid';
+                $appt->payment_method = $request->payment_method ?? 'cash';
+                $appt->amount_paid = $request->amount_paid ?? ($appt->service ? (float)$appt->service->price : 0.00);
+                $appt->paid_at = now();
+                $appt->save();
+            }
+
             Notification::create([
                 'type'           => 'completed',
-                'title'          => 'Session Completed',
+                'title'          => 'Session Completed & Cash Settled',
                 'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
                 'appointment_id' => $appt->id,
             ]);
@@ -248,14 +265,88 @@ class StaffController extends Controller
         return response()->json([
             'message' => 'Appointment status updated to ' . $request->status,
             'appointment' => [
-                'id'           => $appt->id,
-                'client'       => $appt->client?->name ?? 'Client',
-                'therapist'    => $appt->therapist?->name ?? 'Unassigned',
-                'therapist_id' => $appt->therapist_id,
-                'service'      => $appt->service?->name ?? 'Service',
-                'datetime'     => $appt->datetime,
-                'status'       => $appt->status,
-                'notes'        => $appt->notes,
+                'id'             => $appt->id,
+                'client'         => $appt->client?->name ?? 'Client',
+                'therapist'      => $appt->therapist?->name ?? 'Unassigned',
+                'therapist_id'   => $appt->therapist_id,
+                'service'        => $appt->service?->name ?? 'Service',
+                'datetime'       => $appt->datetime,
+                'status'         => $appt->status,
+                'notes'          => $appt->notes,
+                'payment_status' => $appt->payment_status,
+                'payment_method' => $appt->payment_method ?? 'cash',
+                'amount_paid'    => $appt->amount_paid ? (float)$appt->amount_paid : null,
+                'paid_at'        => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
+            ]
+        ]);
+    }
+
+    /**
+     * Settle cash payment after treatment session is completed (Staff).
+     */
+    public function settleCashPayment(Request $request, $id)
+    {
+        $request->validate([
+            'amount_paid'   => 'required|numeric|min:0',
+            'cash_tendered' => 'nullable|numeric|min:0',
+            'change'        => 'nullable|numeric|min:0',
+            'notes'         => 'nullable|string|max:500',
+        ]);
+
+        $appt = Appointment::with(['client', 'service', 'therapist'])->findOrFail($id);
+
+        $oldStatus = $appt->status;
+        $appt->payment_status = 'paid';
+        $appt->payment_method = 'cash';
+        $appt->amount_paid    = (float)$request->amount_paid;
+        $appt->paid_at        = now();
+        $appt->status         = 'Completed';
+
+        if ($request->filled('notes')) {
+            $appt->notes = $appt->notes ? $appt->notes . ' | ' . trim($request->notes) : trim($request->notes);
+        }
+
+        $appt->save();
+
+        Notification::create([
+            'type'           => 'completed',
+            'title'          => 'Cash Payment Received & Session Finalized',
+            'description'    => 'Staff received cash payment of ₱' . number_format($request->amount_paid, 2) . ' for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
+            'appointment_id' => $appt->id,
+        ]);
+
+        $tendered = $request->cash_tendered ? (float)$request->cash_tendered : (float)$request->amount_paid;
+        $change = $request->change ? (float)$request->change : max(0, $tendered - (float)$request->amount_paid);
+
+        \App\Models\AuditLog::log('update', 'Appointment', "Staff settled cash payment of ₱" . number_format($request->amount_paid, 2) . " (Tendered: ₱" . number_format($tendered, 2) . ", Change: ₱" . number_format($change, 2) . ") for booking #{$appt->id}", [
+            'actor' => auth()->user()?->name ?? 'Staff Coordinator',
+            'actor_role' => 'staff',
+            'module' => 'Payments',
+            'severity' => 'info',
+            'metadata' => [
+                'appointment_id' => $appt->id,
+                'amount_paid'    => (float)$appt->amount_paid,
+                'cash_tendered'  => $tendered,
+                'change'         => $change,
+                'old_status'     => $oldStatus,
+                'new_status'     => 'Completed',
+                'payment_status' => 'paid',
+                'payment_method' => 'cash',
+            ]
+        ]);
+
+        return response()->json([
+            'message' => 'Cash payment settled and appointment marked Completed!',
+            'appointment' => [
+                'id'             => $appt->id,
+                'client'         => $appt->client?->name ?? 'Client',
+                'service'        => $appt->service?->name ?? 'Service',
+                'datetime'       => $appt->datetime,
+                'status'         => $appt->status,
+                'payment_status' => $appt->payment_status,
+                'payment_method' => $appt->payment_method,
+                'amount_paid'    => (float)$appt->amount_paid,
+                'paid_at'        => $appt->paid_at->format('Y-m-d H:i:s'),
             ]
         ]);
     }
@@ -273,7 +364,7 @@ class StaffController extends Controller
         $appt = Appointment::findOrFail($id);
 
         try {
-            $parsedDatetime = \Carbon\Carbon::parse($request->datetime);
+            $parsedDatetime = Carbon::parse($request->datetime);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Invalid datetime format.'], 422);
         }

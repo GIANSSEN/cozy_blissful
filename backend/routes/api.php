@@ -23,11 +23,8 @@ Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middle
 Route::get('/auth/facebook/redirect', [SocialAuthController::class, 'redirectFacebook']);
 Route::get('/auth/facebook/callback', [SocialAuthController::class, 'callbackFacebook']);
 
-// PayMongo Webhook & Public Verification routes
+// PayMongo Webhook — public (signature-verified internally)
 Route::post('/payment/webhook', [PaymentController::class, 'handleWebhook']);
-Route::get('/payment/verify-session/{sessionId}', [PaymentController::class, 'verifySession']);
-Route::post('/payment/checkout-session', [PaymentController::class, 'createCheckoutSession']);
-
 
 // Protected routes group
 Route::middleware('auth:sanctum')->group(function () {
@@ -39,8 +36,8 @@ Route::middleware('auth:sanctum')->group(function () {
         $user = $request->user();
         return response()->json([
             'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
+                'id'    => $user->id,
+                'name'  => $user->name,
                 'email' => $user->email,
             ],
             'role' => $user->getRoleNames()->first() ?? 'client'
@@ -53,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appointments', [AdminController::class, 'getAppointments']);
         Route::post('/appointments/{id}/assign', [AdminController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [AdminController::class, 'updateStatus']);
+        Route::post('/appointments/{id}/settle-payment', [AdminController::class, 'settleCashPayment']);
         Route::post('/appointments/{id}/reschedule', [AdminController::class, 'reschedule']);
         Route::get('/therapists', [AdminController::class, 'getTherapists']);
         Route::get('/customers', [AdminController::class, 'getCustomers']);
@@ -105,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/appointments', [StaffController::class, 'getAppointments']);
         Route::post('/appointments/{id}/assign', [StaffController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [StaffController::class, 'updateStatus']);
+        Route::post('/appointments/{id}/settle-payment', [StaffController::class, 'settleCashPayment']);
         Route::post('/appointments/{id}/reschedule', [StaffController::class, 'reschedule']);
     });
 
@@ -115,5 +114,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/available-slots', [ClientController::class, 'getAvailableSlots']);
         Route::post('/{id}/cancel', [ClientController::class, 'cancel']);
         Route::post('/{id}/reschedule', [ClientController::class, 'reschedule']);
+    });
+
+    // Group 5: /payment/* -> Client only for PayMongo payments
+    Route::middleware('role:client')->prefix('payment')->group(function () {
+        Route::post('/create-checkout-session', [PaymentController::class, 'createCheckoutSession']);
+        Route::get('/session-status/{sessionId}', [PaymentController::class, 'getSessionStatus']);
+        Route::get('/verify', [PaymentController::class, 'verifyPayment']);
     });
 });

@@ -21,14 +21,16 @@ class Appointment extends Model
         'payment_status',
         'payment_method',
         'paymongo_session_id',
-        'paymongo_payment_id',
         'amount_paid',
+        'paid_at',
         'reminder_24h_sent_at',
         'reminder_2h_sent_at',
     ];
 
     protected $casts = [
         'datetime' => 'datetime',
+        'paid_at' => 'datetime',
+        'amount_paid' => 'decimal:2',
     ];
 
     public function client()

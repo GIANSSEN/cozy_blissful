@@ -23,9 +23,16 @@ class AdminController extends Controller
         // 1. Core metrics
         $totalBookings = Appointment::count();
         
-        $totalRevenue = Appointment::where('appointments.status', 'Completed')
-            ->join('services', 'appointments.service_id', '=', 'services.id')
-            ->sum('services.price');
+        // Sum paid cash amounts (fallback to service price for paid records where amount_paid is null)
+        $totalRevenue = (float) Appointment::where('payment_status', 'paid')
+            ->sum('amount_paid');
+
+        if ($totalRevenue == 0) {
+            $totalRevenue = (float) Appointment::where('appointments.status', 'Completed')
+                ->where('appointments.payment_status', 'paid')
+                ->join('services', 'appointments.service_id', '=', 'services.id')
+                ->sum('services.price');
+        }
 
         $activeTherapists = User::role('therapist')->count();
         $registeredClients = User::role('client')->count();
@@ -43,6 +50,8 @@ class AdminController extends Controller
                     'service' => $appt->service ? $appt->service->name : 'Massage Service',
                     'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
                     'status' => $appt->status,
+                    'payment_status' => $appt->payment_status ?? 'unpaid',
+                    'amount_paid' => $appt->amount_paid ? (float)$appt->amount_paid : null,
                 ];
             });
 
@@ -51,15 +60,22 @@ class AdminController extends Controller
 
         // 4. Payments list generated from appointments (to display on admin payments tab)
         $completedAppts = Appointment::with(['client', 'service'])
-            ->whereIn('status', ['Confirmed', 'Completed'])
+            ->whereIn('status', ['Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])
+            ->orderBy('datetime', 'desc')
             ->get();
 
         $payments = $completedAppts->map(function ($appt) {
+            $price = $appt->service ? (float)$appt->service->price : 0.00;
             return [
                 'id' => 1000 + $appt->id,
+                'appointment_id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',
-                'amount' => $appt->service ? (float)$appt->service->price : 749.00,
-                'status' => $appt->status === 'Completed' ? 'Completed' : 'Pending',
+                'service' => $appt->service ? $appt->service->name : 'Service',
+                'amount' => $appt->amount_paid ? (float)$appt->amount_paid : $price,
+                'payment_method' => $appt->payment_method ?? 'cash',
+                'payment_status' => $appt->payment_status ?? 'unpaid',
+                'status' => ($appt->payment_status === 'paid' || $appt->status === 'Completed') ? 'Completed' : 'Pending',
+                'paid_at' => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
                 'date' => $appt->datetime->format('Y-m-d'),
             ];
         });
@@ -100,6 +116,10 @@ class AdminController extends Controller
                     'datetime'         => $appt->datetime->format('Y-m-d H:i:s'),
                     'status'           => $appt->status,
                     'notes'            => $appt->notes ?? '',
+                    'payment_status'   => $appt->payment_status ?? 'unpaid',
+                    'payment_method'   => $appt->payment_method ?? 'cash',
+                    'amount_paid'      => $appt->amount_paid ? (float)$appt->amount_paid : null,
+                    'paid_at'          => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
                 ];
             });
 
@@ -236,10 +256,19 @@ class AdminController extends Controller
         }
 
         if ($oldStatus !== 'Completed' && $appt->status === 'Completed') {
+            // Auto-mark cash payment as paid if not already marked
+            if ($appt->payment_status !== 'paid') {
+                $appt->payment_status = 'paid';
+                $appt->payment_method = $request->payment_method ?? 'cash';
+                $appt->amount_paid = $request->amount_paid ?? ($appt->service ? (float)$appt->service->price : 0.00);
+                $appt->paid_at = now();
+                $appt->save();
+            }
+
             Notification::create([
                 'type'           => 'completed',
                 'title'          => 'Session Verified & Completed',
-                'description'    => 'Admin confirmed completion of ' . ($appt->client->name ?? 'Client') . ' (' . ($appt->service->name ?? 'Service') . ') by ' . ($appt->therapist?->name ?? 'Therapist') . '. Moved to History.',
+                'description'    => 'Admin confirmed completion and cash settlement of ' . ($appt->client->name ?? 'Client') . ' (' . ($appt->service->name ?? 'Service') . ') by ' . ($appt->therapist?->name ?? 'Therapist') . '. Moved to History.',
                 'appointment_id' => $appt->id,
             ]);
         }
@@ -277,6 +306,80 @@ class AdminController extends Controller
                 'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
                 'status' => $appt->status,
                 'notes' => $appt->notes ?? '',
+                'payment_status' => $appt->payment_status,
+                'payment_method' => $appt->payment_method ?? 'cash',
+                'amount_paid' => $appt->amount_paid ? (float)$appt->amount_paid : null,
+                'paid_at' => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
+            ]
+        ]);
+    }
+
+    /**
+     * Settle cash payment after treatment session is completed.
+     */
+    public function settleCashPayment(Request $request, $id)
+    {
+        $request->validate([
+            'amount_paid'   => 'required|numeric|min:0',
+            'cash_tendered' => 'nullable|numeric|min:0',
+            'change'        => 'nullable|numeric|min:0',
+            'notes'         => 'nullable|string|max:500',
+        ]);
+
+        $appt = Appointment::with(['client', 'service', 'therapist'])->findOrFail($id);
+
+        $oldStatus = $appt->status;
+        $appt->payment_status = 'paid';
+        $appt->payment_method = 'cash';
+        $appt->amount_paid    = (float)$request->amount_paid;
+        $appt->paid_at        = now();
+        $appt->status         = 'Completed';
+
+        if ($request->filled('notes')) {
+            $appt->notes = $appt->notes ? $appt->notes . ' | ' . trim($request->notes) : trim($request->notes);
+        }
+
+        $appt->save();
+
+        Notification::create([
+            'type'           => 'completed',
+            'title'          => 'Cash Payment Received & Session Finalized',
+            'description'    => 'Cash payment of ₱' . number_format($request->amount_paid, 2) . ' received for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
+            'appointment_id' => $appt->id,
+        ]);
+
+        $tendered = $request->cash_tendered ? (float)$request->cash_tendered : (float)$request->amount_paid;
+        $change = $request->change ? (float)$request->change : max(0, $tendered - (float)$request->amount_paid);
+
+        \App\Models\AuditLog::log('update', 'Appointment', "Admin settled cash payment of ₱" . number_format($request->amount_paid, 2) . " (Tendered: ₱" . number_format($tendered, 2) . ", Change: ₱" . number_format($change, 2) . ") for booking #{$appt->id}", [
+            'actor' => auth()->user()?->name ?? 'System Admin',
+            'actor_role' => 'admin',
+            'module' => 'Payments',
+            'severity' => 'info',
+            'metadata' => [
+                'appointment_id' => $appt->id,
+                'amount_paid'    => (float)$appt->amount_paid,
+                'cash_tendered'  => $tendered,
+                'change'         => $change,
+                'old_status'     => $oldStatus,
+                'new_status'     => 'Completed',
+                'payment_status' => 'paid',
+                'payment_method' => 'cash',
+            ]
+        ]);
+
+        return response()->json([
+            'message' => 'Cash payment settled and appointment marked Completed!',
+            'appointment' => [
+                'id'             => $appt->id,
+                'client_name'    => $appt->client ? $appt->client->name : 'Client',
+                'service'        => $appt->service ? $appt->service->name : 'Massage Service',
+                'datetime'       => $appt->datetime->format('Y-m-d H:i:s'),
+                'status'         => $appt->status,
+                'payment_status' => $appt->payment_status,
+                'payment_method' => $appt->payment_method,
+                'amount_paid'    => (float)$appt->amount_paid,
+                'paid_at'        => $appt->paid_at->format('Y-m-d H:i:s'),
             ]
         ]);
     }
@@ -294,7 +397,7 @@ class AdminController extends Controller
         $appt = Appointment::findOrFail($id);
 
         try {
-            $parsedDatetime = \Carbon\Carbon::parse($request->datetime);
+            $parsedDatetime = Carbon::parse($request->datetime);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Invalid datetime format.'], 422);
         }

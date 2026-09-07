@@ -10,11 +10,12 @@ import {
   Calendar, Clock, CheckCircle, AlertCircle,
   XCircle, Check, X, ChevronLeft, ChevronRight, UserCheck,
   Zap, Mail, CalendarDays,
-  Search, RotateCcw, CheckCircle2, CalendarCheck, Sparkles,
+  Search, RotateCcw, CheckCircle2, CalendarCheck, Sparkles, Banknote,
 } from 'lucide-react';
 import { MiniCalendar } from '../../components/ui/mini-calendar';
 import { DatePickerInput } from '../../components/ui/date-picker';
 import { format } from 'date-fns';
+import CashSettlementModal from '../../components/CashSettlementModal';
 
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -296,8 +297,8 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
                   fontSize: 12, fontWeight: 900, cursor: 'pointer',
                   boxShadow: '0 4px 14px rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
-                  <CheckCircle size={15} style={{ color: '#6ee7b7' }} />
-                  {appt.status === 'Completed by Therapist' ? 'Verify & Confirm Completion (Move to History)' : 'Complete Session'}
+                  <Banknote size={15} style={{ color: '#fde68a' }} />
+                  {appt.status === 'Completed by Therapist' ? 'Settle Cash & Confirm (Move to History)' : 'Settle Cash & Complete Session'}
                 </button>
               )}
             </>
@@ -1747,6 +1748,25 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                           <Clock size={11} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
                         </span>
                       )}
+                      {appt.payment_status === 'paid' ? (
+                        <span style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          fontSize: 11, fontWeight: 800, color: '#059669',
+                          background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)',
+                          padding: '2px 8px', borderRadius: 6,
+                        }}>
+                          <Check size={11} /> Paid in Cash {appt.amount_paid ? `(₱${Number(appt.amount_paid).toFixed(2)})` : ''}
+                        </span>
+                      ) : (
+                        <span style={{
+                          display: 'flex', alignItems: 'center', gap: 4,
+                          fontSize: 11, fontWeight: 700, color: '#d97706',
+                          background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)',
+                          padding: '2px 8px', borderRadius: 6,
+                        }}>
+                          <Banknote size={11} /> Cash on Visit {appt.service_price ? `(₱${Number(appt.service_price).toFixed(2)})` : ''}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1756,7 +1776,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                   {isCompletedByTherapist ? (
                     <button
                       onClick={() => onComplete(appt)}
-                      title="Verify and confirm session completion — archives into History"
+                      title="Settle cash and finalize session — archives into History"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         height: 36, padding: '0 18px', borderRadius: 12, cursor: 'pointer',
@@ -1765,13 +1785,13 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                         boxShadow: '0 2px 10px rgba(5,150,105,0.35)',
                       }}
                     >
-                      <CheckCircle size={15} /> Confirm &amp; Move to History
+                      <Banknote size={15} /> Settle Cash &amp; Finalize
                     </button>
                   ) : isInProgress ? (
                     <>
                       <button
                         onClick={() => onComplete(appt)}
-                        title="Mark session complete — archives into History"
+                        title="Settle cash and complete treatment — archives into History"
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6,
                           height: 36, padding: '0 16px', borderRadius: 12, cursor: 'pointer',
@@ -1780,7 +1800,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                           boxShadow: '0 2px 8px rgba(6,44,34,0.2)',
                         }}
                       >
-                        <Check size={14} /> Complete Session
+                        <Banknote size={14} /> Settle Cash &amp; Complete
                       </button>
                       <button
                         onClick={() => onOpenCancel(appt)}
@@ -1899,6 +1919,7 @@ const AdminAppointments = () => {
   const [acceptTarget, setAcceptTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [settleCashTarget, setSettleCashTarget] = useState(null);
 
   // ── Responsive: track viewport for inline-style grid ──
   const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
@@ -1988,6 +2009,20 @@ const AdminAppointments = () => {
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to reschedule on server';
       showToast(msg, 'error');
+    }
+  };
+
+  const handleSettleCash = async (apptId, payload) => {
+    try {
+      const res = await API.post(`/admin/appointments/${apptId}/settle-payment`, payload);
+      showToast(res.data?.message || 'Cash payment settled and session completed!');
+      setAppointments((prev) => prev.map((a) => a.id === apptId
+        ? { ...a, status: 'Completed', payment_status: 'paid', payment_method: 'cash', amount_paid: payload.amount_paid, paid_at: new Date().toISOString() }
+        : a));
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to settle cash payment.';
+      showToast(msg, 'error');
+      throw err;
     }
   };
 
@@ -2178,7 +2213,7 @@ const AdminAppointments = () => {
                   onOpenReassign={(appt) => setAcceptTarget(appt)}
                   onOpenReschedule={(appt) => setRescheduleTarget(appt)}
                   onOpenCancel={(appt) => setRejectTarget(appt)}
-                  onComplete={(appt) => handleUpdateStatus(appt.id, 'Completed')}
+                  onComplete={(appt) => setSettleCashTarget(appt)}
                 />
               </motion.div>
             )}
@@ -2234,7 +2269,19 @@ const AdminAppointments = () => {
               onOpenAccept={(appt) => setAcceptTarget(appt)}
               onOpenReject={(appt) => setRejectTarget(appt)}
               onOpenReschedule={(appt) => setRescheduleTarget(appt)}
-              onComplete={(appt) => handleUpdateStatus(appt.id, 'Completed')}
+              onComplete={(appt) => { setSelectedAppt(null); setSettleCashTarget(appt); }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Cash Settlement Modal */}
+        <AnimatePresence>
+          {settleCashTarget && (
+            <CashSettlementModal
+              appt={settleCashTarget}
+              onClose={() => setSettleCashTarget(null)}
+              onConfirmSettlement={handleSettleCash}
+              isDark={isDark}
             />
           )}
         </AnimatePresence>

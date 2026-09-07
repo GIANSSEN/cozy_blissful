@@ -9,8 +9,9 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   Clock, UserCheck, Calendar, CheckCircle, AlertCircle,
   Search, RefreshCw, UserPlus, ChevronDown, ChevronUp,
-  Tag, Zap, FileText, X, Check, CalendarCheck,
+  Tag, Zap, FileText, X, Check, CalendarCheck, Banknote,
 } from 'lucide-react';
+import CashSettlementModal from '../../components/CashSettlementModal';
 
 // ─── ClayCard ─────────────────────────────────────────────────────────────────
 
@@ -36,11 +37,12 @@ const ClayCard = ({ children, className = '', style = {}, ...props }) => {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES = {
-  Confirmed:     { bg: 'rgba(22,163,74,0.12)',  color: '#22c55e', border: 'rgba(22,163,74,0.25)'  },
-  'In Progress': { bg: 'rgba(14,165,233,0.12)', color: '#0284c7', border: 'rgba(14,165,233,0.25)' },
-  Pending:       { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: 'rgba(245,158,11,0.25)' },
-  Cancelled:     { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444', border: 'rgba(239,68,68,0.25)'  },
-  Completed:     { bg: 'rgba(99,102,241,0.12)', color: '#818cf8', border: 'rgba(99,102,241,0.25)' },
+  Confirmed:                  { bg: 'rgba(22,163,74,0.12)',  color: '#22c55e', border: 'rgba(22,163,74,0.25)'  },
+  'In Progress':              { bg: 'rgba(14,165,233,0.12)', color: '#0284c7', border: 'rgba(14,165,233,0.25)' },
+  'Completed by Therapist':   { bg: 'rgba(245,158,11,0.12)', color: '#d97706', border: 'rgba(245,158,11,0.25)' },
+  Pending:                    { bg: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: 'rgba(245,158,11,0.25)' },
+  Cancelled:                  { bg: 'rgba(239,68,68,0.12)',  color: '#ef4444', border: 'rgba(239,68,68,0.25)'  },
+  Completed:                  { bg: 'rgba(99,102,241,0.12)', color: '#818cf8', border: 'rgba(99,102,241,0.25)' },
 };
 
 const TABS = [
@@ -397,7 +399,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
 
 // ─── Appointment Card ─────────────────────────────────────────────────────────
 
-const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, isDark, index }) => {
+const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, onStatus, onOpenSettleCash, isDark, index }) => {
   const [expanded, setExpanded] = useState(false);
   const ss = STATUS_STYLES[appt.status] || STATUS_STYLES.Pending;
 
@@ -444,6 +446,17 @@ const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, isDark, index }) =>
                       ₱{appt.service_price}
                     </span>
                   )}
+                  {appt.payment_status === 'paid' ? (
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5"
+                      style={{ background: isDark ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.1)', color: '#059669' }}>
+                      <Check className="w-2.5 h-2.5" /> Paid in Cash
+                    </span>
+                  ) : appt.status !== 'Cancelled' ? (
+                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5"
+                      style={{ background: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)', color: '#d97706' }}>
+                      <Banknote className="w-2.5 h-2.5" /> Cash on Visit
+                    </span>
+                  ) : null}
                   {appt.notes && (
                     <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-0.5"
                       style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', color: isDark ? '#94a3b8' : '#64748b' }}>
@@ -585,38 +598,38 @@ const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, isDark, index }) =>
                         <>
                           <button
                             onClick={() => onStatus(appt.id, 'In Progress')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105 cursor-pointer"
                             style={{ background: 'linear-gradient(135deg,#0284c7,#0369a1)', boxShadow: '0 2px 8px rgba(2,132,199,0.25)' }}
                           >
                             <Zap className="w-3.5 h-3.5" /> Start Treatment
                           </button>
                           <button
                             onClick={() => onOpenAccept(appt)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 transition hover:scale-105"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 transition hover:scale-105 cursor-pointer"
                           >
                             <UserCheck className="w-3 h-3" /> Reassign Specialist
                           </button>
                           <button
                             onClick={() => onStatus(appt.id, 'Cancelled')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 transition hover:scale-105"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 transition hover:scale-105 cursor-pointer"
                           >
                             <X className="w-3 h-3" /> Cancel
                           </button>
                         </>
                       )}
 
-                      {appt.status === 'In Progress' && (
+                      {(appt.status === 'In Progress' || appt.status === 'Completed by Therapist') && (
                         <>
                           <button
-                            onClick={() => onStatus(appt.id, 'Completed')}
-                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105"
+                            onClick={() => onOpenSettleCash(appt)}
+                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105 cursor-pointer"
                             style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
                           >
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-300" /> Complete Treatment
+                            <Banknote className="w-3.5 h-3.5 text-amber-300" /> Settle Cash &amp; Complete Treatment
                           </button>
                           <button
                             onClick={() => onStatus(appt.id, 'Cancelled')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 transition hover:scale-105"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 transition hover:scale-105 cursor-pointer"
                           >
                             <X className="w-3 h-3" /> Cancel
                           </button>
@@ -624,9 +637,23 @@ const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, isDark, index }) =>
                       )}
 
                       {appt.status === 'Completed' && (
-                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200 flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" /> Treatment Finished &amp; Finalized
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200 flex items-center gap-1">
+                            <CheckCircle className="w-3.5 h-3.5" /> Treatment Completed
+                          </span>
+                          {appt.payment_status === 'paid' ? (
+                            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-xl border border-emerald-300 flex items-center gap-1">
+                              <Check className="w-3 h-3 text-emerald-600" /> Paid in Cash {appt.amount_paid ? `(₱${Number(appt.amount_paid).toFixed(2)})` : ''}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => onOpenSettleCash(appt)}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 transition hover:scale-105 cursor-pointer"
+                            >
+                              <Banknote className="w-3 h-3 text-amber-700" /> Settle Cash
+                            </button>
+                          )}
+                        </div>
                       )}
 
                       {appt.status === 'Cancelled' && (
@@ -664,6 +691,7 @@ const StaffAppointments = () => {
 
   const [acceptTarget, setAcceptTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
+  const [settleCashTarget, setSettleCashTarget] = useState(null);
 
   const loadAppointments = useCallback(async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true);
@@ -705,6 +733,17 @@ const StaffAppointments = () => {
       loadAppointments(true);
     } catch {
       toast.error('Failed to update status.');
+    }
+  };
+
+  const handleSettleCash = async (apptId, payload) => {
+    try {
+      const res = await API.post(`/staff/appointments/${apptId}/settle-payment`, payload);
+      toast.success(res.data.message || 'Cash payment settled and treatment completed!');
+      loadAppointments(true);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to settle cash payment.');
+      throw err;
     }
   };
 
@@ -793,6 +832,8 @@ const StaffAppointments = () => {
                 appt={appt}
                 onOpenAccept={(a) => setAcceptTarget(a)}
                 onOpenReject={(a) => setRejectTarget(a)}
+                onStatus={handleStatusChange}
+                onOpenSettleCash={(a) => setSettleCashTarget(a)}
                 isDark={isDark}
                 index={i}
               />
@@ -825,6 +866,18 @@ const StaffAppointments = () => {
                 await handleStatusChange(id, 'Cancelled', reason);
                 setRejectTarget(null);
               }}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Cash Settlement Modal */}
+        <AnimatePresence>
+          {settleCashTarget && (
+            <CashSettlementModal
+              appt={settleCashTarget}
+              onClose={() => setSettleCashTarget(null)}
+              onConfirmSettlement={handleSettleCash}
+              isDark={isDark}
             />
           )}
         </AnimatePresence>

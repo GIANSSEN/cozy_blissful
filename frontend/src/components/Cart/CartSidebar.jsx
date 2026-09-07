@@ -26,10 +26,7 @@ import { TimePickerInput } from "../ui/time-picker";
 const EASE = [0.22, 1, 0.36, 1];
 
 const PAYMENT_METHODS = [
-  { id: "cash", label: "Cash on Visit", sub: "Pay at the salon", icon: Banknote },
-  { id: "gcash", label: "GCash", sub: "Details after confirmation", icon: Smartphone },
-  { id: "maya", label: "Maya", sub: "Details after confirmation", icon: Wallet },
-  { id: "bank", label: "Bank Transfer", sub: "BPI · BDO · UnionBank", icon: Landmark },
+  { id: "cash", label: "Cash on Visit", sub: "Pay cash after session is done", icon: Banknote },
 ];
 
 const SERVICE_TYPES = [
@@ -568,7 +565,7 @@ export default function CartSidebar({ onLockChange }) {
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-900 text-[9px] font-black text-amber-300">3</span>
                       Billing & Payment
                     </h3>
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2.5">
                       {PAYMENT_METHODS.map((p) => (
                         <OptionPill
                           key={p.id}
@@ -579,6 +576,11 @@ export default function CartSidebar({ onLockChange }) {
                           sub={p.sub}
                         />
                       ))}
+                    </div>
+                    <div className="mt-2.5 rounded-xl border border-amber-200/80 bg-amber-50/60 p-3 text-[11.5px] leading-relaxed text-amber-900">
+                      <p className="font-semibold">
+                        💡 <span className="font-bold">Zero advance payment:</span> You will pay cash at the reception counter only after your wellness session is happily completed.
+                      </p>
                     </div>
                     <div className="mt-3">
                       <Field label="Special Requests (optional)">
