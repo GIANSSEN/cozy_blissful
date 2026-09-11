@@ -7,11 +7,11 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import API from '../../api/axios';
 import {
   Briefcase, Star, Clock, MapPin, Calendar,
-  CheckCircle, LogOut, TrendingUp, ChevronRight,
-  UserCheck, Sparkles, Heart, AlertCircle, Bell, Plus, Check,
-  Lock, Phone, User, Hash, Ban, Info, Zap, RefreshCw,
-  Search, X, Shield, Award, Edit3, Key, CheckCircle2,
-  ChevronDown, Copy, Eye, EyeOff, CheckCheck, Sparkle, Handshake,
+  CheckCircle, LogOut, TrendingUp,
+  UserCheck, Sparkles, AlertCircle, RefreshCw,
+  Search, X, Edit3, Key, CheckCircle2,
+  ChevronDown, Copy, Eye, EyeOff, CheckCheck,
+  User, Phone, Handshake, Zap, Check,
 } from 'lucide-react';
 
 // ─── Brand & Theme Tokens ──────────────────────────────────────────────────
@@ -33,7 +33,7 @@ const B = {
 // ─── Reusable ClayCard Component ──────────────────────────────────────────
 const ClayCard = ({ children, className = '', style = {}, hoverEffect = false, ...props }) => (
   <motion.div
-    whileHover={hoverEffect ? { y: -2, boxShadow: '0 12px 28px rgba(6,44,34,0.09)' } : {}}
+    whileHover={hoverEffect ? { y: -2, boxShadow: '0 12px 28px rgba(6,44,34,0.09)' } : undefined}
     transition={{ duration: 0.2 }}
     className={`rounded-3xl ${className}`}
     style={{
@@ -84,9 +84,26 @@ const TherapistDashboard = () => {
     new_password: '',
     new_password_confirmation: '',
   });
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [profileErrors, setProfileErrors] = useState({});
+
+  // Close modal helper that resets transient modal state
+  const closeModal = useCallback(() => {
+    if (submittingAction) return;
+    setModal({ type: null, data: null });
+    setShowPasswordSection(false);
+    setProfileErrors({});
+    setShowCurrentPw(false);
+    setShowNewPw(false);
+    setProfileForm(p => ({
+      ...p,
+      current_password: '',
+      new_password: '',
+      new_password_confirmation: '',
+    }));
+  }, [submittingAction]);
 
   // Fetch all dashboard and availability data
   const fetchDashboardData = useCallback(async (isSilent = false) => {
@@ -190,7 +207,7 @@ const TherapistDashboard = () => {
       } else {
         toast.success(res.data?.message || 'Session started! Timer active.');
       }
-      setModal({ type: null, data: null });
+      closeModal();
       fetchDashboardData(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update session status.');
@@ -206,11 +223,11 @@ const TherapistDashboard = () => {
     try {
       const res = await API.post(`/therapist/appointments/${modal.data.id}/claim`);
       toast.sparkle(res.data?.message || 'Job claimed successfully! Added to your schedule.');
-      setModal({ type: null, data: null });
+      closeModal();
       fetchDashboardData(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'This job is no longer available.');
-      setModal({ type: null, data: null });
+      closeModal();
       fetchDashboardData(true);
     } finally {
       setSubmittingAction(false);
@@ -222,14 +239,16 @@ const TherapistDashboard = () => {
     e.preventDefault();
     setProfileErrors({});
 
-    // Basic password confirmation check
-    if (profileForm.new_password && profileForm.new_password.length < 8) {
-      setProfileErrors({ new_password: 'New password must be at least 8 characters.' });
-      return;
-    }
-    if (profileForm.new_password && profileForm.new_password !== profileForm.new_password_confirmation) {
-      setProfileErrors({ new_password_confirmation: 'Password confirmation does not match.' });
-      return;
+    // Basic password confirmation check if changing password
+    if (showPasswordSection && profileForm.new_password) {
+      if (profileForm.new_password.length < 8) {
+        setProfileErrors({ new_password: 'New password must be at least 8 characters.' });
+        return;
+      }
+      if (profileForm.new_password !== profileForm.new_password_confirmation) {
+        setProfileErrors({ new_password_confirmation: 'Password confirmation does not match.' });
+        return;
+      }
     }
 
     setSubmittingAction(true);
@@ -239,7 +258,7 @@ const TherapistDashboard = () => {
         specialty: profileForm.specialty,
         notes: profileForm.notes,
       };
-      if (profileForm.new_password) {
+      if (showPasswordSection && profileForm.new_password) {
         payload.current_password = profileForm.current_password;
         payload.new_password = profileForm.new_password;
         payload.new_password_confirmation = profileForm.new_password_confirmation;
@@ -247,13 +266,7 @@ const TherapistDashboard = () => {
 
       const res = await API.post('/therapist/profile', payload);
       toast.success(res.data?.message || 'Profile updated successfully!');
-      setModal({ type: null, data: null });
-      setProfileForm(prev => ({
-        ...prev,
-        current_password: '',
-        new_password: '',
-        new_password_confirmation: '',
-      }));
+      closeModal();
       fetchDashboardData(true);
     } catch (err) {
       if (err.response?.data?.errors) {
@@ -322,7 +335,6 @@ const TherapistDashboard = () => {
   }, [appointments, todayStr]);
 
   const stats = data?.therapist_stats;
-  const profile = data?.therapist_profile;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#faf8f5] text-slate-800" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -347,6 +359,7 @@ const TherapistDashboard = () => {
               className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
                 isAvailableToday ? 'bg-emerald-500' : 'bg-amber-500'
               }`}
+              title={isAvailableToday ? 'On Duty Today' : 'Off Duty Today'}
             />
           </div>
           <div>
@@ -365,23 +378,8 @@ const TherapistDashboard = () => {
           </div>
         </div>
 
-        {/* Right side controls */}
-        <div className="flex items-center space-x-2.5">
-          {/* Real-time Duty status badge (Visible on all devices) */}
-          <button
-            onClick={() => toggleAvailability(todayStr)}
-            title="Click to toggle today's availability"
-            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all duration-200 cursor-pointer border"
-            style={
-              isAvailableToday
-                ? { background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.3)', color: '#047857' }
-                : { background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.3)', color: '#b45309' }
-            }
-          >
-            <span className={`w-2 h-2 rounded-full ${isAvailableToday ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span>{isAvailableToday ? 'On Duty' : 'Off Duty'}</span>
-          </button>
-
+        {/* Right side controls (Clean, non-redundant) */}
+        <div className="flex items-center space-x-2 sm:space-x-2.5">
           {/* Refresh Button */}
           <button
             onClick={() => fetchDashboardData(false)}
@@ -397,7 +395,7 @@ const TherapistDashboard = () => {
           <button
             onClick={() => setModal({ type: 'profile', data: null })}
             title="Therapist Profile & Password"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-emerald-800 transition-colors border border-slate-200 bg-white shadow-xs cursor-pointer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-emerald-800 transition-colors border border-slate-200 bg-white shadow-xs cursor-pointer min-h-[36px]"
           >
             <div
               className="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black text-white"
@@ -454,7 +452,7 @@ const TherapistDashboard = () => {
               </p>
             </div>
 
-            {/* Quick Duty Control Pill */}
+            {/* Quick Duty Control Pill (The canonical place to change availability) */}
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200/70">Today&apos;s Status</p>
@@ -467,7 +465,7 @@ const TherapistDashboard = () => {
               </div>
               <button
                 onClick={() => toggleAvailability(todayStr)}
-                className="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1.5 shadow-sm"
+                className="w-full sm:w-auto px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                 style={
                   isAvailableToday
                     ? { background: 'rgba(255,255,255,0.95)', color: B.deep }
@@ -486,7 +484,7 @@ const TherapistDashboard = () => {
           </div>
         ) : (
           <>
-            {/* ── 4 KEY METRICS CARDS ────────────────────────────────────── */}
+            {/* ── 4 KEY METRICS CARDS (Display-only, non-clickable, no hover bounce) ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
               {[
                 {
@@ -528,7 +526,7 @@ const TherapistDashboard = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.06, duration: 0.35 }}
                 >
-                  <ClayCard className="p-4 sm:p-5 flex flex-col justify-between h-full" hoverEffect>
+                  <ClayCard className="p-4 sm:p-5 flex flex-col justify-between h-full select-none cursor-default">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
                         {m.label}
@@ -588,8 +586,8 @@ const TherapistDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Filter Tabs */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  {/* Filter Tabs (Responsive, touch-friendly pill buttons) */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
                     {[
                       { id: 'all', label: 'All', count: tabCounts.all },
                       { id: 'today', label: 'Today', count: tabCounts.today },
@@ -602,7 +600,7 @@ const TherapistDashboard = () => {
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-1.5 min-h-[38px] ${
                             isActive
                               ? 'bg-emerald-900 text-white shadow-xs'
                               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/70'
@@ -610,7 +608,7 @@ const TherapistDashboard = () => {
                         >
                           <span>{tab.label}</span>
                           <span
-                            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
                               isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
                             }`}
                           >
@@ -642,7 +640,7 @@ const TherapistDashboard = () => {
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="px-4 py-1.5 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition"
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition min-h-[38px]"
                       >
                         Clear Search
                       </button>
@@ -761,7 +759,7 @@ const TherapistDashboard = () => {
                                   <div className="flex items-center gap-2 pl-10 sm:pl-0">
                                     <a
                                       href={`tel:${appt.client_phone}`}
-                                      className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-white px-2.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-700 transition"
+                                      className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-700 transition"
                                       title="Call Client"
                                     >
                                       <Phone className="w-3 h-3 text-emerald-700" />
@@ -769,10 +767,10 @@ const TherapistDashboard = () => {
                                     </a>
                                     <button
                                       onClick={() => copyToClipboard(appt.client_phone, 'Client phone')}
-                                      className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition"
+                                      className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
                                       title="Copy phone"
                                     >
-                                      <Copy className="w-3 h-3" />
+                                      <Copy className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                 )}
@@ -803,7 +801,7 @@ const TherapistDashboard = () => {
 
                             {/* Action Row */}
                             {isConfirmed && (
-                              <div className="pt-2 flex items-center justify-between gap-3 border-t border-slate-100">
+                              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100">
                                 <span className="text-[11px] text-slate-500 font-medium">
                                   Client has arrived / Ready for session?
                                 </span>
@@ -814,19 +812,19 @@ const TherapistDashboard = () => {
                                       data: { id: appt.id, client_name: appt.client_name, service: appt.service, newStatus: 'In Progress' },
                                     })
                                   }
-                                  className="px-4 py-2 rounded-xl text-xs font-extrabold text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-md"
+                                  className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl text-xs font-extrabold text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-md"
                                   style={{
                                     background: 'linear-gradient(135deg, #0284c7, #0369a1)',
                                   }}
                                 >
-                                  <Zap className="w-3.5 h-3.5 text-sky-200" />
+                                  <Zap className="w-4 h-4 text-sky-200" />
                                   <span>Start Session</span>
                                 </button>
                               </div>
                             )}
 
                             {isInProgress && (
-                              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-sky-50 border border-sky-200">
+                              <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-sky-50 border border-sky-200">
                                 <div className="flex items-center gap-2">
                                   <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-ping" />
                                   <span className="text-xs font-black text-sky-900">
@@ -840,12 +838,12 @@ const TherapistDashboard = () => {
                                       data: { id: appt.id, client_name: appt.client_name, service: appt.service, newStatus: 'Completed by Therapist' },
                                     })
                                   }
-                                  className="px-4 py-2 rounded-xl text-xs font-black text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                                  className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl text-xs font-black text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-md"
                                   style={{
                                     background: `linear-gradient(135deg, ${B.deep}, ${B.mid})`,
                                   }}
                                 >
-                                  <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />
+                                  <CheckCircle className="w-4 h-4 text-emerald-300" />
                                   <span>Complete Treatment</span>
                                 </button>
                               </div>
@@ -869,16 +867,6 @@ const TherapistDashboard = () => {
                               <div className="pt-1 text-[11px] text-emerald-700 font-semibold flex items-center gap-1.5">
                                 <CheckCheck className="w-4 h-4 text-emerald-600" />
                                 <span>Treatment confirmed by Admin &amp; archived in system history.</span>
-                              </div>
-                            )}
-
-                            {/* Standard Policy notice */}
-                            {!isCompleted && !isAwaitingAdmin && (
-                              <div className="flex items-start gap-2 rounded-xl px-3 py-2 bg-red-50/60 border border-red-100 text-[10px] text-red-700/90 leading-relaxed">
-                                <Lock className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                                <span>
-                                  <strong>Notice:</strong> Therapists cannot cancel or reschedule appointments directly. In case of an emergency, immediately inform your Front Desk / Administrator.
-                                </span>
                               </div>
                             )}
                           </ClayCard>
@@ -916,14 +904,14 @@ const TherapistDashboard = () => {
                         <button
                           onClick={() => handleBatchAvailability(true)}
                           disabled={submittingAction}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition border border-emerald-200 cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition border border-emerald-200 cursor-pointer disabled:opacity-50"
                         >
                           Mark Next 7 Days On
                         </button>
                         <button
                           onClick={() => handleBatchAvailability(false)}
                           disabled={submittingAction}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition border border-slate-200 cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition border border-slate-200 cursor-pointer disabled:opacity-50"
                         >
                           Clear
                         </button>
@@ -1023,7 +1011,11 @@ const TherapistDashboard = () => {
                   ) : (
                     <div className="space-y-3">
                       {data?.available_jobs?.map((job) => (
-                        <ClayCard key={job.id} className="p-4 space-y-3 border border-sky-100 hover:border-sky-300 transition-all">
+                        <ClayCard
+                          key={job.id}
+                          className="p-4 space-y-3 border transition-all"
+                          style={{ borderColor: 'rgba(186, 230, 253, 0.8)' }}
+                        >
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="font-extrabold text-slate-900 text-sm leading-snug">{job.title}</p>
@@ -1059,7 +1051,7 @@ const TherapistDashboard = () => {
                           </div>
 
                           {job.description && (
-                            <p className="text-[11px] text-slate-500 italic bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <p className="text-[11px] text-slate-500 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                               &ldquo;{job.description}&rdquo;
                             </p>
                           )}
@@ -1071,7 +1063,7 @@ const TherapistDashboard = () => {
                                 data: { id: job.id, title: job.title, compensation: job.compensation, datetime: job.datetime },
                               })
                             }
-                            className="w-full py-2 rounded-xl text-xs font-extrabold text-white transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                            className="w-full py-2.5 min-h-[44px] rounded-xl text-xs font-extrabold text-white transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
                             style={{
                               background: `linear-gradient(135deg, ${B.deep}, ${B.mid})`,
                             }}
@@ -1085,59 +1077,39 @@ const TherapistDashboard = () => {
                   )}
                 </div>
 
-                {/* 3. THERAPIST SPECIALIST BADGE & TIPS */}
-                <ClayCard
-                  className="p-5 text-white relative overflow-hidden"
-                  style={{
-                    background: `linear-gradient(135deg, ${B.deep} 0%, ${B.green} 100%)`,
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
-                      <Award className="w-5 h-5 text-amber-300" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase font-bold text-emerald-200 tracking-wider">
-                        Specialist Profile
-                      </p>
-                      <p className="font-extrabold text-sm text-white">
-                        {profile?.specialty || 'Massage & Wellness Specialist'}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-emerald-100/80 mt-3 leading-relaxed">
-                    Always maintain 10-minute sanitation buffers between sessions. Need to modify your specialty focus or phone number?
-                  </p>
-                  <button
-                    onClick={() => setModal({ type: 'profile', data: null })}
-                    className="mt-3 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-900 bg-white hover:bg-emerald-50 transition cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>Edit Specialist Details</span>
-                  </button>
-                </ClayCard>
-
               </div>
             </div>
           </>
         )}
       </main>
 
-      {/* ═══ CONFIRMATION & PROFILE MODALS ══════════════════════════════════ */}
+      {/* ═══ CONFIRMATION & PROFILE MODALS (Fully responsive: bottom-sheet on mobile, centered on desktop) ═══ */}
       <AnimatePresence>
         {modal.type && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !submittingAction) {
+                closeModal();
+              }
+            }}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 overflow-hidden relative max-h-[92vh] flex flex-col"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 overflow-hidden relative max-h-[90vh] sm:max-h-[92vh] flex flex-col"
             >
+              {/* Mobile grab handle */}
+              <div className="sm:hidden w-12 h-1 bg-slate-300 rounded-full mx-auto mb-3 shrink-0" />
+
               {/* Close icon button */}
               <button
-                onClick={() => !submittingAction && setModal({ type: null, data: null })}
+                onClick={closeModal}
                 disabled={submittingAction}
-                className="absolute right-5 top-5 text-slate-400 hover:text-slate-700 transition"
+                className="absolute right-4 top-4 sm:right-5 sm:top-5 text-slate-400 hover:text-slate-700 transition cursor-pointer p-1 rounded-lg hover:bg-slate-100"
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1162,16 +1134,16 @@ const TherapistDashboard = () => {
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-2">
                     <button
-                      onClick={() => setModal({ type: null, data: null })}
+                      onClick={closeModal}
                       disabled={submittingAction}
-                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                      className="px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={confirmStatusUpdate}
                       disabled={submittingAction}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 transition cursor-pointer flex items-center gap-2 shadow-md"
+                      className="px-5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 transition cursor-pointer flex items-center gap-2 shadow-md"
                     >
                       {submittingAction ? 'Starting...' : 'Confirm & Start'}
                     </button>
@@ -1199,16 +1171,16 @@ const TherapistDashboard = () => {
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-2">
                     <button
-                      onClick={() => setModal({ type: null, data: null })}
+                      onClick={closeModal}
                       disabled={submittingAction}
-                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                      className="px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={confirmStatusUpdate}
                       disabled={submittingAction}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 transition cursor-pointer flex items-center gap-2 shadow-md"
+                      className="px-5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 transition cursor-pointer flex items-center gap-2 shadow-md"
                     >
                       {submittingAction ? 'Completing...' : 'Yes, Complete Treatment'}
                     </button>
@@ -1242,16 +1214,16 @@ const TherapistDashboard = () => {
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-2">
                     <button
-                      onClick={() => setModal({ type: null, data: null })}
+                      onClick={closeModal}
                       disabled={submittingAction}
-                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                      className="px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={confirmClaimJob}
                       disabled={submittingAction}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 transition cursor-pointer shadow-md"
+                      className="px-5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 transition cursor-pointer shadow-md"
                     >
                       {submittingAction ? 'Claiming...' : 'Confirm Acceptance'}
                     </button>
@@ -1273,16 +1245,16 @@ const TherapistDashboard = () => {
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-2">
                     <button
-                      onClick={() => setModal({ type: null, data: null })}
+                      onClick={closeModal}
                       disabled={submittingAction}
-                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                      className="px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={confirmLogout}
                       disabled={submittingAction}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition cursor-pointer shadow-md"
+                      className="px-5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition cursor-pointer shadow-md"
                     >
                       {submittingAction ? 'Signing out...' : 'Yes, Sign Out'}
                     </button>
@@ -1292,18 +1264,18 @@ const TherapistDashboard = () => {
 
               {/* ── MODAL: PROFILE & SETTINGS ── */}
               {modal.type === 'profile' && (
-                <form onSubmit={handleSaveProfile} className="space-y-4">
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <form onSubmit={handleSaveProfile} className="space-y-4 flex flex-col overflow-hidden">
+                  <div className="flex items-center gap-3 pb-3 border-b border-slate-100 shrink-0">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-900 text-white flex items-center justify-center font-bold text-sm">
                       <User className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-base font-black text-slate-900">Therapist Profile &amp; Security</h3>
-                      <p className="text-[11px] text-slate-400">Update your contact details &amp; password</p>
+                      <p className="text-[11px] text-slate-400">Update contact info or account credentials</p>
                     </div>
                   </div>
 
-                  <div className="space-y-3 text-xs max-h-[65vh] overflow-y-auto pr-1">
+                  <div className="space-y-3.5 text-xs overflow-y-auto pr-1 flex-1">
                     {/* Phone input */}
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">Contact Phone</label>
@@ -1312,7 +1284,7 @@ const TherapistDashboard = () => {
                         placeholder="e.g. 0917-123-4567"
                         value={profileForm.phone}
                         onChange={(e) => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 text-xs"
                       />
                       {profileErrors.phone && <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.phone}</p>}
                     </div>
@@ -1325,7 +1297,7 @@ const TherapistDashboard = () => {
                         placeholder="e.g. Swedish, Deep Tissue, Shiatsu, Ventosa"
                         value={profileForm.specialty}
                         onChange={(e) => setProfileForm(p => ({ ...p, specialty: e.target.value }))}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 text-xs"
                       />
                       {profileErrors.specialty && <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.specialty}</p>}
                     </div>
@@ -1338,94 +1310,103 @@ const TherapistDashboard = () => {
                         placeholder="Any personal certifications, preferences, or shift notes..."
                         value={profileForm.notes}
                         onChange={(e) => setProfileForm(p => ({ ...p, notes: e.target.value }))}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700"
+                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 text-xs"
                       />
                     </div>
 
-                    {/* Password change divider */}
+                    {/* Collapsible Password Section */}
                     <div className="pt-2 border-t border-slate-100">
-                      <p className="font-extrabold text-slate-800 mb-2 flex items-center gap-1.5">
-                        <Key className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Change Password (Optional)</span>
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordSection(v => !v)}
+                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50/70 text-xs font-bold text-slate-700 transition cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Key className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{showPasswordSection ? 'Hide Password Change' : 'Change Password (Optional)'}</span>
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPasswordSection ? 'rotate-180' : ''}`} />
+                      </button>
 
-                      <div className="space-y-2.5">
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Current Password</label>
-                          <div className="relative">
-                            <input
-                              type={showCurrentPw ? 'text' : 'password'}
-                              placeholder="Enter current password"
-                              value={profileForm.current_password}
-                              onChange={(e) => setProfileForm(p => ({ ...p, current_password: e.target.value }))}
-                              className="w-full px-3.5 py-2 pr-9 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowCurrentPw(v => !v)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                            >
-                              {showCurrentPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            </button>
+                      {showPasswordSection && (
+                        <div className="space-y-2.5 mt-3 pt-1">
+                          <div>
+                            <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Current Password</label>
+                            <div className="relative">
+                              <input
+                                type={showCurrentPw ? 'text' : 'password'}
+                                placeholder="Enter current password"
+                                value={profileForm.current_password}
+                                onChange={(e) => setProfileForm(p => ({ ...p, current_password: e.target.value }))}
+                                className="w-full px-3.5 py-2 pr-9 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowCurrentPw(v => !v)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                              >
+                                {showCurrentPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                            {profileErrors.current_password && (
+                              <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.current_password}</p>
+                            )}
                           </div>
-                          {profileErrors.current_password && (
-                            <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.current_password}</p>
-                          )}
-                        </div>
 
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-500 mb-0.5">New Password</label>
-                          <div className="relative">
-                            <input
-                              type={showNewPw ? 'text' : 'password'}
-                              placeholder="At least 8 characters"
-                              value={profileForm.new_password}
-                              onChange={(e) => setProfileForm(p => ({ ...p, new_password: e.target.value }))}
-                              className="w-full px-3.5 py-2 pr-9 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowNewPw(v => !v)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-                            >
-                              {showNewPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            </button>
+                          <div>
+                            <label className="block text-[11px] font-medium text-slate-500 mb-0.5">New Password</label>
+                            <div className="relative">
+                              <input
+                                type={showNewPw ? 'text' : 'password'}
+                                placeholder="At least 8 characters"
+                                value={profileForm.new_password}
+                                onChange={(e) => setProfileForm(p => ({ ...p, new_password: e.target.value }))}
+                                className="w-full px-3.5 py-2 pr-9 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowNewPw(v => !v)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                              >
+                                {showNewPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                            {profileErrors.new_password && (
+                              <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.new_password}</p>
+                            )}
                           </div>
-                          {profileErrors.new_password && (
-                            <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.new_password}</p>
-                          )}
-                        </div>
 
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Confirm New Password</label>
-                          <input
-                            type="password"
-                            placeholder="Re-enter new password"
-                            value={profileForm.new_password_confirmation}
-                            onChange={(e) => setProfileForm(p => ({ ...p, new_password_confirmation: e.target.value }))}
-                            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700"
-                          />
-                          {profileErrors.new_password_confirmation && (
-                            <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.new_password_confirmation}</p>
-                          )}
+                          <div>
+                            <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Confirm New Password</label>
+                            <input
+                              type="password"
+                              placeholder="Re-enter new password"
+                              value={profileForm.new_password_confirmation}
+                              onChange={(e) => setProfileForm(p => ({ ...p, new_password_confirmation: e.target.value }))}
+                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 text-xs"
+                            />
+                            {profileErrors.new_password_confirmation && (
+                              <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.new_password_confirmation}</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 shrink-0">
                     <button
                       type="button"
-                      onClick={() => setModal({ type: null, data: null })}
+                      onClick={closeModal}
                       disabled={submittingAction}
-                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                      className="px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={submittingAction}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 transition cursor-pointer shadow-md"
+                      className="px-5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 transition cursor-pointer shadow-md"
                     >
                       {submittingAction ? 'Saving...' : 'Save Changes'}
                     </button>

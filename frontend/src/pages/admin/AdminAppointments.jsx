@@ -1174,11 +1174,12 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  VIEW 4: ACTIVE & CONFIRMED TREATMENTS                              */
-/*  CRITICAL: "Complete" only shown for In Progress or                  */
-/*  Completed by Therapist — NOT for plain Confirmed cards              */
+/*  Active Treatments displays ongoing & scheduled sessions.           */
+/*  Settle Cash is NOT done here — it belongs exclusively in           */
+/*  Therapist Done after the specialist concludes treatment.          */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, onOpenCancel, onComplete, onSelectAppt }) => {
+const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, onOpenCancel, onSelectAppt }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [search, setSearch] = useState('');
@@ -1194,11 +1195,10 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
     pillBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
   };
 
-  const awaitingVerification = useMemo(() => appointments.filter(a => a.status === 'Completed by Therapist'), [appointments]);
-
   const confirmed = useMemo(() => {
     return appointments.filter(a => {
-      if (!['Confirmed', 'In Progress', 'Completed by Therapist'].includes(a.status)) return false;
+      // Only active sessions: Confirmed (scheduled) and In Progress (undergoing treatment)
+      if (!['Confirmed', 'In Progress'].includes(a.status)) return false;
       const q = search.toLowerCase();
       if (!q) return true;
       return (a.service || '').toLowerCase().includes(q) ||
@@ -1206,15 +1206,13 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
              (a.therapist_name || '').toLowerCase().includes(q) ||
              String(a.id).includes(q);
     }).sort((a, b) => {
-      const order = { 'Completed by Therapist': 1, 'In Progress': 2, 'Confirmed': 3 };
-      return (order[a.status] || 4) - (order[b.status] || 4);
+      const order = { 'In Progress': 1, 'Confirmed': 2 };
+      return (order[a.status] || 3) - (order[b.status] || 3);
     });
   }, [appointments, search]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-      {/* Removed: sign-off banner now shown in dedicated Therapist Done tab */}
 
       {/* Search bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1245,7 +1243,6 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
           {confirmed.map(appt => {
-            const isCompletedByTherapist = appt.status === 'Completed by Therapist';
             const isInProgress = appt.status === 'In Progress';
             const isConfirmed = appt.status === 'Confirmed';
 
@@ -1253,15 +1250,13 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
               <motion.div
                 key={appt.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 style={{
-                  background: isCompletedByTherapist
-                    ? (isDark ? 'linear-gradient(135deg,#231b08,#141927)' : 'linear-gradient(135deg,#fffbeb,#ffffff)')
-                    : isInProgress
+                  background: isInProgress
                     ? (isDark ? 'linear-gradient(135deg,#0c2233,#141927)' : 'linear-gradient(135deg,#f0f9ff,#ffffff)')
                     : C.cardBg,
-                  border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.5)' : isInProgress ? 'rgba(14,165,233,0.35)' : C.cardBorder}`,
+                  border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.35)' : C.cardBorder}`,
                   borderRadius: 20, padding: '16px 18px',
                   display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14,
-                  boxShadow: isCompletedByTherapist ? '0 0 18px rgba(217,119,6,0.18), 0 4px 14px rgba(217,119,6,0.12)' : '0 2px 8px rgba(0,0,0,0.05)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                   transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
               >
@@ -1273,22 +1268,17 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                 >
                   <div style={{
                     width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                    background: isCompletedByTherapist ? 'rgba(217,119,6,0.15)' : isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
-                    color: isCompletedByTherapist ? '#d97706' : isInProgress ? '#0284c7' : '#059669',
-                    border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.35)' : isInProgress ? 'rgba(14,165,233,0.25)' : 'rgba(5,150,105,0.2)'}`,
+                    background: isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
+                    color: isInProgress ? '#0284c7' : '#059669',
+                    border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.25)' : 'rgba(5,150,105,0.2)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {isCompletedByTherapist ? <Sparkles size={20} /> : isInProgress ? <Zap size={20} /> : <CheckCircle2 size={20} />}
+                    {isInProgress ? <Zap size={20} /> : <CheckCircle2 size={20} />}
                   </div>
 
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
-                      {isCompletedByTherapist && (
-                        <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 9px', borderRadius: 999, background: 'rgba(217,119,6,0.18)', color: '#d97706', border: '1px solid rgba(217,119,6,0.35)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          ⚡ Awaiting Admin Confirmation
-                        </span>
-                      )}
                       {isInProgress && (
                         <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(14,165,233,0.12)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           🔵 In Progress
@@ -1305,13 +1295,13 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                         Client: <strong style={{ color: C.textPrimary }}>{appt.client_name || appt.client}</strong>
                       </span>
                       <span style={{ color: C.textMuted, opacity: 0.5 }}>•</span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: isCompletedByTherapist ? 'rgba(217,119,6,0.1)' : isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)', color: isCompletedByTherapist ? '#d97706' : isInProgress ? '#0284c7' : '#047857', border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.25)' : isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}` }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)', color: isInProgress ? '#0284c7' : '#047857', border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}` }}>
                         <UserCheck size={12} /> {appt.therapist_name || 'Unassigned'}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 5 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isCompletedByTherapist ? '#d97706' : isInProgress ? '#0284c7' : '#059669' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isInProgress ? '#0284c7' : '#059669' }}>
                         <Calendar size={13} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
                       </span>
                       {appt.service_duration && (
@@ -1332,18 +1322,9 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                   </div>
                 </div>
 
-                {/* RIGHT: Context-Aware Action Controls
-                  ┌────────────────────────────────────────────────────────────────┐
-                  │  Status              │ Actions shown                          │
-                  │────────────────────────────────────────────────────────────────│
-                  │  Confirmed           │ Reassign | Reschedule | [X] Cancel     │
-                  │  In Progress         │ Settle Cash & Complete | [X] Cancel    │
-                  │  Completed by Thera… │ [★ BIG] Settle Cash & Confirm (admin)  │
-                  └────────────────────────────────────────────────────────────────┘
-                */}
+                {/* RIGHT: Action Controls */}
                 <div className="booking-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-
-                  {/* ── CONFIRMED: No complete button — therapist must start session first ── */}
+                  {/* Confirmed: Scheduled session — Reassign, Reschedule, or Cancel */}
                   {isConfirmed && (
                     <>
                       {onOpenReassign && (
@@ -1367,6 +1348,14 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                         </HoverButton>
                       )}
                       <HoverButton
+                        onClick={() => onSelectAppt && onSelectAppt(appt)}
+                        title="View Details"
+                        baseStyle={{ height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textSecondary, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', border: `1px solid ${C.cardBorder}` }}
+                        hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)' }}
+                      >
+                        Details
+                      </HoverButton>
+                      <HoverButton
                         onClick={() => onOpenCancel(appt)}
                         title="Cancel Appointment"
                         baseStyle={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}` }}
@@ -1377,16 +1366,34 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                     </>
                   )}
 
-                  {/* ── IN PROGRESS: Settle Cash + Cancel ── */}
+                  {/* In Progress: Session undergoing with therapist — live badge, details, cancel */}
                   {isInProgress && (
                     <>
-                      <HoverButton
-                        onClick={() => onComplete(appt)}
-                        title="Settle cash payment and complete this treatment"
-                        baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 16px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#ffffff', background: 'linear-gradient(135deg,#062c22,#0a3d30)', border: 'none', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
-                        hoverStyle={{ boxShadow: '0 4px 16px rgba(6,44,34,0.45)', transform: 'translateY(-1px)' }}
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          height: 36,
+                          padding: '0 12px',
+                          borderRadius: 12,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: '#0284c7',
+                          background: isDark ? 'rgba(14,165,233,0.14)' : 'rgba(14,165,233,0.09)',
+                          border: '1px solid rgba(14,165,233,0.28)',
+                        }}
                       >
-                        <Banknote size={14} /> Settle & Complete
+                        <Zap size={13} className="animate-pulse" style={{ color: '#0284c7' }} />
+                        <span>Ongoing Session</span>
+                      </div>
+                      <HoverButton
+                        onClick={() => onSelectAppt && onSelectAppt(appt)}
+                        title="View Details"
+                        baseStyle={{ height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textSecondary, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', border: `1px solid ${C.cardBorder}` }}
+                        hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)' }}
+                      >
+                        Details
                       </HoverButton>
                       <HoverButton
                         onClick={() => onOpenCancel(appt)}
@@ -1397,18 +1404,6 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                         <X size={15} />
                       </HoverButton>
                     </>
-                  )}
-
-                  {/* ── COMPLETED BY THERAPIST: Big golden confirm button — most prominent ── */}
-                  {isCompletedByTherapist && (
-                    <HoverButton
-                      onClick={() => onComplete(appt)}
-                      title="Settle cash & officially complete — archives to History"
-                      baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 20px', borderRadius: 14, fontSize: 13, fontWeight: 900, color: '#ffffff', background: 'linear-gradient(135deg,#059669,#047857)', border: 'none', boxShadow: '0 4px 14px rgba(5,150,105,0.45)', letterSpacing: '0.02em' }}
-                      hoverStyle={{ boxShadow: '0 6px 22px rgba(5,150,105,0.65)', transform: 'translateY(-2px)' }}
-                    >
-                      <Banknote size={17} style={{ color: '#fde68a' }} /> Settle Cash & Confirm
-                    </HoverButton>
                   )}
                 </div>
               </motion.div>
@@ -1460,20 +1455,6 @@ const StatCardItem = ({ label, value, color, accent, Icon, pulse, isWide, isDark
         }}
       >
         <Icon size={isWide ? 19 : 16} />
-        {pulse && (
-          <span
-            style={{
-              position: 'absolute',
-              top: -2,
-              right: -2,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: '#f59e0b',
-              boxShadow: '0 0 8px #f59e0b',
-            }}
-          />
-        )}
       </div>
       <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <p
@@ -1750,7 +1731,7 @@ const AdminAppointments = () => {
     { label: 'Upcoming Scheduled', value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck, tab: 'confirmed' },
     { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock, tab: 'pending' },
     { label: 'In Treatment Now',    value: inProgressCount,     color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap, tab: 'confirmed' },
-    { label: 'Awaiting Sign-off',   value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, tab: 'confirmed' },
+    { label: 'Awaiting Sign-off',   value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, tab: 'requests' },
     { label: 'Completed History',   value: completedCount,      color: '#6366f1', accent: 'rgba(99,102,241,0.12)', Icon: CheckCircle, navigate: '/admin/history' },
   ];
 
