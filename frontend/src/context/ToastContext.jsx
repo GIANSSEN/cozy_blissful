@@ -219,8 +219,14 @@ export const ToastProvider = ({ children }) => {
 
   /**
    * showToast({ message, type?, title?, duration? })
+   * Deduplicated: identical messages within 800ms are silently dropped.
    */
+  const lastToastRef = useRef({ msg: null, ts: 0 });
   const showToast = useCallback(({ message, type = 'success', title, duration = 3500 }) => {
+    const now = Date.now();
+    if (message === lastToastRef.current.msg && now - lastToastRef.current.ts < 800) return;
+    lastToastRef.current = { msg: message, ts: now };
+
     const id = ++toastIdCounter;
     setToasts((prev) => [{ id, message, type, title, duration }, ...prev].slice(0, 5));
 

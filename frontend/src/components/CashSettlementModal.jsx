@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+﻿import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Banknote,
   CheckCircle,
   X,
   Clock,
-  User,
   AlertCircle,
-  Sparkles,
   Receipt,
-  Check,
+  Shield,
+  ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
+
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*  CASH SETTLEMENT MODAL                                  */
+/*  Step 1: Enter amounts  â†’  Step 2: Review & Confirm     */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function CashSettlementModal({
   appt,
@@ -19,360 +24,322 @@ export default function CashSettlementModal({
   isDark = false,
 }) {
   const initialDue = Number(appt.service_price || appt.amount_paid || 0);
-  const [amountDue, setAmountDue] = useState(initialDue);
+  const [amountDue,    setAmountDue]    = useState(initialDue);
   const [cashTendered, setCashTendered] = useState(initialDue > 0 ? initialDue : '');
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [notes,        setNotes]        = useState('');
+  const [step,         setStep]         = useState(1);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [errors,       setErrors]       = useState({});
 
-  const numDue = Number(amountDue) || 0;
+  const numDue      = Number(amountDue) || 0;
   const numTendered = Number(cashTendered) || 0;
-  const change = Math.max(0, numTendered - numDue);
-  const isUnderpaid = numTendered < numDue;
+  const change      = Math.max(0, numTendered - numDue);
+  const isUnderpaid = numTendered > 0 && numTendered < numDue;
+  const isExact     = numTendered === numDue;
 
   useEffect(() => {
-    if (initialDue > 0) {
-      setAmountDue(initialDue);
-      setCashTendered(initialDue);
-    }
+    if (initialDue > 0) { setAmountDue(initialDue); setCashTendered(initialDue); }
   }, [initialDue]);
 
-  const rawDt = appt.datetime || '';
-  const fmtFullDate = rawDt
-    ? new Date(rawDt).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '';
-  const fmtTime = rawDt
-    ? new Date(rawDt).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })
-    : '';
-
-  const clientName = appt.client_name || appt.client || 'Client';
-  const serviceName = appt.service || 'Spa Treatment';
+  const rawDt       = appt.datetime || '';
+  const fmtFullDate = rawDt ? new Date(rawDt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : 'â€”';
+  const fmtTime     = rawDt ? new Date(rawDt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+  const clientName  = appt.client_name  || appt.client  || 'Client';
+  const serviceName = appt.service      || 'Spa Treatment';
+  const therapist   = appt.therapist_name || appt.therapist || 'â€”';
 
   const quickPresets = [
-    { label: 'Exact', value: numDue },
-    { label: '₱500', value: 500 },
-    { label: '₱1,000', value: 1000 },
-    { label: '₱1,500', value: 1500 },
-    { label: '₱2,000', value: 2000 },
+    { label: 'Exact',  value: numDue },
+    { label: 'â‚±500',   value: 500    },
+    { label: 'â‚±1,000', value: 1000   },
+    { label: 'â‚±1,500', value: 1500   },
+    { label: 'â‚±2,000', value: 2000   },
   ];
 
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
-    if (numDue <= 0) {
-      setError('Please provide a valid session amount due.');
-      return;
-    }
-    if (isUnderpaid) {
-      setError(`Cash tendered (₱${numTendered.toFixed(2)}) is less than amount due (₱${numDue.toFixed(2)}).`);
-      return;
-    }
+  const validate = () => {
+    const errs = {};
+    if (!numDue || numDue <= 0)
+      errs.amountDue = 'Session fee is required. Enter the total treatment cost.';
+    if (!numTendered || numTendered <= 0)
+      errs.cashTendered = 'Cash received amount is required.';
+    else if (numTendered < numDue)
+      errs.cashTendered = `Cash tendered (â‚±${numTendered.toFixed(2)}) is less than amount due (â‚±${numDue.toFixed(2)}). Collect the full amount first.`;
+    return errs;
+  };
 
-    setError('');
+  const handleProceedToReview = (e) => {
+    e?.preventDefault();
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length === 0) setStep(2);
+  };
+
+  const handleFinalConfirm = async () => {
     setSubmitting(true);
     try {
       await onConfirmSettlement(appt.id, {
-        amount_paid: numDue,
-        cash_tendered: numTendered,
-        change: change,
+        amount_paid: numDue, cash_tendered: numTendered, change,
         notes: notes.trim() || undefined,
       });
       onClose();
     } catch (err) {
-      setError(err?.response?.data?.message || 'Failed to settle cash payment.');
+      setErrors({ submit: err?.response?.data?.message || 'Failed to settle payment. Please try again.' });
+      setStep(1);
     } finally {
       setSubmitting(false);
     }
   };
 
+  /* â”€â”€ styles â”€â”€ */
+  const inputBg     = isDark ? 'rgba(255,255,255,0.05)' : '#ffffff';
+  const inputBorder = isDark ? 'rgba(255,255,255,0.12)' : '#cbd5e1';
+  const textColor   = isDark ? '#e2e8f3' : '#1e293b';
+
+  const inputStyle = (hasErr) => ({
+    width: '100%', padding: '10px 14px 10px 32px', borderRadius: 12,
+    border: `1.5px solid ${hasErr ? '#ef4444' : inputBorder}`,
+    background: inputBg, color: textColor, fontSize: 14, fontWeight: 700,
+    outline: 'none', transition: 'border-color 0.15s', boxSizing: 'border-box',
+  });
+
+  const btnBase = {
+    height: 44, borderRadius: 14, fontSize: 13, fontWeight: 900,
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    gap: 8, transition: 'all 0.18s', border: 'none',
+  };
+
+  const canProceed = numDue > 0 && numTendered > 0 && !isUnderpaid;
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
+      className="sm:items-center"
+      onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
     >
       <motion.div
-        initial={{ scale: 0.93, y: 20, opacity: 0 }}
+        initial={{ scale: 0.95, y: 40, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.93, y: 20, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-        className="w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+        exit={{ scale: 0.95, y: 40, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 24 }}
         style={{
-          background: isDark
-            ? 'linear-gradient(145deg, #182030 0%, #121824 100%)'
-            : 'linear-gradient(145deg,#fdfcfa 0%,#f5f0e8 100%)',
-          border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.8)',
-          color: isDark ? '#e2e8f3' : '#1e293b',
+          width: '100%', maxWidth: 520,
+          background: isDark ? 'linear-gradient(145deg,#182030,#121824)' : 'linear-gradient(145deg,#fdfcfa,#f5f0e8)',
+          border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.9)',
+          color: textColor, overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', maxHeight: '96vh',
+          boxShadow: '0 32px 64px rgba(0,0,0,0.45)',
+          borderRadius: '24px 24px 0 0',
         }}
+        className="sm:rounded-[24px] sm:max-h-[92vh]"
       >
-        {/* Modal Header */}
-        <div
-          className="p-6 pb-5 flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-400/20 border border-amber-400/30 text-amber-300 shadow-md">
-                <Banknote className="w-7 h-7" />
+        {/* â”€â”€ Header â”€â”€ */}
+        <div style={{ padding: '20px 24px 16px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(251,191,36,0.18)', border: '1.5px solid rgba(251,191,36,0.3)', color: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Banknote size={21} />
               </div>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300/80">
-                  Front Desk Checkout
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'rgba(251,191,36,0.75)' }}>
+                  {step === 1 ? 'Front Desk Checkout' : 'Review & Confirm'}
                 </span>
-                <h3 className="text-white font-black text-lg leading-tight mt-0.5">
-                  Settle Cash &amp; Complete Session
+                <h3 style={{ fontSize: 17, fontWeight: 900, color: '#fff', margin: '3px 0 0' }}>
+                  {step === 1 ? 'Settle Cash & Complete Session' : 'Confirm Settlement'}
                 </h3>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              disabled={submitting}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition cursor-pointer"
-            >
-              <X className="w-4 h-4" />
+            <button type="button" onClick={onClose} disabled={submitting}
+              style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.55)', cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={15} />
             </button>
           </div>
+
+          {/* Step indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
+            {[1, 2].map((s, i) => (
+              <React.Fragment key={s}>
+                {i > 0 && <ChevronRight size={11} style={{ color: 'rgba(255,255,255,0.25)' }} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: step >= s ? '#34d399' : 'rgba(255,255,255,0.12)', color: step >= s ? '#064e3b' : 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900 }}>
+                    {step > s ? <CheckCircle size={12} /> : s}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: step >= s ? '#a7f3d0' : 'rgba(255,255,255,0.35)' }}>
+                    {s === 1 ? 'Enter Amount' : 'Confirm'}
+                  </span>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-6 space-y-4 overflow-y-auto flex-1 text-left">
-          {/* Appointment Recap Card */}
-          <div
-            className="rounded-2xl p-4 space-y-2 border"
-            style={{
-              background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(6,44,34,0.03)',
-              borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(6,44,34,0.08)',
-            }}
-          >
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-bold uppercase tracking-wider opacity-60">
-                Session Overview
-              </span>
-              <span className="font-mono font-bold text-amber-700 bg-amber-100/60 dark:bg-amber-900/30 px-2 py-0.5 rounded-md">
-                Booking #{String(appt.id).padStart(5, '0')}
-              </span>
-            </div>
+        {/* â”€â”€ Scrollable Body â”€â”€ */}
+        <div style={{ padding: '18px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-1">
+          {/* Session recap */}
+          <div style={{ padding: '13px 15px', borderRadius: 14, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(6,44,34,0.04)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(6,44,34,0.09)'}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5 }}>Session</span>
+              <span style={{ fontSize: 10, fontWeight: 900, fontFamily: 'monospace', color: '#b45309', background: isDark ? 'rgba(251,191,36,0.1)' : 'rgba(217,119,6,0.08)', padding: '1px 7px', borderRadius: 7 }}>#{String(appt.id).padStart(5, '0')}</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
               <div>
-                <p className="font-black text-sm">{clientName}</p>
-                <p className="text-xs opacity-75 font-semibold">{serviceName}</p>
+                <p style={{ fontWeight: 900, fontSize: 14, margin: 0 }}>{clientName}</p>
+                <p style={{ fontSize: 12, opacity: 0.65, fontWeight: 600, margin: '2px 0 0' }}>{serviceName}</p>
+                <p style={{ fontSize: 11, opacity: 0.55, fontWeight: 600, margin: '2px 0 0' }}>by <strong>{therapist}</strong></p>
               </div>
-              <div className="text-left sm:text-right">
-                <p className="text-xs font-bold">{fmtFullDate}</p>
-                <p className="text-xs opacity-70 flex items-center gap-1 sm:justify-end">
-                  <Clock className="w-3 h-3 text-emerald-700" />
-                  {fmtTime} {appt.service_duration ? `(${appt.service_duration} min)` : ''}
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, margin: 0 }}>{fmtFullDate}</p>
+                <p style={{ fontSize: 11, opacity: 0.6, fontWeight: 600, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                  <Clock size={10} style={{ color: '#059669' }} /> {fmtTime}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Amount Due and Cash Tendered Form */}
-          <div className="space-y-4">
-            {/* Amount Due Input */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5 opacity-70">
-                Total Treatment Fee (₱)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-sm opacity-50">
-                  ₱
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={amountDue}
-                  onChange={(e) => setAmountDue(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-2.5 rounded-xl border text-sm font-bold outline-none transition focus:ring-2 focus:ring-emerald-600/20"
-                  style={{
-                    background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1',
-                  }}
-                />
-              </div>
-            </div>
+          <AnimatePresence mode="wait">
+            {/* â”€â”€ STEP 1 â”€â”€ */}
+            {step === 1 && (
+              <motion.div key="s1" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            {/* Cash Tendered Input */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider opacity-70">
-                  Cash Received from Client (₱)
-                </label>
-                <span className="text-[10px] font-bold text-emerald-700">Cash only</span>
-              </div>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-sm opacity-50">
-                  ₱
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={cashTendered}
-                  onChange={(e) => setCashTendered(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-2.5 rounded-xl border text-sm font-black outline-none transition focus:ring-2 focus:ring-emerald-600/20"
-                  style={{
-                    background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                    borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1',
-                  }}
-                />
-              </div>
-
-              {/* Quick Presets */}
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {quickPresets.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setCashTendered(preset.value)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold transition hover:scale-105 active:scale-95 border cursor-pointer"
-                    style={{
-                      background:
-                        numTendered === preset.value
-                          ? 'linear-gradient(135deg,#062c22,#0f5040)'
-                          : isDark
-                          ? 'rgba(255,255,255,0.06)'
-                          : 'rgba(0,0,0,0.04)',
-                      color: numTendered === preset.value ? '#ffffff' : 'inherit',
-                      borderColor:
-                        numTendered === preset.value
-                          ? 'transparent'
-                          : isDark
-                          ? 'rgba(255,255,255,0.1)'
-                          : 'rgba(0,0,0,0.08)',
-                    }}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Live Change Calculation Display */}
-            <div
-              className={`p-4 rounded-2xl border transition-all ${
-                isUnderpaid
-                  ? 'bg-red-50/70 border-red-200 dark:bg-red-950/20 dark:border-red-900/40'
-                  : 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40'
-              }`}
-            >
-              <div className="flex items-center justify-between">
+                {/* Amount Due */}
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider block opacity-70">
-                    {isUnderpaid ? 'Shortfall Amount' : 'Change Due to Client'}
-                  </span>
-                  <p
-                    className={`text-2xl font-black tabular-nums mt-0.5 ${
-                      isUnderpaid ? 'text-red-600' : 'text-emerald-700'
-                    }`}
-                  >
-                    ₱{isUnderpaid ? (numDue - numTendered).toFixed(2) : change.toFixed(2)}
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.58, marginBottom: 5 }}>
+                    Total Treatment Fee (â‚±) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, opacity: 0.4 }}>â‚±</span>
+                    <input type="number" step="0.01" min="0" value={amountDue}
+                      onChange={e => { setAmountDue(e.target.value); setErrors(p => ({ ...p, amountDue: '' })); }}
+                      placeholder="0.00" style={inputStyle(errors.amountDue)} />
+                  </div>
+                  {errors.amountDue && <p style={{ fontSize: 11, color: '#ef4444', fontWeight: 700, margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={11} />{errors.amountDue}</p>}
+                </div>
+
+                {/* Cash Tendered */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <label style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.58 }}>
+                      Cash Received (â‚±) <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#059669' }}>Cash only</span>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 700, opacity: 0.4 }}>â‚±</span>
+                    <input type="number" step="0.01" min="0" value={cashTendered}
+                      onChange={e => { setCashTendered(e.target.value); setErrors(p => ({ ...p, cashTendered: '' })); }}
+                      placeholder="0.00" style={inputStyle(errors.cashTendered)} />
+                  </div>
+                  {errors.cashTendered && <p style={{ fontSize: 11, color: '#ef4444', fontWeight: 700, margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={11} />{errors.cashTendered}</p>}
+                  {/* Quick presets */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7 }}>
+                    {quickPresets.map((p, i) => (
+                      <button key={i} type="button"
+                        onClick={() => { setCashTendered(p.value); setErrors(prev => ({ ...prev, cashTendered: '' })); }}
+                        style={{ padding: '4px 10px', borderRadius: 9, fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.13s', background: numTendered === p.value ? 'linear-gradient(135deg,#062c22,#0f5040)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'), color: numTendered === p.value ? '#fff' : 'inherit', border: numTendered === p.value ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.07)'}` }}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Live calculation */}
+                {numDue > 0 && numTendered > 0 && (
+                  <div style={{ padding: '12px 14px', borderRadius: 14, border: `1.5px solid ${isUnderpaid ? '#fca5a5' : '#6ee7b7'}`, background: isUnderpaid ? (isDark ? 'rgba(239,68,68,0.08)' : 'rgba(254,226,226,0.5)') : (isDark ? 'rgba(5,150,105,0.08)' : 'rgba(209,250,229,0.5)') }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', opacity: 0.6 }}>{isUnderpaid ? 'Shortfall' : isExact ? 'Exact â€” No Change' : 'Change Due'}</span>
+                        <p style={{ fontSize: 22, fontWeight: 900, margin: '3px 0 0', color: isUnderpaid ? '#dc2626' : '#059669', fontFamily: 'monospace' }}>
+                          â‚±{isUnderpaid ? (numDue - numTendered).toFixed(2) : change.toFixed(2)}
+                        </p>
+                      </div>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isUnderpaid ? 'rgba(239,68,68,0.12)' : 'rgba(5,150,105,0.12)', color: isUnderpaid ? '#dc2626' : '#059669' }}>
+                        {isUnderpaid ? <AlertCircle size={18} /> : <Receipt size={18} />}
+                      </div>
+                    </div>
+                    {isUnderpaid && <p style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', margin: '7px 0 0' }}>âš  Collect at least â‚±{numDue.toFixed(2)} before confirming settlement.</p>}
+                  </div>
+                )}
+
+                {/* Notes */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.58, marginBottom: 5 }}>
+                    Counter Notes <span style={{ opacity: 0.45, fontWeight: 600, textTransform: 'none' }}>(optional)</span>
+                  </label>
+                  <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+                    placeholder="e.g. Client paid exact, requested receiptâ€¦"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 11, border: `1.5px solid ${inputBorder}`, background: inputBg, color: textColor, fontSize: 12, fontWeight: 600, outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+
+                {errors.submit && <div style={{ padding: '9px 12px', borderRadius: 11, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.28)', color: '#ef4444', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}><AlertCircle size={13} />{errors.submit}</div>}
+              </motion.div>
+            )}
+
+            {/* â”€â”€ STEP 2 â”€â”€ */}
+            {step === 2 && (
+              <motion.div key="s2" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                {[
+                  { label: 'Service Fee',     value: `â‚±${numDue.toFixed(2)}` },
+                  { label: 'Cash Received',   value: `â‚±${numTendered.toFixed(2)}` },
+                  { label: 'Change Returned', value: `â‚±${change.toFixed(2)}`, green: true },
+                  ...(notes ? [{ label: 'Notes', value: notes }] : []),
+                ].map((row, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.6 }}>{row.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: row.green ? '#059669' : textColor }}>{row.value}</span>
+                  </div>
+                ))}
+
+                {/* Warning */}
+                <div style={{ padding: '13px 15px', borderRadius: 14, background: isDark ? 'rgba(245,158,11,0.09)' : 'rgba(254,243,199,0.7)', border: '1.5px solid rgba(245,158,11,0.35)', display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                  <Shield size={15} style={{ color: '#b45309', flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: isDark ? '#fbbf24' : '#92400e', lineHeight: 1.6 }}>
+                    By confirming, this session will be marked <strong>Completed</strong> and the payment recorded as settled. <strong>This cannot be undone.</strong>
                   </p>
                 </div>
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    isUnderpaid
-                      ? 'bg-red-100 text-red-600 dark:bg-red-900/40'
-                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40'
-                  }`}
-                >
-                  {isUnderpaid ? (
-                    <AlertCircle className="w-5 h-5" />
-                  ) : (
-                    <Receipt className="w-5 h-5" />
-                  )}
-                </div>
-              </div>
-              {isUnderpaid && (
-                <p className="text-[11px] font-semibold text-red-600 mt-1">
-                  ⚠️ Cash received is less than the total bill. Please collect at least ₱{numDue.toFixed(2)}.
-                </p>
-              )}
-            </div>
 
-            {/* Optional Notes */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5 opacity-70">
-                Payment / Counter Notes (Optional)
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                placeholder="e.g. Paid exact cash, client requested paper receipt..."
-                className="w-full px-3.5 py-2.5 rounded-xl border text-xs outline-none transition focus:ring-2 focus:ring-emerald-600/20 resize-none"
-                style={{
-                  background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#cbd5e1',
-                }}
-              />
-            </div>
-
-            {/* Error banner */}
-            {error && (
-              <div className="p-3 rounded-xl bg-red-100/70 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
+                {errors.submit && <div style={{ padding: '9px 12px', borderRadius: 11, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.28)', color: '#ef4444', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}><AlertCircle size={13} />{errors.submit}</div>}
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
 
-        {/* Modal Footer Actions */}
-        <div
-          className="p-5 border-t flex items-center gap-3 flex-shrink-0"
-          style={{
-            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-            background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
-          }}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 py-3 rounded-2xl text-xs font-bold transition hover:bg-black/5 disabled:opacity-50 cursor-pointer"
-            style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={isUnderpaid || numDue <= 0 || submitting}
-            onClick={handleSubmit}
-            className="flex-1 py-3 rounded-2xl text-xs font-black text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-900/20"
-            style={{
-              background: 'linear-gradient(135deg,#062c22,#0f5040)',
-            }}
-          >
-            {submitting ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Finalizing…
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4 text-emerald-300" />
-                Confirm Cash &amp; Finalize
-              </>
-            )}
-          </button>
+        {/* â”€â”€ Footer â”€â”€ */}
+        <div style={{ padding: '14px 24px', borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`, background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)', display: 'flex', gap: 10, flexShrink: 0 }}>
+          {step === 1 ? (
+            <>
+              <button type="button" onClick={onClose} disabled={submitting}
+                style={{ ...btnBase, flex: 1, background: 'transparent', color: textColor, border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, opacity: submitting ? 0.5 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                Cancel
+              </button>
+              <button type="button" onClick={handleProceedToReview}
+                disabled={!canProceed || submitting}
+                style={{ ...btnBase, flex: 2, background: canProceed ? 'linear-gradient(135deg,#062c22,#0f5040)' : (isDark ? '#1e293b' : '#e2e8f0'), color: canProceed ? '#fff' : (isDark ? '#475569' : '#94a3b8'), cursor: canProceed && !submitting ? 'pointer' : 'not-allowed', boxShadow: canProceed ? '0 4px 16px rgba(5,150,105,0.25)' : 'none' }}>
+                Review Summary <ChevronRight size={15} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => setStep(1)} disabled={submitting}
+                style={{ ...btnBase, flex: 1, background: 'transparent', color: textColor, border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`, opacity: submitting ? 0.5 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+                <ArrowLeft size={14} /> Back
+              </button>
+              <button type="button" onClick={handleFinalConfirm} disabled={submitting}
+                style={{ ...btnBase, flex: 2, background: submitting ? (isDark ? '#1e293b' : '#e2e8f0') : 'linear-gradient(135deg,#059669,#047857)', color: submitting ? (isDark ? '#475569' : '#94a3b8') : '#fff', cursor: submitting ? 'not-allowed' : 'pointer', boxShadow: submitting ? 'none' : '0 4px 20px rgba(5,150,105,0.35)' }}>
+                {submitting ? (
+                  <><span style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.65s linear infinite', display: 'inline-block' }} /> Finalizingâ€¦</>
+                ) : (
+                  <><CheckCircle size={15} /> Confirm Cash & Finalize</>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </motion.div>
     </motion.div>
   );
 }
+
