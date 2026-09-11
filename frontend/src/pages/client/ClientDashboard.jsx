@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -13,61 +13,87 @@ import {
   Zap, MessageSquare, Scissors, XCircle, RefreshCw,
   CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
   CheckCircle2, Compass, Heart, PhoneCall, MapPin,
-  Banknote, Wallet, CreditCard, Receipt, User, Mail, Check
+  Banknote, Wallet, CreditCard, Receipt, User, Mail, Check,
+  ArrowLeft, Search, CheckCheck, Smile, HelpCircle, ExternalLink
 } from 'lucide-react';
 
-// ─── Design system helpers ─────────────────────────────────────────────────
+// ─── LUXURY DESIGN SYSTEM TOKENS ─────────────────────────────────────────────
+const B = {
+  canvas: '#faf8f5',
+  cardBg: '#ffffff',
+  deep: '#062c22',
+  green: '#0a3d30',
+  mid: '#0f5040',
+  gold: '#bfa15f',
+  goldLight: '#e8cc8a',
+  goldDark: '#8c7033',
+  ink: '#0f172a',
+  inkSoft: '#64748b',
+  line: '#e2e8f0',
+  goldBorder: 'rgba(191,161,95,0.22)',
+  glowEmerald: 'rgba(10,61,48,0.3)',
+};
 
-const ClayCard = ({ children, className = '', style = {}, ...props }) => (
+// Luxury Card Container
+const LuxuryCard = ({ children, className = '', style = {}, ...props }) => (
   <div
-    className={`rounded-3xl ${className}`}
-    style={{
-      background: 'linear-gradient(145deg,#fdfcfa 0%,#f5f0e8 100%)',
-      boxShadow: '20px 20px 40px #eae6df, -20px -20px 40px #ffffff, inset 4px 4px 8px rgba(255,255,255,0.8), inset -4px -4px 8px rgba(0,0,0,0.03)',
-      border: '1px solid rgba(255,255,255,0.8)',
-      ...style,
-    }}
+    className={`rounded-3xl bg-white border border-[rgba(191,161,95,0.22)] shadow-[0_8px_30px_rgba(6,44,34,0.05)] transition-all duration-200 ${className}`}
+    style={{ ...style }}
     {...props}
   >
     {children}
   </div>
 );
 
-const GoldBtn = ({ children, onClick, disabled, className = '', type = 'button' }) => (
-  <button
-    type={type}
-    onClick={onClick}
-    disabled={disabled}
-    className={`inline-flex items-center justify-center gap-2 py-3 px-6 text-white font-bold rounded-2xl text-xs sm:text-sm transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 cursor-pointer shadow-md ${className}`}
-    style={{ background: 'linear-gradient(135deg,#062c22 0%,#0f5040 100%)', boxShadow: '0 6px 18px rgba(6,44,34,0.25)' }}
-  >
-    {children}
-  </button>
-);
+// Luxury Primary Action Button
+const LuxuryBtn = ({ children, onClick, disabled, className = '', type = 'button', variant = 'gold' }) => {
+  const isGold = variant === 'gold';
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center gap-2 py-3 px-6 font-extrabold rounded-2xl text-xs sm:text-sm transition-all duration-200 hover:brightness-110 active:scale-[0.985] disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 cursor-pointer shadow-md ${className}`}
+      style={
+        isGold
+          ? {
+              background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)',
+              color: '#041e16',
+              boxShadow: '0 4px 16px rgba(191,161,95,0.35)',
+            }
+          : {
+              background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 100%)',
+              color: '#ffffff',
+              boxShadow: '0 4px 16px rgba(6,44,34,0.3)',
+            }
+      }
+    >
+      {children}
+    </button>
+  );
+};
 
-const STEP_LABELS = ['Choose Service', 'Date & Time', 'Client Details & Billing', 'Confirmation'];
+const STEP_LABELS = ['Choose Treatment', 'Date & Time', 'Client Details & Billing', 'Confirmation'];
 
-// ─── STATUS COLORS ───────────────────────────────────────────────────────────
-
+// Status styling
 const statusStyle = (status) => {
   switch (status) {
     case 'In Progress':
       return { bg: 'rgba(2,132,199,0.08)', color: '#0284c7', border: 'rgba(2,132,199,0.25)', icon: <Sparkles className="w-3.5 h-3.5 animate-pulse" /> };
     case 'Confirmed':
-      return { bg: 'rgba(6,44,34,0.06)', color: '#062c22', border: 'rgba(6,44,34,0.15)', icon: <CheckCircle className="w-3.5 h-3.5" /> };
+      return { bg: 'rgba(6,44,34,0.06)', color: '#062c22', border: 'rgba(6,44,34,0.2)', icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> };
     case 'Completed':
-      return { bg: 'rgba(16,185,129,0.08)', color: '#047857', border: 'rgba(16,185,129,0.2)', icon: <CheckCircle className="w-3.5 h-3.5" /> };
+      return { bg: 'rgba(16,185,129,0.08)', color: '#047857', border: 'rgba(16,185,129,0.25)', icon: <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> };
     case 'Cancelled':
-      return { bg: 'rgba(239,68,68,0.06)', color: '#b91c1c', border: 'rgba(239,68,68,0.15)', icon: <AlertCircle className="w-3.5 h-3.5" /> };
+      return { bg: 'rgba(239,68,68,0.06)', color: '#b91c1c', border: 'rgba(239,68,68,0.2)', icon: <AlertCircle className="w-3.5 h-3.5 text-red-500" /> };
     default:
-      return { bg: 'rgba(191,161,95,0.1)', color: '#a08742', border: 'rgba(191,161,95,0.2)', icon: <Clock className="w-3.5 h-3.5" /> };
+      return { bg: 'rgba(191,161,95,0.12)', color: '#8c7033', border: 'rgba(191,161,95,0.28)', icon: <Clock className="w-3.5 h-3.5 text-amber-600" /> };
   }
 };
 
 // ─── STEP INDICATOR ─────────────────────────────────────────────────────────
-
 const StepIndicator = ({ step }) => (
-  <div className="flex items-center justify-center gap-1 mb-6">
+  <div className="flex items-center justify-center gap-1.5 mb-6">
     {STEP_LABELS.map((label, i) => {
       const isActive = i === step;
       const isDone = i < step;
@@ -77,20 +103,26 @@ const StepIndicator = ({ step }) => (
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300"
               style={{
-                background: isDone ? 'linear-gradient(135deg,#bfa15f,#d4b87a)' : isActive ? 'linear-gradient(135deg,#062c22,#0f5040)' : 'rgba(0,0,0,0.06)',
-                color: isDone || isActive ? '#fff' : '#94a3b8',
+                background: isDone
+                  ? 'linear-gradient(135deg,#bfa15f,#e8cc8a)'
+                  : isActive
+                  ? 'linear-gradient(135deg,#062c22,#0a3d30)'
+                  : 'rgba(0,0,0,0.05)',
+                color: isDone ? '#041e16' : isActive ? '#fff' : '#94a3b8',
                 boxShadow: isActive ? '0 4px 12px rgba(6,44,34,0.25)' : 'none',
               }}
             >
-              {isDone ? <CheckCircle className="w-4 h-4" /> : i + 1}
+              {isDone ? <Check className="w-4 h-4 stroke-[3]" /> : i + 1}
             </div>
-            <span className="text-[9px] font-semibold hidden sm:block" style={{ color: isActive ? '#062c22' : '#94a3b8' }}>
+            <span className="text-[9px] font-bold hidden sm:block tracking-tight" style={{ color: isActive ? '#062c22' : '#94a3b8' }}>
               {label}
             </span>
           </div>
           {i < STEP_LABELS.length - 1 && (
-            <div className="w-8 sm:w-14 h-0.5 mb-4 rounded-full transition-all duration-300"
-              style={{ background: i < step ? 'linear-gradient(90deg,#bfa15f,#d4b87a)' : 'rgba(0,0,0,0.08)' }} />
+            <div
+              className="w-8 sm:w-14 h-0.5 mb-4 rounded-full transition-all duration-300"
+              style={{ background: i < step ? 'linear-gradient(90deg,#bfa15f,#e8cc8a)' : 'rgba(0,0,0,0.08)' }}
+            />
           )}
         </React.Fragment>
       );
@@ -99,14 +131,20 @@ const StepIndicator = ({ step }) => (
 );
 
 // ─── STEP 1: SERVICE SELECTOR ────────────────────────────────────────────────
-
-// ─── STEP 1: SERVICE SELECTOR ────────────────────────────────────────────────
-
 const ServiceCards = ({ services, selectedId, onSelect }) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
 
   const categories = ['All', ...Array.from(new Set(services.map((s) => s.category).filter(Boolean)))];
+
+  const getCategoryIcon = (cat) => {
+    const c = String(cat).toLowerCase();
+    if (c.includes('massage')) return '💆';
+    if (c.includes('nail')) return '💅';
+    if (c.includes('wax') || c.includes('body')) return '🌿';
+    if (c.includes('facial')) return '✨';
+    return '✦';
+  };
 
   const filtered = services.filter((s) => {
     const matchCat = activeCategory === 'All' || s.category === activeCategory;
@@ -120,22 +158,23 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" /> Choose Your Treatment
+          <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <Sparkles className="w-4 h-4 text-[#bfa15f]" /> Select Your Wellness Therapy
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">Select from our signature wellness rituals and spa services</p>
+          <p className="text-xs text-slate-500 mt-0.5">Explore our signature salon treatments and holistic therapies</p>
         </div>
 
         {/* Quick Search */}
-        <div className="relative w-full sm:w-52">
+        <div className="relative w-full sm:w-60">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search treatments..."
-            className="w-full pl-3 pr-7 py-1.5 rounded-xl text-xs bg-white/90 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:outline-none transition shadow-inner"
+            placeholder="Search therapies, nails..."
+            className="w-full pl-8 pr-7 py-2 rounded-xl text-xs bg-white border border-slate-200 focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/20 focus:outline-none transition shadow-xs"
           />
           {search && (
             <button
@@ -149,9 +188,9 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
         </div>
       </div>
 
-      {/* Category Pills with no-scrollbar */}
+      {/* Category Pills */}
       {categories.length > 1 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
           {categories.map((cat) => {
             const isActive = activeCategory === cat;
             return (
@@ -159,20 +198,21 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-900 text-amber-300 shadow-sm'
-                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900 border border-slate-200/70'
+                    ? 'bg-[#062c22] text-[#e8cc8a] shadow-sm ring-1 ring-[#bfa15f]/40'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/80'
                 }`}
               >
-                {cat}
+                <span>{getCategoryIcon(cat)}</span>
+                <span>{cat}</span>
               </button>
             );
           })}
         </div>
       )}
 
-      {/* Cards Grid: No inner scroll, cleanly flows within the modal body */}
+      {/* Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
         {filtered.map((s) => {
           const isSelected = s.id === selectedId;
@@ -186,13 +226,13 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
               onClick={() => onSelect(s)}
               className={`text-left rounded-2xl p-4 transition-all duration-200 hover:scale-[1.015] active:scale-[0.99] cursor-pointer flex flex-col justify-between border relative ${
                 isSelected
-                  ? 'border-emerald-700 text-white shadow-lg shadow-emerald-950/20 ring-2 ring-emerald-600/50'
-                  : 'border-slate-200/80 hover:border-emerald-300 bg-white/80 hover:bg-white shadow-sm'
+                  ? 'border-[#bfa15f] text-white shadow-lg ring-2 ring-[#bfa15f]/40'
+                  : 'border-slate-200/80 hover:border-[#bfa15f]/50 bg-white hover:bg-slate-50/50 shadow-xs'
               }`}
               style={{
                 background: isSelected
-                  ? 'linear-gradient(135deg,#062c22 0%,#0a3d30 100%)'
-                  : 'linear-gradient(145deg,#fdfcfa 0%,#f8f5ee 100%)',
+                  ? 'linear-gradient(135deg, #062c22 0%, #0a3d30 100%)'
+                  : '#ffffff',
               }}
             >
               <div>
@@ -204,7 +244,7 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
                     {s.category && (
                       <span
                         className={`inline-block text-[9px] mt-1 font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                          isSelected ? 'bg-white/15 text-emerald-200' : 'bg-emerald-50 text-emerald-800'
+                          isSelected ? 'bg-white/15 text-[#e8cc8a]' : 'bg-amber-50 text-amber-900 border border-amber-200/50'
                         }`}
                       >
                         {s.category}
@@ -212,12 +252,12 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
                     )}
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className={`font-black text-sm ${isSelected ? 'text-amber-300' : 'text-emerald-900'}`}>
+                    <p className={`font-black text-sm ${isSelected ? 'text-[#e8cc8a]' : 'text-emerald-900'}`}>
                       {formattedPrice}
                     </p>
                     <span
                       className={`inline-flex items-center gap-1 text-[10px] font-semibold mt-0.5 ${
-                        isSelected ? 'text-emerald-300/80' : 'text-slate-400'
+                        isSelected ? 'text-emerald-200/80' : 'text-slate-400'
                       }`}
                     >
                       <Clock className="w-3 h-3" /> {s.duration} mins
@@ -238,19 +278,19 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
 
               <div
                 className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] font-bold ${
-                  isSelected ? 'border-white/10 text-emerald-300' : 'border-black/5 text-slate-400'
+                  isSelected ? 'border-white/10 text-[#e8cc8a]' : 'border-slate-100 text-slate-400'
                 }`}
               >
                 <span>{isSelected ? '✓ Selected Treatment' : 'Click to select'}</span>
-                {isSelected && <CheckCircle className="w-4 h-4 text-emerald-300" />}
+                {isSelected && <CheckCircle className="w-4 h-4 text-[#e8cc8a]" />}
               </div>
             </button>
           );
         })}
 
         {filtered.length === 0 && (
-          <div className="col-span-full text-center py-10 text-slate-400 text-xs">
-            No treatments found matching your selection.
+          <div className="col-span-full text-center py-10 text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            No therapies found matching your search.
           </div>
         )}
       </div>
@@ -259,7 +299,6 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
 };
 
 // ─── STEP 2: DATE & TIME PICKER ──────────────────────────────────────────────
-
 const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots }) => {
   const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
@@ -303,10 +342,10 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
                 onClick={() => !isBooked && onTimeSelect(slot)}
                 className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
                   isBooked
-                    ? 'bg-black/5 text-slate-300 line-through cursor-not-allowed border border-black/5'
+                    ? 'bg-slate-100 text-slate-300 line-through cursor-not-allowed border border-slate-200/50'
                     : isSelected
-                    ? 'bg-emerald-900 text-white shadow-md ring-1 ring-emerald-700'
-                    : 'bg-white/80 text-slate-700 border border-slate-200 hover:border-emerald-400 hover:bg-white shadow-xs'
+                    ? 'bg-[#062c22] text-[#e8cc8a] shadow-md ring-1 ring-[#bfa15f]/50'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:border-[#bfa15f] hover:bg-amber-50/20 shadow-xs'
                 }`}
               >
                 {label}
@@ -322,34 +361,34 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base sm:text-lg font-black text-slate-800">Select Date &amp; Appointment Time</h3>
+        <h3 className="text-base sm:text-lg font-black text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Select Date &amp; Appointment Time
+        </h3>
         <p className="text-xs text-slate-400 mt-0.5">Salon Hours: 9:00 AM – 9:00 PM Daily</p>
       </div>
 
       {/* Concierge Matching Notice */}
       <div
-        className="p-3.5 rounded-2xl flex items-start gap-3"
-        style={{ background: 'linear-gradient(135deg,rgba(6,44,34,0.06),rgba(6,44,34,0.02))', border: '1px solid rgba(6,44,34,0.12)' }}
+        className="p-3.5 rounded-2xl flex items-start gap-3 bg-emerald-50/60 border border-emerald-200/70"
       >
         <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-emerald-300"
-          style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}
+          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-[#e8cc8a] bg-[#062c22]"
         >
           <UserCheck className="w-4 h-4" />
         </div>
         <div>
-          <p className="text-xs font-black text-emerald-950">Specialist Matching by Reception Concierge</p>
+          <p className="text-xs font-black text-emerald-950">Concierge Specialist Matching</p>
           <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
-            Our front desk reviews your schedule and pairs you with a certified therapist available during your selected window.
+            Our front desk assigns an experienced, certified specialist tailored to your chosen treatment window upon booking verification.
           </p>
         </div>
       </div>
 
-      {/* Date chips with no-scrollbar */}
+      {/* Date chips */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. Choose Date</p>
-          <span className="text-[10px] font-bold text-emerald-800">Next 14 Days</span>
+          <span className="text-[10px] font-bold text-emerald-800">Next 14 Days Available</span>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {days.map((d) => {
@@ -366,19 +405,19 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
                 onClick={() => onDateSelect(key)}
                 className={`flex-shrink-0 w-16 py-3 rounded-2xl flex flex-col items-center gap-0.5 transition-all duration-200 cursor-pointer border ${
                   isSelected
-                    ? 'border-emerald-700 text-white shadow-md shadow-emerald-950/20 ring-1 ring-emerald-600'
-                    : 'border-slate-200/80 bg-white/80 hover:bg-white text-slate-700 hover:border-slate-300'
+                    ? 'border-[#bfa15f] text-white shadow-md shadow-emerald-950/20 ring-1 ring-[#bfa15f]'
+                    : 'border-slate-200/80 bg-white hover:bg-slate-50 text-slate-700 hover:border-slate-300'
                 }`}
                 style={{
                   background: isSelected
-                    ? 'linear-gradient(135deg,#062c22 0%,#0a3d30 100%)'
-                    : 'linear-gradient(145deg,#fdfcfa 0%,#f8f5ee 100%)',
+                    ? 'linear-gradient(135deg, #062c22 0%, #0a3d30 100%)'
+                    : '#ffffff',
                 }}
               >
                 <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-emerald-200' : 'text-slate-400'}`}>
                   {weekday}
                 </span>
-                <span className={`text-lg font-black leading-tight ${isSelected ? 'text-amber-300' : 'text-slate-800'}`}>
+                <span className={`text-lg font-black leading-tight ${isSelected ? 'text-[#e8cc8a]' : 'text-slate-800'}`}>
                   {dayNum}
                 </span>
                 <span className={`text-[10px] font-semibold ${isSelected ? 'text-emerald-200' : 'text-slate-400'}`}>
@@ -401,14 +440,14 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
               Checking real-time slot availability…
             </div>
           ) : slots.all_slots.length === 0 ? (
-            <div className="py-6 rounded-2xl text-center text-xs text-slate-400 bg-black/5 border border-dashed border-black/10">
-              No slots configured for this date. Please choose another day.
+            <div className="py-6 rounded-2xl text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+              No slots configured for this date. Please select another day.
             </div>
           ) : (
             <div className="space-y-4">
-              {renderSlotGroup('Morning Sunshine (9:00 AM – 12:00 PM)', <Clock className="w-3.5 h-3.5 text-amber-500" />, morningSlots)}
-              {renderSlotGroup('Afternoon Glow (12:00 PM – 5:00 PM)', <Sparkles className="w-3.5 h-3.5 text-emerald-600" />, afternoonSlots)}
-              {renderSlotGroup('Evening Serenity (5:00 PM – 9:00 PM)', <Heart className="w-3.5 h-3.5 text-indigo-500" />, eveningSlots)}
+              {renderSlotGroup('Morning Calm (9:00 AM – 12:00 PM)', <Clock className="w-3.5 h-3.5 text-amber-500" />, morningSlots)}
+              {renderSlotGroup('Afternoon Refresh (12:00 PM – 5:00 PM)', <Sparkles className="w-3.5 h-3.5 text-emerald-600" />, afternoonSlots)}
+              {renderSlotGroup('Evening Glow (5:00 PM – 9:00 PM)', <Heart className="w-3.5 h-3.5 text-indigo-500" />, eveningSlots)}
             </div>
           )}
         </div>
@@ -418,7 +457,6 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
 };
 
 // ─── STEP 3: CLIENT DETAILS & BILLING ──────────────────────────────────────────
-
 const PAYMENT_OPTIONS = [
   {
     id: 'cash',
@@ -430,8 +468,8 @@ const PAYMENT_OPTIONS = [
   {
     id: 'gcash',
     name: 'GCash / Maya QR',
-    tag: 'e-Wallet',
-    description: 'Instant QR payment scan upon arrival or at the reception counter',
+    tag: 'Instant e-Wallet',
+    description: 'Instant scan upon arrival or directly online at checkout',
     icon: Wallet,
   },
   {
@@ -472,12 +510,12 @@ const ReviewStep = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-emerald-700" />
-            Billing Details &amp; Order Summary
+          <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <Receipt className="w-5 h-5 text-emerald-800" />
+            Billing Details &amp; Summary
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Confirm client contact information, treatment address, and choose your payment preference
+            Review contact information, salon treatment details, and payment preference
           </p>
         </div>
         <span className="self-start sm:self-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 flex items-center gap-1 shadow-xs">
@@ -485,30 +523,22 @@ const ReviewStep = ({
         </span>
       </div>
 
-      {/* Main Grid: Responsive 2-column on lg+, stacked on mobile/tablet */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column: Client, Address, Payment & Notes (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           {/* Client Information */}
-          <div
-            className="rounded-2xl p-4 sm:p-5 space-y-3.5"
-            style={{
-              background: 'linear-gradient(145deg,#fdfcfa 0%,#f8f4ee 100%)',
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-            }}
-          >
+          <div className="rounded-2xl p-4 sm:p-5 space-y-3.5 bg-white border border-slate-200/80 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-emerald-900/10 text-emerald-800 flex items-center justify-center">
                   <User className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Client &amp; Contact Info</h4>
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Client Contact Info</h4>
                   <p className="text-[10px] text-slate-400">For SMS reminders &amp; appointment confirmation</p>
                 </div>
               </div>
-              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 Required
               </span>
             </div>
@@ -525,7 +555,7 @@ const ReviewStep = ({
                     value={clientName}
                     onChange={(e) => onClientNameChange(e.target.value)}
                     placeholder="e.g. Maria Santos"
-                    className="w-full pl-8 pr-3 py-2.5 rounded-xl text-xs text-slate-800 bg-white/80 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:outline-none transition shadow-inner"
+                    className="w-full pl-8 pr-3 py-2 rounded-xl text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-[#bfa15f] focus:bg-white focus:outline-none transition shadow-xs"
                   />
                 </div>
               </div>
@@ -543,7 +573,7 @@ const ReviewStep = ({
                     value={clientPhone}
                     onChange={(e) => onClientPhoneChange(e.target.value)}
                     placeholder="0917 123 4567"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs text-slate-800 bg-white/80 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:outline-none transition shadow-inner font-medium"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-[#bfa15f] focus:bg-white focus:outline-none transition shadow-xs font-medium"
                   />
                 </div>
               </div>
@@ -560,21 +590,14 @@ const ReviewStep = ({
                   value={clientEmail}
                   readOnly
                   disabled
-                  className="w-full pl-8 pr-3 py-2.5 rounded-xl text-xs text-slate-500 bg-slate-100/70 border border-slate-200/80 cursor-not-allowed"
+                  className="w-full pl-8 pr-3 py-2 rounded-xl text-xs text-slate-500 bg-slate-100 border border-slate-200/80 cursor-not-allowed"
                 />
               </div>
             </div>
           </div>
 
           {/* Billing & Residence Address */}
-          <div
-            className="rounded-2xl p-4 sm:p-5 space-y-3"
-            style={{
-              background: 'linear-gradient(145deg,#fdfcfa 0%,#f8f4ee 100%)',
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-            }}
-          >
+          <div className="rounded-2xl p-4 sm:p-5 space-y-3 bg-white border border-slate-200/80 shadow-xs">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-xl bg-emerald-900/10 text-emerald-800 flex items-center justify-center">
                 <MapPin className="w-3.5 h-3.5" />
@@ -592,22 +615,15 @@ const ReviewStep = ({
               <textarea
                 value={clientAddress}
                 onChange={(e) => onClientAddressChange(e.target.value)}
-                placeholder="e.g. Unit 402, Greenwoods Exec. Homes, Brgy. San Antonio, Pasig City, Metro Manila"
+                placeholder="e.g. Unit 402, Greenwoods Exec. Homes, Brgy. San Antonio, Pasig City"
                 rows={2}
-                className="w-full px-3 py-2.5 rounded-xl text-xs text-slate-800 bg-white/80 border border-slate-200 focus:border-emerald-600 focus:bg-white focus:outline-none transition leading-relaxed resize-none shadow-inner"
+                className="w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-slate-50 border border-slate-200 focus:border-[#bfa15f] focus:bg-white focus:outline-none transition leading-relaxed resize-none shadow-xs"
               />
             </div>
           </div>
 
           {/* Payment Method Selector */}
-          <div
-            className="rounded-2xl p-4 sm:p-5 space-y-3"
-            style={{
-              background: 'linear-gradient(145deg,#fdfcfa 0%,#f8f4ee 100%)',
-              border: '1px solid rgba(0,0,0,0.06)',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-            }}
-          >
+          <div className="rounded-2xl p-4 sm:p-5 space-y-3 bg-white border border-slate-200/80 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-emerald-900/10 text-emerald-800 flex items-center justify-center">
@@ -615,11 +631,11 @@ const ReviewStep = ({
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Payment Method</h4>
-                  <p className="text-[10px] text-slate-400">Choose how you prefer to pay at the salon</p>
+                  <p className="text-[10px] text-slate-400">Choose how you prefer to settle your session</p>
                 </div>
               </div>
-              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                Pay on Visit
+              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Safe &amp; Flexible
               </span>
             </div>
 
@@ -634,20 +650,20 @@ const ReviewStep = ({
                     onClick={() => onPaymentMethodChange(opt.id)}
                     className={`p-3 rounded-xl text-left transition-all relative border cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'border-emerald-800 bg-emerald-900/5 shadow-sm ring-1 ring-emerald-800/40'
-                        : 'border-slate-200/90 bg-white/70 hover:bg-white hover:border-slate-300'
+                        ? 'border-[#bfa15f] bg-amber-50/25 shadow-xs ring-1 ring-[#bfa15f]'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isSelected ? 'bg-emerald-900 text-amber-300' : 'bg-slate-100 text-slate-600'}`}>
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isSelected ? 'bg-[#062c22] text-[#e8cc8a]' : 'bg-slate-100 text-slate-600'}`}>
                           <IconComponent className="w-3.5 h-3.5" />
                         </div>
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isSelected ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isSelected ? 'bg-[#062c22] text-[#e8cc8a]' : 'bg-slate-100 text-slate-500'}`}>
                           {opt.tag}
                         </span>
                       </div>
-                      <p className={`text-xs font-black ${isSelected ? 'text-emerald-950' : 'text-slate-800'}`}>
+                      <p className={`text-xs font-black ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
                         {opt.name}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
@@ -655,10 +671,10 @@ const ReviewStep = ({
                       </p>
                     </div>
 
-                    <div className="mt-2.5 pt-1.5 border-t border-black/5 flex items-center justify-between">
+                    <div className="mt-2.5 pt-1.5 border-t border-slate-100 flex items-center justify-between">
                       <span className="text-[9px] font-bold text-slate-400">Selected</span>
                       <span className={`text-[9px] font-black flex items-center gap-1 ${isSelected ? 'text-emerald-700' : 'text-slate-300'}`}>
-                        {isSelected ? <Check className="w-3 h-3" /> : 'Select'}
+                        {isSelected ? <Check className="w-3 h-3 stroke-[3]" /> : 'Select'}
                       </span>
                     </div>
                   </button>
@@ -667,41 +683,34 @@ const ReviewStep = ({
             </div>
           </div>
 
-          {/* Treatment Preferences & Special Requests */}
-          <div
-            className="rounded-2xl p-4 sm:p-5 space-y-2"
-            style={{
-              background: 'linear-gradient(145deg,#fdfcfa 0%,#f8f4ee 100%)',
-              border: '1px solid rgba(0,0,0,0.06)',
-            }}
-          >
+          {/* Treatment Preferences */}
+          <div className="rounded-2xl p-4 sm:p-5 space-y-2 bg-white border border-slate-200/80 shadow-xs">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <Sparkles className="w-3.5 h-3.5 text-[#bfa15f]" />
               Treatment Preferences &amp; Special Requests (Optional)
             </label>
             <textarea
               value={notes}
               onChange={(e) => onNotesChange(e.target.value)}
-              placeholder="e.g. Desired massage pressure (light/medium/firm), focus on neck/lower back, preferred aromatherapy scent (lavender/chamomile/eucalyptus), or any sensitivities..."
+              placeholder="e.g. Desired pressure (light/medium/firm), focus on neck/shoulders, preferred scent (lavender/eucalyptus)..."
               rows={2}
-              className="w-full px-3.5 py-2.5 rounded-xl text-xs text-slate-700 bg-white/90 border border-slate-200/90 outline-none resize-none leading-relaxed focus:border-emerald-600 transition shadow-inner"
+              className="w-full px-3.5 py-2 rounded-xl text-xs text-slate-700 bg-slate-50 border border-slate-200 outline-none resize-none leading-relaxed focus:border-[#bfa15f] focus:bg-white transition shadow-xs"
             />
           </div>
         </div>
 
-        {/* Right Column: Order Summary & Total Breakdown (5 cols, sticky) */}
+        {/* Right Column: Order Summary (5 cols, sticky) */}
         <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-0">
-          {/* Summary Emerald Card */}
           <div
-            className="rounded-3xl p-5 space-y-4 text-white"
+            className="rounded-3xl p-5 space-y-4 text-white shadow-xl"
             style={{
-              background: 'linear-gradient(135deg,#062c22 0%,#0a3d30 100%)',
-              boxShadow: '0 12px 30px rgba(6,44,34,0.28)',
+              background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 100%)',
+              border: '1px solid rgba(191,161,95,0.3)',
             }}
           >
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-emerald-300">
-                <Receipt className="w-3.5 h-3.5 text-amber-300" /> Order Summary
+              <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-[#e8cc8a]">
+                <Receipt className="w-3.5 h-3.5" /> Order Summary
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 border border-white/15">
                 {service.category || 'Treatment'}
@@ -709,24 +718,26 @@ const ReviewStep = ({
             </div>
 
             <div>
-              <p className="text-white font-black text-lg leading-snug">{service.name}</p>
-              <p className="text-emerald-300/80 text-xs mt-0.5">{service.duration} minutes appointment</p>
+              <p className="text-white font-black text-lg leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
+                {service.name}
+              </p>
+              <p className="text-emerald-200/80 text-xs mt-0.5">{service.duration} minutes dedicated session</p>
             </div>
 
             {/* Schedule Info Box */}
-            <div className="bg-black/20 rounded-2xl p-3 space-y-2 border border-white/10">
+            <div className="bg-black/25 rounded-2xl p-3 space-y-2 border border-white/10">
               <div className="flex items-center gap-2 text-xs">
-                <Calendar className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />
+                <Calendar className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
                 <span className="text-white font-medium text-[11px]">{dateLabel}</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <Clock className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />
+                <Clock className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
                 <span className="text-white font-semibold text-[11px]">{timeLabel}</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <UserCheck className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" />
-                <span className="text-emerald-100/90 text-[11px]">
-                  Specialist: <strong className="text-amber-200">Assigned by Reception</strong>
+                <UserCheck className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
+                <span className="text-emerald-100 text-[11px]">
+                  Specialist: <strong className="text-amber-200">Concierge Matching</strong>
                 </span>
               </div>
             </div>
@@ -738,41 +749,39 @@ const ReviewStep = ({
                 <span className="font-semibold text-white">{formattedPrice}</span>
               </div>
               <div className="flex items-center justify-between text-emerald-100/80">
-                <span>Salon Booking Fee</span>
-                <span className="font-bold text-emerald-300">₱0.00 (Waived)</span>
+                <span>Salon Reservation Fee</span>
+                <span className="font-bold text-[#e8cc8a]">₱0.00 (Complimentary)</span>
               </div>
               <div className="flex items-center justify-between text-emerald-100/80">
                 <span>Value Added Tax (VAT)</span>
-                <span className="text-emerald-200/90 text-[10px]">Included</span>
+                <span className="text-emerald-200 text-[10px]">Included</span>
               </div>
 
               <div className="pt-2.5 border-t border-white/15 flex items-baseline justify-between">
                 <div>
                   <span className="text-xs uppercase tracking-wider font-bold text-emerald-200">Total Due</span>
-                  <p className="text-[10px] text-emerald-300/60 font-medium">To settle upon visit</p>
+                  <p className="text-[10px] text-emerald-300/70 font-medium">To settle upon visit or online</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-black text-amber-300 tracking-tight">{formattedPrice}</span>
+                  <span className="text-2xl font-black text-[#e8cc8a] tracking-tight">{formattedPrice}</span>
                 </div>
               </div>
             </div>
 
-            {/* Payment Method Badge */}
             <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
               <span className="text-emerald-200/70 font-medium">Payment Mode:</span>
-              <span className="bg-white/15 text-amber-200 font-bold px-2.5 py-0.5 rounded-full border border-white/20 text-[10px]">
+              <span className="bg-white/15 text-[#e8cc8a] font-bold px-2.5 py-0.5 rounded-full border border-white/20 text-[10px]">
                 {PAYMENT_OPTIONS.find((p) => p.id === paymentMethod)?.name || 'Cash on Visit'}
               </span>
             </div>
           </div>
 
-          {/* Guarantee / Policy Box */}
-          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl text-xs text-slate-600 bg-emerald-50/70 border border-emerald-200/70 shadow-sm">
-            <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl text-xs text-slate-600 bg-amber-50/50 border border-amber-200/60 shadow-xs">
+            <ShieldCheck className="w-4 h-4 text-emerald-800 flex-shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <p className="font-bold text-emerald-950 text-[11px]">No Advance Online Charge</p>
+              <p className="font-bold text-slate-800 text-[11px]">Peace of Mind Guarantee</p>
               <p className="text-[10px] text-slate-500 leading-relaxed">
-                Pay safely at the salon counter after your session is finished. Free schedule change or cancellation up to 2 hours before.
+                Pay safely via QR / Card or at the salon reception. Free schedule changes up to 2 hours before your appointment.
               </p>
             </div>
           </div>
@@ -783,9 +792,7 @@ const ReviewStep = ({
 };
 
 // ─── STEP 4: CONFIRMATION ────────────────────────────────────────────────────
-
 const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const price = Number(booking?.service_price ?? 0);
   const formattedPrice = price > 0 ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null;
 
@@ -795,25 +802,26 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
-        style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 8px 24px rgba(6,44,34,0.3)' }}
+        className="w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-lg"
+        style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}
       >
-        <CheckCircle className="w-8 h-8 text-emerald-300" />
+        <CheckCircle2 className="w-8 h-8 text-[#e8cc8a]" />
       </motion.div>
       <div>
-        <h3 className="text-xl font-black text-slate-800">Booking Request Confirmed!</h3>
+        <h3 className="text-xl font-black text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Booking Request Confirmed!
+        </h3>
         <p className="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
-          Your appointment has been registered in our queue. Settle payment conveniently online via GCash, Maya, QR Ph, or at the reception counter.
+          Your appointment has been registered in our system. You may settle online via GCash, Maya, or directly at the salon counter.
         </p>
       </div>
 
       <div
-        className="rounded-2xl p-4 sm:p-5 text-left space-y-2.5 max-w-sm mx-auto shadow-sm"
-        style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}
+        className="rounded-2xl p-4 sm:p-5 text-left space-y-2.5 max-w-sm mx-auto shadow-xs bg-white border border-slate-200/80"
       >
-        <div className="flex items-center justify-between pb-2 border-b border-black/5">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking Reference</p>
-          <p className="text-sm font-black text-emerald-900">#{String(booking?.id || 1).padStart(5, '0')}</p>
+          <p className="text-sm font-black text-emerald-900 font-mono">#{String(booking?.id || 1).padStart(5, '0')}</p>
         </div>
 
         <div>
@@ -828,74 +836,37 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
           </div>
         )}
 
-        <div className="pt-2 border-t border-black/5 flex items-center justify-between text-[11px]">
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
           <span className="text-slate-500 font-semibold">Payment Mode:</span>
-          <span className="font-bold text-emerald-900 bg-emerald-100/70 px-2 py-0.5 rounded-md border border-emerald-200 capitalize">
+          <span className="font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 capitalize">
             {booking?.payment_method === 'cash' ? 'Cash on Visit' : booking?.payment_method === 'gcash' ? 'GCash / Maya QR' : booking?.payment_method === 'card' ? 'Card at Counter' : (booking?.payment_method || 'Pay at Counter')}
           </span>
         </div>
 
-        <div className="pt-2 border-t border-black/5 flex items-center gap-1.5 text-[10px] font-bold text-emerald-800">
+        <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[10px] font-bold text-emerald-800">
           <UserCheck className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
           <span>Specialist assigned upon salon arrival</span>
         </div>
       </div>
 
-      <p className="text-xs text-slate-400">📧 A confirmation email will be sent to your inbox once approved.</p>
+      <p className="text-xs text-slate-400">📧 A confirmation email has been dispatched to your account.</p>
 
-      {/* Buttons */}
+      {/* Action Buttons */}
       <div className="space-y-2.5 max-w-sm mx-auto w-full pt-1">
         <motion.button
           type="button"
           onClick={() => onPayOnline?.(booking)}
-          onHoverStart={() => setIsHovered(true)}
-          onHoverEnd={() => setIsHovered(false)}
-          whileHover={{ scale: 1.025, y: -2 }}
-          whileTap={{ scale: 0.98, y: 0 }}
-          className="group relative w-full inline-flex items-center justify-center gap-2.5 py-3.5 px-6 text-white font-bold rounded-2xl text-xs overflow-hidden cursor-pointer transition-all duration-300 shadow-lg"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full inline-flex items-center justify-center gap-2.5 py-3 px-6 text-[#041e16] font-extrabold rounded-2xl text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md hover:brightness-110"
           style={{
-            background: isHovered
-              ? 'linear-gradient(135deg, #0284c7 0%, #026ca8 50%, #0369a1 100%)'
-              : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-            boxShadow: isHovered
-              ? '0 12px 28px -4px rgba(2, 132, 199, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.25) inset'
-              : '0 6px 20px rgba(2, 132, 199, 0.3)',
+            background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)',
+            boxShadow: '0 4px 16px rgba(191,161,95,0.35)',
           }}
         >
-          {/* Animated shimmer reflection light sweep on hover */}
-          <motion.div
-            className="absolute inset-0 -top-2 -bottom-2 pointer-events-none"
-            initial={{ x: '-100%', opacity: 0 }}
-            animate={{
-              x: isHovered ? '200%' : '-100%',
-              opacity: isHovered ? 1 : 0,
-            }}
-            transition={{ duration: 0.85, ease: 'easeInOut' }}
-            style={{
-              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)',
-              transform: 'skewX(-20deg)',
-            }}
-          />
-
-          <motion.div
-            animate={{ rotate: isHovered ? [0, -12, 6, 0] : 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex-shrink-0"
-          >
-            <CreditCard className="w-4 h-4 text-white drop-shadow-sm" />
-          </motion.div>
-
-          <span className="relative z-10 tracking-wide font-extrabold text-sm drop-shadow-sm">
-            Pay Online (GCash, Maya, Card)
-          </span>
-
-          <motion.div
-            animate={{ x: isHovered ? 4 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex-shrink-0"
-          >
-            <ChevronRight className="w-4 h-4 text-white/90" />
-          </motion.div>
+          <CreditCard className="w-4 h-4 text-[#041e16]" />
+          <span>Pay Online (GCash, Maya, Card)</span>
+          <ChevronRight className="w-4 h-4 text-[#041e16]/80" />
         </motion.button>
 
         <motion.button
@@ -903,9 +874,9 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
           onClick={onDone}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-6 text-emerald-950 font-bold rounded-2xl text-xs transition-all duration-200 cursor-pointer border border-emerald-900/15 bg-white/60 hover:bg-white hover:border-emerald-900/25"
+          className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-6 text-slate-700 font-bold rounded-2xl text-xs transition-all duration-200 cursor-pointer border border-slate-200 bg-white hover:bg-slate-50"
         >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-700" /> Pay Later at Counter & Return to Dashboard
+          <Sparkles className="w-3.5 h-3.5 text-emerald-800" /> Pay Later at Counter &amp; Return to Dashboard
         </motion.button>
       </div>
     </div>
@@ -913,7 +884,6 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
 };
 
 // ─── CANCEL MODAL ────────────────────────────────────────────────────────────
-
 const CancelModal = ({ booking, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -947,73 +917,69 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar"
-      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
-        initial={{ scale: 0.94, opacity: 0, y: 20 }}
+        initial={{ scale: 0.94, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.94, opacity: 0, y: 20 }}
+        exit={{ scale: 0.94, opacity: 0, y: 16 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="w-full max-w-md max-h-[90vh] flex flex-col rounded-[2rem] overflow-hidden shadow-2xl"
-        style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '0 25px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.8)' }}
+        className="w-full max-w-md max-h-[90vh] flex flex-col rounded-[2rem] overflow-hidden shadow-2xl bg-white border border-slate-200"
       >
-        {/* Fixed Header */}
-        <div className="px-6 py-5 flex-shrink-0" style={{ background: 'linear-gradient(135deg,#7f1d1d,#991b1b)' }}>
-          <div className="flex items-center justify-between mb-2.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
+        <div className="px-6 py-5 flex-shrink-0 bg-gradient-to-r from-red-900 to-red-800 text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/15">
               <CalendarX className="w-5 h-5 text-red-200" />
             </div>
-            <button type="button" onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-red-200 hover:text-white transition cursor-pointer" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <button type="button" onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-red-200 hover:text-white bg-white/10 transition cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <h2 className="text-white font-black text-lg">Cancel Appointment</h2>
-          <p className="text-red-200/80 text-xs mt-0.5">This action will release your scheduled time slot</p>
+          <h2 className="text-white font-black text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>Cancel Appointment</h2>
+          <p className="text-red-200/80 text-xs mt-0.5">This action will release your scheduled treatment slot</p>
         </div>
 
-        {/* Scrollable Body with no-scrollbar */}
         <div className="p-6 space-y-4 flex-1 overflow-y-auto no-scrollbar">
-          <div className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(127,29,29,0.05)', border: '1px solid rgba(127,29,29,0.12)' }}>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Appointment Details</p>
+          <div className="rounded-2xl p-4 space-y-2 bg-red-50/60 border border-red-200/60">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session Details</p>
             <p className="font-black text-slate-800 text-sm">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
             <div className="flex items-center gap-2 text-xs text-slate-600">
-              <Calendar className="w-3.5 h-3.5 text-red-500" />
+              <Calendar className="w-3.5 h-3.5 text-red-600" />
               <span>{fmtDate(booking.datetime)}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-600">
-              <Clock className="w-3.5 h-3.5 text-red-500" />
+              <Clock className="w-3.5 h-3.5 text-red-600" />
               <span>{fmtTime(booking.datetime)}</span>
             </div>
           </div>
 
-          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/70">
             <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-slate-600 leading-relaxed">
-              <span className="font-bold text-amber-700">Notice:</span> You are welcome to reschedule instead or book a new session whenever you are ready.
+              <span className="font-bold text-amber-800">Notice:</span> You can also reschedule for another date instead of cancelling your reservation.
             </p>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl text-xs text-red-700" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+            <div className="flex items-center gap-2 p-3 rounded-xl text-xs text-red-700 bg-red-50 border border-red-200">
               <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
             </div>
           )}
         </div>
 
-        {/* Fixed Footer */}
-        <div className="px-6 py-4 border-t border-black/5 bg-white/50 backdrop-blur-sm flex gap-3 flex-shrink-0">
-          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-500 transition hover:bg-slate-100 cursor-pointer"
-            style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex gap-3 flex-shrink-0">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-600 transition hover:bg-slate-200 cursor-pointer border border-slate-200 bg-white">
             Keep Booking
           </button>
-          <button type="button" onClick={handleCancel} disabled={loading}
-            className="flex-1 py-2.5 rounded-2xl text-xs font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer shadow-md"
-            style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 6px 18px rgba(220,38,38,0.3)' }}>
-            {loading
-              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Cancelling…</>
-              : <><XCircle className="w-3.5 h-3.5" /> Yes, Cancel</>
-            }
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-2xl text-xs font-black text-white bg-red-700 hover:bg-red-800 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+          >
+            {loading ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+            Confirm Cancellation
           </button>
         </div>
       </motion.div>
@@ -1021,8 +987,7 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
   );
 };
 
-// ─── RESCHEDULE MODAL ───────────────────────────────────────────────────────
-
+// ─── RESCHEDULE MODAL ────────────────────────────────────────────────────────
 const RescheduleModal = ({ booking, onClose, onSuccess }) => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -1072,66 +1037,63 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar"
-      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
-        initial={{ scale: 0.94, opacity: 0, y: 20 }}
+        initial={{ scale: 0.94, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.94, opacity: 0, y: 20 }}
+        exit={{ scale: 0.94, opacity: 0, y: 16 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="w-full max-w-md max-h-[90vh] flex flex-col rounded-[2rem] overflow-hidden shadow-2xl"
-        style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '0 25px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.8)' }}
+        className="w-full max-w-md max-h-[90vh] flex flex-col rounded-[2rem] overflow-hidden shadow-2xl bg-white border border-slate-200"
       >
-        {/* Fixed Header */}
-        <div className="px-6 py-5 flex-shrink-0" style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}>
-          <div className="flex items-center justify-between mb-2.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
-              <CalendarCheck className="w-5 h-5 text-emerald-300" />
+        <div className="px-6 py-5 flex-shrink-0 bg-gradient-to-r from-[#062c22] to-[#0a3d30] text-white">
+          <div className="flex items-center justify-between mb-2">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/15">
+              <CalendarCheck className="w-5 h-5 text-[#e8cc8a]" />
             </div>
-            <button type="button" onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-emerald-200 hover:text-white transition cursor-pointer" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <button type="button" onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-emerald-200 hover:text-white bg-white/10 transition cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <h2 className="text-white font-black text-lg">Reschedule Appointment</h2>
+          <h2 className="text-white font-black text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>Reschedule Appointment</h2>
           <p className="text-emerald-200/80 text-xs mt-0.5">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
         </div>
 
-        {/* Scrollable Body with no-scrollbar */}
         <div className="p-6 space-y-4 flex-1 overflow-y-auto no-scrollbar">
-          <div className="rounded-2xl p-3.5 space-y-1.5" style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
+          <div className="rounded-2xl p-3.5 space-y-1.5 bg-slate-50 border border-slate-200/80">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Schedule</p>
-            <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
-              <Clock className="w-3.5 h-3.5 text-emerald-700" />
+            <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
+              <Clock className="w-3.5 h-3.5 text-emerald-800" />
               <span>{new Date(booking.datetime).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true })}</span>
             </div>
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-emerald-700" /> Pick New Date
+              <Calendar className="w-3.5 h-3.5 text-emerald-800" /> Pick New Date
             </label>
             <input
               type="date"
               min={todayStr}
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl text-xs text-slate-800 bg-white/80 border border-slate-200 focus:border-emerald-600 focus:outline-none shadow-inner"
+              className="w-full px-3.5 py-2.5 rounded-xl text-xs text-slate-800 bg-white border border-slate-200 focus:border-[#bfa15f] focus:outline-none shadow-xs"
             />
           </div>
 
           {selectedDate && (
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-emerald-700" /> Choose New Time
+                <Clock className="w-3.5 h-3.5 text-emerald-800" /> Choose New Time
               </label>
               {loadingSlots ? (
                 <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-emerald-200 border-t-emerald-700 rounded-full animate-spin" />
                   Loading available slots…
                 </div>
               ) : slots.available_slots.length === 0 ? (
-                <div className="py-4 rounded-2xl text-center text-xs text-slate-400 bg-black/5 border border-dashed border-black/10">
+                <div className="py-4 rounded-2xl text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200">
                   No available slots on this date. Try a different day.
                 </div>
               ) : (
@@ -1147,10 +1109,10 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
                         onClick={() => setSelectedTime(slot)}
                         className={`py-2.5 px-1 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
                           isSelected
-                            ? 'bg-emerald-900 text-white shadow-md ring-1 ring-emerald-700'
+                            ? 'bg-[#062c22] text-[#e8cc8a] shadow-md ring-1 ring-[#bfa15f]'
                             : isAvailable
-                            ? 'bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-400 hover:bg-white'
-                            : 'bg-black/5 text-slate-300 line-through cursor-not-allowed border border-black/5'
+                            ? 'bg-white text-slate-700 border border-slate-200 hover:border-[#bfa15f] hover:bg-slate-50'
+                            : 'bg-slate-100 text-slate-300 line-through cursor-not-allowed border border-slate-200/50'
                         }`}
                       >
                         {formatSlot(slot)}
@@ -1162,33 +1124,25 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
             </div>
           )}
 
-          <div className="flex items-start gap-2.5 p-3 rounded-2xl" style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}>
-            <Info className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] text-slate-600 leading-relaxed">
-              <span className="font-bold text-emerald-900">Reminder emails</span> will be automatically dispatched for your updated schedule.
-            </p>
-          </div>
-
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl text-xs text-red-700" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+            <div className="flex items-center gap-2 p-3 rounded-xl text-xs text-red-700 bg-red-50 border border-red-200">
               <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
             </div>
           )}
         </div>
 
-        {/* Fixed Footer */}
-        <div className="px-6 py-4 border-t border-black/5 bg-white/50 backdrop-blur-sm flex gap-3 flex-shrink-0">
-          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-500 transition hover:bg-slate-100 cursor-pointer"
-            style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)' }}>
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex gap-3 flex-shrink-0">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-600 transition hover:bg-slate-200 cursor-pointer border border-slate-200 bg-white">
             Cancel
           </button>
-          <button type="button" onClick={handleReschedule} disabled={submitting || !selectedDate || !selectedTime}
-            className="flex-1 py-2.5 rounded-2xl text-xs font-black text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer shadow-md"
-            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 6px 18px rgba(6,44,34,0.28)' }}>
-            {submitting
-              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Rescheduling…</>
-              : <><RefreshCw className="w-3.5 h-3.5" /> Confirm Reschedule</>
-            }
+          <button
+            type="button"
+            onClick={handleReschedule}
+            disabled={submitting || !selectedDate || !selectedTime}
+            className="flex-1 py-2.5 rounded-2xl text-xs font-black text-white bg-[#062c22] hover:bg-[#0a3d30] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+          >
+            {submitting ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 text-[#e8cc8a]" />}
+            Confirm Reschedule
           </button>
         </div>
       </motion.div>
@@ -1196,8 +1150,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
   );
 };
 
-// ─── BOOKING MODAL WIZARD ───────────────────────────────────────────────────
-
+// ─── BOOKING WIZARD MODAL ───────────────────────────────────────────────────
 const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
@@ -1206,7 +1159,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
   const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Billing & Client Details State
+  // Billing & Client Details
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
@@ -1259,14 +1212,8 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
   const handleBack = () => { setError(''); setStep((s) => s - 1); };
 
   const handleSubmit = async () => {
-    if (!clientName.trim()) {
-      setError('Please provide your full name for billing and salon records.');
-      return;
-    }
-    if (!clientPhone.trim()) {
-      setError('Please provide your mobile / contact number for appointment confirmation and SMS updates.');
-      return;
-    }
+    if (!clientName.trim()) { setError('Please provide your full name.'); return; }
+    if (!clientPhone.trim()) { setError('Please provide your mobile number.'); return; }
 
     setSubmitting(true);
     setError('');
@@ -1285,7 +1232,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
       setStep(3);
       onSuccess();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Booking failed. Please check slot availability and try again.';
+      const msg = err.response?.data?.message || 'Booking failed. Please check availability and try again.';
       setError(msg);
     } finally {
       setSubmitting(false);
@@ -1298,7 +1245,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar"
-      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => e.target === e.currentTarget && step < 3 && onClose()}
     >
       <motion.div
@@ -1308,23 +1255,21 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         className={`w-full ${
           step === 2 ? 'max-w-4xl' : 'max-w-2xl'
-        } max-h-[90vh] sm:max-h-[88vh] flex flex-col rounded-[2rem] overflow-hidden transition-all duration-300 shadow-2xl`}
-        style={{
-          background: 'linear-gradient(145deg,#fdfcfa 0%,#f5f0e8 100%)',
-          boxShadow: '0 25px 60px -15px rgba(6,44,34,0.35), 0 0 0 1px rgba(255,255,255,0.9)',
-        }}
+        } max-h-[90vh] sm:max-h-[88vh] flex flex-col rounded-[2.2rem] overflow-hidden transition-all duration-300 shadow-2xl bg-white border border-[rgba(191,161,95,0.3)]`}
       >
         {/* Fixed Header */}
-        <div className="flex-shrink-0 px-5 sm:px-7 pt-5 pb-3 border-b border-black/5 bg-white/40 backdrop-blur-sm">
+        <div className="flex-shrink-0 px-5 sm:px-7 pt-5 pb-3 border-b border-slate-100 bg-white">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-900 text-amber-300 flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-[#062c22] text-[#e8cc8a] flex items-center justify-center shadow-xs">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-black text-slate-800 leading-tight">Book a Treatment</h2>
+                <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Book a Sanctuary Session
+                </h2>
                 <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold">
-                  Step {step + 1} of {STEP_LABELS.length} • <span className="text-emerald-800 font-bold">{STEP_LABELS[step]}</span>
+                  Step {step + 1} of {STEP_LABELS.length} • <span className="text-emerald-900 font-bold">{STEP_LABELS[step]}</span>
                 </p>
               </div>
             </div>
@@ -1332,8 +1277,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-black/5 transition cursor-pointer"
-                style={{ background: 'rgba(0,0,0,0.04)' }}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
                 title="Close"
               >
                 <X className="w-4 h-4" />
@@ -1344,7 +1288,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
           <StepIndicator step={step} />
         </div>
 
-        {/* Scrollable Body - single clean no-scrollbar container */}
+        {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto px-5 sm:px-7 py-5 no-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
@@ -1405,12 +1349,9 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
 
         {/* Fixed Footer */}
         {step < 3 && (
-          <div className="flex-shrink-0 px-5 sm:px-7 py-3.5 border-t border-black/5 bg-white/50 backdrop-blur-sm">
+          <div className="flex-shrink-0 px-5 sm:px-7 py-3.5 border-t border-slate-100 bg-slate-50/80 backdrop-blur-sm">
             {error && (
-              <div
-                className="mb-3 p-2.5 rounded-xl flex items-center gap-2 text-xs text-red-700"
-                style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}
-              >
+              <div className="mb-3 p-2.5 rounded-xl flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
                 <span className="font-medium">{error}</span>
               </div>
@@ -1421,30 +1362,29 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
                 type="button"
                 onClick={handleBack}
                 disabled={step === 0}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
-                style={{ background: 'rgba(0,0,0,0.04)' }}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed border border-slate-200 bg-white"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Back
               </button>
 
               {step < 2 ? (
-                <GoldBtn onClick={handleNext} disabled={!canNext()}>
+                <LuxuryBtn onClick={handleNext} disabled={!canNext()}>
                   Next Step <ChevronRight className="w-4 h-4" />
-                </GoldBtn>
+                </LuxuryBtn>
               ) : (
-                <GoldBtn onClick={handleSubmit} disabled={submitting || !canNext()}>
+                <LuxuryBtn onClick={handleSubmit} disabled={submitting || !canNext()}>
                   {submitting ? (
                     <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Confirming Booking…
+                      <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
+                      Confirming Session…
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="w-4 h-4 text-emerald-300" />
+                      <CheckCircle2 className="w-4 h-4 text-[#041e16]" />
                       Confirm &amp; Book Appointment • ₱{Number(selectedService?.price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                     </>
                   )}
-                </GoldBtn>
+                </LuxuryBtn>
               )}
             </div>
           </div>
@@ -1454,7 +1394,9 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
   );
 };
 
-
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN CLIENT DASHBOARD PORTAL
+// ══════════════════════════════════════════════════════════════════════════════
 const ClientDashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
@@ -1472,9 +1414,9 @@ const ClientDashboard = () => {
   // Therapist chat messages
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState([
-    { sender: 'therapist', text: "Hello! I am preparing the treatment suite and essential aromatherapy oils for your session." },
-    { sender: 'client',    text: "Thank you! Please prepare the Lavender & Eucalyptus scent if available." },
-    { sender: 'therapist', text: "Of course! I have pre-warmed organic Lavender oils ready for your Swedish massage. Looking forward to welcoming you!" },
+    { sender: 'therapist', text: 'Hello! I am preparing the treatment suite and essential aromatherapy oils for your session.' },
+    { sender: 'client',    text: 'Thank you! Please prepare the Lavender & Eucalyptus oils if available.' },
+    { sender: 'therapist', text: 'With pleasure! Organic Lavender oils are prepared. Looking forward to welcoming you!' },
   ]);
 
   const fetchDashboardData = () => {
@@ -1495,13 +1437,30 @@ const ClientDashboard = () => {
     setChatMessages((prev) => [...prev, { sender: 'client', text: msg }]);
     setChatInput('');
     setTimeout(() => {
-      setChatMessages((prev) => [...prev, { sender: 'therapist', text: "Noted with pleasure! Everything is set for your absolute relaxation. See you soon!" }]);
+      setChatMessages((prev) => [...prev, { sender: 'therapist', text: 'Noted with pleasure! Everything is prepared for your calm. See you soon!' }]);
     }, 1200);
   };
 
+  // Time-of-day greeting
+  const greeting = useMemo(() => {
+    const hr = new Date().getHours();
+    if (hr < 12) return 'Good morning';
+    if (hr < 18) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
+
   const completedCount = data?.bookings?.filter(b => b.status === 'Completed').length || 0;
   const activeCount = data?.bookings?.filter(b => b.status === 'Pending' || b.status === 'Confirmed' || b.status === 'In Progress').length || 0;
+  const cancelledCount = data?.bookings?.filter(b => b.status === 'Cancelled').length || 0;
   const stamps = Math.min(completedCount + 3, 10);
+
+  // Next upcoming active session
+  const nextSession = useMemo(() => {
+    if (!data?.bookings) return null;
+    const activeOnes = data.bookings.filter(b => b.status === 'Confirmed' || b.status === 'In Progress' || b.status === 'Pending');
+    return activeOnes[0] || null;
+  }, [data]);
+
   const latestConfirmedBooking = data?.bookings?.find(b => (b.status === 'Confirmed' || b.status === 'In Progress') && b.therapist_name && b.therapist_name !== 'Awaiting Assignment');
   const assignedTherapistName = latestConfirmedBooking?.therapist_name || null;
 
@@ -1514,35 +1473,66 @@ const ClientDashboard = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#faf8f5', fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen flex flex-col selection:bg-amber-200 selection:text-amber-900" style={{ background: B.canvas, fontFamily: "'Inter', sans-serif" }}>
 
       {/* ═══ LUXURY STICKY NAVBAR ══════════════════════════════════════════ */}
-      <header className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-8 py-3.5 border-b border-black/[0.04]"
-        style={{ background: 'rgba(250,248,245,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+      <header
+        className="sticky top-0 z-40 flex items-center justify-between px-4 sm:px-8 py-3 border-b border-black/[0.05]"
+        style={{ background: 'rgba(250,248,245,0.92)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+      >
         <div className="flex items-center space-x-3">
-          <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-[#bfa15f]/30" />
-          <div>
-            <span className="font-bold text-slate-800 tracking-wide block text-sm leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Cozy Blissful
-            </span>
-            <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#bfa15f' }}>
-              Salon &amp; Spa Luxury Sanctuary
-            </span>
-          </div>
+          <Link to="/" className="flex items-center space-x-3 group cursor-pointer focus-visible:outline-none" title="Visit Cozy Blissful Home">
+            <div className="relative">
+              <img
+                src="/cb-logo.jpg"
+                alt="Cozy Blissful Logo"
+                className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-[#bfa15f]/40 group-hover:scale-105 transition-transform"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white bg-emerald-500" />
+            </div>
+            <div>
+              <span className="font-bold text-slate-900 tracking-wide block text-sm leading-tight group-hover:text-amber-700 transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Cozy Blissful
+              </span>
+              <span className="text-[10px] font-bold tracking-widest uppercase block" style={{ color: '#bfa15f' }}>
+                Client Wellness Portal
+              </span>
+            </div>
+          </Link>
         </div>
 
-        <div className="flex items-center space-x-3 sm:space-x-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-slate-800">{user?.name || 'Valued Client'}</p>
-            <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full">
+        <div className="flex items-center space-x-2.5 sm:space-x-4">
+          {/* Quick Book CTA in Navbar */}
+          <button
+            type="button"
+            onClick={() => setShowWizard(true)}
+            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-[#041e16] shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+            style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
+          >
+            <Plus className="w-3.5 h-3.5" /> Book Session
+          </button>
+
+          {/* User Profile Pill */}
+          <div className="text-right hidden md:block">
+            <p className="text-xs font-bold text-slate-800">{user?.name || 'Valued Guest'}</p>
+            <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-200">
               ✦ CB Club Member
             </span>
           </div>
+
+          <Link
+            to="/"
+            title="Return to Home Landing"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-white border border-transparent hover:border-slate-200 transition cursor-pointer hidden sm:flex items-center gap-1 text-xs font-bold"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Home</span>
+          </Link>
+
           <button
             onClick={handleLogout}
             title="Sign Out"
-            className="w-9 h-9 rounded-2xl flex items-center justify-center text-slate-400 hover:text-red-500 transition duration-200 cursor-pointer"
-            style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '3px 3px 8px #ddd8cf, -3px -3px 8px #ffffff' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition duration-200 cursor-pointer border border-slate-200/80 bg-white"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -1552,85 +1542,174 @@ const ClientDashboard = () => {
       {/* ═══ MAIN CONTENT ══════════════════════════════════════════════════ */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
-        {/* ── Welcome Banner with Quick Metrics ────────────────────────────── */}
-        <div className="rounded-[2.5rem] p-6 sm:p-8 relative overflow-hidden text-white"
+        {/* ── Welcome Banner with Next Upcoming Spotlight ────────────────── */}
+        <div
+          className="rounded-[2.2rem] p-6 sm:p-8 relative overflow-hidden text-white shadow-xl"
           style={{
-            background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 50%, #0f5040 100%)',
-            boxShadow: '0 20px 40px rgba(6,44,34,0.22)'
-          }}>
+            background: 'linear-gradient(140deg, #062c22 0%, #0a3d30 55%, #041e16 100%)',
+            border: '1px solid rgba(191,161,95,0.3)',
+          }}
+        >
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="space-y-2 max-w-xl">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/10 text-amber-300 border border-white/15">
-                <Sparkles className="w-3 h-3 text-amber-300" /> Client Wellness Lounge
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/10 text-[#e8cc8a] border border-white/15">
+                <Sparkles className="w-3 h-3 text-[#fde68a]" /> Client Sanctuary Lounge
               </span>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Welcome back, {user?.name?.split(' ')[0] || 'Guest'} ✨
+                {greeting}, {user?.name?.split(' ')[0] || 'Valued Guest'} ✨
               </h1>
-              <p className="text-xs sm:text-sm text-emerald-100/85 leading-relaxed">
-                Enjoy your personalized spa journey, manage your reservations, and claim exclusive loyalty treatment rewards.
+              <p className="text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
+                Welcome to your calm. Review your appointment roster, message your licensed specialist, and enjoy member-exclusive wellness rates.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <button
+                type="button"
                 onClick={() => setShowWizard(true)}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl text-xs sm:text-sm font-black text-emerald-950 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #d4b87a 100%)' }}
+                className="px-6 py-3.5 rounded-2xl text-xs sm:text-sm font-black text-[#041e16] flex items-center justify-center gap-2 transition-all duration-200 hover:brightness-110 active:scale-95 shadow-xl cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
               >
                 <Plus className="w-4 h-4" /> Book a Treatment
               </button>
             </div>
           </div>
 
-          {/* Ambient soft glow */}
+          {/* Ambient Glow */}
           <div className="absolute right-0 bottom-0 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ background: '#bfa15f' }} />
         </div>
 
-        {/* ── 4-Stat Metric Strip ──────────────────────────────────────────── */}
+        {/* ── Spotlight: Next Upcoming Appointment (if active) ──────────── */}
+        {nextSession && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 sm:p-5 rounded-3xl bg-white border border-[rgba(191,161,95,0.3)] shadow-[0_4px_20px_rgba(6,44,34,0.04)] flex flex-col md:flex-row md:items-center justify-between gap-4"
+          >
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-[#062c22] text-[#e8cc8a]">
+                <CalendarCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Next Upcoming Session
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-400">
+                    #{String(nextSession.id).padStart(5, '0')}
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-800 mt-0.5">
+                  {nextSession.service}
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-800" />
+                    {new Date(nextSession.datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                  <span>•</span>
+                  <span className="font-semibold text-slate-700 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-emerald-800" />
+                    {new Date(nextSession.datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                  </span>
+                  <span>•</span>
+                  <span className="text-emerald-800 font-bold">
+                    Specialist: {nextSession.therapist_name || 'Reception Matching'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end md:self-center">
+              {nextSession.payment_status !== 'paid' && (
+                <button
+                  type="button"
+                  onClick={() => setPaymentTarget(nextSession)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  <CreditCard className="w-3.5 h-3.5" /> Pay Online
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setRescheduleTarget(nextSession)}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer border border-slate-200 flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" /> Reschedule
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── 4-Stat Metric Strip (Interactive Filters) ────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <ClayCard className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(6,44,34,0.08)', color: '#062c22' }}>
+          <button
+            type="button"
+            onClick={() => setBookingFilter('active')}
+            className={`p-4 rounded-3xl text-left transition-all cursor-pointer border flex items-center gap-3.5 ${
+              bookingFilter === 'active'
+                ? 'bg-emerald-950 text-white border-emerald-800 shadow-md ring-2 ring-emerald-600/50'
+                : 'bg-white text-slate-800 border-slate-200 hover:border-[#bfa15f] shadow-xs'
+            }`}
+          >
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                bookingFilter === 'active' ? 'bg-white/15 text-[#e8cc8a]' : 'bg-emerald-50 text-emerald-800'
+              }`}
+            >
               <Calendar className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Bookings</p>
-              <p className="text-lg font-black text-slate-800">{activeCount} Sessions</p>
+              <p className={`text-[10px] font-bold uppercase tracking-wider ${bookingFilter === 'active' ? 'text-emerald-200' : 'text-slate-400'}`}>
+                Active Bookings
+              </p>
+              <p className="text-lg font-black truncate">{activeCount} Sessions</p>
             </div>
-          </ClayCard>
+          </button>
 
-          <ClayCard className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(16,185,129,0.1)', color: '#047857' }}>
+          <button
+            type="button"
+            onClick={() => setBookingFilter('completed')}
+            className={`p-4 rounded-3xl text-left transition-all cursor-pointer border flex items-center gap-3.5 ${
+              bookingFilter === 'completed'
+                ? 'bg-emerald-950 text-white border-emerald-800 shadow-md ring-2 ring-emerald-600/50'
+                : 'bg-white text-slate-800 border-slate-200 hover:border-[#bfa15f] shadow-xs'
+            }`}
+          >
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                bookingFilter === 'completed' ? 'bg-white/15 text-[#e8cc8a]' : 'bg-emerald-50 text-emerald-800'
+              }`}
+            >
               <CheckCircle className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Completed</p>
-              <p className="text-lg font-black text-slate-800">{completedCount} Treatments</p>
+              <p className={`text-[10px] font-bold uppercase tracking-wider ${bookingFilter === 'completed' ? 'text-emerald-200' : 'text-slate-400'}`}>
+                Completed
+              </p>
+              <p className="text-lg font-black truncate">{completedCount} Treatments</p>
             </div>
-          </ClayCard>
+          </button>
 
-          <ClayCard className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(191,161,95,0.15)', color: '#a08742' }}>
-              <Award className="w-5 h-5 text-amber-500" />
+          <LuxuryCard className="p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-amber-50 text-amber-700">
+              <Award className="w-5 h-5 text-amber-600" />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loyalty Club</p>
-              <p className="text-lg font-black text-amber-700">{stamps} / 10 Stamps</p>
+              <p className="text-lg font-black text-amber-800">{stamps} / 10 Stamps</p>
             </div>
-          </ClayCard>
+          </LuxuryCard>
 
-          <ClayCard className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1' }}>
+          <LuxuryCard className="p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-indigo-50 text-indigo-600">
               <Sparkles className="w-5 h-5 text-indigo-600" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VIP Status</p>
-              <p className="text-lg font-black text-slate-800">Gold Tier</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VIP Tier</p>
+              <p className="text-lg font-black text-slate-800">Gold Sanctuary</p>
             </div>
-          </ClayCard>
+          </LuxuryCard>
         </div>
 
         {loading ? <LoadingSpinner /> : (
@@ -1640,87 +1719,98 @@ const ClientDashboard = () => {
             <div className="lg:col-span-2 space-y-6">
 
               {/* ── Loyalty Passport Card ───────────────────────────────── */}
-              <ClayCard className="p-6 relative overflow-hidden" style={{
-                background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 60%, #0f5040 100%)',
-                boxShadow: '12px 12px 32px rgba(6,44,34,0.25), -6px -6px 16px rgba(255,255,255,0.08)'
-              }}>
+              <div
+                className="p-6 sm:p-7 rounded-3xl relative overflow-hidden text-white shadow-xl"
+                style={{
+                  background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 60%, #0f5040 100%)',
+                  border: '1px solid rgba(191,161,95,0.3)',
+                }}
+              >
                 <div className="absolute right-0 top-0 opacity-10 pointer-events-none transform translate-x-12 -translate-y-8">
                   <Award className="w-48 h-48 text-emerald-200" />
                 </div>
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-white font-bold text-base tracking-tight flex items-center gap-1.5" style={{ fontFamily: "'Playfair Display', serif" }}>
-                      <Award className="w-4 h-4 text-amber-400" /> Cozy Blissful Loyalty Passport
+                      <Award className="w-4 h-4 text-[#e8cc8a]" /> Cozy Blissful Loyalty Passport
                     </h2>
-                    <p className="text-[10px] text-emerald-200/70 mt-0.5">Collect 10 treatment stamps to receive a complimentary 60-minute Swedish Massage!</p>
+                    <p className="text-[11px] text-emerald-100/75 mt-0.5">Collect 10 wellness stamps to redeem a complimentary 60-min Swedish Massage!</p>
                   </div>
-                  <span className="text-[11px] font-bold text-amber-400 bg-white/10 px-2.5 py-1 rounded-full border border-white/15">
+                  <span className="text-[11px] font-bold text-[#e8cc8a] bg-white/10 px-3 py-1 rounded-full border border-white/15 shadow-xs">
                     {stamps} / 10 Stamps
                   </span>
                 </div>
-                <div className="grid grid-cols-5 sm:grid-cols-10 gap-2.5 my-5">
+
+                <div className="grid grid-cols-5 sm:grid-cols-10 gap-2.5 my-4">
                   {[...Array(10)].map((_, i) => {
                     const isStamped = i < stamps;
                     return (
-                      <div key={i} className="aspect-square rounded-2xl flex items-center justify-center transition duration-300"
+                      <div
+                        key={i}
+                        className="aspect-square rounded-2xl flex items-center justify-center transition-all duration-300"
                         style={{
-                          background: isStamped ? 'linear-gradient(135deg,#bfa15f,#d4b87a)' : 'rgba(255,255,255,0.06)',
-                          boxShadow: isStamped ? '2px 2px 6px rgba(191,161,95,0.3)' : 'inset 2px 2px 4px rgba(0,0,0,0.15)',
-                          border: isStamped ? '1.5px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.06)',
-                        }}>
-                        {isStamped ? <span className="text-white font-black text-xs">CB</span> : <span className="text-emerald-300/20 text-xs font-semibold">{i + 1}</span>}
+                          background: isStamped ? 'linear-gradient(135deg,#bfa15f,#e8cc8a)' : 'rgba(255,255,255,0.06)',
+                          boxShadow: isStamped ? '0 4px 12px rgba(191,161,95,0.35)' : 'none',
+                          border: isStamped ? '1.5px solid rgba(255,255,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        {isStamped ? <span className="text-[#041e16] font-black text-xs">CB</span> : <span className="text-emerald-300/30 text-xs font-semibold">{i + 1}</span>}
                       </div>
                     );
                   })}
                 </div>
-                <p className="text-xs text-emerald-200/80 font-medium">
+
+                <p className="text-xs text-emerald-100/85 font-medium">
                   {stamps < 10
-                    ? <span>💆 Complete <strong>{10 - stamps} more sessions</strong> at our salon to claim your complimentary massage!</span>
-                    : <span className="text-amber-300 font-bold">🎉 Congratulations! You have a complimentary massage reward ready to redeem at front desk!</span>}
+                    ? <span>💆 Complete <strong>{10 - stamps} more sessions</strong> to unlock your complimentary therapy!</span>
+                    : <span className="text-[#e8cc8a] font-bold">🎉 Congratulations! You have a complimentary massage ready to redeem at front desk!</span>}
                 </p>
-              </ClayCard>
+              </div>
 
               {/* ── Active Rewards & Vouchers ───────────────────────────── */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Gift className="w-4 h-4" style={{ color: '#bfa15f' }} /> Active Rewards &amp; Vouchers
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Gift className="w-4 h-4 text-[#bfa15f]" /> Exclusive Member Perks &amp; Vouchers
                 </h3>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-3.5">
                   {[
-                    { code: 'CBWELCOME20', title: '20% Off First Treatment', desc: 'Valid for all first-time bookings', exp: 'Valid: Ongoing' },
-                    { code: 'MIDWEEK150',  title: '₱150 Off Midweek Bliss',  desc: 'Applicable Wednesday & Thursday', exp: 'Valid: Active' },
+                    { code: 'CBWELCOME20', title: '20% Off Welcome Session', desc: 'Valid on your first appointment booking', exp: 'Ongoing' },
+                    { code: 'MIDWEEK150',  title: '₱150 Off Midweek Calm',  desc: 'Applicable Wednesday & Thursday appointments', exp: 'Active' },
                   ].map((voucher) => (
-                    <div key={voucher.code} className="rounded-3xl p-4 flex flex-col justify-between relative overflow-hidden transition hover:scale-[1.01]"
-                      style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '8px 8px 20px #eae6df, -8px -8px 20px #ffffff', border: '1px solid rgba(191,161,95,0.2)' }}>
+                    <LuxuryCard key={voucher.code} className="p-4 flex flex-col justify-between hover:border-[#bfa15f]/60 transition-all">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#bfa15f' }}>Voucher Code</span>
-                          <span className="text-[9px] text-slate-400 font-semibold">{voucher.exp}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-[#8c7033]">Voucher Code</span>
+                          <span className="text-[9px] text-slate-400 font-semibold bg-slate-100 px-2 py-0.5 rounded-full">{voucher.exp}</span>
                         </div>
-                        <p className="text-xs font-black text-emerald-950 uppercase tracking-wide">{voucher.code}</p>
-                        <p className="text-xs font-bold text-slate-700 mt-1">{voucher.title}</p>
-                        <p className="text-[10px] text-slate-400">{voucher.desc}</p>
+                        <p className="text-xs font-black text-slate-900 font-mono tracking-wider">{voucher.code}</p>
+                        <p className="text-xs font-bold text-slate-800 mt-1">{voucher.title}</p>
+                        <p className="text-[11px] text-slate-400">{voucher.desc}</p>
                       </div>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(voucher.code); showToast(`Voucher code "${voucher.code}" copied!`); }}
-                        className="w-full mt-3 py-1.5 rounded-xl text-[10px] font-bold text-emerald-950 transition hover:bg-slate-200 cursor-pointer"
-                        style={{ background: 'linear-gradient(135deg,#fdfcfa,#ece8e0)', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(voucher.code);
+                          showToast(`Promo code "${voucher.code}" copied to clipboard!`);
+                        }}
+                        className="w-full mt-3 py-1.5 rounded-xl text-[11px] font-bold text-emerald-950 transition hover:bg-amber-50 cursor-pointer border border-slate-200 bg-white"
+                      >
                         Copy Promo Code
                       </button>
-                    </div>
+                    </LuxuryCard>
                   ))}
                 </div>
               </div>
 
               {/* ── My Appointments & Workflow Tracker ─────────────────── */}
               <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-emerald-800" /> My Appointments &amp; Treatment History
                   </h3>
 
-                  {/* Filter tabs */}
-                  <div className="flex items-center gap-1 bg-black/[0.04] p-1 rounded-2xl self-start sm:self-auto">
+                  {/* Filter Tabs */}
+                  <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-2xl self-start sm:self-auto border border-slate-200">
                     {[
                       { id: 'all', label: 'All' },
                       { id: 'active', label: 'Upcoming' },
@@ -1729,11 +1819,12 @@ const ClientDashboard = () => {
                     ].map((tab) => (
                       <button
                         key={tab.id}
+                        type="button"
                         onClick={() => setBookingFilter(tab.id)}
-                        className={`px-3 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
                           bookingFilter === tab.id
-                            ? 'bg-white text-slate-800 shadow-sm'
-                            : 'text-slate-400 hover:text-slate-700'
+                            ? 'bg-white text-slate-900 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-800'
                         }`}
                       >
                         {tab.label}
@@ -1743,17 +1834,19 @@ const ClientDashboard = () => {
                 </div>
 
                 {filteredBookings.length === 0 ? (
-                  <div className="rounded-3xl p-8 text-center"
-                    style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '8px 8px 20px #eae6df, -8px -8px 20px #ffffff' }}>
-                    <Scissors className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="font-bold text-slate-700 text-sm">No bookings in this category</p>
-                    <p className="text-xs text-slate-400 mt-1">Tap "Book a Treatment" to schedule your wellness session!</p>
-                    <button onClick={() => setShowWizard(true)}
-                      className="mt-4 px-6 py-2.5 rounded-2xl text-white text-xs font-bold transition hover:scale-105 cursor-pointer shadow-md"
-                      style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 4px 12px rgba(6,44,34,0.2)' }}>
+                  <LuxuryCard className="p-8 text-center space-y-3">
+                    <Scissors className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="font-bold text-slate-700 text-sm">No bookings found in this view</p>
+                    <p className="text-xs text-slate-400">Schedule your relaxing therapy session with our certified specialists!</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowWizard(true)}
+                      className="mt-2 px-6 py-2.5 rounded-2xl text-xs font-black text-[#041e16] transition hover:brightness-110 cursor-pointer shadow-md"
+                      style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)' }}
+                    >
                       Book Treatment Now
                     </button>
-                  </div>
+                  </LuxuryCard>
                 ) : (
                   <div className="space-y-4">
                     {filteredBookings.map((b, i) => {
@@ -1763,30 +1856,30 @@ const ClientDashboard = () => {
                       const activeStep = b.status === 'Completed' ? 4 : b.status === 'In Progress' ? 3 : b.status === 'Confirmed' ? 2 : 1;
 
                       return (
-                        <div key={b.id || i} className="rounded-3xl p-5 sm:p-6 flex flex-col gap-4 transition hover:scale-[1.005]"
-                          style={{ background: 'linear-gradient(145deg,#fdfcfa,#f5f0e8)', boxShadow: '10px 10px 24px #eae6df, -10px -10px 24px #ffffff', border: '1px solid rgba(255,255,255,0.8)' }}>
-                          
-                          {/* Booking info row */}
-                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                            <div className="flex items-start gap-4">
-                              <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                        <LuxuryCard key={b.id || i} className="p-5 sm:p-6 flex flex-col gap-4">
+                          {/* Top Row: Info & Status */}
+                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3.5">
+                            <div className="flex items-start gap-3.5">
+                              <div
+                                className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 mt-0.5"
                                 style={{
                                   background: b.status === 'In Progress'
                                     ? 'rgba(2,132,199,0.1)'
                                     : b.status === 'Completed'
                                     ? 'rgba(16,185,129,0.1)'
                                     : b.status === 'Confirmed'
-                                    ? '#062c2212'
+                                    ? 'rgba(6,44,34,0.08)'
                                     : b.status === 'Cancelled'
                                     ? 'rgba(239,68,68,0.08)'
-                                    : '#bfa15f18'
-                                }}>
+                                    : 'rgba(191,161,95,0.12)',
+                                }}
+                              >
                                 {b.status === 'Cancelled' ? (
                                   <Ban className="w-5 h-5 text-red-500" />
                                 ) : b.status === 'In Progress' ? (
                                   <Sparkles className="w-5 h-5 text-sky-600 animate-pulse" />
                                 ) : b.status === 'Completed' ? (
-                                  <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                  <CheckCheck className="w-5 h-5 text-emerald-600" />
                                 ) : b.status === 'Confirmed' ? (
                                   <UserCheck className="w-5 h-5 text-emerald-800" />
                                 ) : (
@@ -1796,27 +1889,27 @@ const ClientDashboard = () => {
                               <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="font-black text-slate-800 text-base leading-snug">{b.service}</p>
-                                  <span className="font-mono text-[10px] text-slate-500 bg-black/[0.04] px-2 py-0.5 rounded-md font-bold">
-                                    #{String(b.id).padStart(5,'0')}
+                                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-bold">
+                                    #{String(b.id).padStart(5, '0')}
                                   </span>
                                   {b.service_price && (
-                                    <span className="text-[11px] font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                    <span className="text-[11px] font-black text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                                       ₱{Number(b.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                                     </span>
                                   )}
                                 </div>
 
-                                {/* Specialist Assignment Tag */}
+                                {/* Specialist Assignment */}
                                 <div className="pt-0.5">
                                   {hasTherapist ? (
-                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200/60">
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 bg-emerald-50 px-2.5 py-0.5 rounded-xl border border-emerald-200/60">
                                       <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
                                       Assigned Specialist: <strong className="font-bold text-emerald-950">{b.therapist_name}</strong>
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-900 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/60">
+                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded-xl border border-amber-200/60">
                                       <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                      Specialist: <span className="font-semibold">Awaiting Assignment by Reception Desk</span>
+                                      Specialist: <span className="font-semibold">Awaiting Concierge Matching</span>
                                     </span>
                                   )}
                                 </div>
@@ -1834,17 +1927,20 @@ const ClientDashboard = () => {
                                   {b.service_duration && (
                                     <>
                                       <span>·</span>
-                                      <span className="flex items-center gap-1 text-amber-700 font-semibold">
-                                        <Zap className="w-3 h-3 text-amber-500" /> {b.service_duration} min
+                                      <span className="flex items-center gap-1 text-amber-800 font-semibold">
+                                        <Zap className="w-3 h-3 text-amber-600" /> {b.service_duration} min
                                       </span>
                                     </>
                                   )}
                                 </div>
-                                {b.notes && <p className="text-[11px] text-slate-500 italic pt-0.5">📋 Treatment Request: {b.notes}</p>}
+                                {b.notes && <p className="text-[11px] text-slate-500 italic pt-0.5">📋 Notes: {b.notes}</p>}
                               </div>
                             </div>
-                            <span className="text-[10px] font-black px-3 py-1.5 rounded-full flex items-center gap-1.5 self-start sm:self-auto border whitespace-nowrap uppercase tracking-wider shadow-sm"
-                              style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}>
+
+                            <span
+                              className="text-[10px] font-black px-3 py-1 rounded-full flex items-center gap-1.5 self-start sm:self-auto border whitespace-nowrap uppercase tracking-wider shadow-xs"
+                              style={{ background: ss.bg, color: ss.color, borderColor: ss.border }}
+                            >
                               {ss.icon} {b.status}
                             </span>
                           </div>
@@ -1852,26 +1948,26 @@ const ClientDashboard = () => {
                           {/* Payment Status Pill */}
                           <div className="flex flex-wrap items-center gap-2 pt-0.5">
                             {b.payment_status === 'paid' ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/90 px-3 py-1 rounded-full border border-emerald-300">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-3 py-0.5 rounded-full border border-emerald-300">
                                 <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Paid • ₱{Number(b.amount_paid || b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                               </span>
                             ) : b.payment_status === 'awaiting_payment' ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-800 bg-sky-100/90 px-3 py-1 rounded-full border border-sky-300">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-800 bg-sky-100/80 px-3 py-0.5 rounded-full border border-sky-300">
                                 <Clock className="w-3.5 h-3.5 text-sky-600" /> Awaiting Payment Confirmation
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/90 px-3 py-1 rounded-full border border-amber-300">
-                                <CreditCard className="w-3.5 h-3.5 text-amber-700" /> Unpaid • ₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (Online or Counter)
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/80 px-3 py-0.5 rounded-full border border-amber-300">
+                                <CreditCard className="w-3.5 h-3.5 text-amber-700" /> Unpaid • ₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (Pay Online or Counter)
                               </span>
                             )}
                           </div>
 
                           {/* 4-Step Lifecycle Progress Tracker */}
                           {b.status !== 'Cancelled' ? (
-                            <div className="p-3.5 rounded-2xl bg-black/[0.02] border border-black/[0.04]">
-                              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-2.5">
+                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-2">
                                 <span className="uppercase tracking-wider text-[9px] font-bold text-slate-400">Appointment Workflow</span>
-                                <span className="font-bold" style={{ color: activeStep === 3 ? '#0284c7' : activeStep === 4 ? '#047857' : '#062c22' }}>
+                                <span className="font-bold text-emerald-900">
                                   {activeStep === 1 && 'Step 1 of 4: Booking Received'}
                                   {activeStep === 2 && 'Step 2 of 4: Specialist Assigned & Confirmed'}
                                   {activeStep === 3 && 'Step 3 of 4: Treatment In Progress'}
@@ -1882,8 +1978,8 @@ const ClientDashboard = () => {
                                 {[
                                   { num: 1, label: 'Requested', desc: 'Received by Desk' },
                                   { num: 2, label: 'Assigned', desc: hasTherapist ? b.therapist_name.split(' ')[0] : 'Reception Desk' },
-                                  { num: 3, label: 'In Treatment', desc: 'Therapist Session' },
-                                  { num: 4, label: 'Completed', desc: 'Service Done' },
+                                  { num: 3, label: 'In Treatment', desc: 'Active Session' },
+                                  { num: 4, label: 'Completed', desc: 'Service Concluded' },
                                 ].map((st) => {
                                   const isCurrent = activeStep === st.num;
                                   const isPast = activeStep > st.num;
@@ -1912,59 +2008,55 @@ const ClientDashboard = () => {
                           ) : (
                             <div className="p-3 rounded-2xl bg-red-50/60 border border-red-100 flex items-center gap-2 text-xs text-red-600">
                               <Ban className="w-4 h-4 flex-shrink-0" />
-                              <span>This appointment was cancelled. You may book a fresh slot at any time.</span>
+                              <span>This session was cancelled. You may book a fresh treatment anytime.</span>
                             </div>
                           )}
 
-                          {/* Contextual Status Alerts */}
-                          {b.status === 'In Progress' && (
-                            <div className="flex items-center gap-2 text-xs font-semibold text-sky-800 p-3 rounded-2xl bg-sky-50/80 border border-sky-200/70">
-                              <Sparkles className="w-4 h-4 text-sky-600 animate-pulse flex-shrink-0" />
-                              <span>Your treatment session is currently in progress with <strong className="text-sky-900">{b.therapist_name}</strong>. Enjoy your spa experience!</span>
-                            </div>
-                          )}
-
-                          {b.status === 'Completed' && (
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-900 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60">
-                              <span className="flex items-center gap-1.5 font-medium">
-                                <CheckCircle className="w-4 h-4 text-emerald-700 flex-shrink-0" />
-                                Treatment successfully completed! We look forward to welcoming you again.
-                              </span>
-                              <button
-                                onClick={() => setShowWizard(true)}
-                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white transition hover:scale-105 self-start sm:self-auto flex-shrink-0 cursor-pointer shadow-sm"
-                                style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
-                                Book Again
-                              </button>
-                            </div>
-                          )}
-
-                          {/* Action buttons — only for Pending or Confirmed */}
+                          {/* Action Buttons */}
                           {canManage && (
-                            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-black/[0.04]">
+                            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
                               {b.payment_status !== 'paid' && (
                                 <button
+                                  type="button"
                                   onClick={() => setPaymentTarget(b)}
-                                  className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-95 cursor-pointer shadow-md"
-                                  style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', boxShadow: '0 4px 12px rgba(2,132,199,0.25)' }}>
+                                  className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer shadow-xs"
+                                >
                                   <CreditCard className="w-3.5 h-3.5" /> Pay Online (GCash / Maya / Card)
                                 </button>
                               )}
                               <button
+                                type="button"
                                 onClick={() => setRescheduleTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-emerald-800 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
-                                style={{ background: 'linear-gradient(145deg,rgba(6,44,34,0.07),rgba(6,44,34,0.04))', border: '1px solid rgba(6,44,34,0.1)', boxShadow: '2px 2px 6px rgba(6,44,34,0.06)' }}>
-                                <RefreshCw className="w-3.5 h-3.5" /> Reschedule
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer border border-slate-200"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 text-slate-500" /> Reschedule
                               </button>
                               <button
+                                type="button"
                                 onClick={() => setCancelTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-red-600 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
-                                style={{ background: 'linear-gradient(145deg,rgba(220,38,38,0.06),rgba(220,38,38,0.03))', border: '1px solid rgba(220,38,38,0.12)', boxShadow: '2px 2px 6px rgba(220,38,38,0.06)' }}>
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition cursor-pointer border border-red-200"
+                              >
                                 <XCircle className="w-3.5 h-3.5" /> Cancel Appointment
                               </button>
                             </div>
                           )}
-                        </div>
+
+                          {b.status === 'Completed' && (
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                              <span className="text-xs text-slate-500 flex items-center gap-1">
+                                <CheckCheck className="w-4 h-4 text-emerald-600" /> Completed and verified.
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowWizard(true)}
+                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#041e16] transition hover:brightness-110 cursor-pointer shadow-xs"
+                                style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)' }}
+                              >
+                                Book Again
+                              </button>
+                            </div>
+                          )}
+                        </LuxuryCard>
                       );
                     })}
                   </div>
@@ -1975,58 +2067,76 @@ const ClientDashboard = () => {
             {/* ── RIGHT COLUMN (1 Col) ──────────────────────────────────── */}
             <div className="space-y-6">
 
-              {/* Assigned Therapist Card */}
+              {/* Assigned Specialist Card */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <UserCheck className="w-4 h-4 text-emerald-800" /> My Assigned Specialist
                 </h3>
                 {assignedTherapistName ? (
-                  <ClayCard className="p-6 flex flex-col items-center text-center space-y-4">
+                  <LuxuryCard className="p-6 flex flex-col items-center text-center space-y-4">
                     <div className="relative">
-                      <div className="w-20 h-20 rounded-full overflow-hidden" style={{ border: '2.5px solid #bfa15f', boxShadow: '0 4px 14px rgba(0,0,0,0.12)' }}>
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#bfa15f] shadow-md">
                         <img src="/therapist-hero.jpg" alt="Therapist" className="w-full h-full object-cover object-top" />
                       </div>
-                      <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-[#faf8f5] rounded-full" />
+                      <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800 text-sm">{assignedTherapistName}</h4>
                       <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Licensed Massage &amp; Bodywork Specialist</p>
                       <div className="flex justify-center items-center gap-1.5 mt-1.5">
-                        <div className="flex gap-0.5">{[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 text-amber-400 fill-amber-400" />)}</div>
+                        <div className="flex gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="w-3 h-3 text-amber-400 fill-amber-400" />
+                          ))}
+                        </div>
                         <span className="text-[10px] font-bold text-slate-500">4.9 ★ (150+ reviews)</span>
                       </div>
                     </div>
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 flex items-center gap-1">
                       ✦ Certified Cozy Blissful Expert
                     </span>
-                  </ClayCard>
+                  </LuxuryCard>
                 ) : (
-                  <ClayCard className="p-6 text-center space-y-3">
+                  <LuxuryCard className="p-6 text-center space-y-3">
                     <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                       <UserCheck className="w-6 h-6" />
                     </div>
                     <p className="font-bold text-slate-700 text-sm">No Active Specialist Assigned</p>
-                    <p className="text-xs text-slate-400 leading-relaxed">Once the reception concierge desk reviews your booking and assigns your specialist, their profile will appear here.</p>
-                  </ClayCard>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Once reception confirms your booking and assigns your specialist, their verified profile will appear here.
+                    </p>
+                  </LuxuryCard>
                 )}
               </div>
 
-              {/* Interactive Connection Chat */}
+              {/* Specialist Connection Chat */}
               {assignedTherapistName && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <MessageSquare className="w-4 h-4 text-emerald-800" /> Specialist Connection Chat
                   </h3>
-                  <ClayCard className="p-4 flex flex-col" style={{ height: '320px' }}>
-                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-left">
+                  <LuxuryCard className="p-4 flex flex-col" style={{ height: '320px' }}>
+                    <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-left no-scrollbar">
                       {chatMessages.map((msg, i) => {
                         const isClient = msg.sender === 'client';
                         return (
                           <div key={i} className={`flex flex-col ${isClient ? 'items-end' : 'items-start'}`}>
-                            <div className={`p-3 rounded-2xl text-[11px] leading-relaxed max-w-[85%] ${isClient ? 'text-white' : 'text-slate-700'}`}
-                              style={isClient
-                                ? { background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '4px 4px 10px rgba(6,44,34,0.15)', borderRadius: '16px 16px 2px 16px' }
-                                : { background: '#faf8f5', boxShadow: '2px 2px 8px #eae6df', borderRadius: '16px 16px 16px 2px', border: '1px solid rgba(0,0,0,0.03)' }}>
+                            <div
+                              className={`p-3 rounded-2xl text-[11px] leading-relaxed max-w-[85%] ${
+                                isClient ? 'text-white' : 'text-slate-800 bg-slate-100'
+                              }`}
+                              style={
+                                isClient
+                                  ? {
+                                      background: 'linear-gradient(135deg,#062c22,#0a3d30)',
+                                      borderRadius: '16px 16px 2px 16px',
+                                    }
+                                  : {
+                                      borderRadius: '16px 16px 16px 2px',
+                                      border: '1px solid rgba(0,0,0,0.04)',
+                                    }
+                              }
+                            >
                               {msg.text}
                             </div>
                           </div>
@@ -2034,14 +2144,14 @@ const ClientDashboard = () => {
                       })}
                     </div>
 
-                    {/* Quick suggestions */}
-                    <div className="flex gap-1.5 overflow-x-auto py-2 scrollbar-none text-[9px] font-bold text-slate-500">
-                      {['Please bring lavender oil', 'I will arrive 5 mins early', 'Thank you!'].map((quickText, idx) => (
+                    {/* Quick Suggestions */}
+                    <div className="flex gap-1.5 overflow-x-auto py-2 no-scrollbar text-[9px] font-bold text-slate-500">
+                      {['Please prepare lavender oil', 'I will arrive 5 mins early', 'Focus on lower back'].map((quickText, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => setChatInput(quickText)}
-                          className="whitespace-nowrap px-2 py-0.5 rounded-lg bg-black/[0.03] hover:bg-black/[0.06] border border-black/[0.05] transition cursor-pointer"
+                          className="whitespace-nowrap px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition cursor-pointer"
                         >
                           {quickText}
                         </button>
@@ -2049,23 +2159,27 @@ const ClientDashboard = () => {
                     </div>
 
                     <form onSubmit={sendChatMessage} className="pt-2 border-t border-slate-100 flex gap-2">
-                      <input value={chatInput} onChange={(e) => setChatInput(e.target.value)}
+                      <input
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
                         placeholder={`Message ${assignedTherapistName.split(' ')[0]}...`}
-                        className="flex-1 px-3 py-2 rounded-xl text-xs text-slate-700 placeholder-slate-400 outline-none"
-                        style={{ background: 'linear-gradient(145deg,#f5f0e8,#ece8e0)', boxShadow: 'inset 2px 2px 5px #e0dbd3, inset -2px -2px 5px #ffffff' }} />
-                      <button type="submit" className="w-9 h-9 rounded-xl flex items-center justify-center text-white transition-all hover:scale-105 flex-shrink-0 cursor-pointer"
-                        style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)', boxShadow: '3px 3px 8px rgba(6,44,34,0.2)' }}>
+                        className="flex-1 px-3 py-2 rounded-xl text-xs text-slate-800 bg-slate-50 border border-slate-200 placeholder-slate-400 outline-none focus:border-[#bfa15f]"
+                      />
+                      <button
+                        type="submit"
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-[#041e16] bg-[#bfa15f] hover:brightness-110 transition-all cursor-pointer shadow-xs"
+                      >
                         <Send className="w-3.5 h-3.5" />
                       </button>
                     </form>
-                  </ClayCard>
+                  </LuxuryCard>
                 </div>
               )}
 
-              {/* Salon Concierge & Operating Hours */}
-              <ClayCard className="p-5 space-y-3">
-                <div className="flex items-center gap-2 text-emerald-950 font-bold text-xs uppercase tracking-wider">
-                  <Compass className="w-4 h-4 text-emerald-800" /> Salon Hours &amp; Concierge
+              {/* Salon Concierge Info */}
+              <LuxuryCard className="p-5 space-y-3">
+                <div className="flex items-center gap-2 text-slate-800 font-bold text-xs uppercase tracking-wider">
+                  <Compass className="w-4 h-4 text-emerald-800" /> Salon Hours &amp; Concierge Desk
                 </div>
                 <div className="space-y-2 text-xs text-slate-600">
                   <div className="flex items-center justify-between">
@@ -2073,19 +2187,19 @@ const ClientDashboard = () => {
                     <span className="font-bold text-slate-800">9:00 AM – 9:00 PM</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Concierge Desk:</span>
-                    <span className="font-bold text-emerald-800">Available 7 Days</span>
+                    <span className="text-slate-400">Reception Concierge:</span>
+                    <span className="font-bold text-emerald-800">7 Days a Week</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Payment on Site:</span>
-                    <span className="font-bold text-slate-800">Cash, Maya, GCash, Card</span>
+                    <span className="text-slate-400">On-Site Payment:</span>
+                    <span className="font-bold text-slate-800">Cash, GCash, Maya, Card</span>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-black/[0.04] flex items-center gap-2 text-[11px] text-slate-500">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
-                  <span>Cozy Blissful Spa &amp; Salon Suite</span>
+                <div className="pt-2 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-500">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                  <span>Cozy Blissful Spa &amp; Salon Luxury Suite</span>
                 </div>
-              </ClayCard>
+              </LuxuryCard>
 
             </div>
           </div>
@@ -2144,6 +2258,10 @@ const ClientDashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* ═══ FOOTER ═════════════════════════════════════════════════════════ */}
+      <footer className="mt-8 py-4 px-4 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white">
+        <p>© {new Date().getFullYear()} Cozy Blissful Salon &amp; Spa • Luxury Sanctuary Specialist Experience</p>
+      </footer>
     </div>
   );
 };
