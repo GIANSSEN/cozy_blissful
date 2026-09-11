@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
@@ -11,12 +11,24 @@ import {
   XCircle, Check, X, ChevronLeft, ChevronRight, UserCheck,
   Zap, Mail, CalendarDays,
   Search, RotateCcw, CheckCircle2, CalendarCheck, Sparkles, Banknote,
+  ArrowRight, Shield, Star,
 } from 'lucide-react';
 import { MiniCalendar } from '../../components/ui/mini-calendar';
 import { DatePickerInput } from '../../components/ui/date-picker';
 import { format } from 'date-fns';
 import CashSettlementModal from '../../components/CashSettlementModal';
 
+/* ─────────────────────────────────────────────────────────────────── */
+/*  BOOKING WORKFLOW STEPS                                              */
+/* ─────────────────────────────────────────────────────────────────── */
+
+const WORKFLOW_STEPS = [
+  { id: 1, label: 'Client Books',       icon: Calendar,    color: '#6366f1', desc: 'Customer submits appointment' },
+  { id: 2, label: 'Admin Reviews',      icon: Shield,      color: '#d97706', desc: 'Pending Queue approval' },
+  { id: 3, label: 'Therapist Assigned', icon: UserCheck,   color: '#059669', desc: 'Status → Confirmed' },
+  { id: 4, label: 'Session Happens',    icon: Zap,         color: '#0284c7', desc: 'Therapist In Progress → Done' },
+  { id: 5, label: 'Admin Finalizes',    icon: Star,        color: '#7c3aed', desc: 'Settle cash → History' },
+];
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  HELPERS & STYLING MAPS                                              */
@@ -25,54 +37,19 @@ import CashSettlementModal from '../../components/CashSettlementModal';
 const getStatusStyle = (status, isDark = false) => {
   switch (status) {
     case 'In Progress':
-      return {
-        bg: isDark ? 'rgba(14, 165, 233, 0.22)' : 'rgba(14, 165, 233, 0.12)',
-        color: isDark ? '#38bdf8' : '#0284c7',
-        border: isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(2, 132, 199, 0.35)',
-        dot: isDark ? '#38bdf8' : '#0284c7'
-      };
+      return { bg: isDark ? 'rgba(14,165,233,0.22)' : 'rgba(14,165,233,0.12)', color: isDark ? '#38bdf8' : '#0284c7', border: isDark ? 'rgba(56,189,248,0.45)' : 'rgba(2,132,199,0.35)', dot: isDark ? '#38bdf8' : '#0284c7' };
     case 'Confirmed':
-      return {
-        bg: isDark ? 'rgba(22, 163, 74, 0.22)' : 'rgba(22, 163, 74, 0.12)',
-        color: isDark ? '#4ade80' : '#15803d',
-        border: isDark ? 'rgba(74, 222, 128, 0.4)' : 'rgba(21, 128, 61, 0.3)',
-        dot: isDark ? '#4ade80' : '#16a34a'
-      };
+      return { bg: isDark ? 'rgba(22,163,74,0.22)' : 'rgba(22,163,74,0.12)', color: isDark ? '#4ade80' : '#15803d', border: isDark ? 'rgba(74,222,128,0.4)' : 'rgba(21,128,61,0.3)', dot: isDark ? '#4ade80' : '#16a34a' };
     case 'Pending':
-      return {
-        bg: isDark ? 'rgba(245, 158, 11, 0.22)' : 'rgba(245, 158, 11, 0.14)',
-        color: isDark ? '#fbbf24' : '#b45309',
-        border: isDark ? 'rgba(251, 191, 36, 0.45)' : 'rgba(180, 83, 9, 0.35)',
-        dot: isDark ? '#fbbf24' : '#d97706'
-      };
+      return { bg: isDark ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.14)', color: isDark ? '#fbbf24' : '#b45309', border: isDark ? 'rgba(251,191,36,0.45)' : 'rgba(180,83,9,0.35)', dot: isDark ? '#fbbf24' : '#d97706' };
     case 'Cancelled':
-      return {
-        bg: isDark ? 'rgba(239, 68, 68, 0.22)' : 'rgba(239, 68, 68, 0.12)',
-        color: isDark ? '#f87171' : '#b91c1c',
-        border: isDark ? 'rgba(248, 113, 113, 0.4)' : 'rgba(185, 28, 28, 0.3)',
-        dot: isDark ? '#f87171' : '#dc2626'
-      };
+      return { bg: isDark ? 'rgba(239,68,68,0.22)' : 'rgba(239,68,68,0.12)', color: isDark ? '#f87171' : '#b91c1c', border: isDark ? 'rgba(248,113,113,0.4)' : 'rgba(185,28,28,0.3)', dot: isDark ? '#f87171' : '#dc2626' };
     case 'Completed by Therapist':
-      return {
-        bg: isDark ? 'rgba(217, 119, 6, 0.22)' : 'rgba(217, 119, 6, 0.12)',
-        color: isDark ? '#fbbf24' : '#b45309',
-        border: isDark ? 'rgba(251, 191, 36, 0.45)' : 'rgba(217, 119, 6, 0.35)',
-        dot: isDark ? '#fbbf24' : '#d97706'
-      };
+      return { bg: isDark ? 'rgba(217,119,6,0.22)' : 'rgba(217,119,6,0.12)', color: isDark ? '#fbbf24' : '#b45309', border: isDark ? 'rgba(251,191,36,0.45)' : 'rgba(217,119,6,0.35)', dot: isDark ? '#fbbf24' : '#d97706' };
     case 'Completed':
-      return {
-        bg: isDark ? 'rgba(99, 102, 241, 0.22)' : 'rgba(99, 102, 241, 0.12)',
-        color: isDark ? '#a5b4fc' : '#4338ca',
-        border: isDark ? 'rgba(165, 180, 252, 0.4)' : 'rgba(67, 56, 202, 0.3)',
-        dot: isDark ? '#a5b4fc' : '#4f46e5'
-      };
+      return { bg: isDark ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.12)', color: isDark ? '#a5b4fc' : '#4338ca', border: isDark ? 'rgba(165,180,252,0.4)' : 'rgba(67,56,202,0.3)', dot: isDark ? '#a5b4fc' : '#4f46e5' };
     default:
-      return {
-        bg: isDark ? 'rgba(148, 163, 184, 0.22)' : 'rgba(100, 116, 139, 0.12)',
-        color: isDark ? '#cbd5e1' : '#334155',
-        border: isDark ? 'rgba(203, 213, 225, 0.4)' : 'rgba(51, 65, 85, 0.3)',
-        dot: isDark ? '#cbd5e1' : '#64748b'
-      };
+      return { bg: isDark ? 'rgba(148,163,184,0.22)' : 'rgba(100,116,139,0.12)', color: isDark ? '#cbd5e1' : '#334155', border: isDark ? 'rgba(203,213,225,0.4)' : 'rgba(51,65,85,0.3)', dot: isDark ? '#cbd5e1' : '#64748b' };
   }
 };
 
@@ -89,7 +66,99 @@ const fmtDate = (dt) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  APPOINTMENT DETAIL MODAL (WITH CONTEXTUAL ACTIONS)                  */
+/*  REUSABLE HOVER BUTTON                                              */
+/* ─────────────────────────────────────────────────────────────────── */
+
+const HoverButton = ({ onClick, children, baseStyle, hoverStyle, title, disabled = false, id }) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      id={id}
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...baseStyle,
+        ...(hovered && !disabled ? hoverStyle : {}),
+        transition: 'all 0.18s ease',
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+      }}
+    >
+      {children}
+    </button>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*  WORKFLOW PROGRESS BANNER                                            */
+/* ─────────────────────────────────────────────────────────────────── */
+
+const WorkflowBanner = ({ isDark }) => {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+
+  const C = {
+    bg: isDark ? '#0f1420' : '#f8fafc',
+    border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    text: isDark ? '#94a3b8' : '#64748b',
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{
+        background: C.bg,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        padding: '12px 16px',
+        position: 'relative',
+      }}
+    >
+      <button
+        onClick={() => setVisible(false)}
+        style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', color: C.text, padding: 4 }}
+        title="Dismiss workflow guide"
+      >
+        <X size={14} />
+      </button>
+      <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.text, margin: '0 0 10px' }}>
+        Booking Workflow
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+        {WORKFLOW_STEPS.map((step, i) => {
+          const Icon = step.icon;
+          return (
+            <React.Fragment key={step.id}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 80, flexShrink: 0 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 10,
+                  background: `${step.color}22`, color: step.color,
+                  border: `1px solid ${step.color}44`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={15} />
+                </div>
+                <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: step.color, margin: 0, textAlign: 'center', lineHeight: 1.3 }}>{step.label}</p>
+                <p style={{ fontSize: 8, fontWeight: 600, color: C.text, margin: 0, textAlign: 'center', lineHeight: 1.3 }}>{step.desc}</p>
+              </div>
+              {i < WORKFLOW_STEPS.length - 1 && (
+                <ArrowRight size={14} style={{ color: C.text, opacity: 0.4, flexShrink: 0, margin: '0 4px', marginBottom: 20 }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*  APPOINTMENT DETAIL MODAL (CONTEXTUAL ACTIONS)                       */
 /* ─────────────────────────────────────────────────────────────────── */
 
 const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedule, onComplete }) => {
@@ -110,72 +179,49 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
 
   return (
     <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)',
-      }}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
         initial={{ scale: 0.93, y: 20, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.93, y: 20, opacity: 0 }}
-        style={{
-          background: C.modalBg, border: `1px solid ${C.cardBorder}`,
-          borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
-          width: '100%', maxWidth: 512, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
-        }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 48px rgba(0,0,0,0.35)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
       >
         {/* Header */}
-        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}>
+        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div>
-              <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>
-                Booking Details
-              </span>
+              <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>Booking Details</span>
               <h3 style={{ fontSize: 20, fontWeight: 900, color: '#ffffff', margin: '4px 0 0' }}>{appt.service}</h3>
             </div>
-            <button onClick={onClose} style={{
-              width: 32, height: 32, borderRadius: 12, border: 'none',
-              background: 'rgba(255,255,255,0.1)', color: '#ffffff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <HoverButton
+              onClick={onClose}
+              baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}
+              title="Close"
+            >
               <X size={16} />
-            </button>
+            </HoverButton>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#d1fae5', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Calendar size={14} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
             </span>
             {appt.service_duration && (
-              <span style={{
-                fontSize: 11, fontWeight: 700, color: '#a7f3d0',
-                background: 'rgba(255,255,255,0.1)', padding: '2px 10px',
-                borderRadius: 999, border: '1px solid rgba(255,255,255,0.15)',
-                display: 'flex', alignItems: 'center', gap: 4,
-              }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#a7f3d0', background: 'rgba(255,255,255,0.1)', padding: '2px 10px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Clock size={12} /> {appt.service_duration} min
               </span>
             )}
-            <span style={{
-              fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 999,
-              background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`,
-            }}>
+            <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 999, background: ss.bg, color: ss.color, border: `1px solid ${ss.border}` }}>
               {appt.status}
             </span>
           </div>
         </div>
 
         {/* Body */}
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '60vh', overflowY: 'auto' }}>
-          {/* Client info */}
-          <div style={{
-            padding: 16, borderRadius: 16, background: C.cardBg,
-            border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '60vh', overflowY: 'auto' }}>
+          <div style={{ padding: 16, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client Information</p>
             <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.client_name || appt.client}</p>
             {appt.client_email && (
@@ -185,11 +231,7 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
             )}
           </div>
 
-          {/* Therapist info */}
-          <div style={{
-            padding: 16, borderRadius: 16, background: C.cardBg,
-            border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
+          <div style={{ padding: 16, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Assigned Practitioner</p>
             <p style={{ fontSize: 16, fontWeight: 900, color: appt.therapist_name && appt.therapist_name !== 'Unassigned' ? C.textPrimary : C.textMuted, margin: 0 }}>
               {appt.therapist_name || 'Unassigned'}
@@ -201,107 +243,99 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
             )}
           </div>
 
-          {/* Notes */}
           {appt.notes && (
-            <div style={{
-              padding: 14, borderRadius: 16, background: C.noteBg,
-              border: `1px solid ${C.noteBorder}`,
-            }}>
-              <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Special Client Notes</p>
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5 }}>{appt.notes}</p>
+            <div style={{ padding: 14, borderRadius: 16, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
+              <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Special Notes</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.6 }}>{appt.notes}</p>
             </div>
           )}
 
-          {/* Therapist Completion Notice */}
           {appt.status === 'Completed by Therapist' && (
-            <div style={{
-              padding: 14, borderRadius: 16, background: isDark ? 'rgba(217,119,6,0.15)' : '#fefce8',
-              border: '1.5px solid rgba(217,119,6,0.35)', display: 'flex', flexDirection: 'column', gap: 6,
-            }}>
+            <div style={{ padding: 14, borderRadius: 16, background: isDark ? 'rgba(217,119,6,0.15)' : '#fefce8', border: '1.5px solid rgba(217,119,6,0.35)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Sparkles size={16} style={{ color: '#d97706' }} />
-                <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>
-                  Therapist Concluded Treatment Session
-                </p>
+                <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>Therapist Concluded Treatment Session</p>
               </div>
-              <p style={{ fontSize: 11, color: isDark ? '#fef3c7' : '#78350f', margin: 0, lineHeight: 1.5 }}>
-                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> marked this treatment as complete. Confirm completion below to finalize session fees and archive to the <strong>History</strong> menu.
+              <p style={{ fontSize: 11, color: isDark ? '#fef3c7' : '#78350f', margin: 0, lineHeight: 1.6 }}>
+                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> marked this treatment as complete. Confirm below to settle cash and archive this booking into History.
               </p>
             </div>
           )}
         </div>
 
-        {/* Footer with contextual actions */}
-        <div style={{
-          padding: '16px 24px', borderTop: `1px solid ${C.cardBorder}`,
-          background: C.cardBg, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0,
-        }}>
-          <button type="button" onClick={onClose} style={{
-            padding: '10px 18px', borderRadius: 14, border: `1px solid ${C.cardBorder}`,
-            background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900, cursor: 'pointer',
-          }}>
+        {/* Footer — contextual actions by status */}
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${C.cardBorder}`, background: C.cardBg, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
+          <HoverButton
+            onClick={onClose}
+            baseStyle={{ padding: '10px 18px', borderRadius: 14, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900 }}
+            hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }}
+          >
             Close
-          </button>
+          </HoverButton>
 
+          {/* PENDING: Decline + Assign */}
           {appt.status === 'Pending' && (
             <>
               {onOpenReject && (
-                <button type="button" onClick={() => { onClose(); onOpenReject(appt); }} style={{
-                  padding: '10px 16px', borderRadius: 14, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.1)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                }}>
+                <HoverButton
+                  onClick={() => { onClose(); onOpenReject(appt); }}
+                  baseStyle={{ padding: '10px 16px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
+                  hoverStyle={{ background: 'rgba(239,68,68,0.18)', borderColor: 'rgba(239,68,68,0.45)' }}
+                >
                   Decline
-                </button>
+                </HoverButton>
               )}
               {onOpenAccept && (
-                <button type="button" onClick={() => { onClose(); onOpenAccept(appt); }} style={{
-                  flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none',
-                  background: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#ffffff',
-                  fontSize: 12, fontWeight: 900, cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}>
-                  <UserCheck size={16} style={{ color: '#6ee7b7' }} /> Assign Specialist &amp; Confirm
-                </button>
+                <HoverButton
+                  onClick={() => { onClose(); onOpenAccept(appt); }}
+                  baseStyle={{ flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  hoverStyle={{ boxShadow: '0 6px 20px rgba(6,44,34,0.45)', transform: 'translateY(-1px)' }}
+                >
+                  <UserCheck size={16} style={{ color: '#6ee7b7' }} /> Assign Specialist & Confirm
+                </HoverButton>
               )}
             </>
           )}
 
-          {(appt.status === 'Confirmed' || appt.status === 'In Progress' || appt.status === 'Completed by Therapist') && (
+          {/* CONFIRMED: Reassign + Reschedule (NO Complete — therapist must do In Progress first) */}
+          {appt.status === 'Confirmed' && (
             <>
-              {appt.status === 'Confirmed' && onOpenAccept && (
-                <button type="button" onClick={() => { onClose(); onOpenAccept(appt); }} style={{
-                  padding: '10px 14px', borderRadius: 14, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 900, color: '#059669', background: 'rgba(5,150,105,0.1)',
-                  border: '1px solid rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', gap: 5,
-                }}>
+              {onOpenAccept && (
+                <HoverButton
+                  onClick={() => { onClose(); onOpenAccept(appt); }}
+                  baseStyle={{ padding: '10px 14px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#059669', background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', gap: 5 }}
+                  hoverStyle={{ background: 'rgba(5,150,105,0.2)', borderColor: 'rgba(5,150,105,0.45)' }}
+                >
                   <UserCheck size={14} /> Reassign
-                </button>
+                </HoverButton>
               )}
-              {appt.status === 'Confirmed' && onOpenReschedule && (
-                <button type="button" onClick={() => { onClose(); onOpenReschedule(appt); }} style={{
-                  padding: '10px 14px', borderRadius: 14, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 900, color: '#2563eb', background: 'rgba(37,99,235,0.1)',
-                  border: '1px solid rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', gap: 5,
-                }}>
+              {onOpenReschedule && (
+                <HoverButton
+                  onClick={() => { onClose(); onOpenReschedule(appt); }}
+                  baseStyle={{ padding: '10px 14px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#2563eb', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', gap: 5 }}
+                  hoverStyle={{ background: 'rgba(37,99,235,0.2)', borderColor: 'rgba(37,99,235,0.45)' }}
+                >
                   <RotateCcw size={14} /> Reschedule
-                </button>
-              )}
-              {onComplete && (
-                <button type="button" onClick={() => { onClose(); onComplete(appt); }} style={{
-                  flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none',
-                  background: appt.status === 'Completed by Therapist'
-                    ? 'linear-gradient(135deg,#059669,#047857)'
-                    : 'linear-gradient(135deg,#062c22,#0f5040)',
-                  color: '#ffffff',
-                  fontSize: 12, fontWeight: 900, cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                }}>
-                  <Banknote size={15} style={{ color: '#fde68a' }} />
-                  {appt.status === 'Completed by Therapist' ? 'Settle Cash & Confirm (Move to History)' : 'Settle Cash & Complete Session'}
-                </button>
+                </HoverButton>
               )}
             </>
+          )}
+
+          {/* IN PROGRESS or COMPLETED BY THERAPIST: settle cash */}
+          {(appt.status === 'In Progress' || appt.status === 'Completed by Therapist') && onComplete && (
+            <HoverButton
+              onClick={() => { onClose(); onComplete(appt); }}
+              baseStyle={{
+                flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none',
+                background: appt.status === 'Completed by Therapist' ? 'linear-gradient(135deg,#059669,#047857)' : 'linear-gradient(135deg,#062c22,#0f5040)',
+                color: '#ffffff', fontSize: 12, fontWeight: 900,
+                boxShadow: '0 4px 14px rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+              hoverStyle={{ boxShadow: '0 6px 20px rgba(5,150,105,0.45)', transform: 'translateY(-1px)' }}
+            >
+              <Banknote size={15} style={{ color: '#fde68a' }} />
+              {appt.status === 'Completed by Therapist' ? 'Settle Cash & Confirm' : 'Settle Cash & Complete'}
+            </HoverButton>
           )}
         </div>
       </motion.div>
@@ -333,18 +367,11 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     ? appt.datetime.split(' ')[0] || new Date(appt.datetime).toISOString().split('T')[0]
     : '';
 
-  const availableTherapists = therapists.filter((t) =>
-    t.availabilities && Array.isArray(t.availabilities) && t.availabilities.includes(apptDateStr)
-  );
-
-  const unavailableTherapists = therapists.filter((t) =>
-    !t.availabilities || !Array.isArray(t.availabilities) || !t.availabilities.includes(apptDateStr)
-  );
+  const availableTherapists = therapists.filter(t => t.availabilities && Array.isArray(t.availabilities) && t.availabilities.includes(apptDateStr));
+  const unavailableTherapists = therapists.filter(t => !t.availabilities || !Array.isArray(t.availabilities) || !t.availabilities.includes(apptDateStr));
 
   useEffect(() => {
-    if (!selectedTherapistId && availableTherapists.length > 0) {
-      setSelectedTherapistId(availableTherapists[0].id);
-    }
+    if (!selectedTherapistId && availableTherapists.length > 0) setSelectedTherapistId(availableTherapists[0].id);
   }, [availableTherapists]);
 
   const handleSubmit = async (e) => {
@@ -356,61 +383,70 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     onClose();
   };
 
-  return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)',
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <motion.div
-        initial={{ scale: 0.93, y: 20, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.93, y: 20, opacity: 0 }}
+  const TherapistCard = ({ t, showAvailBadge = false }) => {
+    const isSelected = String(selectedTherapistId) === String(t.id);
+    const [hovered, setHovered] = useState(false);
+    return (
+      <div
+        onClick={() => setSelectedTherapistId(t.id)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         style={{
-          background: C.modalBg, border: `1px solid ${C.cardBorder}`,
-          borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
-          width: '100%', maxWidth: 512, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
+          padding: '12px 14px', borderRadius: 16, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: isSelected ? 'linear-gradient(135deg,#062c22,#0a3d30)' : hovered ? (isDark ? '#162030' : '#f0fdf4') : C.cardBg,
+          border: `1px solid ${isSelected ? '#10b981' : hovered ? 'rgba(16,185,129,0.4)' : C.cardBorder}`,
+          boxShadow: isSelected ? '0 4px 14px rgba(16,185,129,0.2)' : '0 2px 6px rgba(0,0,0,0.04)',
+          transition: 'all 0.18s ease',
         }}
       >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: isSelected ? 'rgba(255,255,255,0.2)' : showAvailBadge ? 'rgba(5,150,105,0.15)' : (isDark ? '#1e293b' : '#e2e8f0'), color: isSelected ? '#ffffff' : showAvailBadge ? '#059669' : C.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 14 }}>
+            {t.name.charAt(0)}
+          </div>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 900, color: isSelected ? '#ffffff' : C.textPrimary, margin: 0 }}>{t.name}</p>
+            <p style={{ fontSize: 11, fontWeight: 700, color: isSelected ? '#a7f3d0' : C.textMuted, margin: '1px 0 0' }}>{t.specialty || 'Therapist'}</p>
+          </div>
+        </div>
+        <span style={{ fontSize: 10, fontWeight: 900, padding: '3px 10px', borderRadius: 999, background: isSelected ? '#047857' : showAvailBadge ? 'rgba(5,150,105,0.12)' : (isDark ? '#1e293b' : '#e2e8f0'), color: isSelected ? '#ffffff' : showAvailBadge ? '#059669' : C.textSecondary, border: `1px solid ${isSelected ? '#10b981' : showAvailBadge ? 'rgba(5,150,105,0.3)' : C.cardBorder}` }}>
+          {showAvailBadge ? 'Available' : 'Assign'}
+        </span>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <motion.div
+        initial={{ scale: 0.93, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.93, y: 20, opacity: 0 }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 48px rgba(0,0,0,0.35)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
+      >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 14,
-                background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)',
-                color: '#6ee7b7', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <div style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.3)', color: '#6ee7b7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <UserCheck size={20} />
               </div>
               <div>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>Accept &amp; Match Therapist</span>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>Accept & Match Therapist</span>
                 <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{appt.service}</h3>
               </div>
             </div>
-            <button onClick={onClose} style={{
-              width: 32, height: 32, borderRadius: 12, border: 'none',
-              background: 'rgba(255,255,255,0.1)', color: '#ffffff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <HoverButton onClick={onClose} baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}>
               <X size={16} />
-            </button>
+            </HoverButton>
           </div>
         </div>
 
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1, textAlign: 'left' }}>
-          <div style={{
-            padding: 16, borderRadius: 16, background: C.cardBg,
-            border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 6,
-          }}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
+          <div style={{ padding: 14, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>
-              <span>Client Request Details</span>
+              <span>Client Request</span>
               <span>#{String(appt.id).padStart(4, '0')}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
               <div>
                 <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.client_name || appt.client}</p>
                 {appt.client_email && <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '2px 0 0' }}>{appt.client_email}</p>}
@@ -422,141 +458,48 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <UserCheck size={14} style={{ color: '#059669' }} /> Select Practitioner for Session
+              <UserCheck size={14} style={{ color: '#059669' }} /> Select Practitioner
             </label>
 
             {availableTherapists.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <p style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#059669', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
-                  <CheckCircle size={14} /> Scheduled &amp; Available ({availableTherapists.length})
+                  <CheckCircle size={13} /> Available on this date ({availableTherapists.length})
                 </p>
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {availableTherapists.map((t) => {
-                    const isSelected = String(selectedTherapistId) === String(t.id);
-                    return (
-                      <div
-                        key={t.id}
-                        onClick={() => setSelectedTherapistId(t.id)}
-                        style={{
-                          padding: '12px 14px', borderRadius: 16, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          background: isSelected ? 'linear-gradient(135deg,#062c22,#0a3d30)' : C.cardBg,
-                          border: `1px solid ${isSelected ? '#10b981' : C.cardBorder}`,
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{
-                            width: 32, height: 32, borderRadius: 10,
-                            background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(5,150,105,0.15)',
-                            color: isSelected ? '#ffffff' : '#059669',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 900, fontSize: 13,
-                          }}>
-                            {t.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p style={{ fontSize: 13, fontWeight: 900, color: isSelected ? '#ffffff' : C.textPrimary, margin: 0 }}>{t.name}</p>
-                            <p style={{ fontSize: 11, fontWeight: 700, color: isSelected ? '#a7f3d0' : C.textMuted, margin: '2px 0 0' }}>{t.specialty || 'Therapist'}</p>
-                          </div>
-                        </div>
-                        <span style={{
-                          fontSize: 10, fontWeight: 900, padding: '2px 10px', borderRadius: 999,
-                          background: isSelected ? '#047857' : 'rgba(5,150,105,0.12)',
-                          color: isSelected ? '#ffffff' : '#059669',
-                          border: `1px solid ${isSelected ? '#10b981' : 'rgba(5,150,105,0.3)'}`,
-                        }}>
-                          Available
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {availableTherapists.map(t => <TherapistCard key={t.id} t={t} showAvailBadge />)}
               </div>
             ) : (
-              <div style={{
-                padding: 14, borderRadius: 16, fontSize: 11, fontWeight: 600,
-                background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
-                color: C.textSecondary, display: 'flex', alignItems: 'flex-start', gap: 8,
-              }}>
+              <div style={{ padding: 14, borderRadius: 16, fontSize: 11, fontWeight: 600, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: C.textSecondary, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                 <AlertCircle size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
-                <span>No therapists have explicitly listed shift availability for <strong>{apptDateStr}</strong>. Select any active practitioner from the list below to assign.</span>
+                <span>No therapists have listed availability for <strong>{apptDateStr}</strong>. Select any active practitioner below.</span>
               </div>
             )}
 
             {unavailableTherapists.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 }}>
                 <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>
-                  All Active Practitioners ({unavailableTherapists.length})
+                  All Practitioners ({unavailableTherapists.length})
                 </p>
-                <div style={{ display: 'grid', gap: 8 }}>
-                  {unavailableTherapists.map((t) => {
-                    const isSelected = String(selectedTherapistId) === String(t.id);
-                    return (
-                      <div
-                        key={t.id}
-                        onClick={() => setSelectedTherapistId(t.id)}
-                        style={{
-                          padding: '12px 14px', borderRadius: 16, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          background: isSelected ? 'linear-gradient(135deg,#062c22,#0a3d30)' : C.cardBg,
-                          border: `1px solid ${isSelected ? '#10b981' : C.cardBorder}`,
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{
-                            width: 32, height: 32, borderRadius: 10,
-                            background: isSelected ? 'rgba(255,255,255,0.2)' : (isDark ? '#1e293b' : '#e2e8f0'),
-                            color: isSelected ? '#ffffff' : C.textSecondary,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 900, fontSize: 13,
-                          }}>
-                            {t.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p style={{ fontSize: 13, fontWeight: 900, color: isSelected ? '#ffffff' : C.textPrimary, margin: 0 }}>{t.name}</p>
-                            <p style={{ fontSize: 11, fontWeight: 700, color: isSelected ? '#a7f3d0' : C.textMuted, margin: '2px 0 0' }}>{t.specialty || 'Practitioner'}</p>
-                          </div>
-                        </div>
-                        <span style={{
-                          fontSize: 10, fontWeight: 900, padding: '2px 10px', borderRadius: 999,
-                          background: isSelected ? '#047857' : (isDark ? '#1e293b' : '#e2e8f0'),
-                          color: isSelected ? '#ffffff' : C.textSecondary,
-                        }}>Assign</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {unavailableTherapists.map(t => <TherapistCard key={t.id} t={t} showAvailBadge={false} />)}
               </div>
             )}
           </div>
         </div>
 
-        <div style={{
-          padding: '16px 24px', borderTop: `1px solid ${C.cardBorder}`,
-          background: C.footerBg, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
-        }}>
-          <button type="button" onClick={onClose} style={{
-            flex: 1, padding: '12px', borderRadius: 14, border: `1px solid ${C.cardBorder}`,
-            background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900, cursor: 'pointer',
-          }}>
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${C.cardBorder}`, background: C.footerBg, display: 'flex', gap: 12, flexShrink: 0 }}>
+          <HoverButton onClick={onClose} baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900 }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}>
             Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!selectedTherapistId || submitting}
+          </HoverButton>
+          <HoverButton
             onClick={handleSubmit}
-            style={{
-              flex: 1, padding: '12px', borderRadius: 14, border: 'none',
-              background: 'linear-gradient(135deg,#062c22,#0f5040)', color: '#ffffff',
-              fontSize: 12, fontWeight: 900, cursor: 'pointer', opacity: (!selectedTherapistId || submitting) ? 0.5 : 1,
-              boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
+            disabled={!selectedTherapistId || submitting}
+            baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#062c22,#0f5040)', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            hoverStyle={{ boxShadow: '0 6px 20px rgba(6,44,34,0.45)', transform: 'translateY(-1px)' }}
           >
-            {submitting ? 'Confirming…' : <><CheckCircle size={16} style={{ color: '#6ee7b7' }} /> Confirm &amp; Assign</>}
-          </button>
+            {submitting ? 'Confirming…' : <><CheckCircle size={16} style={{ color: '#6ee7b7' }} /> Confirm & Assign</>}
+          </HoverButton>
         </div>
       </motion.div>
     </div>
@@ -564,13 +507,12 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  REJECT / DECLINE MODAL WITH VALIDATION                              */
+/*  REJECT MODAL                                                       */
 /* ─────────────────────────────────────────────────────────────────── */
 
 const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { toast } = useToast();
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -590,20 +532,13 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
     'Therapist fully booked for requested slot',
     'Requested time outside operating hours',
     'Client requested cancellation',
-    'Outside delivery service coverage area'
+    'Outside service coverage area',
   ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!reason.trim()) {
-      setError('Please select or type a reason for declining this request.');
-      return;
-    }
-    if (reason.trim().length < 5) {
-      setError('Reason must be at least 5 characters long.');
-      return;
-    }
-
+    if (!reason.trim()) { setError('Please select or type a reason for declining.'); return; }
+    if (reason.trim().length < 5) { setError('Reason must be at least 5 characters.'); return; }
     setSubmitting(true);
     await onConfirmReject(appt.id, reason.trim());
     setSubmitting(false);
@@ -611,128 +546,82 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)',
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div
-        initial={{ scale: 0.93, y: 20, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.93, y: 20, opacity: 0 }}
-        style={{
-          background: C.modalBg, border: `1px solid ${C.cardBorder}`,
-          borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
-          width: '100%', maxWidth: 448, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
-        }}
+        initial={{ scale: 0.93, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.93, y: 20, opacity: 0 }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 48px rgba(0,0,0,0.35)', width: '100%', maxWidth: 460, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#7f1d1d,#991b1b)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 14,
-                background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)',
-                color: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <XCircle size={20} />
-              </div>
+              <div style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><XCircle size={20} /></div>
               <div>
                 <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#fca5a5' }}>Reject Booking Request</span>
                 <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{appt.service}</h3>
               </div>
             </div>
-            <button onClick={onClose} style={{
-              width: 32, height: 32, borderRadius: 12, border: 'none',
-              background: 'rgba(255,255,255,0.1)', color: '#ffffff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <HoverButton onClick={onClose} baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}>
               <X size={16} />
-            </button>
+            </HoverButton>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left', overflowY: 'auto', flex: 1 }}>
-          <div style={{
-            padding: 14, borderRadius: 16, background: 'rgba(239,68,68,0.08)',
-            border: '1px solid rgba(239,68,68,0.2)', display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#dc2626', margin: 0 }}>Client &amp; Schedule</p>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.client_name || appt.client}</p>
+        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
+          <div style={{ padding: 14, borderRadius: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#dc2626', margin: 0 }}>Client & Schedule</p>
+            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{appt.client_name || appt.client}</p>
             <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '2px 0 0' }}>{fmtDate(appt.datetime)} at {fmt12(appt.datetime)}</p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>
-              Reason for Decline / Cancellation Note *
-            </label>
+            <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Decline Reason *</label>
             <textarea
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                if (error) setError('');
-              }}
-              placeholder="Select a preset below or type a custom reason..."
-              rows={3}
-              style={{
-                width: '100%', padding: 12, borderRadius: 14,
-                fontSize: 12, fontWeight: 600, color: C.textPrimary,
-                background: C.inputBg, border: `1px solid ${error ? '#ef4444' : C.cardBorder}`,
-                outline: 'none', resize: 'vertical',
-              }}
+              value={reason} rows={3}
+              onChange={(e) => { setReason(e.target.value); if (error) setError(''); }}
+              placeholder="Select a preset or type a custom reason..."
+              style={{ width: '100%', padding: 12, borderRadius: 14, fontSize: 12, fontWeight: 600, color: C.textPrimary, background: C.inputBg, border: `1px solid ${error ? '#ef4444' : C.cardBorder}`, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
             />
-            {error && <p style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', margin: '2px 0 0' }}>{error}</p>}
+            {error && <p style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', margin: 0 }}>{error}</p>}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Quick Presets</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {presets.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => { setReason(p); setError(''); }}
-                  style={{
-                    fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 10, cursor: 'pointer',
-                    background: reason === p ? '#dc2626' : C.presetBg,
-                    color: reason === p ? '#ffffff' : C.textSecondary,
-                    border: reason === p ? '1px solid #b91c1c' : `1px solid ${C.cardBorder}`,
-                  }}
+              {presets.map(p => (
+                <HoverButton
+                  key={p} onClick={() => { setReason(p); setError(''); }}
+                  baseStyle={{ fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 10, background: reason === p ? '#dc2626' : C.presetBg, color: reason === p ? '#ffffff' : C.textSecondary, border: reason === p ? '1px solid #b91c1c' : `1px solid ${C.cardBorder}` }}
+                  hoverStyle={{ background: reason === p ? '#b91c1c' : (isDark ? '#2a3a4a' : '#e2e8f0') }}
                 >
                   {p}
-                </button>
+                </HoverButton>
               ))}
             </div>
           </div>
 
-          <div style={{ paddingTop: 8, display: 'flex', alignItems: 'center', gap: 12, borderTop: `1px solid ${C.cardBorder}` }}>
-            <button type="button" onClick={onClose} style={{
-              flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`,
-              background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900, cursor: 'pointer',
-            }}>
+          <div style={{ paddingTop: 8, display: 'flex', gap: 12, borderTop: `1px solid ${C.cardBorder}` }}>
+            <HoverButton onClick={onClose} baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900 }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}>
               Keep Pending
-            </button>
-            <button
-              type="submit"
+            </HoverButton>
+            <HoverButton
               disabled={submitting}
-              style={{
-                flex: 1, padding: 12, borderRadius: 14, border: 'none',
-                background: '#dc2626', color: '#ffffff', fontSize: 12, fontWeight: 900, cursor: 'pointer',
-                opacity: submitting ? 0.6 : 1, boxShadow: '0 4px 12px rgba(220,38,38,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
+              baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: 'none', background: '#dc2626', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 12px rgba(220,38,38,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              hoverStyle={{ background: '#b91c1c', boxShadow: '0 6px 18px rgba(220,38,38,0.45)' }}
+              onClick={handleSubmit}
             >
               {submitting ? 'Rejecting…' : <><XCircle size={16} /> Confirm Decline</>}
-            </button>
+            </HoverButton>
           </div>
         </form>
       </motion.div>
     </div>
   );
 };
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*  RESCHEDULE MODAL                                                   */
+/* ─────────────────────────────────────────────────────────────────── */
 
 const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   const { theme } = useTheme();
@@ -754,21 +643,15 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   };
 
   useEffect(() => {
-    const tom = new Date();
-    tom.setDate(tom.getDate() + 1);
+    const tom = new Date(); tom.setDate(tom.getDate() + 1);
     setNewDate(tom.toISOString().split('T')[0]);
   }, []);
 
   const validate = () => {
     const errs = {};
-    if (!newDate) errs.newDate = 'Please select a new date';
-    else {
-      const sel = new Date(`${newDate}T${newTime}`);
-      if (sel < new Date()) {
-        errs.newDate = 'New schedule date/time cannot be in the past';
-      }
-    }
-    if (!newTime) errs.newTime = 'Please select a time slot';
+    if (!newDate) errs.newDate = 'Select a new date';
+    else { const sel = new Date(`${newDate}T${newTime}`); if (sel < new Date()) errs.newDate = 'Date/time cannot be in the past'; }
+    if (!newTime) errs.newTime = 'Select a time';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -776,127 +659,76 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-
     setSubmitting(true);
-    const newDateTime = `${newDate} ${newTime}:00`;
-    await onConfirmReschedule(request.id, newDateTime, reasonNote);
+    await onConfirmReschedule(request.id, `${newDate} ${newTime}:00`, reasonNote);
     setSubmitting(false);
     onClose();
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 16, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)',
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div
-        initial={{ scale: 0.93, y: 20, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.93, y: 20, opacity: 0 }}
-        style={{
-          background: C.modalBg, border: `1px solid ${C.cardBorder}`,
-          borderRadius: 24, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
-          width: '100%', maxWidth: 448, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column', maxHeight: '92vh',
-        }}
+        initial={{ scale: 0.93, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.93, y: 20, opacity: 0 }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 48px rgba(0,0,0,0.35)', width: '100%', maxWidth: 460, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#1e3a8a,#3b55e6)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 14,
-                background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)',
-                color: '#93c5fd', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <RotateCcw size={20} />
-              </div>
+              <div style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><RotateCcw size={20} /></div>
               <div>
                 <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#bfdbfe' }}>Reschedule Session</span>
                 <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{request.service}</h3>
               </div>
             </div>
-            <button onClick={onClose} style={{
-              width: 32, height: 32, borderRadius: 12, border: 'none',
-              background: 'rgba(255,255,255,0.1)', color: '#ffffff',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <HoverButton onClick={onClose} baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}>
               <X size={16} />
-            </button>
+            </HoverButton>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'left' }}>
-          <div style={{
-            padding: 14, borderRadius: 16, background: 'rgba(37,99,235,0.08)',
-            border: '1px solid rgba(37,99,235,0.2)', display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#2563eb', margin: 0 }}>Current Booking Schedule</p>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{request.client_name || request.client}</p>
+        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
+          <div style={{ padding: 14, borderRadius: 16, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' }}>
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#2563eb', margin: 0 }}>Current Schedule</p>
+            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{request.client_name || request.client}</p>
             <p style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', margin: '2px 0 0' }}>{fmtDate(request.datetime)} at {fmt12(request.datetime)}</p>
-            {request.notes && <p style={{ fontSize: 11, fontWeight: 500, fontStyle: 'italic', color: C.textSecondary, margin: '4px 0 0' }}>Requested note: "{request.notes}"</p>}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Date *</label>
-              <DatePickerInput value={newDate} onChange={(d) => { setNewDate(d); setErrors({}); }} placeholder="mm/dd/yyyy" isDark={isDark} className="w-full" />
+              <DatePickerInput value={newDate} onChange={d => { setNewDate(d); setErrors({}); }} placeholder="mm/dd/yyyy" isDark={isDark} />
               {errors.newDate && <p style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', margin: 0 }}>{errors.newDate}</p>}
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Time *</label>
               <input
-                type="time"
-                value={newTime}
-                onChange={(e) => { setNewTime(e.target.value); setErrors({}); }}
-                style={{
-                  padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 700,
-                  background: C.inputBg, color: C.textPrimary, border: `1px solid ${errors.newTime ? '#ef4444' : C.cardBorder}`,
-                  outline: 'none',
-                }}
+                type="time" value={newTime}
+                onChange={e => { setNewTime(e.target.value); setErrors({}); }}
+                style={{ padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, background: C.inputBg, color: C.textPrimary, border: `1px solid ${errors.newTime ? '#ef4444' : C.cardBorder}`, outline: 'none', width: '100%', boxSizing: 'border-box' }}
               />
               {errors.newTime && <p style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', margin: 0 }}>{errors.newTime}</p>}
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Admin Reschedule Note (Optional)</label>
-            <input
-              type="text"
-              placeholder="e.g. Approved per customer request via hotline"
-              value={reasonNote}
-              onChange={(e) => setReasonNote(e.target.value)}
-              style={{
-                padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-                background: C.inputBg, color: C.textPrimary, border: `1px solid ${C.cardBorder}`,
-                outline: 'none',
-              }}
-            />
+            <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Admin Note (Optional)</label>
+            <input type="text" placeholder="e.g. Approved per client request" value={reasonNote} onChange={e => setReasonNote(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600, background: C.inputBg, color: C.textPrimary, border: `1px solid ${C.cardBorder}`, outline: 'none' }} />
           </div>
 
-          <div style={{ paddingTop: 8, display: 'flex', alignItems: 'center', gap: 12, borderTop: `1px solid ${C.cardBorder}` }}>
-            <button type="button" onClick={onClose} style={{
-              flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`,
-              background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900, cursor: 'pointer',
-            }}>
+          <div style={{ paddingTop: 8, display: 'flex', gap: 12, borderTop: `1px solid ${C.cardBorder}` }}>
+            <HoverButton onClick={onClose} baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900 }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}>
               Cancel
-            </button>
-            <button
-              type="submit"
+            </HoverButton>
+            <HoverButton
               disabled={submitting}
-              style={{
-                flex: 1, padding: 12, borderRadius: 14, border: 'none',
-                background: '#2563eb', color: '#ffffff', fontSize: 12, fontWeight: 900, cursor: 'pointer',
-                opacity: submitting ? 0.6 : 1, boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
+              baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: 'none', background: '#2563eb', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 12px rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              hoverStyle={{ background: '#1d4ed8', boxShadow: '0 6px 18px rgba(37,99,235,0.45)' }}
+              onClick={handleSubmit}
             >
-              {submitting ? 'Updating…' : <><CheckCircle size={16} /> Save New Schedule</>}
-            </button>
+              {submitting ? 'Saving…' : <><CheckCircle size={16} /> Save New Schedule</>}
+            </HoverButton>
           </div>
         </form>
       </motion.div>
@@ -908,22 +740,17 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
 /*  VIEW 1: MASTER CALENDAR VIEW                                        */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const HOUR_SLOTS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]; // 8 AM – 10 PM
+const HOUR_SLOTS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 
-const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapists, onSelectAppt }) => {
+const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelectAppt }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const dateKey = selectedDate.toISOString().split('T')[0];
   const [calPickerOpen, setCalPickerOpen] = useState(false);
   const pickerRef = useRef(null);
 
-  // Close popup on outside click
   useEffect(() => {
-    const handler = (e) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
-        setCalPickerOpen(false);
-      }
-    };
+    const handler = (e) => { if (pickerRef.current && !pickerRef.current.contains(e.target)) setCalPickerOpen(false); };
     if (calPickerOpen) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [calPickerOpen]);
@@ -938,149 +765,60 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
     rowBorder:     isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
     popupBg:       isDark ? '#1a2236' : '#ffffff',
     popupBorder:   isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-    popupShadow:   isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.15)',
     inputBg:       isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
     inputBorder:   isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
     inputTxt:      isDark ? '#e8ecf3' : '#0f172a',
-    inputMuted:    isDark ? '#4e5a70' : '#94a3b8',
   };
 
-  const dayAppts = appointments.filter((a) => {
+  const dayAppts = appointments.filter(a => {
     if (!a.datetime) return false;
-    // Active bookings appear on the board: Pending, Confirmed, In Progress
-    if (a.status !== 'Pending' && a.status !== 'Confirmed' && a.status !== 'In Progress') return false;
+    if (!['Pending', 'Confirmed', 'In Progress', 'Completed by Therapist'].includes(a.status)) return false;
     const d = new Date(a.datetime);
     return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === dateKey;
   });
 
-  const getApptHour = (dt) => new Date(dt).getHours();
-
   const prevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); onDateChange(d); };
   const nextDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); onDateChange(d); };
   const setToday = () => { onDateChange(new Date()); setCalPickerOpen(false); };
-  const handleClear = () => { onDateChange(new Date()); setCalPickerOpen(false); };
-  const handlePickerSelect = (day) => { onDateChange(day); setCalPickerOpen(false); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-      {/* ── Date Navigation Toolbar ── */}
-      <div style={{
-        background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20,
-        padding: '14px 18px', display: 'flex', flexDirection: 'column',
-        gap: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-      }}>
-        {/* Row 1: nav buttons + custom date picker */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button onClick={prevDay} style={{
-              padding: '7px 11px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${C.cardBorder}`,
-              background: 'transparent', color: C.textSecondary, display: 'flex', alignItems: 'center',
-            }}><ChevronLeft size={16} /></button>
-            <button onClick={setToday} style={{
-              padding: '7px 16px', borderRadius: 10, cursor: 'pointer', fontWeight: 800,
-              fontSize: 13, background: 'rgba(5,150,105,0.12)', color: '#059669',
-              border: '1px solid rgba(5,150,105,0.25)',
-            }}>Today</button>
-            <button onClick={nextDay} style={{
-              padding: '7px 11px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${C.cardBorder}`,
-              background: 'transparent', color: C.textSecondary, display: 'flex', alignItems: 'center',
-            }}><ChevronRight size={16} /></button>
+            <HoverButton onClick={prevDay} baseStyle={{ padding: '7px 11px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, display: 'flex', alignItems: 'center' }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}>
+              <ChevronLeft size={16} />
+            </HoverButton>
+            <HoverButton onClick={setToday} baseStyle={{ padding: '7px 16px', borderRadius: 10, fontWeight: 800, fontSize: 13, background: 'rgba(5,150,105,0.12)', color: '#059669', border: '1px solid rgba(5,150,105,0.25)' }} hoverStyle={{ background: 'rgba(5,150,105,0.22)', borderColor: 'rgba(5,150,105,0.45)' }}>
+              Today
+            </HoverButton>
+            <HoverButton onClick={nextDay} baseStyle={{ padding: '7px 11px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, display: 'flex', alignItems: 'center' }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}>
+              <ChevronRight size={16} />
+            </HoverButton>
           </div>
 
-          {/* ── Custom Date Picker ── */}
           <div ref={pickerRef} style={{ position: 'relative' }}>
-            {/* Trigger button — styled like the screenshot */}
-            <button
-              onClick={() => setCalPickerOpen(prev => !prev)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '7px 14px', borderRadius: 10, cursor: 'pointer',
-                background: C.inputBg, color: C.inputTxt,
-                border: `1px solid ${calPickerOpen ? (isDark ? '#34d399' : '#0a3d30') : C.inputBorder}`,
-                fontWeight: 700, fontSize: 13,
-                boxShadow: calPickerOpen ? `0 0 0 3px ${isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)'}` : 'none',
-                transition: 'all 0.15s ease',
-                minWidth: 140,
-              }}
+            <HoverButton
+              onClick={() => setCalPickerOpen(p => !p)}
+              baseStyle={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px', borderRadius: 10, background: C.inputBg, color: C.inputTxt, border: `1px solid ${calPickerOpen ? (isDark ? '#34d399' : '#0a3d30') : C.inputBorder}`, fontWeight: 700, fontSize: 13, minWidth: 140 }}
+              hoverStyle={{ borderColor: isDark ? '#34d399' : '#0a3d30' }}
             >
-              <span style={{ flex: 1, textAlign: 'left' }}>
-                {format(selectedDate, 'MM/dd/yyyy')}
-              </span>
-              <span style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 24, height: 24, borderRadius: 6,
-                background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
-                color: isDark ? '#94a3b8' : '#64748b', flexShrink: 0,
-              }}>
+              <span style={{ flex: 1, textAlign: 'left' }}>{format(selectedDate, 'MM/dd/yyyy')}</span>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 6, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)', color: isDark ? '#94a3b8' : '#64748b' }}>
                 <CalendarDays size={13} />
               </span>
-            </button>
-
-            {/* ── Popup dropdown ── */}
+            </HoverButton>
             <AnimatePresence>
               {calPickerOpen && (
-                <motion.div
-                  key="cal-popup"
-                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                  transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
-                  style={{
-                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                    zIndex: 100, width: 280,
-                    background: C.popupBg,
-                    border: `1px solid ${C.popupBorder}`,
-                    borderRadius: 16,
-                    boxShadow: C.popupShadow,
-                    overflow: 'hidden',
-                  }}
+                <motion.div key="cal-popup" initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ duration: 0.16 }}
+                  style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 100, width: 280, background: C.popupBg, border: `1px solid ${C.popupBorder}`, borderRadius: 16, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.15)', overflow: 'hidden' }}
                 >
-                  {/* Calendar body */}
                   <div style={{ padding: '12px 12px 0' }}>
-                    <MiniCalendar
-                      isDark={isDark}
-                      selectedDate={selectedDate}
-                      onSelectDate={handlePickerSelect}
-                      accentColor={isDark ? '#34d399' : '#0a3d30'}
-                      selectedBg={isDark ? '#34d399' : '#0a3d30'}
-                    />
+                    <MiniCalendar isDark={isDark} selectedDate={selectedDate} onSelectDate={(d) => { onDateChange(d); setCalPickerOpen(false); }} accentColor={isDark ? '#34d399' : '#0a3d30'} selectedBg={isDark ? '#34d399' : '#0a3d30'} />
                   </div>
-
-                  {/* Footer: Clear / Today */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 16px', borderTop: `1px solid ${C.popupBorder}`,
-                    marginTop: 8,
-                  }}>
-                    <button
-                      onClick={handleClear}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        fontSize: 13, fontWeight: 700,
-                        color: isDark ? '#34d399' : '#0a3d30',
-                        padding: '4px 8px', borderRadius: 8,
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={setToday}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        fontSize: 13, fontWeight: 700,
-                        color: isDark ? '#34d399' : '#0a3d30',
-                        padding: '4px 8px', borderRadius: 8,
-                        transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    >
-                      Today
-                    </button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderTop: `1px solid ${C.popupBorder}`, marginTop: 8 }}>
+                    <HoverButton onClick={() => { onDateChange(new Date()); setCalPickerOpen(false); }} baseStyle={{ background: 'none', border: 'none', fontSize: 13, fontWeight: 700, color: isDark ? '#34d399' : '#0a3d30', padding: '4px 8px', borderRadius: 8 }} hoverStyle={{ background: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)' }}>Clear</HoverButton>
+                    <HoverButton onClick={setToday} baseStyle={{ background: 'none', border: 'none', fontSize: 13, fontWeight: 700, color: isDark ? '#34d399' : '#0a3d30', padding: '4px 8px', borderRadius: 8 }} hoverStyle={{ background: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.07)' }}>Today</HoverButton>
                   </div>
                 </motion.div>
               )}
@@ -1088,104 +826,58 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
           </div>
         </div>
 
-        {/* Row 2: date title */}
         <div style={{ textAlign: 'center', borderTop: `1px solid ${C.rowBorder}`, paddingTop: 10 }}>
           <h3 style={{ fontSize: 17, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
             {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </h3>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '4px 0 0' }}>
-            {dayAppts.length} session{dayAppts.length !== 1 ? 's' : ''} scheduled on this day
+            {dayAppts.length} session{dayAppts.length !== 1 ? 's' : ''} scheduled
           </p>
         </div>
       </div>
 
-      {/* ── Hourly Schedule Time Grid ── */}
-      <div style={{
-        background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-        borderRadius: 20, overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-      }}>
-        {/* Horizontal scroll wrapper */}
+      <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ minWidth: 480 }}>
-
-            {/* Header row */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '90px 1fr',
-              background: C.headerBg, borderBottom: `1px solid ${C.rowBorder}`,
-              padding: '12px 16px',
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textPrimary, textAlign: 'center' }}>Time Slot</div>
-              <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textPrimary, paddingLeft: 12 }}>Session Bookings</div>
+          <div style={{ minWidth: 440 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', background: C.headerBg, borderBottom: `1px solid ${C.rowBorder}`, padding: '12px 16px' }}>
+              <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textPrimary, textAlign: 'center' }}>Time</div>
+              <div style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textPrimary, paddingLeft: 12 }}>Sessions</div>
             </div>
-
-            {/* Hour rows */}
-            {HOUR_SLOTS.map((hour) => {
-              const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+            {HOUR_SLOTS.map(hour => {
+              const h12 = hour > 12 ? hour - 12 : hour;
               const period = hour >= 12 ? 'PM' : 'AM';
-              const slotAppts = dayAppts.filter((a) => getApptHour(a.datetime) === hour);
+              const slotAppts = dayAppts.filter(a => new Date(a.datetime).getHours() === hour);
               return (
-                <div key={hour} style={{
-                  display: 'grid', gridTemplateColumns: '90px 1fr',
-                  minHeight: 72, borderBottom: `1px solid ${C.rowBorder}`,
-                }}>
-                  {/* Time label */}
-                  <div style={{
-                    borderRight: `1px solid ${C.rowBorder}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 0',
-                  }}>
+                <div key={hour} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', minHeight: 68, borderBottom: `1px solid ${C.rowBorder}` }}>
+                  <div style={{ borderRight: `1px solid ${C.rowBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0' }}>
                     <div style={{ textAlign: 'center' }}>
                       <p style={{ fontSize: 14, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{h12}:00</p>
                       <p style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.textMuted, margin: '2px 0 0' }}>{period}</p>
                     </div>
                   </div>
-
-                  {/* Appointment chips */}
-                  <div style={{ padding: '10px 12px', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-                    {slotAppts.map((appt) => {
+                  <div style={{ padding: '8px 12px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    {slotAppts.map(appt => {
                       const ss = getStatusStyle(appt.status, isDark);
                       const isConfirmed = appt.status === 'Confirmed';
                       const isInProgress = appt.status === 'In Progress';
                       const isEmphasized = isConfirmed || isInProgress;
                       return (
                         <motion.button
-                          key={appt.id}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
+                          key={appt.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                           onClick={() => onSelectAppt(appt)}
                           style={{
-                            flexShrink: 0, textAlign: 'left', padding: '10px 14px',
-                            borderRadius: 16, cursor: 'pointer', minWidth: 180, maxWidth: 300,
-                            background: isInProgress
-                              ? 'linear-gradient(135deg,#0c4a6e,#075985)'
-                              : isConfirmed
-                              ? 'linear-gradient(135deg,#062c22,#0a3d30)'
-                              : C.cardBg,
+                            flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', minWidth: 170, maxWidth: 280,
+                            background: isInProgress ? 'linear-gradient(135deg,#0c4a6e,#075985)' : isConfirmed ? 'linear-gradient(135deg,#062c22,#0a3d30)' : C.cardBg,
                             border: `1px solid ${isInProgress ? '#38bdf8' : isConfirmed ? '#10b981' : ss.border}`,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                            <p style={{
-                              fontWeight: 900, fontSize: 12, margin: 0,
-                              color: isEmphasized ? '#ffffff' : C.textPrimary,
-                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            }}>{appt.service}</p>
-                            <span style={{
-                              fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999,
-                              background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`, flexShrink: 0,
-                            }}>{appt.status}</span>
+                            <p style={{ fontWeight: 900, fontSize: 12, margin: 0, color: isEmphasized ? '#ffffff' : C.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.service}</p>
+                            <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`, flexShrink: 0 }}>{appt.status}</span>
                           </div>
-                          <p style={{
-                            fontSize: 11, fontWeight: 700, margin: '5px 0 0',
-                            color: isEmphasized ? '#a7f3d0' : C.textSecondary,
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>👤 {appt.client_name || appt.client}</p>
-                          <div style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            marginTop: 7, paddingTop: 7, borderTop: `1px solid ${isEmphasized ? 'rgba(255,255,255,0.15)' : C.rowBorder}`,
-                            fontSize: 11, fontWeight: 700, color: isEmphasized ? '#d1fae5' : C.textMuted,
-                          }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, margin: '5px 0 0', color: isEmphasized ? '#a7f3d0' : C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>👤 {appt.client_name || appt.client}</p>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTop: `1px solid ${isEmphasized ? 'rgba(255,255,255,0.15)' : C.rowBorder}`, fontSize: 11, fontWeight: 700, color: isEmphasized ? '#d1fae5' : C.textMuted }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🙌 {appt.therapist_name || 'Unassigned'}</span>
                             <span style={{ flexShrink: 0, fontWeight: 900 }}>{appt.service_duration || 60}m</span>
                           </div>
@@ -1193,17 +885,17 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
                       );
                     })}
                     {slotAppts.length === 0 && (
-                      <span style={{ fontSize: 12, fontWeight: 600, fontStyle: 'italic', color: C.textMuted }}>No bookings scheduled</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, fontStyle: 'italic', color: C.textMuted }}>Available</span>
                     )}
                   </div>
                 </div>
               );
             })}
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -1213,7 +905,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, therapis
 const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const pending = appointments.filter((a) => a.status === 'Pending');
+  const pending = appointments.filter(a => a.status === 'Pending');
 
   const C = {
     textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
@@ -1223,143 +915,121 @@ const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => 
     cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
     noteBg:        isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
     noteBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(253,230,138,1)',
-    durationBg:    isDark ? '#1e293b' : '#f8fafc',
-    durationBorder:isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
   };
 
-  const emptyState = (
-    <div style={{
-      padding: 48, textAlign: 'center', borderRadius: 24,
-      background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    }}>
-      <CheckCircle size={48} style={{ color: '#059669', margin: '0 auto 12px', opacity: 0.85 }} />
-      <p style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>All pending booking requests resolved!</p>
-      <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '8px 0 0' }}>New incoming customer requests will appear here automatically.</p>
-    </div>
+  if (pending.length === 0) {
+    return (
+      <div style={{ padding: 48, textAlign: 'center', borderRadius: 24, background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <CheckCircle size={48} style={{ color: '#059669', margin: '0 auto 12px', opacity: 0.85 }} />
+        <p style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>All pending requests resolved!</p>
+        <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '8px 0 0' }}>New client booking requests will appear here automatically.</p>
+      </div>
+    );
+  }
+
+const PendingCardItem = ({ appt, isDark, C, onOpenAccept, onOpenReject }) => {
+  const [cardHovered, setCardHovered] = useState(false);
+  return (
+    <motion.div
+      key={appt.id}
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      onMouseEnter={() => setCardHovered(true)}
+      onMouseLeave={() => setCardHovered(false)}
+      onClick={() => onOpenAccept(appt)}
+      style={{
+        background: cardHovered ? (isDark ? '#162030' : '#f0fdf4') : C.cardBg,
+        border: `1px solid ${cardHovered ? 'rgba(5,150,105,0.35)' : C.cardBorder}`,
+        borderRadius: 20, padding: '16px 18px',
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+        boxShadow: cardHovered ? '0 8px 24px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.06)',
+        transition: 'all 0.18s ease',
+        cursor: 'pointer',
+      }}
+      title="Click card to accept and assign practitioner"
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Clock size={20} />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
+            {appt.service_price && (
+              <span style={{ fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 999, background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}>₱{appt.service_price}</span>
+            )}
+            <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>#{String(appt.id).padStart(4, '0')}</span>
+          </div>
+          <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '5px 0 0' }}>
+            Client: <strong style={{ color: C.textPrimary }}>{appt.client_name || appt.client}</strong>
+            {appt.client_email && <span style={{ fontWeight: 700, color: C.textMuted }}> ({appt.client_email})</span>}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: '#059669' }}>
+              <Calendar size={13} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
+            </span>
+            {appt.service_duration && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: C.textSecondary, background: isDark ? '#1e293b' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, padding: '3px 10px', borderRadius: 8 }}>
+                <Zap size={13} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
+              </span>
+            )}
+          </div>
+          {appt.notes && (
+            <p style={{ fontSize: 11, fontWeight: 500, fontStyle: 'italic', color: C.textSecondary, margin: '8px 0 0', padding: '8px 12px', borderRadius: 12, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
+              📝 "{appt.notes}"
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center', flexWrap: 'wrap' }}
+      >
+        <HoverButton
+          id={`accept-btn-${appt.id}`}
+          onClick={() => onOpenAccept(appt)}
+          baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#fff', background: '#059669', border: 'none', boxShadow: '0 3px 10px rgba(5,150,105,0.25)' }}
+          hoverStyle={{ background: '#047857', boxShadow: '0 5px 16px rgba(5,150,105,0.45)', transform: 'translateY(-1px)' }}
+        >
+          <Check size={15} /> Accept & Assign
+        </HoverButton>
+        <HoverButton
+          id={`reject-btn-${appt.id}`}
+          onClick={() => onOpenReject(appt)}
+          baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
+          hoverStyle={{ background: 'rgba(239,68,68,0.2)', borderColor: 'rgba(239,68,68,0.45)', transform: 'translateY(-1px)' }}
+        >
+          <X size={15} /> Decline
+        </HoverButton>
+      </div>
+    </motion.div>
   );
+};
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
-          Requests Awaiting Action ({pending.length})
-        </h3>
+      <h3 style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
+        Requests Awaiting Action ({pending.length})
+      </h3>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {pending.map(appt => (
+          <PendingCardItem
+            key={appt.id}
+            appt={appt}
+            isDark={isDark}
+            C={C}
+            onOpenAccept={onOpenAccept}
+            onOpenReject={onOpenReject}
+          />
+        ))}
       </div>
-
-      {pending.length === 0 ? emptyState : (
-        <div style={{ display: 'grid', gap: 12 }}>
-          {pending.map((appt) => (
-            <motion.div
-              key={appt.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                background: C.cardBg,
-                border: `1px solid ${C.cardBorder}`,
-                borderRadius: 24, padding: '18px 20px',
-                display: 'flex', flexWrap: 'wrap',
-                alignItems: 'flex-start', gap: 16,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              }}
-            >
-              {/* Icon + Info */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1 }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                  background: 'rgba(245,158,11,0.12)', color: '#d97706',
-                  border: '1px solid rgba(245,158,11,0.25)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Clock size={20} />
-                </div>
-
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  {/* Title row */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <p style={{ fontSize: 17, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
-                    {appt.service_price && (
-                      <span style={{
-                        fontSize: 11, fontWeight: 900, padding: '3px 10px', borderRadius: 999,
-                        background: 'rgba(245,158,11,0.12)', color: '#d97706',
-                        border: '1px solid rgba(245,158,11,0.25)',
-                      }}>₱{appt.service_price}</span>
-                    )}
-                  </div>
-
-                  {/* Client */}
-                  <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '6px 0 0' }}>
-                    Client:{' '}
-                    <span style={{ fontWeight: 900, color: C.textPrimary }}>{appt.client_name || appt.client}</span>
-                    {appt.client_email && (
-                      <span style={{ fontWeight: 700, color: C.textMuted }}> ({appt.client_email})</span>
-                    )}
-                  </p>
-
-                  {/* Date + Duration */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: '#059669' }}>
-                      <Calendar size={14} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
-                    </span>
-                    {appt.service_duration && (
-                      <span style={{
-                        display: 'flex', alignItems: 'center', gap: 5,
-                        fontSize: 12, fontWeight: 700, color: C.textSecondary,
-                        background: C.durationBg, border: `1px solid ${C.durationBorder}`,
-                        padding: '3px 10px', borderRadius: 8,
-                      }}>
-                        <Zap size={13} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Notes */}
-                  {appt.notes && (
-                    <p style={{
-                      fontSize: 11, fontWeight: 500, fontStyle: 'italic',
-                      color: C.textSecondary, margin: '10px 0 0',
-                      padding: '10px 14px', borderRadius: 14,
-                      background: C.noteBg, border: `1px solid ${C.noteBorder}`,
-                    }}>📝 "{appt.notes}"</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' }}>
-                <button
-                  onClick={() => onOpenAccept(appt)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
-                    fontSize: 12, fontWeight: 900, color: '#fff',
-                    background: '#059669', border: 'none',
-                    boxShadow: '0 3px 10px rgba(5,150,105,0.25)',
-                  }}
-                ><Check size={15} /> Accept &amp; Assign</button>
-                <button
-                  onClick={() => onOpenReject(appt)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '9px 16px', borderRadius: 14, cursor: 'pointer',
-                    fontSize: 12, fontWeight: 900,
-                    color: '#dc2626', background: 'rgba(239,68,68,0.1)',
-                    border: '1px solid rgba(239,68,68,0.25)',
-                  }}
-                ><X size={15} /> Decline</button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  VIEW 3: CANCELLATION & RESCHEDULE REQUESTS                          */
-/*  Active sessions with reschedule requests → can be rescheduled.      */
-/*  Cancelled sessions → final records (managed in History).            */
+/*  VIEW 3: CANCELLED & RESCHEDULE LOGS                                */
 /* ─────────────────────────────────────────────────────────────────── */
 
 const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
@@ -1390,125 +1060,79 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
   }, [appointments, requestType]);
 
   const FILTERS = [
-    { id: 'all', label: 'All Requests' },
-    { id: 'reschedule', label: 'Reschedule Only' },
-    { id: 'cancelled', label: 'Cancellations' },
+    { id: 'all', label: 'All' },
+    { id: 'reschedule', label: 'Reschedule' },
+    { id: 'cancelled', label: 'Cancelled' },
   ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Header & Filter */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
-          <h3 style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>Cancellation &amp; Reschedule Management</h3>
-          <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '4px 0 0' }}>Review reschedule proposals and process cancellation notices.</p>
+          <h3 style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>Cancellation & Reschedule Logs</h3>
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '4px 0 0' }}>Review reschedule proposals and cancellation records.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {FILTERS.map(f => {
             const active = requestType === f.id;
             return (
-              <button
-                key={f.id}
-                onClick={() => setRequestType(f.id)}
-                style={{
-                  padding: '7px 14px', borderRadius: 12, cursor: 'pointer',
-                  fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
-                  border: active ? '1px solid #059669' : `1px solid ${C.pillBorder}`,
-                  background: active ? '#059669' : C.pillBg,
-                  color: active ? '#fff' : C.textSecondary,
-                  boxShadow: active ? '0 2px 8px rgba(5,150,105,0.2)' : 'none',
-                }}
-              >{f.label}</button>
+              <HoverButton
+                key={f.id} onClick={() => setRequestType(f.id)}
+                baseStyle={{ padding: '7px 14px', borderRadius: 12, fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap', border: active ? '1px solid #059669' : `1px solid ${C.pillBorder}`, background: active ? '#059669' : C.pillBg, color: active ? '#fff' : C.textSecondary, boxShadow: active ? '0 2px 8px rgba(5,150,105,0.2)' : 'none' }}
+                hoverStyle={{ background: active ? '#047857' : (isDark ? '#2a3a4a' : '#e2e8f0') }}
+              >
+                {f.label}
+              </HoverButton>
             );
           })}
         </div>
       </div>
 
       {requestItems.length === 0 ? (
-        <div style={{
-          padding: 48, textAlign: 'center', borderRadius: 24,
-          background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        }}>
+        <div style={{ padding: 48, textAlign: 'center', borderRadius: 24, background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           <RotateCcw size={40} style={{ color: C.textMuted, margin: '0 auto 12px', opacity: 0.7 }} />
-          <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>No reschedule or cancellation items found</p>
+          <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>No items found</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
-          {requestItems.map((item) => {
+          {requestItems.map(item => {
             const ss = getStatusStyle(item.status, isDark);
             const isCancelled = item.status === 'Cancelled';
-            const iconColor = isCancelled ? '#dc2626' : '#2563eb';
-            const iconBg   = isCancelled ? 'rgba(239,68,68,0.12)' : 'rgba(37,99,235,0.12)';
-            const iconBorder= isCancelled ? 'rgba(239,68,68,0.25)' : 'rgba(37,99,235,0.25)';
             return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-                  borderRadius: 24, padding: '18px 20px',
-                  display: 'flex', flexWrap: 'wrap',
-                  alignItems: 'flex-start', gap: 16,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                }}
-              >
-                {/* Icon + Info */}
+              <motion.div key={item.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: '16px 18px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                    background: iconBg, color: iconColor,
-                    border: `1px solid ${iconBorder}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: isCancelled ? 'rgba(239,68,68,0.12)' : 'rgba(37,99,235,0.12)', color: isCancelled ? '#dc2626' : '#2563eb', border: `1px solid ${isCancelled ? 'rgba(239,68,68,0.25)' : 'rgba(37,99,235,0.25)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {isCancelled ? <XCircle size={20} /> : <RotateCcw size={20} />}
                   </div>
-
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{item.service}</p>
-                      <span style={{
-                        fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 999,
-                        background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`,
-                      }}>{item.status}</span>
+                      <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{item.service}</p>
+                      <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 999, background: ss.bg, color: ss.color, border: `1px solid ${ss.border}` }}>{item.status}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>#{String(item.id).padStart(4, '0')}</span>
                     </div>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '6px 0 0' }}>
-                      Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{item.client_name || item.client}</span>
-                    </p>
-                    <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '4px 0 0' }}>
-                      Current Slot:{' '}
-                      <span style={{ fontWeight: 900, color: '#059669', fontSize: 13 }}>
-                        {fmtDate(item.datetime)} at {fmt12(item.datetime)}
-                      </span>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '5px 0 0' }}>Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{item.client_name || item.client}</span></p>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
+                      Slot: <span style={{ fontWeight: 900, color: '#059669', fontSize: 13 }}>{fmtDate(item.datetime)} at {fmt12(item.datetime)}</span>
                     </p>
                     {item.notes && (
-                      <p style={{
-                        fontSize: 11, fontWeight: 500, fontStyle: 'italic',
-                        color: C.textSecondary, margin: '10px 0 0',
-                        padding: '10px 14px', borderRadius: 14,
-                        background: C.noteBg, border: `1px solid ${C.noteBorder}`,
-                      }}>Reason / Note: "{item.notes}"</p>
+                      <p style={{ fontSize: 11, fontWeight: 500, fontStyle: 'italic', color: C.textSecondary, margin: '8px 0 0', padding: '8px 12px', borderRadius: 12, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
+                        Note: "{item.notes}"
+                      </p>
                     )}
                   </div>
                 </div>
-
-                {/* Actions — only active sessions can be rescheduled; cancelled items are final */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' }}>
                   {!isCancelled ? (
-                    <button
+                    <HoverButton
                       onClick={() => onOpenReschedule(item)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        height: 36, padding: '0 14px', borderRadius: 12, cursor: 'pointer',
-                        fontSize: 12, fontWeight: 800, color: '#2563eb',
-                        background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)',
-                      }}
+                      baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#2563eb', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)' }}
+                      hoverStyle={{ background: 'rgba(37,99,235,0.2)', borderColor: 'rgba(37,99,235,0.45)', transform: 'translateY(-1px)' }}
                     >
                       <RotateCcw size={14} /> Reschedule
-                    </button>
+                    </HoverButton>
                   ) : (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted }}>Cancelled Final</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, padding: '4px 10px', borderRadius: 8, background: isDark ? '#1e293b' : '#f1f5f9' }}>Cancelled Final</span>
                   )}
                 </div>
               </motion.div>
@@ -1522,11 +1146,14 @@ const CancellationRescheduleTab = ({ appointments, onOpenReschedule }) => {
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  VIEW 4: ACTIVE & CONFIRMED TREATMENTS                              */
+/*  CRITICAL: "Complete" only shown for In Progress or                  */
+/*  Completed by Therapist — NOT for plain Confirmed cards              */
 /* ─────────────────────────────────────────────────────────────────── */
 
 const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, onOpenCancel, onComplete, onSelectAppt }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [search, setSearch] = useState('');
 
   const C = {
     textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
@@ -1539,15 +1166,11 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
     pillBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
   };
 
-  const [search, setSearch] = useState('');
-
-  const awaitingVerification = useMemo(() => {
-    return appointments.filter(a => a.status === 'Completed by Therapist');
-  }, [appointments]);
+  const awaitingVerification = useMemo(() => appointments.filter(a => a.status === 'Completed by Therapist'), [appointments]);
 
   const confirmed = useMemo(() => {
     return appointments.filter(a => {
-      if (a.status !== 'Confirmed' && a.status !== 'In Progress' && a.status !== 'Completed by Therapist') return false;
+      if (!['Confirmed', 'In Progress', 'Completed by Therapist'].includes(a.status)) return false;
       const q = search.toLowerCase();
       if (!q) return true;
       return (a.service || '').toLowerCase().includes(q) ||
@@ -1560,65 +1183,46 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
     });
   }, [appointments, search]);
 
-  const emptyState = (
-    <div style={{
-      padding: 48, textAlign: 'center', borderRadius: 24,
-      background: C.cardBg, border: `1px solid ${C.cardBorder}`,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    }}>
-      <CalendarCheck size={48} style={{ color: '#059669', margin: '0 auto 12px', opacity: 0.85 }} />
-      <p style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>No active confirmed sessions right now</p>
-      <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '8px 0 0' }}>
-        Accept a pending booking and assign a therapist — it will appear here and sync to both client &amp; therapist.
-      </p>
-    </div>
-  );
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Top Banner if therapists marked sessions completed */}
-      {awaitingVerification.length > 0 && (
-        <div style={{
-          padding: '14px 20px', borderRadius: 18,
-          background: isDark ? 'rgba(217,119,6,0.15)' : 'linear-gradient(135deg,#fef3c7,#fefce8)',
-          border: '1.5px solid rgba(217,119,6,0.35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
-          boxShadow: '0 4px 12px rgba(217,119,6,0.1)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 12, background: '#d97706', color: '#ffffff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              boxShadow: '0 2px 6px rgba(217,119,6,0.3)',
-            }}>
-              <Sparkles size={20} className="animate-pulse" />
+
+      {/* Awaiting Admin Sign-Off Banner — pulsing golden alert */}
+      <AnimatePresence>
+        {awaitingVerification.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+            style={{
+              padding: '16px 20px', borderRadius: 18,
+              background: isDark ? 'rgba(217,119,6,0.18)' : 'linear-gradient(135deg,#fffbeb,#fef9c3)',
+              border: '2px solid rgba(217,119,6,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+              boxShadow: '0 0 20px rgba(217,119,6,0.2), 0 4px 14px rgba(217,119,6,0.15)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: '#d97706', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(217,119,6,0.4)' }}>
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>
+                  ⚡ {awaitingVerification.length} Session{awaitingVerification.length > 1 ? 's' : ''} Finished by Therapist — Admin Action Required
+                </p>
+                <p style={{ fontSize: 11, color: isDark ? '#fde68a' : '#78350f', margin: '3px 0 0', fontWeight: 600 }}>
+                  Scroll down to the highlighted cards and click <strong>"Settle Cash & Confirm"</strong> to archive into History.
+                </p>
+              </div>
             </div>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>
-                {awaitingVerification.length} Session{awaitingVerification.length > 1 ? 's' : ''} Finished by Therapist • Awaiting Admin Confirmation
-              </p>
-              <p style={{ fontSize: 11, color: isDark ? '#fde68a' : '#78350f', margin: '2px 0 0', fontWeight: 600 }}>
-                Therapist concluded treatment. Confirm below to finalize and automatically archive record into History.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Search bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{
-          flex: '1 1 260px', maxWidth: 480, display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 16px', borderRadius: 16,
-          background: C.inputBg, border: `1px solid ${C.cardBorder}`,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-        }}>
+        <div style={{ flex: '1 1 240px', maxWidth: 440, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 16, background: C.inputBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
           <Search size={15} style={{ color: C.textMuted, flexShrink: 0 }} />
           <input
-            type="text"
-            placeholder="Search active sessions by client, therapist or service..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            type="text" placeholder="Search active sessions..." value={search}
+            onChange={e => setSearch(e.target.value)}
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: C.textPrimary }}
           />
           {search && (
@@ -1627,143 +1231,100 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
             </button>
           )}
         </div>
-        <span style={{
-          fontSize: 11, fontWeight: 900, padding: '7px 14px', borderRadius: 12,
-          background: 'rgba(5,150,105,0.1)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)',
-        }}>
-          {confirmed.length} Active Treatment{confirmed.length !== 1 ? 's' : ''}
+        <span style={{ fontSize: 11, fontWeight: 900, padding: '7px 14px', borderRadius: 12, background: 'rgba(5,150,105,0.1)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)' }}>
+          {confirmed.length} Active
         </span>
       </div>
 
-      {/* Empty state */}
-      {confirmed.length === 0 ? emptyState : (
+      {confirmed.length === 0 ? (
+        <div style={{ padding: 48, textAlign: 'center', borderRadius: 24, background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+          <CalendarCheck size={48} style={{ color: '#059669', margin: '0 auto 12px', opacity: 0.85 }} />
+          <p style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>No active sessions right now</p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '8px 0 0' }}>Accept a pending booking and assign a therapist — it will appear here.</p>
+        </div>
+      ) : (
         <div style={{ display: 'grid', gap: 12 }}>
-          {confirmed.map((appt) => {
+          {confirmed.map(appt => {
             const isCompletedByTherapist = appt.status === 'Completed by Therapist';
             const isInProgress = appt.status === 'In Progress';
+            const isConfirmed = appt.status === 'Confirmed';
+
             return (
               <motion.div
-                key={appt.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
+                key={appt.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 style={{
                   background: isCompletedByTherapist
                     ? (isDark ? 'linear-gradient(135deg,#231b08,#141927)' : 'linear-gradient(135deg,#fffbeb,#ffffff)')
                     : isInProgress
                     ? (isDark ? 'linear-gradient(135deg,#0c2233,#141927)' : 'linear-gradient(135deg,#f0f9ff,#ffffff)')
                     : C.cardBg,
-                  border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.45)' : isInProgress ? 'rgba(14,165,233,0.3)' : C.cardBorder}`,
-                  borderRadius: 20, padding: '16px 20px',
-                  display: 'flex', flexWrap: 'wrap',
-                  alignItems: 'center', justifyContent: 'space-between', gap: 16,
-                  boxShadow: isCompletedByTherapist ? '0 4px 14px rgba(217,119,6,0.12)' : '0 2px 8px rgba(0,0,0,0.04)',
+                  border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.5)' : isInProgress ? 'rgba(14,165,233,0.35)' : C.cardBorder}`,
+                  borderRadius: 20, padding: '16px 18px',
+                  display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+                  boxShadow: isCompletedByTherapist ? '0 0 18px rgba(217,119,6,0.18), 0 4px 14px rgba(217,119,6,0.12)' : '0 2px 8px rgba(0,0,0,0.05)',
                   transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
               >
-                {/* Left: Icon + Detailed Info */}
+                {/* Left Info — clickable for detail modal */}
                 <div
                   onClick={() => onSelectAppt && onSelectAppt(appt)}
                   style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1, cursor: 'pointer' }}
-                  title="Click to view full appointment details"
+                  title="Click to view full booking details"
                 >
                   <div style={{
                     width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-                    background: isCompletedByTherapist
-                      ? 'rgba(217,119,6,0.15)'
-                      : isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
-                    color: isCompletedByTherapist
-                      ? '#d97706'
-                      : isInProgress ? '#0284c7' : '#059669',
+                    background: isCompletedByTherapist ? 'rgba(217,119,6,0.15)' : isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
+                    color: isCompletedByTherapist ? '#d97706' : isInProgress ? '#0284c7' : '#059669',
                     border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.35)' : isInProgress ? 'rgba(14,165,233,0.25)' : 'rgba(5,150,105,0.2)'}`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {isCompletedByTherapist ? <Sparkles size={20} className="animate-pulse" /> : isInProgress ? <Zap size={20} className="animate-pulse" /> : <CheckCircle2 size={20} />}
+                    {isCompletedByTherapist ? <Sparkles size={20} /> : isInProgress ? <Zap size={20} /> : <CheckCircle2 size={20} />}
                   </div>
 
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
-                      {isCompletedByTherapist ? (
-                        <span style={{
-                          fontSize: 10, fontWeight: 900, padding: '2px 9px', borderRadius: 999,
-                          background: 'rgba(217,119,6,0.15)', color: '#d97706', border: '1px solid rgba(217,119,6,0.3)',
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                        }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#d97706' }} className="animate-ping" />
-                          Therapist Finished • Needs Verification
+                      {isCompletedByTherapist && (
+                        <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 9px', borderRadius: 999, background: 'rgba(217,119,6,0.18)', color: '#d97706', border: '1px solid rgba(217,119,6,0.35)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          ⚡ Awaiting Admin Confirmation
                         </span>
-                      ) : isInProgress ? (
-                        <span style={{
-                          fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999,
-                          background: 'rgba(14,165,233,0.12)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)',
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                        }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#0284c7' }} className="animate-ping" />
-                          In Progress
-                        </span>
-                      ) : (
-                        <span style={{
-                          fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999,
-                          background: 'rgba(5,150,105,0.08)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)',
-                        }}>Confirmed</span>
                       )}
-                      <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>
-                        #{String(appt.id).padStart(4, '0')}
-                      </span>
+                      {isInProgress && (
+                        <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(14,165,233,0.12)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          🔵 In Progress
+                        </span>
+                      )}
+                      {isConfirmed && (
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'rgba(5,150,105,0.08)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)' }}>Confirmed</span>
+                      )}
+                      <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>#{String(appt.id).padStart(4, '0')}</span>
                     </div>
 
-                    {/* Client & Assigned Specialist Meta */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary }}>
                         Client: <strong style={{ color: C.textPrimary }}>{appt.client_name || appt.client}</strong>
                       </span>
                       <span style={{ color: C.textMuted, opacity: 0.5 }}>•</span>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8,
-                        background: isCompletedByTherapist
-                          ? 'rgba(217,119,6,0.1)'
-                          : isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)',
-                        color: isCompletedByTherapist
-                          ? '#d97706'
-                          : isInProgress ? '#0284c7' : '#047857',
-                        border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.25)' : isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}`,
-                      }}>
-                        <UserCheck size={12} /> Specialist: {appt.therapist_name || 'Unassigned'}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: isCompletedByTherapist ? 'rgba(217,119,6,0.1)' : isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)', color: isCompletedByTherapist ? '#d97706' : isInProgress ? '#0284c7' : '#047857', border: `1px solid ${isCompletedByTherapist ? 'rgba(217,119,6,0.25)' : isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}` }}>
+                        <UserCheck size={12} /> {appt.therapist_name || 'Unassigned'}
                       </span>
                     </div>
 
-                    {/* Schedule Date & Time */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 5 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isCompletedByTherapist ? '#d97706' : isInProgress ? '#0284c7' : '#059669' }}>
                         <Calendar size={13} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
                       </span>
                       {appt.service_duration && (
-                        <span style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          fontSize: 11, fontWeight: 700, color: C.textSecondary,
-                          background: C.pillBg, border: `1px solid ${C.pillBorder}`,
-                          padding: '2px 8px', borderRadius: 6,
-                        }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: C.textSecondary, background: C.pillBg, border: `1px solid ${C.pillBorder}`, padding: '2px 8px', borderRadius: 6 }}>
                           <Clock size={11} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
                         </span>
                       )}
                       {appt.payment_status === 'paid' ? (
-                        <span style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          fontSize: 11, fontWeight: 800, color: '#059669',
-                          background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)',
-                          padding: '2px 8px', borderRadius: 6,
-                        }}>
-                          <Check size={11} /> Paid in Cash {appt.amount_paid ? `(₱${Number(appt.amount_paid).toFixed(2)})` : ''}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: '#059669', background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)', padding: '2px 8px', borderRadius: 6 }}>
+                          <Check size={11} /> Paid {appt.amount_paid ? `(₱${Number(appt.amount_paid).toFixed(2)})` : ''}
                         </span>
                       ) : (
-                        <span style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          fontSize: 11, fontWeight: 700, color: '#d97706',
-                          background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)',
-                          padding: '2px 8px', borderRadius: 6,
-                        }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#d97706', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)', padding: '2px 8px', borderRadius: 6 }}>
                           <Banknote size={11} /> Cash on Visit {appt.service_price ? `(₱${Number(appt.service_price).toFixed(2)})` : ''}
                         </span>
                       )}
@@ -1771,109 +1332,83 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                   </div>
                 </div>
 
-                {/* Right: Pro Unified Action Controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {isCompletedByTherapist ? (
-                    <button
-                      onClick={() => onComplete(appt)}
-                      title="Settle cash and finalize session — archives into History"
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        height: 36, padding: '0 18px', borderRadius: 12, cursor: 'pointer',
-                        fontSize: 12, fontWeight: 900, color: '#ffffff',
-                        background: 'linear-gradient(135deg,#059669,#047857)', border: 'none',
-                        boxShadow: '0 2px 10px rgba(5,150,105,0.35)',
-                      }}
-                    >
-                      <Banknote size={15} /> Settle Cash &amp; Finalize
-                    </button>
-                  ) : isInProgress ? (
-                    <>
-                      <button
-                        onClick={() => onComplete(appt)}
-                        title="Settle cash and complete treatment — archives into History"
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          height: 36, padding: '0 16px', borderRadius: 12, cursor: 'pointer',
-                          fontSize: 12, fontWeight: 800, color: '#ffffff',
-                          background: 'linear-gradient(135deg,#062c22,#0a3d30)', border: 'none',
-                          boxShadow: '0 2px 8px rgba(6,44,34,0.2)',
-                        }}
-                      >
-                        <Banknote size={14} /> Settle Cash &amp; Complete
-                      </button>
-                      <button
-                        onClick={() => onOpenCancel(appt)}
-                        title="Cancel Appointment"
-                        style={{
-                          width: 36, height: 36, borderRadius: 12, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2',
-                          border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}`,
-                        }}
-                      >
-                        <X size={15} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => onComplete(appt)}
-                        title="Complete and checkout appointment"
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          height: 36, padding: '0 16px', borderRadius: 12, cursor: 'pointer',
-                          fontSize: 12, fontWeight: 800, color: '#ffffff',
-                          background: 'linear-gradient(135deg,#062c22,#0a3d30)', border: 'none',
-                          boxShadow: '0 2px 8px rgba(6,44,34,0.2)',
-                        }}
-                      >
-                        <Check size={14} /> Complete
-                      </button>
+                {/* RIGHT: Context-Aware Action Controls
+                  ┌────────────────────────────────────────────────────────────────┐
+                  │  Status              │ Actions shown                          │
+                  │────────────────────────────────────────────────────────────────│
+                  │  Confirmed           │ Reassign | Reschedule | [X] Cancel     │
+                  │  In Progress         │ Settle Cash & Complete | [X] Cancel    │
+                  │  Completed by Thera… │ [★ BIG] Settle Cash & Confirm (admin)  │
+                  └────────────────────────────────────────────────────────────────┘
+                */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
 
+                  {/* ── CONFIRMED: No complete button — therapist must start session first ── */}
+                  {isConfirmed && (
+                    <>
                       {onOpenReassign && (
-                        <button
+                        <HoverButton
                           onClick={() => onOpenReassign(appt)}
-                          title="Switch assigned specialist"
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 5,
-                            height: 36, padding: '0 12px', borderRadius: 12, cursor: 'pointer',
-                            fontSize: 12, fontWeight: 700, color: C.textPrimary,
-                            background: C.pillBg, border: `1px solid ${C.cardBorder}`,
-                          }}
+                          title="Switch assigned therapist"
+                          baseStyle={{ display: 'flex', alignItems: 'center', gap: 5, height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textPrimary, background: C.pillBg, border: `1px solid ${C.cardBorder}` }}
+                          hoverStyle={{ background: isDark ? '#2a3a4a' : '#e2e8f0', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}
                         >
                           <UserCheck size={13} style={{ color: '#059669' }} /> Reassign
-                        </button>
+                        </HoverButton>
                       )}
-
                       {onOpenReschedule && (
-                        <button
+                        <HoverButton
                           onClick={() => onOpenReschedule(appt)}
                           title="Reschedule date or time"
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 5,
-                            height: 36, padding: '0 12px', borderRadius: 12, cursor: 'pointer',
-                            fontSize: 12, fontWeight: 700, color: C.textPrimary,
-                            background: C.pillBg, border: `1px solid ${C.cardBorder}`,
-                          }}
+                          baseStyle={{ display: 'flex', alignItems: 'center', gap: 5, height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textPrimary, background: C.pillBg, border: `1px solid ${C.cardBorder}` }}
+                          hoverStyle={{ background: isDark ? '#2a3a4a' : '#e2e8f0', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}
                         >
                           <RotateCcw size={13} style={{ color: '#2563eb' }} /> Reschedule
-                        </button>
+                        </HoverButton>
                       )}
-
-                      <button
+                      <HoverButton
                         onClick={() => onOpenCancel(appt)}
                         title="Cancel Appointment"
-                        style={{
-                          width: 36, height: 36, borderRadius: 12, cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2',
-                          border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}`,
-                        }}
+                        baseStyle={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}` }}
+                        hoverStyle={{ background: isDark ? 'rgba(239,68,68,0.22)' : '#fee2e2', borderColor: '#f87171' }}
                       >
                         <X size={15} />
-                      </button>
+                      </HoverButton>
                     </>
+                  )}
+
+                  {/* ── IN PROGRESS: Settle Cash + Cancel ── */}
+                  {isInProgress && (
+                    <>
+                      <HoverButton
+                        onClick={() => onComplete(appt)}
+                        title="Settle cash payment and complete this treatment"
+                        baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 16px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#ffffff', background: 'linear-gradient(135deg,#062c22,#0a3d30)', border: 'none', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
+                        hoverStyle={{ boxShadow: '0 4px 16px rgba(6,44,34,0.45)', transform: 'translateY(-1px)' }}
+                      >
+                        <Banknote size={14} /> Settle & Complete
+                      </HoverButton>
+                      <HoverButton
+                        onClick={() => onOpenCancel(appt)}
+                        title="Cancel Appointment"
+                        baseStyle={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}` }}
+                        hoverStyle={{ background: isDark ? 'rgba(239,68,68,0.22)' : '#fee2e2', borderColor: '#f87171' }}
+                      >
+                        <X size={15} />
+                      </HoverButton>
+                    </>
+                  )}
+
+                  {/* ── COMPLETED BY THERAPIST: Big golden confirm button — most prominent ── */}
+                  {isCompletedByTherapist && (
+                    <HoverButton
+                      onClick={() => onComplete(appt)}
+                      title="Settle cash & officially complete — archives to History"
+                      baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, height: 40, padding: '0 20px', borderRadius: 14, fontSize: 13, fontWeight: 900, color: '#ffffff', background: 'linear-gradient(135deg,#059669,#047857)', border: 'none', boxShadow: '0 4px 14px rgba(5,150,105,0.45)', letterSpacing: '0.02em' }}
+                      hoverStyle={{ boxShadow: '0 6px 22px rgba(5,150,105,0.65)', transform: 'translateY(-2px)' }}
+                    >
+                      <Banknote size={17} style={{ color: '#fde68a' }} /> Settle Cash & Confirm
+                    </HoverButton>
                   )}
                 </div>
               </motion.div>
@@ -1886,6 +1421,82 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
+/*  STAT CARD ITEM                                                     */
+/* ─────────────────────────────────────────────────────────────────── */
+
+const StatCardItem = ({ label, value, color, accent, Icon, pulse, isWide, C, onClick }) => {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      id={`stat-card-${label.replace(/\s+/g, '-').toLowerCase()}`}
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      title={label === 'Completed History' ? 'Open Master History' : `Filter to ${label}`}
+      style={{
+        background: C.cardBg,
+        border: pulse ? '1.5px solid rgba(245,158,11,0.65)' : hov ? `1px solid ${color}55` : `1px solid ${C.cardBorder}`,
+        borderRadius: isWide ? 20 : 16,
+        padding: isWide ? '14px 16px' : '11px 10px',
+        display: 'flex', alignItems: 'center', gap: isWide ? 12 : 8,
+        boxShadow: pulse ? '0 0 18px rgba(245,158,11,0.22)' : hov ? `0 6px 20px ${color}22` : '0 2px 8px rgba(0,0,0,0.04)',
+        cursor: 'pointer', transition: 'all 0.18s ease',
+        transform: hov ? 'translateY(-2px)' : 'none',
+      }}
+    >
+      <div style={{ width: isWide ? 42 : 32, height: isWide ? 42 : 32, borderRadius: isWide ? 14 : 10, flexShrink: 0, background: hov ? `${color}30` : accent, color, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', transition: 'background 0.18s' }}>
+        <Icon size={isWide ? 20 : 16} />
+        {pulse && <span style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', backgroundColor: '#f59e0b', boxShadow: '0 0 8px #f59e0b' }} />}
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <p style={{ fontSize: isWide ? 10 : 9, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: C.textMuted, margin: 0, lineHeight: 1.2, wordBreak: 'break-word' }}>{label}</p>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <p style={{ fontSize: isWide ? 26 : 20, fontWeight: 900, color, margin: '2px 0 0', lineHeight: 1 }}>{value}</p>
+          {pulse && <span style={{ fontSize: 9, fontWeight: 800, color: '#b45309', background: 'rgba(245,158,11,0.2)', padding: '1px 5px', borderRadius: 6 }}>Action</span>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────── */
+/*  TAB BUTTON ITEM                                                    */
+/* ─────────────────────────────────────────────────────────────────── */
+
+const TabButtonItem = ({ tab, active, isDark, C, onClick }) => {
+  const Icon = tab.icon;
+  const [tabHov, setTabHov] = useState(false);
+  return (
+    <button
+      id={`tab-${tab.id}`}
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setTabHov(true)}
+      onMouseLeave={() => setTabHov(false)}
+      style={{
+        scrollSnapAlign: 'start',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        borderRadius: 14, padding: '9px 16px',
+        fontSize: 12, fontWeight: 800, cursor: 'pointer', transition: 'all 0.18s ease',
+        border: active ? `2px solid ${isDark ? '#34d399' : '#059669'}` : '2px solid transparent',
+        background: active ? (isDark ? 'rgba(52,211,153,0.15)' : '#059669') : tabHov ? (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)') : 'transparent',
+        color: active ? (isDark ? '#34d399' : '#ffffff') : tabHov ? C.textPrimary : C.textSecondary,
+        boxShadow: active ? '0 2px 10px rgba(5,150,105,0.2)' : 'none',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <Icon size={16} style={{ flexShrink: 0 }} />
+      <span>{tab.label}</span>
+      {tab.badge !== undefined && tab.badge > 0 && (
+        <span style={{ fontSize: 10, fontWeight: 900, padding: '1px 8px', borderRadius: 999, background: tab.id === 'pending' ? '#d97706' : '#f59e0b', color: '#fff', minWidth: 20, textAlign: 'center' }}>
+          {tab.badge}
+        </span>
+      )}
+    </button>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────────── */
 /*  MAIN APPOINTMENTS PAGE                                              */
 /* ─────────────────────────────────────────────────────────────────── */
 
@@ -1894,15 +1505,12 @@ const AdminAppointments = () => {
   const isDark = theme === 'dark';
   const navigate = useNavigate();
 
-  // ── Guaranteed color tokens (inline styles, never purged) ──
   const C = {
     textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
     textMuted:     isDark ? '#94a3b8' : '#334155',
     cardBg:        isDark ? '#141927' : '#ffffff',
     cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
-    headerBg:      isDark ? '#1a2236' : '#e2e8f0',
-    rowBorder:     isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
     pillBg:        isDark ? '#1e2a3a' : '#f1f5f9',
   };
 
@@ -1921,7 +1529,6 @@ const AdminAppointments = () => {
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [settleCashTarget, setSettleCashTarget] = useState(null);
 
-  // ── Responsive: track viewport for inline-style grid ──
   const [isWide, setIsWide] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   useEffect(() => {
     const fn = () => setIsWide(window.innerWidth >= 1024);
@@ -1929,16 +1536,15 @@ const AdminAppointments = () => {
     return () => window.removeEventListener('resize', fn);
   }, []);
 
-  // ── SEO: dynamic title + meta description ──
   useEffect(() => {
     document.title = 'Bookings & Appointments | Cozy Blissful Admin';
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'description'); document.head.appendChild(meta); }
-    meta.setAttribute('content', 'Manage all spa appointments, pending approvals, reschedule requests, and therapist assignments for Cozy Blissful.');
+    meta.setAttribute('content', 'Manage all spa appointments, pending approvals, therapist assignments, and session completion for Cozy Blissful.');
     return () => { document.title = 'Admin | Cozy Blissful'; };
   }, []);
 
-  const showToast = (msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg);
+  const showToast = useCallback((msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg), [toast]);
 
   const loadData = async () => {
     try {
@@ -1947,7 +1553,8 @@ const AdminAppointments = () => {
         API.get('/admin/appointments'),
         API.get('/admin/therapists'),
       ]);
-      setAppointments(apptRes.data?.recent_appointments || []);
+      const apptList = apptRes.data?.appointments || apptRes.data?.recent_appointments || [];
+      setAppointments(apptList);
       setTherapists(therapistRes.data?.therapists || []);
     } catch {
       showToast('Failed to sync appointment data from server', 'error');
@@ -1958,32 +1565,28 @@ const AdminAppointments = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  // ── Auto-open target appointment when navigating from notification or search ──
+  // Auto-open appointment from URL param (notification deep-link)
   useEffect(() => {
     const targetId = searchParams.get('id');
     if (!targetId || appointments.length === 0) return;
-    const found = appointments.find((a) => String(a.id) === String(targetId));
+    const found = appointments.find(a => String(a.id) === String(targetId));
     if (found) {
-      if (found.status === 'Pending') {
-        setAcceptTarget(found);
-      } else if (found.notes && found.notes.toLowerCase().includes('reschedule')) {
-        setRescheduleTarget(found);
-      } else {
-        setSelectedAppt(found);
-      }
+      if (found.status === 'Pending') setAcceptTarget(found);
+      else if (found.notes && found.notes.toLowerCase().includes('reschedule')) setRescheduleTarget(found);
+      else setSelectedAppt(found);
     }
   }, [searchParams, appointments]);
 
   const handleAssignTherapist = async (apptId, therapistId) => {
     try {
       const res = await API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId });
-      showToast(res.data?.message || 'Therapist assigned successfully!');
-      setAppointments((prev) => prev.map((a) => a.id === apptId
+      showToast(res.data?.message || 'Therapist assigned — booking confirmed!');
+      setAppointments(prev => prev.map(a => a.id === apptId
         ? { ...a, therapist_id: therapistId, therapist_name: res.data?.appointment?.therapist_name || 'Assigned', status: res.data?.appointment?.status || 'Confirmed' }
         : a));
-    } catch {
-      showToast('Assigned practitioner locally', 'success');
-      setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, therapist_id: therapistId, status: 'Confirmed' } : a));
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to assign therapist';
+      showToast(msg, 'error');
     }
   };
 
@@ -1991,32 +1594,28 @@ const AdminAppointments = () => {
     try {
       const res = await API.post(`/admin/appointments/${apptId}/status`, { status: newStatus, reason });
       showToast(res.data?.message || `Status updated to ${newStatus}`);
-      setAppointments((prev) => prev.map((a) => a.id === apptId ? { ...a, status: newStatus, notes: reason || a.notes } : a));
-    } catch {
-      showToast(`Updated status to ${newStatus}`);
-      setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, status: newStatus, notes: reason || a.notes } : a));
+      setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, status: newStatus, notes: reason ? `${a.notes ? a.notes + ' | ' : ''}${reason}` : a.notes } : a));
+    } catch (err) {
+      const msg = err?.response?.data?.message || `Failed to update status`;
+      showToast(msg, 'error');
     }
   };
 
   const handleReschedule = async (apptId, newDateTime, note) => {
     try {
-      const res = await API.post(`/admin/appointments/${apptId}/reschedule`, {
-        datetime: newDateTime,
-        notes: note,
-      });
-      showToast(res.data?.message || `Rescheduled session to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`);
-      setAppointments((prev) => prev.map((a) => a.id === apptId ? { ...a, datetime: newDateTime, notes: note ? `${a.notes || ''} | Rescheduled: ${note}` : a.notes, status: 'Confirmed' } : a));
+      const res = await API.post(`/admin/appointments/${apptId}/reschedule`, { datetime: newDateTime, notes: note });
+      showToast(res.data?.message || `Rescheduled to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`);
+      setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, datetime: newDateTime, notes: note ? `${a.notes || ''} | Rescheduled: ${note}` : a.notes, status: 'Confirmed' } : a));
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to reschedule on server';
-      showToast(msg, 'error');
+      showToast(err.response?.data?.message || 'Failed to reschedule', 'error');
     }
   };
 
   const handleSettleCash = async (apptId, payload) => {
     try {
       const res = await API.post(`/admin/appointments/${apptId}/settle-payment`, payload);
-      showToast(res.data?.message || 'Cash payment settled and session completed!');
-      setAppointments((prev) => prev.map((a) => a.id === apptId
+      showToast(res.data?.message || 'Cash settled — session completed and archived!');
+      setAppointments(prev => prev.map(a => a.id === apptId
         ? { ...a, status: 'Completed', payment_status: 'paid', payment_method: 'cash', amount_paid: payload.amount_paid, paid_at: new Date().toISOString() }
         : a));
     } catch (err) {
@@ -2026,15 +1625,14 @@ const AdminAppointments = () => {
     }
   };
 
-  // Summary Metrics — 5 distinct operational indicators
-  const confirmedOnlyCount = appointments.filter((a) => a.status === 'Confirmed').length;
-  const inProgressCount = appointments.filter((a) => a.status === 'In Progress').length;
-  const pendingCount = appointments.filter((a) => a.status === 'Pending').length;
-  const awaitingSignoffCount = appointments.filter((a) => a.status === 'Completed by Therapist').length;
-  const completedCount = appointments.filter((a) => a.status === 'Completed').length;
-  const cancelledCount = appointments.filter((a) => a.status === 'Cancelled').length;
+  // Metrics
+  const confirmedOnlyCount = appointments.filter(a => a.status === 'Confirmed').length;
+  const inProgressCount = appointments.filter(a => a.status === 'In Progress').length;
+  const pendingCount = appointments.filter(a => a.status === 'Pending').length;
+  const awaitingSignoffCount = appointments.filter(a => a.status === 'Completed by Therapist').length;
+  const completedCount = appointments.filter(a => a.status === 'Completed').length;
+  const cancelledCount = appointments.filter(a => a.status === 'Cancelled').length;
 
-  // ── System-wide search data: live appointments for global search ──
   const searchData = useMemo(() => appointments.map((a, i) => ({
     label: a.service || 'Appointment',
     desc: `${a.status} · Client: ${a.client_name || a.client || 'Unknown'} · ${fmtDate(a.datetime)}`,
@@ -2044,193 +1642,113 @@ const AdminAppointments = () => {
     onSelect: () => setSelectedAppt(a),
   })), [appointments]);
 
+  const STAT_CARDS = [
+    { label: 'Upcoming Scheduled', value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck, tab: 'confirmed' },
+    { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock, tab: 'pending' },
+    { label: 'In Treatment Now',    value: inProgressCount,     color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap, tab: 'confirmed' },
+    { label: 'Awaiting Sign-off',   value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, tab: 'confirmed' },
+    { label: 'Completed History',   value: completedCount,      color: '#6366f1', accent: 'rgba(99,102,241,0.12)', Icon: CheckCircle, navigate: '/admin/history' },
+  ];
+
   const TABS = [
-    { id: 'calendar',  label: 'Schedule Calendar',    icon: CalendarDays },
-    { id: 'pending',   label: 'Pending Queue',        icon: Clock, badge: pendingCount },
-    { id: 'confirmed', label: 'Active Treatments',    icon: CheckCircle2, badge: confirmedOnlyCount + inProgressCount + awaitingSignoffCount },
-    { id: 'requests',  label: 'Cancelled & Logs',     icon: RotateCcw, badge: cancelledCount },
+    { id: 'calendar',  label: 'Schedule Calendar', icon: CalendarDays },
+    { id: 'pending',   label: 'Pending Queue',     icon: Clock, badge: pendingCount },
+    { id: 'confirmed', label: 'Active Treatments', icon: CheckCircle2, badge: confirmedOnlyCount + inProgressCount + awaitingSignoffCount },
+    { id: 'requests',  label: 'Cancelled & Logs',  icon: RotateCcw, badge: cancelledCount },
   ];
 
   return (
     <AdminLayout
       title="Bookings"
-      subtitle="Master appointment scheduling, therapist assignment, request approvals & reschedule workflow"
+      subtitle="Full booking lifecycle: client request → therapist assignment → session → admin confirmation"
       icon={CalendarCheck}
       searchData={searchData}
-      onSearchSelect={(item) => item.onSelect && item.onSelect()}
+      onSearchSelect={item => item.onSelect && item.onSelect()}
     >
-      <div className="space-y-4 sm:space-y-6">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: isWide ? 20 : 14 }}>
 
-        {/* ── Top Summary Metric Cards (Interactive, Zero Redundancy) ── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: isWide ? 12 : 8,
-        }}>
-          {[
-            { label: 'Upcoming Scheduled',  value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck, onClick: () => setSearchParams({ tab: 'confirmed' }) },
-            { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock, onClick: () => setSearchParams({ tab: 'pending' }) },
-            { label: 'In Treatment Now',    value: inProgressCount,     color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap, onClick: () => setSearchParams({ tab: 'confirmed' }) },
-            { label: 'Awaiting Sign-off',   value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, onClick: () => setSearchParams({ tab: 'confirmed' }) },
-            { label: 'Completed History',   value: completedCount,      color: '#6366f1', accent: 'rgba(99,102,241,0.12)', Icon: CheckCircle, onClick: () => navigate('/admin/history') },
-          ].map(({ label, value, color, accent, Icon, pulse, onClick }) => (
-            <div
-              key={label}
-              onClick={onClick}
-              title={label === 'Completed History' ? 'Open Master Archived History' : `Filter to ${label}`}
-              style={{
-                background: C.cardBg,
-                border: pulse ? '1px solid rgba(245,158,11,0.6)' : `1px solid ${C.cardBorder}`,
-                borderRadius: isWide ? 20 : 16,
-                padding: isWide ? 16 : '12px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: isWide ? 12 : 8,
-                boxShadow: pulse ? '0 0 16px rgba(245,158,11,0.18)' : '0 2px 8px rgba(0,0,0,0.04)',
-                minWidth: 0,
-                cursor: onClick ? 'pointer' : 'default',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <div style={{
-                width: isWide ? 44 : 34, height: isWide ? 44 : 34, borderRadius: isWide ? 14 : 10, flexShrink: 0,
-                background: accent, color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative',
-              }}>
-                <Icon size={isWide ? 20 : 16} />
-                {pulse && (
-                  <span style={{
-                    position: 'absolute', top: -2, right: -2, width: 8, height: 8,
-                    borderRadius: '50%', backgroundColor: '#f59e0b',
-                    boxShadow: '0 0 6px #f59e0b'
-                  }} />
-                )}
-              </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{
-                  fontSize: isWide ? 10 : 9, fontWeight: 800, letterSpacing: isWide ? '0.06em' : '0.02em',
-                  textTransform: 'uppercase', color: C.textMuted, margin: 0,
-                  lineHeight: 1.2, wordBreak: 'break-word',
-                }}>{label}</p>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  <p style={{ fontSize: isWide ? 26 : 20, fontWeight: 900, color, margin: '2px 0 0', lineHeight: 1 }}>{value}</p>
-                  {pulse && (
-                    <span style={{ fontSize: 9, fontWeight: 800, color: '#b45309', background: 'rgba(245,158,11,0.2)', padding: '1px 5px', borderRadius: 6 }}>
-                      Action
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* Workflow Progress Banner */}
+        <WorkflowBanner isDark={isDark} />
+
+        {/* Stat Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: isWide ? 12 : 8 }}>
+          {STAT_CARDS.map(({ label, value, color, accent, Icon, pulse, tab, navigate: navPath }) => {
+            const handleClick = () => { if (navPath) navigate(navPath); else if (tab) setSearchParams({ tab }); };
+            return (
+              <StatCardItem
+                key={label}
+                label={label}
+                value={value}
+                color={color}
+                accent={accent}
+                Icon={Icon}
+                pulse={pulse}
+                isWide={isWide}
+                C={C}
+                onClick={handleClick}
+              />
+            );
+          })}
         </div>
 
-        {/* ── Tab Navigation ── */}
-        <div style={{
-          background: C.pillBg, border: `1px solid ${C.cardBorder}`,
-          borderRadius: 20, padding: 6,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-        }}>
-          {/* Scrollable on mobile, flex on desktop */}
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSearchParams({ tab: tab.id })}
-                  style={{
-                    flex: '1 0 auto',
-                    minWidth: 'max-content',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    borderRadius: 14, padding: '9px 16px',
-                    fontSize: 12, fontWeight: 800, cursor: 'pointer', transition: 'all 0.18s',
-                    border: active ? `2px solid ${isDark ? '#34d399' : '#059669'}` : '2px solid transparent',
-                    background: active ? (isDark ? 'rgba(52,211,153,0.15)' : '#059669') : 'transparent',
-                    color: active ? (isDark ? '#34d399' : '#ffffff') : C.textSecondary,
-                    boxShadow: active ? '0 2px 10px rgba(5,150,105,0.2)' : 'none',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <Icon size={16} style={{ flexShrink: 0 }} />
-                  <span>{tab.label}</span>
-                  {tab.badge !== undefined && tab.badge > 0 && (
-                    <span style={{
-                      fontSize: 10, fontWeight: 900, padding: '1px 8px',
-                      borderRadius: 999, background: '#f59e0b', color: '#fff',
-                    }}>{tab.badge}</span>
-                  )}
-                </button>
-              );
-            })}
+        {/* Tab Navigation */}
+        <div style={{ background: C.pillBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.03)', overflowX: 'auto', scrollSnapType: 'x mandatory' }}>
+          <div style={{ display: 'flex', gap: 6, minWidth: 'max-content' }}>
+            {TABS.map(tab => (
+              <TabButtonItem
+                key={tab.id}
+                tab={tab}
+                active={activeTab === tab.id}
+                isDark={isDark}
+                C={C}
+                onClick={() => setSearchParams({ tab: tab.id })}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Main Content Area */}
+        {/* Main Content */}
         {loading ? (
-          <div className="py-16"><LoadingSpinner /></div>
+          <div style={{ paddingTop: 48, paddingBottom: 48 }}><LoadingSpinner /></div>
         ) : (
           <AnimatePresence mode="wait">
             {activeTab === 'calendar' && (
               <motion.div key="calendar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <MasterCalendarView
-                  appointments={appointments}
-                  selectedDate={selectedDate}
-                  onDateChange={setSelectedDate}
-                  therapists={therapists}
-                  onSelectAppt={setSelectedAppt}
-                />
+                <MasterCalendarView appointments={appointments} selectedDate={selectedDate} onDateChange={setSelectedDate} onSelectAppt={setSelectedAppt} />
               </motion.div>
             )}
-
             {activeTab === 'pending' && (
               <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <PendingApprovalsQueue
-                  appointments={appointments}
-                  onOpenAccept={(appt) => setAcceptTarget(appt)}
-                  onOpenReject={(appt) => setRejectTarget(appt)}
-                />
+                <PendingApprovalsQueue appointments={appointments} onOpenAccept={appt => setAcceptTarget(appt)} onOpenReject={appt => setRejectTarget(appt)} />
               </motion.div>
             )}
-
             {activeTab === 'requests' && (
               <motion.div key="requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <CancellationRescheduleTab
-                  appointments={appointments}
-                  onOpenReschedule={(appt) => setRescheduleTarget(appt)}
-                />
+                <CancellationRescheduleTab appointments={appointments} onOpenReschedule={appt => setRescheduleTarget(appt)} />
               </motion.div>
             )}
-
             {activeTab === 'confirmed' && (
               <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <ConfirmedSessionsTab
                   appointments={appointments}
-                  onSelectAppt={(appt) => setSelectedAppt(appt)}
-                  onOpenReassign={(appt) => setAcceptTarget(appt)}
-                  onOpenReschedule={(appt) => setRescheduleTarget(appt)}
-                  onOpenCancel={(appt) => setRejectTarget(appt)}
-                  onComplete={(appt) => setSettleCashTarget(appt)}
+                  onSelectAppt={appt => setSelectedAppt(appt)}
+                  onOpenReassign={appt => setAcceptTarget(appt)}
+                  onOpenReschedule={appt => setRescheduleTarget(appt)}
+                  onOpenCancel={appt => setRejectTarget(appt)}
+                  onComplete={appt => setSettleCashTarget(appt)}
                 />
               </motion.div>
             )}
           </AnimatePresence>
         )}
 
-        {/* Modals */}
+        {/* ── Modals ── */}
         <AnimatePresence>
           {acceptTarget && (
             <AcceptAssignModal
-              appt={acceptTarget}
-              therapists={therapists}
+              appt={acceptTarget} therapists={therapists}
               onClose={() => setAcceptTarget(null)}
-              onConfirmAssign={async (id, tid) => {
-                await handleAssignTherapist(id, tid);
-                setAcceptTarget(null);
-              }}
+              onConfirmAssign={async (id, tid) => { await handleAssignTherapist(id, tid); setAcceptTarget(null); }}
             />
           )}
         </AnimatePresence>
@@ -2240,10 +1758,7 @@ const AdminAppointments = () => {
             <RejectModal
               appt={rejectTarget}
               onClose={() => setRejectTarget(null)}
-              onConfirmReject={async (id, reason) => {
-                await handleUpdateStatus(id, 'Cancelled', reason);
-                setRejectTarget(null);
-              }}
+              onConfirmReject={async (id, reason) => { await handleUpdateStatus(id, 'Cancelled', reason); setRejectTarget(null); }}
             />
           )}
         </AnimatePresence>
@@ -2253,10 +1768,7 @@ const AdminAppointments = () => {
             <RescheduleModal
               request={rescheduleTarget}
               onClose={() => setRescheduleTarget(null)}
-              onConfirmReschedule={async (id, newDateTime, note) => {
-                await handleReschedule(id, newDateTime, note);
-                setRescheduleTarget(null);
-              }}
+              onConfirmReschedule={async (id, dt, note) => { await handleReschedule(id, dt, note); setRescheduleTarget(null); }}
             />
           )}
         </AnimatePresence>
@@ -2266,15 +1778,14 @@ const AdminAppointments = () => {
             <DetailModal
               appt={selectedAppt}
               onClose={() => setSelectedAppt(null)}
-              onOpenAccept={(appt) => setAcceptTarget(appt)}
-              onOpenReject={(appt) => setRejectTarget(appt)}
-              onOpenReschedule={(appt) => setRescheduleTarget(appt)}
-              onComplete={(appt) => { setSelectedAppt(null); setSettleCashTarget(appt); }}
+              onOpenAccept={appt => setAcceptTarget(appt)}
+              onOpenReject={appt => setRejectTarget(appt)}
+              onOpenReschedule={appt => setRescheduleTarget(appt)}
+              onComplete={appt => { setSelectedAppt(null); setSettleCashTarget(appt); }}
             />
           )}
         </AnimatePresence>
 
-        {/* Cash Settlement Modal */}
         <AnimatePresence>
           {settleCashTarget && (
             <CashSettlementModal

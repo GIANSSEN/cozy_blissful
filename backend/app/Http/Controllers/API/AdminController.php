@@ -124,7 +124,8 @@ class AdminController extends Controller
             });
 
         return response()->json([
-            'recent_appointments' => $appointments
+            'recent_appointments' => $appointments,
+            'appointments'        => $appointments,
         ]);
     }
 
