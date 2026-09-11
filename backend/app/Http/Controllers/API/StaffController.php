@@ -217,7 +217,28 @@ class StaffController extends Controller
 
         $appt = Appointment::findOrFail($id);
         $oldStatus = $appt->status;
-        $appt->status = $request->status;
+        $newStatus = $request->status;
+
+        // ── State-machine guard: enforce valid transitions ────────────────
+        $allowedTransitions = [
+            'Pending'                => ['Confirmed', 'Cancelled'],
+            'Confirmed'              => ['In Progress', 'Cancelled', 'Pending'],
+            'In Progress'            => ['Completed by Therapist', 'Completed', 'Cancelled'],
+            'Completed by Therapist' => ['Completed', 'Cancelled'],
+            'Completed'              => [],
+            'Cancelled'              => [],
+        ];
+
+        $allowed = $allowedTransitions[$oldStatus] ?? [];
+        if (!in_array($newStatus, $allowed)) {
+            return response()->json([
+                'message' => "Invalid transition from '{$oldStatus}' to '{$newStatus}'. " .
+                             'Allowed: ' . (count($allowed) ? implode(', ', $allowed) : 'none (terminal).'),
+                'current_status' => $oldStatus,
+            ], 422);
+        }
+
+        $appt->status = $newStatus;
 
         if ($request->filled('reason')) {
             $reasonText = 'Rejection Reason: ' . trim($request->reason);
@@ -294,6 +315,15 @@ class StaffController extends Controller
         ]);
 
         $appt = Appointment::with(['client', 'service', 'therapist'])->findOrFail($id);
+
+        // ── Guard: only settle active sessions ─────────────────────────
+        $settleableStatuses = ['Confirmed', 'In Progress', 'Completed by Therapist'];
+        if (!in_array($appt->status, $settleableStatuses)) {
+            return response()->json([
+                'message' => "Cannot settle a booking with status '{$appt->status}'. Allowed: " . implode(', ', $settleableStatuses) . '.',
+                'current_status' => $appt->status,
+            ], 422);
+        }
 
         $oldStatus = $appt->status;
         $appt->payment_status = 'paid';

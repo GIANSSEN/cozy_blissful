@@ -784,7 +784,8 @@ const ReviewStep = ({
 
 // ─── STEP 4: CONFIRMATION ────────────────────────────────────────────────────
 
-const ConfirmationStep = ({ booking, onDone }) => {
+const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
+  const [isHovered, setIsHovered] = useState(false);
   const price = Number(booking?.service_price ?? 0);
   const formattedPrice = price > 0 ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null;
 
@@ -802,7 +803,7 @@ const ConfirmationStep = ({ booking, onDone }) => {
       <div>
         <h3 className="text-xl font-black text-slate-800">Booking Request Confirmed!</h3>
         <p className="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
-          Your appointment has been registered in our queue. Settle payment conveniently with the reception counter after your session.
+          Your appointment has been registered in our queue. Settle payment conveniently online via GCash, Maya, QR Ph, or at the reception counter.
         </p>
       </div>
 
@@ -841,22 +842,71 @@ const ConfirmationStep = ({ booking, onDone }) => {
       </div>
 
       <p className="text-xs text-slate-400">📧 A confirmation email will be sent to your inbox once approved.</p>
+
+      {/* Buttons */}
       <div className="space-y-2.5 max-w-sm mx-auto w-full pt-1">
-        <button
+        <motion.button
           type="button"
           onClick={() => onPayOnline?.(booking)}
-          className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 text-white font-bold rounded-2xl text-xs transition-all duration-200 hover:scale-[1.02] active:scale-95 cursor-pointer shadow-lg"
-          style={{ background: 'linear-gradient(135deg,#0284c7,#0369a1)', boxShadow: '0 6px 20px rgba(2,132,199,0.3)' }}
+          onHoverStart={() => setIsHovered(true)}
+          onHoverEnd={() => setIsHovered(false)}
+          whileHover={{ scale: 1.025, y: -2 }}
+          whileTap={{ scale: 0.98, y: 0 }}
+          className="group relative w-full inline-flex items-center justify-center gap-2.5 py-3.5 px-6 text-white font-bold rounded-2xl text-xs overflow-hidden cursor-pointer transition-all duration-300 shadow-lg"
+          style={{
+            background: isHovered
+              ? 'linear-gradient(135deg, #0284c7 0%, #026ca8 50%, #0369a1 100%)'
+              : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+            boxShadow: isHovered
+              ? '0 12px 28px -4px rgba(2, 132, 199, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.25) inset'
+              : '0 6px 20px rgba(2, 132, 199, 0.3)',
+          }}
         >
-          <CreditCard className="w-4 h-4" /> Pay Online (GCash, Maya, Card)
-        </button>
-        <button
+          {/* Animated shimmer reflection light sweep on hover */}
+          <motion.div
+            className="absolute inset-0 -top-2 -bottom-2 pointer-events-none"
+            initial={{ x: '-100%', opacity: 0 }}
+            animate={{
+              x: isHovered ? '200%' : '-100%',
+              opacity: isHovered ? 1 : 0,
+            }}
+            transition={{ duration: 0.85, ease: 'easeInOut' }}
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)',
+              transform: 'skewX(-20deg)',
+            }}
+          />
+
+          <motion.div
+            animate={{ rotate: isHovered ? [0, -12, 6, 0] : 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex-shrink-0"
+          >
+            <CreditCard className="w-4 h-4 text-white drop-shadow-sm" />
+          </motion.div>
+
+          <span className="relative z-10 tracking-wide font-extrabold text-sm drop-shadow-sm">
+            Pay Online (GCash, Maya, Card)
+          </span>
+
+          <motion.div
+            animate={{ x: isHovered ? 4 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-shrink-0"
+          >
+            <ChevronRight className="w-4 h-4 text-white/90" />
+          </motion.div>
+        </motion.button>
+
+        <motion.button
           type="button"
           onClick={onDone}
-          className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-6 text-emerald-950 font-bold rounded-2xl text-xs transition-all duration-200 hover:scale-[1.01] active:scale-95 cursor-pointer border border-emerald-900/15 bg-white/60 hover:bg-white"
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-6 text-emerald-950 font-bold rounded-2xl text-xs transition-all duration-200 cursor-pointer border border-emerald-900/15 bg-white/60 hover:bg-white hover:border-emerald-900/25"
         >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-700" /> Pay Later at Counter &amp; Return to Dashboard
-        </button>
+          <Sparkles className="w-3.5 h-3.5 text-emerald-700" /> Pay Later at Counter & Return to Dashboard
+        </motion.button>
       </div>
     </div>
   );
@@ -1148,7 +1198,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
 
 // ─── BOOKING MODAL WIZARD ───────────────────────────────────────────────────
 
-const BookingWizard = ({ data, onClose, onSuccess }) => {
+const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [selectedService, setSelectedService] = useState(null);

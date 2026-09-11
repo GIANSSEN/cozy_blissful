@@ -210,7 +210,29 @@ class AdminController extends Controller
 
         $appt = Appointment::findOrFail($id);
         $oldStatus = $appt->status;
-        $appt->status = $request->status;
+        $newStatus = $request->status;
+
+        // ── State-machine guard: enforce valid transitions ──────────────────
+        // Admin-allowed transitions map: fromStatus => [allowedToStatuses]
+        $allowedTransitions = [
+            'Pending'                => ['Confirmed', 'Cancelled'],
+            'Confirmed'              => ['In Progress', 'Cancelled', 'Pending'],
+            'In Progress'            => ['Completed by Therapist', 'Completed', 'Cancelled'],
+            'Completed by Therapist' => ['Completed', 'Cancelled'],
+            'Completed'              => [],  // terminal state
+            'Cancelled'              => [],  // terminal state
+        ];
+
+        $allowed = $allowedTransitions[$oldStatus] ?? [];
+        if (!in_array($newStatus, $allowed)) {
+            return response()->json([
+                'message' => "Invalid status transition from '{$oldStatus}' to '{$newStatus}'. " .
+                             "Allowed transitions from '{$oldStatus}': " . (count($allowed) ? implode(', ', $allowed) : 'none (terminal state)') . '.',
+                'current_status' => $oldStatus,
+            ], 422);
+        }
+
+        $appt->status = $newStatus;
 
         if ($request->filled('reason')) {
             $reasonText = 'Rejection Reason: ' . trim($request->reason);
@@ -327,6 +349,16 @@ class AdminController extends Controller
         ]);
 
         $appt = Appointment::with(['client', 'service', 'therapist'])->findOrFail($id);
+
+        // ── Guard: only allow settlement on active sessions ─────────────────
+        $settleableStatuses = ['Confirmed', 'In Progress', 'Completed by Therapist'];
+        if (!in_array($appt->status, $settleableStatuses)) {
+            return response()->json([
+                'message' => "Cannot settle payment for a booking with status '{$appt->status}'. " .
+                             'Settlement is only allowed for: ' . implode(', ', $settleableStatuses) . '.',
+                'current_status' => $appt->status,
+            ], 422);
+        }
 
         $oldStatus = $appt->status;
         $appt->payment_status = 'paid';
