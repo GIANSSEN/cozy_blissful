@@ -72,7 +72,7 @@ const MENU = [
     icon: History,
     path: '/admin/audit-logs',
     basePath: '/admin/audit-logs',
-    subs: [],fix 
+    subs: [],
   },
   {
     title: 'System Settings',
