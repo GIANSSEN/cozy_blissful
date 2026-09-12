@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, CreditCard, Wallet, QrCode, Smartphone,
+  X, Wallet, QrCode, Smartphone,
   ShieldCheck, Loader2, ExternalLink, AlertCircle, Sparkles,
   CheckCircle, Info,
 } from 'lucide-react';
@@ -16,7 +16,6 @@ const MethodCard = ({ method, selected, onSelect }) => {
     gcash:   <Smartphone className="w-5 h-5" />,
     paymaya: <Wallet className="w-5 h-5" />,
     qrph:    <QrCode className="w-5 h-5" />,
-    card:    <CreditCard className="w-5 h-5" />,
   };
 
   return (
@@ -82,10 +81,9 @@ const QRPhBanner = () => (
 
 // ─── Payment Methods List ─────────────────────────────────────────────────────
 const ONLINE_METHODS = [
-  { id: 'gcash',   label: 'GCash',              description: 'Pay via GCash e-wallet — instant and secure' },
-  { id: 'paymaya', label: 'Maya',                description: 'Pay via Maya (formerly PayMaya) wallet' },
-  { id: 'qrph',    label: 'QR Ph (InstaPay)',    description: 'Scan QR with any Philippine banking app' },
-  { id: 'card',    label: 'Credit / Debit Card', description: 'Visa, Mastercard, JCB — 3D Secure protected' },
+  { id: 'gcash',   label: 'GCash',           description: 'Pay via GCash e-wallet — instant and secure' },
+  { id: 'paymaya', label: 'Maya',             description: 'Pay via Maya (formerly PayMaya) wallet' },
+  { id: 'qrph',    label: 'QR Ph (InstaPay)', description: 'Scan QR with any Philippine banking app' },
 ];
 
 // ─── PayMongo Payment Modal ───────────────────────────────────────────────────
@@ -163,7 +161,7 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
                 className="w-10 h-10 rounded-2xl flex items-center justify-center"
                 style={{ background: 'rgba(255,255,255,0.12)' }}
               >
-                <CreditCard className="w-5 h-5 text-amber-300" />
+                <Wallet className="w-5 h-5 text-amber-300" />
               </div>
               <button
                 type="button"

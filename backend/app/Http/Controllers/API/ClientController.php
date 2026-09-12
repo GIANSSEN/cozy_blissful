@@ -270,7 +270,7 @@ class ClientController extends Controller
         }
 
         // Validate and sanitize payment method
-        $validMethods = ['cash', 'gcash', 'maya', 'card'];
+        $validMethods = ['cash', 'gcash', 'maya'];
         $chosenMethod = in_array(strtolower($request->payment_method ?? 'cash'), $validMethods)
             ? strtolower($request->payment_method)
             : 'cash';

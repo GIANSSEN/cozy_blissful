@@ -28,7 +28,7 @@ class PaymentController extends Controller
         $request->validate([
             'appointment_id'       => 'required|integer|exists:appointments,id',
             'payment_method_types' => 'required|array|min:1',
-            'payment_method_types.*' => 'in:card,gcash,paymaya,qrph,dob,dob_ubp',
+            'payment_method_types.*' => 'in:gcash,paymaya,qrph,dob,dob_ubp',
             'frontend_url'         => 'nullable|string',
         ]);
 

@@ -669,6 +669,7 @@ class AdminController extends Controller
         $user = User::role('client')->findOrFail($id);
 
         $validated = $request->validate([
+            'name'  => 'nullable|string|min:2|max:100',
             'notes' => 'nullable|string|max:1000',
             'tier'  => 'nullable|in:Regular,VIP',
             'phone' => 'nullable|string|max:20',

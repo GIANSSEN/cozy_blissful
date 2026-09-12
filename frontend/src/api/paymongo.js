@@ -5,7 +5,6 @@ export const PAYMENT_METHODS = {
   gcash:   { id: 'gcash',   label: 'GCash',       icon: '📱', color: '#00b14f', bg: '#e8f9ef' },
   paymaya: { id: 'paymaya', label: 'Maya',         icon: '💳', color: '#0073ce', bg: '#e6f2ff' },
   qrph:    { id: 'qrph',    label: 'QR Ph',        icon: '📷', color: '#6c3483', bg: '#f5eafb' },
-  card:    { id: 'card',    label: 'Credit / Debit Card', icon: '💳', color: '#374151', bg: '#f3f4f6' },
 };
 
 // ── Create a PayMongo Checkout Session ─────────────────────────────────────
