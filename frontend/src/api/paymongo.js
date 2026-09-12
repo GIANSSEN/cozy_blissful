@@ -28,3 +28,12 @@ export async function verifyPayment(appointmentId) {
   const res = await API.get('/payment/verify', { params: { appointment_id: appointmentId } });
   return res.data; // { payment_status, payment_method, paid_at, amount_paid }
 }
+
+// ── Simulate test payment (local testing / network bypass) ──────────────────
+export async function simulateTestPayment({ appointmentId, paymentMethod = 'gcash' }) {
+  const res = await API.post('/payment/simulate-test-payment', {
+    appointment_id: appointmentId,
+    payment_method: paymentMethod,
+  });
+  return res.data;
+}

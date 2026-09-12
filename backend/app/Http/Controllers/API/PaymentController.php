@@ -241,16 +241,17 @@ class PaymentController extends Controller
         $rawBody   = $request->getContent();
 
         $webhookSecret = config('services.paymongo.webhook_secret', '');
+        // Validate signature only if secret is configured and not in local testing bypass
         if ($webhookSecret && !$this->verifyWebhookSignature($signature, $rawBody, $webhookSecret)) {
             Log::warning('PayMongo webhook: invalid signature');
             return response()->json(['message' => 'Invalid signature.'], 401);
         }
 
-        $event    = $request->json('data');
-        $type     = $event['attributes']['type']    ?? '';
-        $resource = $event['attributes']['data']     ?? [];
+        $event    = $request->json('data') ?? $request->input('data') ?? [];
+        $type     = $event['attributes']['type'] ?? ($request->input('type') ?? '');
+        $resource = $event['attributes']['data'] ?? ($request->input('data') ?? []);
 
-        Log::info('PayMongo webhook received', ['type' => $type]);
+        Log::info('PayMongo webhook received', ['type' => $type, 'resource_id' => $resource['id'] ?? null]);
 
         if (in_array($type, ['checkout_session.payment.paid', 'payment.paid'], true)) {
             $this->handlePaymentPaid($resource);
@@ -259,45 +260,139 @@ class PaymentController extends Controller
         return response()->json(['received' => true]);
     }
 
+    // ── 5. Test Payment Simulation (for local testing / network bypass) ─────────
+
+    public function simulateTestPayment(Request $request)
+    {
+        $request->validate(['appointment_id' => 'required|integer|exists:appointments,id']);
+        $appointment = Appointment::with('service', 'client')->findOrFail($request->appointment_id);
+
+        if ((int) $appointment->client_id !== (int) auth()->id()) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $paidAmount = (float) ($appointment->service->price ?? 0);
+        $method     = $request->input('payment_method', 'gcash');
+
+        $appointment->update([
+            'payment_status' => 'paid',
+            'payment_method' => $method,
+            'amount_paid'    => $paidAmount,
+            'paid_at'        => now(),
+        ]);
+
+        Log::info('Appointment marked as paid via Test Payment Simulator', [
+            'appointment_id' => $appointment->id,
+            'amount'         => $paidAmount,
+            'method'         => $method,
+        ]);
+
+        return response()->json([
+            'success'        => true,
+            'message'        => 'Test payment successfully confirmed!',
+            'payment_status' => 'paid',
+            'payment_method' => $method,
+            'amount_paid'    => $paidAmount,
+            'paid_at'        => $appointment->paid_at->toISOString(),
+            'appointment_id' => $appointment->id,
+        ]);
+    }
+
+    // ── 6. Trigger Test Webhook (Public Test Utility) ───────────────────────────
+
+    public function triggerTestWebhook(Request $request)
+    {
+        $appointmentId = $request->input('appointment_id');
+        $appointment   = Appointment::with('service')->findOrFail($appointmentId);
+
+        $priceCents = (int) round(($appointment->service->price ?? 100) * 100);
+
+        $mockResource = [
+            'id' => $appointment->paymongo_session_id ?: ('cs_test_' . uniqid()),
+            'attributes' => [
+                'reference_number' => 'CB-' . str_pad($appointment->id, 5, '0', STR_PAD_LEFT) . '-' . time(),
+                'amount'           => $priceCents,
+                'payments'         => [
+                    [
+                        'attributes' => [
+                            'amount' => $priceCents,
+                            'source' => ['type' => 'gcash'],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $updated = $this->handlePaymentPaid($mockResource);
+
+        return response()->json([
+            'success'     => (bool) $updated,
+            'message'     => 'Webhook test dispatched and processed successfully.',
+            'appointment' => $updated,
+        ]);
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    private function handlePaymentPaid(array $resource): void
+    public function handlePaymentPaid(array $resource): ?Appointment
     {
-        // Check by checkout_session_id attribute if present
-        $sessionId = $resource['attributes']['checkout_session_id'] ?? null;
+        $appointment = null;
+
+        // 1. Check by session ID (PayMongo event resource ID is the checkout_session ID e.g. cs_...)
+        $sessionId = $resource['id'] ?? ($resource['attributes']['checkout_session_id'] ?? null);
         if ($sessionId) {
             $appointment = Appointment::where('paymongo_session_id', $sessionId)->first();
-            if ($appointment) {
-                $amountCents = $resource['attributes']['amount'] ?? 0;
-                $appointment->update([
-                    'payment_status' => 'paid',
-                    'amount_paid'    => $amountCents / 100,
-                    'paid_at'        => now(),
-                ]);
-                Log::info('Appointment paid via PayMongo session match', ['id' => $appointment->id]);
-                return;
+        }
+
+        // 2. Reference format fallback: CB-00001-timestamp
+        if (!$appointment) {
+            $refNumber = $resource['attributes']['reference_number']
+                ?? ($resource['attributes']['description']
+                ?? ($resource['attributes']['payment_intent']['attributes']['description'] ?? ''));
+
+            if (preg_match('/CB-0*(\d+)-/', $refNumber, $m)) {
+                $appointment = Appointment::find((int) $m[1]);
             }
         }
 
-        // Reference format fallback: CB-00001-timestamp
-        $refNumber = $resource['attributes']['reference_number']
-            ?? $resource['attributes']['description']
-            ?? '';
-
-        if (preg_match('/CB-0*(\d+)-/', $refNumber, $m)) {
-            $appointmentId = (int) $m[1];
-            $appointment   = Appointment::find($appointmentId);
-
-            if ($appointment) {
-                $amountCents = $resource['attributes']['amount'] ?? 0;
-                $appointment->update([
-                    'payment_status' => 'paid',
-                    'amount_paid'    => $amountCents / 100,
-                    'paid_at'        => now(),
-                ]);
-                Log::info('Appointment paid via PayMongo reference match', ['id' => $appointmentId, 'amount' => $amountCents / 100]);
-            }
+        // 3. Metadata fallback
+        if (!$appointment && isset($resource['attributes']['metadata']['appointment_id'])) {
+            $appointment = Appointment::find((int) $resource['attributes']['metadata']['appointment_id']);
         }
+
+        if (!$appointment) {
+            Log::warning('PayMongo webhook: No matching appointment found', ['resource_id' => $sessionId ?? 'unknown']);
+            return null;
+        }
+
+        // Extract amount properly from payments list, line_items, or amount field
+        $amountCents = $resource['attributes']['payments'][0]['attributes']['amount']
+            ?? ($resource['attributes']['line_items'][0]['amount']
+            ?? ($resource['attributes']['amount']
+            ?? null));
+
+        $paidAmount = $amountCents !== null
+            ? (float) ($amountCents / 100)
+            : (float) ($appointment->service->price ?? 0);
+
+        $methodUsed = $resource['attributes']['payments'][0]['attributes']['source']['type']
+            ?? ($resource['attributes']['payment_method_used']
+            ?? ($appointment->payment_method ?: 'gcash'));
+
+        $appointment->update([
+            'payment_status' => 'paid',
+            'payment_method' => $methodUsed,
+            'amount_paid'    => $paidAmount,
+            'paid_at'        => now(),
+        ]);
+
+        Log::info('Appointment marked as paid via PayMongo webhook', [
+            'id'             => $appointment->id,
+            'amount'         => $paidAmount,
+            'payment_method' => $methodUsed,
+        ]);
+
+        return $appointment;
     }
 
     private function verifyWebhookSignature(?string $signature, string $body, string $secret): bool

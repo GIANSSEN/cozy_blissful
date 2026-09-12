@@ -25,6 +25,7 @@ Route::get('/auth/facebook/callback', [SocialAuthController::class, 'callbackFac
 
 // PayMongo Webhook — public (signature-verified internally)
 Route::post('/payment/webhook', [PaymentController::class, 'handleWebhook']);
+Route::post('/payment/test-webhook', [PaymentController::class, 'triggerTestWebhook']);
 
 // Protected routes group
 Route::middleware('auth:sanctum')->group(function () {
@@ -121,5 +122,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/create-checkout-session', [PaymentController::class, 'createCheckoutSession']);
         Route::get('/session-status/{sessionId}', [PaymentController::class, 'getSessionStatus']);
         Route::get('/verify', [PaymentController::class, 'verifyPayment']);
+        Route::post('/simulate-test-payment', [PaymentController::class, 'simulateTestPayment']);
     });
 });

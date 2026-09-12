@@ -5,7 +5,7 @@ import {
   ShieldCheck, Loader2, ExternalLink, AlertCircle, Sparkles,
   CheckCircle, Info,
 } from 'lucide-react';
-import { createCheckoutSession, PAYMENT_METHODS } from '../../api/paymongo';
+import { createCheckoutSession, simulateTestPayment, PAYMENT_METHODS } from '../../api/paymongo';
 
 // ─── Payment Method Option Card ───────────────────────────────────────────────
 const MethodCard = ({ method, selected, onSelect }) => {
@@ -98,6 +98,8 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
     ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
     : '—';
 
+  const [simulating, setSimulating] = useState(false);
+
   const handlePay = async () => {
     setLoading(true);
     setError('');
@@ -124,6 +126,22 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
       }
       setError(msg);
       setLoading(false);
+    }
+  };
+
+  const handleSimulateTestPayment = async () => {
+    setSimulating(true);
+    setError('');
+    try {
+      await simulateTestPayment({
+        appointmentId: appointment.id,
+        paymentMethod: selected,
+      });
+      onSuccess?.();
+      window.location.href = `/payment/success?appointment_id=${appointment.id}`;
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to simulate test payment.');
+      setSimulating(false);
     }
   };
 
