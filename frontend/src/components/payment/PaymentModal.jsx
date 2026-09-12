@@ -242,6 +242,42 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
               </p>
             </div>
 
+            {/* Sandbox Test Payment Option (Local Testing / Hosted Checkout Network Bypass) */}
+            <div
+              className="p-3.5 rounded-2xl space-y-2"
+              style={{ background: 'rgba(191,161,95,0.08)', border: '1px solid rgba(191,161,95,0.25)' }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                  <span>⚡</span> Sandbox / Local Testing
+                </span>
+                <span className="text-[9px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                  Instant Confirm
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                If your network resets connection to checkout.paymongo.com, click below to immediately confirm test payment and proceed:
+              </p>
+              <button
+                type="button"
+                onClick={handleSimulateTestPayment}
+                disabled={loading || simulating}
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#bfa15f] bg-[#062c22] hover:bg-[#0a3d30] text-[#e8cc8a] shadow-md hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+              >
+                {simulating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
+                    <span>Confirming Sandbox Payment...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>⚡ Complete Test Payment (Instant Sandbox Confirm)</span>
+                  </>
+                )}
+              </button>
+            </div>
+
             {/* Error */}
             {error && (
               <div
