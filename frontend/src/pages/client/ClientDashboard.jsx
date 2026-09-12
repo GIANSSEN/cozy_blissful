@@ -13,7 +13,7 @@ import {
   Zap, MessageSquare, Scissors, XCircle, RefreshCw,
   CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
   CheckCircle2, Compass, Heart, PhoneCall, MapPin,
-  Banknote, Wallet, CreditCard, Receipt, User, Mail, Check,
+  Banknote, Wallet, Receipt, User, Mail, Check,
   ArrowLeft, Search, CheckCheck, Smile, HelpCircle, ExternalLink
 } from 'lucide-react';
 
@@ -472,13 +472,6 @@ const PAYMENT_OPTIONS = [
     description: 'Instant scan upon arrival or directly online at checkout',
     icon: Wallet,
   },
-  {
-    id: 'card',
-    name: 'Card at Terminal',
-    tag: 'POS Terminal',
-    description: 'Tap or swipe debit / credit card at the front desk',
-    icon: CreditCard,
-  },
 ];
 
 const ReviewStep = ({
@@ -627,7 +620,7 @@ const ReviewStep = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-emerald-900/10 text-emerald-800 flex items-center justify-center">
-                  <CreditCard className="w-3.5 h-3.5" />
+                  <Wallet className="w-3.5 h-3.5" />
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Payment Method</h4>
@@ -639,7 +632,7 @@ const ReviewStep = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               {PAYMENT_OPTIONS.map((opt) => {
                 const isSelected = paymentMethod === opt.id;
                 const IconComponent = opt.icon;
@@ -839,7 +832,7 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
         <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
           <span className="text-slate-500 font-semibold">Payment Mode:</span>
           <span className="font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 capitalize">
-            {booking?.payment_method === 'cash' ? 'Cash on Visit' : booking?.payment_method === 'gcash' ? 'GCash / Maya QR' : booking?.payment_method === 'card' ? 'Card at Counter' : (booking?.payment_method || 'Pay at Counter')}
+            {booking?.payment_method === 'cash' ? 'Cash on Visit' : booking?.payment_method === 'gcash' ? 'GCash / Maya QR' : (booking?.payment_method || 'Pay at Counter')}
           </span>
         </div>
 
@@ -864,8 +857,8 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
             boxShadow: '0 4px 16px rgba(191,161,95,0.35)',
           }}
         >
-          <CreditCard className="w-4 h-4 text-[#041e16]" />
-          <span>Pay Online (GCash, Maya, Card)</span>
+          <Wallet className="w-4 h-4 text-[#041e16]" />
+          <span>Pay Online (GCash, Maya, QR Ph)</span>
           <ChevronRight className="w-4 h-4 text-[#041e16]/80" />
         </motion.button>
 
@@ -1627,7 +1620,7 @@ const ClientDashboard = () => {
                   onClick={() => setPaymentTarget(nextSession)}
                   className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
-                  <CreditCard className="w-3.5 h-3.5" /> Pay Online
+                  <Wallet className="w-3.5 h-3.5" /> Pay Online
                 </button>
               )}
               <button
@@ -1957,7 +1950,7 @@ const ClientDashboard = () => {
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/80 px-3 py-0.5 rounded-full border border-amber-300">
-                                <CreditCard className="w-3.5 h-3.5 text-amber-700" /> Unpaid • ₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (Pay Online or Counter)
+                                <Wallet className="w-3.5 h-3.5 text-amber-700" /> Unpaid • ₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (Pay Online or Counter)
                               </span>
                             )}
                           </div>
@@ -2021,7 +2014,7 @@ const ClientDashboard = () => {
                                   onClick={() => setPaymentTarget(b)}
                                   className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer shadow-xs"
                                 >
-                                  <CreditCard className="w-3.5 h-3.5" /> Pay Online (GCash / Maya / Card)
+                                  <Wallet className="w-3.5 h-3.5" /> Pay Online (GCash / Maya / QR Ph)
                                 </button>
                               )}
                               <button

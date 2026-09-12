@@ -43,7 +43,7 @@ const MethodCard = ({ method, selected, onSelect }) => {
           color: isSelected ? '#fff' : meta.color || '#374151',
         }}
       >
-        {iconMap[method.id] || <CreditCard className="w-5 h-5" />}
+        {iconMap[method.id] || <Wallet className="w-5 h-5" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm" style={{ color: isSelected ? meta.color : '#1a1a2e' }}>
