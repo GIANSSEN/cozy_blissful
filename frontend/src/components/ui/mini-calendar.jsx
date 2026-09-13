@@ -138,8 +138,8 @@ const MiniCalendar = ({
                 color: isSelected
                   ? token.selectedTxt
                   : isCurrentMonth
-                  ? token.txt
-                  : token.outOfMonth,
+                    ? token.txt
+                    : token.outOfMonth,
                 outline: isTodayDate && !isSelected
                   ? `1.5px solid ${token.todayRing}`
                   : 'none',

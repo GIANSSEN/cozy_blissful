@@ -22,7 +22,7 @@ class AdminController extends Controller
     {
         // 1. Core metrics
         $totalBookings = Appointment::count();
-        
+
         // Sum paid cash amounts (fallback to service price for paid records where amount_paid is null)
         $totalRevenue = (float) Appointment::where('payment_status', 'paid')
             ->sum('amount_paid');
@@ -51,7 +51,7 @@ class AdminController extends Controller
                     'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
                     'status' => $appt->status,
                     'payment_status' => $appt->payment_status ?? 'unpaid',
-                    'amount_paid' => $appt->amount_paid ? (float)$appt->amount_paid : null,
+                    'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
                 ];
             });
 
@@ -65,13 +65,13 @@ class AdminController extends Controller
             ->get();
 
         $payments = $completedAppts->map(function ($appt) {
-            $price = $appt->service ? (float)$appt->service->price : 0.00;
+            $price = $appt->service ? (float) $appt->service->price : 0.00;
             return [
                 'id' => 1000 + $appt->id,
                 'appointment_id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',
                 'service' => $appt->service ? $appt->service->name : 'Service',
-                'amount' => $appt->amount_paid ? (float)$appt->amount_paid : $price,
+                'amount' => $appt->amount_paid ? (float) $appt->amount_paid : $price,
                 'payment_method' => $appt->payment_method ?? 'cash',
                 'payment_status' => $appt->payment_status ?? 'unpaid',
                 'status' => ($appt->payment_status === 'paid' || $appt->status === 'Completed') ? 'Completed' : 'Pending',
@@ -84,7 +84,7 @@ class AdminController extends Controller
             'message' => 'Admin dashboard metrics retrieved successfully',
             'stats' => [
                 'total_bookings' => $totalBookings,
-                'total_revenue' => (float)$totalRevenue,
+                'total_revenue' => (float) $totalRevenue,
                 'active_therapists' => $activeTherapists,
                 'registered_clients' => $registeredClients,
             ],
@@ -104,28 +104,28 @@ class AdminController extends Controller
             ->get()
             ->map(function ($appt) {
                 return [
-                    'id'               => $appt->id,
-                    'client_name'      => $appt->client ? $appt->client->name : 'Client',
-                    'client_email'     => $appt->client ? $appt->client->email : '',
-                    'therapist_name'   => $appt->therapist ? $appt->therapist->name : 'Unassigned',
-                    'therapist_id'     => $appt->therapist_id,
-                    'service'          => $appt->service ? $appt->service->name : 'Massage Service',
-                    'service_id'       => $appt->service_id,
-                    'service_price'    => $appt->service ? (float)$appt->service->price : null,
-                    'service_duration' => $appt->service ? (int)$appt->service->duration : null,
-                    'datetime'         => $appt->datetime->format('Y-m-d H:i:s'),
-                    'status'           => $appt->status,
-                    'notes'            => $appt->notes ?? '',
-                    'payment_status'   => $appt->payment_status ?? 'unpaid',
-                    'payment_method'   => $appt->payment_method ?? 'cash',
-                    'amount_paid'      => $appt->amount_paid ? (float)$appt->amount_paid : null,
-                    'paid_at'          => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
+                    'id' => $appt->id,
+                    'client_name' => $appt->client ? $appt->client->name : 'Client',
+                    'client_email' => $appt->client ? $appt->client->email : '',
+                    'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
+                    'therapist_id' => $appt->therapist_id,
+                    'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                    'service_id' => $appt->service_id,
+                    'service_price' => $appt->service ? (float) $appt->service->price : null,
+                    'service_duration' => $appt->service ? (int) $appt->service->duration : null,
+                    'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                    'status' => $appt->status,
+                    'notes' => $appt->notes ?? '',
+                    'payment_status' => $appt->payment_status ?? 'unpaid',
+                    'payment_method' => $appt->payment_method ?? 'cash',
+                    'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
+                    'paid_at' => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
                 ];
             });
 
         return response()->json([
             'recent_appointments' => $appointments,
-            'appointments'        => $appointments,
+            'appointments' => $appointments,
         ]);
     }
 
@@ -141,12 +141,12 @@ class AdminController extends Controller
         $appt = Appointment::findOrFail($id);
         $oldStatus = $appt->status;
         $appt->therapist_id = $request->therapist_id;
-        
+
         // If therapist is assigned and status was Pending, auto-confirm the booking
         if ($request->therapist_id && $appt->status === 'Pending') {
             $appt->status = 'Confirmed';
         }
-        
+
         $appt->save();
 
         $appt->load(['client', 'therapist', 'service']);
@@ -162,9 +162,9 @@ class AdminController extends Controller
             }
             // Create notification
             Notification::create([
-                'type'           => 'confirmed',
-                'title'          => 'Booking Confirmed',
-                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'type' => 'confirmed',
+                'title' => 'Booking Confirmed',
+                'description' => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
                 'appointment_id' => $appt->id,
             ]);
         }
@@ -172,7 +172,7 @@ class AdminController extends Controller
         $actor = auth()->user()?->name ?? 'System Admin';
         $actorRole = auth()->user()?->roles?->first()?->name ?? 'admin';
 
-        \App\Models\AuditLog::log('update', 'Appointment', "Assigned therapist '".($appt->therapist?->name ?? 'Therapist')."' to booking #{$appt->id}", [
+        \App\Models\AuditLog::log('update', 'Appointment', "Assigned therapist '" . ($appt->therapist?->name ?? 'Therapist') . "' to booking #{$appt->id}", [
             'actor' => $actor,
             'actor_role' => $actorRole,
             'module' => 'Bookings',
@@ -216,19 +216,19 @@ class AdminController extends Controller
         // ── State-machine guard: enforce valid transitions ──────────────────
         // Admin-allowed transitions map: fromStatus => [allowedToStatuses]
         $allowedTransitions = [
-            'Pending'                => ['Confirmed', 'Cancelled'],
-            'Confirmed'              => ['In Progress', 'Cancelled', 'Pending'],
-            'In Progress'            => ['Completed by Therapist', 'Completed', 'Cancelled'],
+            'Pending' => ['Confirmed', 'Cancelled'],
+            'Confirmed' => ['In Progress', 'Cancelled', 'Pending'],
+            'In Progress' => ['Completed by Therapist', 'Completed', 'Cancelled'],
             'Completed by Therapist' => ['Completed', 'Cancelled'],
-            'Completed'              => [],  // terminal state
-            'Cancelled'              => [],  // terminal state
+            'Completed' => [],  // terminal state
+            'Cancelled' => [],  // terminal state
         ];
 
         $allowed = $allowedTransitions[$oldStatus] ?? [];
         if (!in_array($newStatus, $allowed)) {
             return response()->json([
                 'message' => "Invalid status transition from '{$oldStatus}' to '{$newStatus}'. " .
-                             "Allowed transitions from '{$oldStatus}': " . (count($allowed) ? implode(', ', $allowed) : 'none (terminal state)') . '.',
+                    "Allowed transitions from '{$oldStatus}': " . (count($allowed) ? implode(', ', $allowed) : 'none (terminal state)') . '.',
                 'current_status' => $oldStatus,
             ], 422);
         }
@@ -253,27 +253,27 @@ class AdminController extends Controller
                 }
             }
             Notification::create([
-                'type'           => 'confirmed',
-                'title'          => 'Booking Confirmed',
-                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'type' => 'confirmed',
+                'title' => 'Booking Confirmed',
+                'description' => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
                 'appointment_id' => $appt->id,
             ]);
         }
 
         if ($oldStatus !== 'In Progress' && $appt->status === 'In Progress') {
             Notification::create([
-                'type'           => 'in_progress',
-                'title'          => 'Session In Progress',
-                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'type' => 'in_progress',
+                'title' => 'Session In Progress',
+                'description' => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
                 'appointment_id' => $appt->id,
             ]);
         }
 
         if ($appt->status === 'Completed by Therapist') {
             Notification::create([
-                'type'           => 'completed_by_therapist',
-                'title'          => 'Session Awaiting Admin Confirmation',
-                'description'    => ($appt->therapist?->name ?? 'Therapist') . ' completed session #' . $appt->id . ' for ' . ($appt->client->name ?? 'Client') . '. Ready to verify.',
+                'type' => 'completed_by_therapist',
+                'title' => 'Session Awaiting Admin Confirmation',
+                'description' => ($appt->therapist?->name ?? 'Therapist') . ' completed session #' . $appt->id . ' for ' . ($appt->client->name ?? 'Client') . '. Ready to verify.',
                 'appointment_id' => $appt->id,
             ]);
         }
@@ -283,24 +283,24 @@ class AdminController extends Controller
             if ($appt->payment_status !== 'paid') {
                 $appt->payment_status = 'paid';
                 $appt->payment_method = $request->payment_method ?? 'cash';
-                $appt->amount_paid = $request->amount_paid ?? ($appt->service ? (float)$appt->service->price : 0.00);
+                $appt->amount_paid = $request->amount_paid ?? ($appt->service ? (float) $appt->service->price : 0.00);
                 $appt->paid_at = now();
                 $appt->save();
             }
 
             Notification::create([
-                'type'           => 'completed',
-                'title'          => 'Session Verified & Completed',
-                'description'    => 'Admin confirmed completion and cash settlement of ' . ($appt->client->name ?? 'Client') . ' (' . ($appt->service->name ?? 'Service') . ') by ' . ($appt->therapist?->name ?? 'Therapist') . '. Moved to History.',
+                'type' => 'completed',
+                'title' => 'Session Verified & Completed',
+                'description' => 'Admin confirmed completion and cash settlement of ' . ($appt->client->name ?? 'Client') . ' (' . ($appt->service->name ?? 'Service') . ') by ' . ($appt->therapist?->name ?? 'Therapist') . '. Moved to History.',
                 'appointment_id' => $appt->id,
             ]);
         }
 
         if ($oldStatus !== 'Cancelled' && $appt->status === 'Cancelled') {
             Notification::create([
-                'type'           => 'cancelled',
-                'title'          => 'Booking Cancelled',
-                'description'    => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
+                'type' => 'cancelled',
+                'title' => 'Booking Cancelled',
+                'description' => ($appt->client->name ?? 'Client') . ' — ' . ($appt->service->name ?? 'Service'),
                 'appointment_id' => $appt->id,
             ]);
         }
@@ -331,7 +331,7 @@ class AdminController extends Controller
                 'notes' => $appt->notes ?? '',
                 'payment_status' => $appt->payment_status,
                 'payment_method' => $appt->payment_method ?? 'cash',
-                'amount_paid' => $appt->amount_paid ? (float)$appt->amount_paid : null,
+                'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
                 'paid_at' => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
             ]
         ]);
@@ -343,10 +343,10 @@ class AdminController extends Controller
     public function settleCashPayment(Request $request, $id)
     {
         $request->validate([
-            'amount_paid'   => 'required|numeric|min:0',
+            'amount_paid' => 'required|numeric|min:0',
             'cash_tendered' => 'nullable|numeric|min:0',
-            'change'        => 'nullable|numeric|min:0',
-            'notes'         => 'nullable|string|max:500',
+            'change' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $appt = Appointment::with(['client', 'service', 'therapist'])->findOrFail($id);
@@ -356,7 +356,7 @@ class AdminController extends Controller
         if (!in_array($appt->status, $settleableStatuses)) {
             return response()->json([
                 'message' => "Cannot settle payment for a booking with status '{$appt->status}'. " .
-                             'Settlement is only allowed for: ' . implode(', ', $settleableStatuses) . '.',
+                    'Settlement is only allowed for: ' . implode(', ', $settleableStatuses) . '.',
                 'current_status' => $appt->status,
             ], 422);
         }
@@ -364,9 +364,9 @@ class AdminController extends Controller
         $oldStatus = $appt->status;
         $appt->payment_status = 'paid';
         $appt->payment_method = 'cash';
-        $appt->amount_paid    = (float)$request->amount_paid;
-        $appt->paid_at        = now();
-        $appt->status         = 'Completed';
+        $appt->amount_paid = (float) $request->amount_paid;
+        $appt->paid_at = now();
+        $appt->status = 'Completed';
 
         if ($request->filled('notes')) {
             $appt->notes = $appt->notes ? $appt->notes . ' | ' . trim($request->notes) : trim($request->notes);
@@ -375,14 +375,14 @@ class AdminController extends Controller
         $appt->save();
 
         Notification::create([
-            'type'           => 'completed',
-            'title'          => 'Cash Payment Received & Session Finalized',
-            'description'    => 'Cash payment of ₱' . number_format($request->amount_paid, 2) . ' received for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
+            'type' => 'completed',
+            'title' => 'Cash Payment Received & Session Finalized',
+            'description' => 'Cash payment of ₱' . number_format($request->amount_paid, 2) . ' received for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
             'appointment_id' => $appt->id,
         ]);
 
-        $tendered = $request->cash_tendered ? (float)$request->cash_tendered : (float)$request->amount_paid;
-        $change = $request->change ? (float)$request->change : max(0, $tendered - (float)$request->amount_paid);
+        $tendered = $request->cash_tendered ? (float) $request->cash_tendered : (float) $request->amount_paid;
+        $change = $request->change ? (float) $request->change : max(0, $tendered - (float) $request->amount_paid);
 
         \App\Models\AuditLog::log('update', 'Appointment', "Admin settled cash payment of ₱" . number_format($request->amount_paid, 2) . " (Tendered: ₱" . number_format($tendered, 2) . ", Change: ₱" . number_format($change, 2) . ") for booking #{$appt->id}", [
             'actor' => auth()->user()?->name ?? 'System Admin',
@@ -391,11 +391,11 @@ class AdminController extends Controller
             'severity' => 'info',
             'metadata' => [
                 'appointment_id' => $appt->id,
-                'amount_paid'    => (float)$appt->amount_paid,
-                'cash_tendered'  => $tendered,
-                'change'         => $change,
-                'old_status'     => $oldStatus,
-                'new_status'     => 'Completed',
+                'amount_paid' => (float) $appt->amount_paid,
+                'cash_tendered' => $tendered,
+                'change' => $change,
+                'old_status' => $oldStatus,
+                'new_status' => 'Completed',
                 'payment_status' => 'paid',
                 'payment_method' => 'cash',
             ]
@@ -404,15 +404,15 @@ class AdminController extends Controller
         return response()->json([
             'message' => 'Cash payment settled and appointment marked Completed!',
             'appointment' => [
-                'id'             => $appt->id,
-                'client_name'    => $appt->client ? $appt->client->name : 'Client',
-                'service'        => $appt->service ? $appt->service->name : 'Massage Service',
-                'datetime'       => $appt->datetime->format('Y-m-d H:i:s'),
-                'status'         => $appt->status,
+                'id' => $appt->id,
+                'client_name' => $appt->client ? $appt->client->name : 'Client',
+                'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'status' => $appt->status,
                 'payment_status' => $appt->payment_status,
                 'payment_method' => $appt->payment_method,
-                'amount_paid'    => (float)$appt->amount_paid,
-                'paid_at'        => $appt->paid_at->format('Y-m-d H:i:s'),
+                'amount_paid' => (float) $appt->amount_paid,
+                'paid_at' => $appt->paid_at->format('Y-m-d H:i:s'),
             ]
         ]);
     }
@@ -424,7 +424,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'datetime' => 'required|date|after:now',
-            'notes'    => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $appt = Appointment::findOrFail($id);
@@ -489,8 +489,8 @@ class AdminController extends Controller
                 $availDates = TherapistAvailability::where('therapist_id', $t->id)
                     ->pluck('date')
                     ->map(function ($date) {
-                        return Carbon::parse($date)->format('Y-m-d');
-                    })
+                    return Carbon::parse($date)->format('Y-m-d');
+                })
                     ->toArray();
 
                 return [
@@ -573,7 +573,7 @@ class AdminController extends Controller
             ->with([
                 'appointments' => function ($q) {
                     $q->with(['service', 'therapist'])
-                      ->orderBy('datetime', 'desc');
+                        ->orderBy('datetime', 'desc');
                 }
             ])
             ->withCount('appointments')
@@ -583,7 +583,7 @@ class AdminController extends Controller
                 // Total spent: sum of service prices for Completed appointments
                 $totalSpent = $c->appointments
                     ->where('status', 'Completed')
-                    ->sum(fn ($a) => $a->service ? (float) $a->service->price : 0);
+                    ->sum(fn($a) => $a->service ? (float) $a->service->price : 0);
 
                 // Auto-tier: VIP if >= 5 bookings, else use stored tier
                 $tier = $c->tier ?? 'Regular';
@@ -592,26 +592,26 @@ class AdminController extends Controller
                 }
 
                 // Build history array (last 10 appointments)
-                $history = $c->appointments->take(10)->map(fn ($a) => [
-                    'id'        => 'b' . $a->id,
-                    'service'   => $a->service ? $a->service->name : 'Service',
-                    'date'      => $a->datetime->format('Y-m-d'),
+                $history = $c->appointments->take(10)->map(fn($a) => [
+                    'id' => 'b' . $a->id,
+                    'service' => $a->service ? $a->service->name : 'Service',
+                    'date' => $a->datetime->format('Y-m-d'),
                     'therapist' => $a->therapist ? $a->therapist->name : 'Unassigned',
-                    'status'    => $a->status,
-                    'amount'    => $a->service ? (float) $a->service->price : 0,
+                    'status' => $a->status,
+                    'amount' => $a->service ? (float) $a->service->price : 0,
                 ])->values()->toArray();
 
                 return [
-                    'id'          => $c->id,
-                    'name'        => $c->name,
-                    'email'       => $c->email,
-                    'phone'       => $c->phone ?? '',
-                    'tier'        => $tier,
-                    'bookings'    => $c->appointments_count,
-                    'totalSpent'  => $totalSpent,
-                    'notes'       => $c->notes ?? '',
-                    'created_at'  => $c->created_at->format('Y-m-d'),
-                    'history'     => $history,
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'email' => $c->email,
+                    'phone' => $c->phone ?? '',
+                    'tier' => $tier,
+                    'bookings' => $c->appointments_count,
+                    'totalSpent' => $totalSpent,
+                    'notes' => $c->notes ?? '',
+                    'created_at' => $c->created_at->format('Y-m-d'),
+                    'history' => $history,
                 ];
             });
 
@@ -626,37 +626,37 @@ class AdminController extends Controller
     public function storeCustomer(Request $request)
     {
         $validated = $request->validate([
-            'name'  => 'required|string|min:2|max:100',
+            'name' => 'required|string|min:2|max:100',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:20',
-            'tier'  => 'nullable|in:Regular,VIP',
+            'tier' => 'nullable|in:Regular,VIP',
             'notes' => 'nullable|string|max:1000',
         ]);
 
         $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'phone'    => $validated['phone'] ?? null,
-            'tier'     => $validated['tier'] ?? 'Regular',
-            'notes'    => $validated['notes'] ?? null,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'tier' => $validated['tier'] ?? 'Regular',
+            'notes' => $validated['notes'] ?? null,
             'password' => bcrypt('Temp@' . rand(10000, 99999)), // temp password
         ]);
 
         $user->assignRole('client');
 
         return response()->json([
-            'message'  => 'Customer registered successfully',
+            'message' => 'Customer registered successfully',
             'customer' => [
-                'id'         => $user->id,
-                'name'       => $user->name,
-                'email'      => $user->email,
-                'phone'      => $user->phone ?? '',
-                'tier'       => $user->tier,
-                'bookings'   => 0,
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone ?? '',
+                'tier' => $user->tier,
+                'bookings' => 0,
                 'totalSpent' => 0,
-                'notes'      => $user->notes ?? '',
+                'notes' => $user->notes ?? '',
                 'created_at' => $user->created_at->format('Y-m-d'),
-                'history'    => [],
+                'history' => [],
             ]
         ], 201);
     }
@@ -669,9 +669,9 @@ class AdminController extends Controller
         $user = User::role('client')->findOrFail($id);
 
         $validated = $request->validate([
-            'name'  => 'nullable|string|min:2|max:100',
+            'name' => 'nullable|string|min:2|max:100',
             'notes' => 'nullable|string|max:1000',
-            'tier'  => 'nullable|in:Regular,VIP',
+            'tier' => 'nullable|in:Regular,VIP',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -710,7 +710,8 @@ class AdminController extends Controller
         foreach ($permissionsData as $roleName => $perms) {
             /** @var \Spatie\Permission\Models\Role|null $role */
             $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
-            if (!$role) continue;
+            if (!$role)
+                continue;
 
             $enabledPerms = array_keys(array_filter($perms));
             // Ensure permissions exist before syncing
@@ -747,23 +748,23 @@ class AdminController extends Controller
         $members = User::whereHas('roles', function ($q) {
             $q->whereIn('name', ['therapist', 'staff']);
         })
-        ->with('roles')
-        ->orderBy('created_at', 'desc')
-        ->get()
-        ->map(function ($u) {
-            $roleName = $u->roles->first()?->name ?? 'therapist';
-            return [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'phone' => $u->phone ?? '',
-                'role' => $roleName,
-                'specialty' => $u->specialty ?: ($roleName === 'therapist' ? 'General Wellness & Spa' : 'Front Desk Coordinator'),
-                'status' => $u->status ?? 'active',
-                'joined' => $u->created_at ? $u->created_at->format('Y-m-d') : date('Y-m-d'),
-                'commRate' => $roleName === 'therapist' ? 40 : null,
-            ];
-        });
+            ->with('roles')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($u) {
+                $roleName = $u->roles->first()?->name ?? 'therapist';
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'phone' => $u->phone ?? '',
+                    'role' => $roleName,
+                    'specialty' => $u->specialty ?: ($roleName === 'therapist' ? 'General Wellness & Spa' : 'Front Desk Coordinator'),
+                    'status' => $u->status ?? 'active',
+                    'joined' => $u->created_at ? $u->created_at->format('Y-m-d') : date('Y-m-d'),
+                    'commRate' => $roleName === 'therapist' ? 40 : null,
+                ];
+            });
 
         return response()->json([
             'team_members' => $members
