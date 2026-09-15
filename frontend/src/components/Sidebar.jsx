@@ -178,7 +178,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       </AnimatePresence>
 
       <aside
-        className={`fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased transition-transform duration-300 lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{
           width: 272, minWidth: 272,
           background: t.sidebar,

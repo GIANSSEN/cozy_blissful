@@ -53,7 +53,7 @@ const LiveClock = ({ isDark }) => {
 
   return (
     <div
-      className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl select-none"
+      className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl select-none shrink-0 whitespace-nowrap transition-all"
       style={{
         background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
         border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
@@ -74,7 +74,7 @@ const LiveClock = ({ isDark }) => {
         >:{ss}</span>
       </span>
       <span
-        className="text-[10px] font-medium pl-1"
+        className="hidden lg:inline-block text-[10px] font-medium pl-1"
         style={{
           color: isDark ? '#5c6a7e' : '#8a9099',
           borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
@@ -162,7 +162,10 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
     setIsSearchFocused(false);
     if (item.onSelect) {
       navigate(item.path);
-      setTimeout(() => { item.onSelect(); onSearchSelect && onSearchSelect(item); }, 100);
+      setTimeout(() => {
+        item.onSelect();
+        if (onSearchSelect) onSearchSelect(item);
+      }, 100);
     } else {
       navigate(item.path);
     }
@@ -300,7 +303,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               {/* Search */}
               <div className="relative" ref={searchContainerRef}>
                 <div
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 w-28 sm:w-44 md:w-52 lg:w-60"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 w-28 focus-within:w-40 sm:focus-within:w-48 sm:w-44 md:w-52 lg:w-60"
                   style={{
                     background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                     border: isSearchFocused
@@ -319,7 +322,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     onFocus={() => setIsSearchFocused(true)}
-                    className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400"
+                    className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400 min-w-0"
                     style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
                   />
                   {searchQuery ? (
@@ -347,7 +350,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 6, scale: 0.98 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-80 rounded-2xl overflow-hidden z-50 shadow-2xl"
+                      className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl overflow-hidden z-50 shadow-2xl"
                       style={{
                         background: isDark ? '#1c2333' : '#ffffff',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
@@ -431,7 +434,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.96 }}
                       transition={{ duration: 0.18 }}
-                      className="absolute right-0 mt-2.5 w-80 rounded-2xl overflow-hidden z-50 shadow-2xl"
+                      className="absolute right-0 mt-2.5 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl overflow-hidden z-50 shadow-2xl"
                       style={{
                         background: isDark ? '#1c2333' : '#ffffff',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
@@ -667,8 +670,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
           {/* ── Breadcrumb sub-row ── */}
           <div
-            className="hidden sm:flex items-center gap-1.5 pb-2 -mt-0.5"
-            style={{ color: isDark ? '#3d4f63' : '#94a3b8' }}
+            className="flex items-center gap-1.5 pb-2 -mt-0.5 overflow-x-auto"
+            style={{ color: isDark ? '#3d4f63' : '#94a3b8', scrollbarWidth: 'none' }}
           >
             {breadcrumbs.map((crumb, i) => (
               <React.Fragment key={crumb}>
