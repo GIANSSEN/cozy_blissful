@@ -99,25 +99,26 @@ const SPARK = {
 };
 
 const RAW_PERFORMERS = [
-  { name: 'Maria Santos', role: 'Lead Therapist',   sessions: 12, revenue: 9400, rating: 4.9, pct: 94 },
-  { name: 'John Doe',     role: 'Senior Therapist', sessions: 9,  revenue: 7200, rating: 4.7, pct: 76 },
-  { name: 'Anna Reyes',   role: 'Nail Specialist',   sessions: 7,  revenue: 4800, rating: 4.8, pct: 58 },
-  { name: 'Ben Torres',   role: 'Therapist',         sessions: 5,  revenue: 3500, rating: 4.5, pct: 40 },
+  { name: 'Jacky Adlawan', role: 'Therapist',         sessions: 14, revenue: 11200, rating: 4.9, pct: 95 },
+  { name: 'Quenay Samson',  role: 'Therapist',         sessions: 11, revenue: 8900,  rating: 4.8, pct: 82 },
+  { name: 'Lily Hermosa',   role: 'Therapist',         sessions: 9,  revenue: 7400,  rating: 4.8, pct: 70 },
+  { name: 'Jade Ferrer',    role: 'Nail Specialist',   sessions: 8,  revenue: 5600,  rating: 4.9, pct: 64 },
+  { name: 'Allysa Banlaoi', role: 'Nail Specialist',   sessions: 6,  revenue: 4200,  rating: 4.7, pct: 50 },
 ];
 
 const FALLBACK_SESSIONS = [
-  { id: 1, client: 'Sarah Martinez', therapist: 'Maria Santos', service: 'Swedish Massage',    duration: '60 min', start: '09:00 PM', end: '10:00 PM', pct: 75, location: 'Suite 101', status: 'In Progress' },
-  { id: 2, client: 'David Lim',      therapist: 'John Doe',     service: 'Swedish & Hilot',    duration: '90 min', start: '09:15 PM', end: '10:45 PM', pct: 50, location: 'Suite 104', status: 'In Progress' },
-  { id: 3, client: 'Patricia Go',    therapist: 'Anna Reyes',   service: 'Mani & Pedi Spa',    duration: '60 min', start: '09:30 PM', end: '10:30 PM', pct: 20, location: 'Nail Lounge', status: 'Starting'    },
+  { id: 1, client: 'Sarah Martinez', therapist: 'Jacky Adlawan', service: 'Swedish Massage',    duration: '60 min', start: '09:00 PM', end: '10:00 PM', pct: 75, location: 'Suite 101', status: 'In Progress' },
+  { id: 2, client: 'David Lim',      therapist: 'Quenay Samson', service: 'Swedish & Hilot',    duration: '90 min', start: '09:15 PM', end: '10:45 PM', pct: 50, location: 'Suite 104', status: 'In Progress' },
+  { id: 3, client: 'Patricia Go',    therapist: 'Jade Ferrer',   service: 'Mani & Pedi Spa',    duration: '60 min', start: '09:30 PM', end: '10:30 PM', pct: 20, location: 'Nail Lounge', status: 'Starting'    },
 ];
 
 const FALLBACK_APPOINTMENTS = [
-  { id: 1, client: 'Sarah Martinez', service: 'Swedish Massage',    therapist: 'Maria Santos', time: '09:00 PM', loc: 'Suite 101',  status: 'In Progress', payment_status: 'paid',   notes: 'Prefers lavender aromatherapy.' },
-  { id: 2, client: 'David Lim',      service: 'Swedish & Hilot',    therapist: 'John Doe',     time: '09:15 PM', loc: 'Suite 104',  status: 'In Progress', payment_status: 'paid',   notes: 'Focus on lower back tension.' },
-  { id: 3, client: 'Patricia Go',    service: 'Mani & Pedi Spa',    therapist: 'Anna Reyes',   time: '09:30 PM', loc: 'Nail Lounge',status: 'Starting',    payment_status: 'paid',   notes: 'Organic gel polish preferred.' },
-  { id: 4, client: 'Carlos Reyes',   service: 'Deep Tissue Ritual', therapist: 'Maria Santos', time: '11:00 PM', loc: 'Suite 102',  status: 'Confirmed',   payment_status: 'paid',   notes: 'Post-workout recovery session.' },
-  { id: 5, client: 'Alicia Santos',  service: 'Post Natal Massage', therapist: 'Unassigned',   time: '10:00 AM', loc: 'Suite 105',  status: 'Pending',     payment_status: 'unpaid', notes: 'First-time client; gentle pressure.' },
-  { id: 6, client: 'Elena Gomez',    service: 'Aromatherapy Bliss', therapist: 'Ben Torres',   time: '02:30 PM', loc: 'Suite 103',  status: 'Completed',   payment_status: 'paid',   notes: 'Settled via GCash.' },
+  { id: 1, client: 'Sarah Martinez', service: 'Swedish Massage',    therapist: 'Jacky Adlawan', time: '09:00 PM', loc: 'Suite 101',  status: 'In Progress', payment_status: 'paid',   notes: 'Prefers lavender aromatherapy.' },
+  { id: 2, client: 'David Lim',      service: 'Swedish & Hilot',    therapist: 'Quenay Samson', time: '09:15 PM', loc: 'Suite 104',  status: 'In Progress', payment_status: 'paid',   notes: 'Focus on lower back tension.' },
+  { id: 3, client: 'Patricia Go',    service: 'Mani & Pedi Spa',    therapist: 'Jade Ferrer',   time: '09:30 PM', loc: 'Nail Lounge',status: 'Starting',    payment_status: 'paid',   notes: 'Organic gel polish preferred.' },
+  { id: 4, client: 'Carlos Reyes',   service: 'Deep Tissue Ritual', therapist: 'Lily Hermosa',  time: '11:00 PM', loc: 'Suite 102',  status: 'Confirmed',   payment_status: 'paid',   notes: 'Post-workout recovery session.' },
+  { id: 5, client: 'Alicia Santos',  service: 'Nail Gel Overlay',   therapist: 'Allysa Banlaoi',time: '10:00 AM', loc: 'Suite 105',  status: 'Pending',     payment_status: 'unpaid', notes: 'First-time client; soft pink gel.' },
+  { id: 6, client: 'Elena Gomez',    service: 'Aromatherapy Bliss', therapist: 'Jacky Adlawan', time: '02:30 PM', loc: 'Suite 103',  status: 'Completed',   payment_status: 'paid',   notes: 'Settled via GCash.' },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1038,31 +1039,31 @@ const AdminDashboard = () => {
   /* ─── Booking Distribution Breakdown ────────────────────────────── */
   const bookingBreakdown = useMemo(() => {
     const raw = data?.booking_breakdown || {};
-    const confirmedCount = raw.confirmed ?? 0;
-    const pendingCount   = raw.pending   ?? 0;
-    const cancelledCount = raw.cancelled ?? 0;
-    
-    // Compute total directly from parts or stats
-    const total = (confirmedCount + pendingCount + cancelledCount) || totalBookings || 1;
+    // Use real API data if available; otherwise fallback to illustrative mock data
+    const confirmedCount = raw.confirmed ?? (totalBookings > 0 ? Math.round(totalBookings * 0.65) : 42);
+    const pendingCount   = raw.pending   ?? (totalBookings > 0 ? Math.round(totalBookings * 0.20) : 13);
+    const cancelledCount = raw.cancelled ?? (totalBookings > 0 ? Math.round(totalBookings * 0.15) : 10);
+
+    const total = confirmedCount + pendingCount + cancelledCount || 1;
 
     return [
-      { 
-        label: 'Confirmed', 
-        count: confirmedCount, 
-        pct: total > 0 ? Math.round((confirmedCount / total) * 100) : 0, 
-        color: isDark ? '#34d399' : '#0a3d30' 
+      {
+        label: 'Confirmed',
+        count: confirmedCount,
+        pct: Math.round((confirmedCount / total) * 100),
+        color: isDark ? '#34d399' : '#0a3d30',
       },
-      { 
-        label: 'Pending',   
-        count: pendingCount,   
-        pct: total > 0 ? Math.round((pendingCount / total) * 100) : 0, 
-        color: t.warning 
+      {
+        label: 'Pending',
+        count: pendingCount,
+        pct: Math.round((pendingCount / total) * 100),
+        color: t.warning,
       },
-      { 
-        label: 'Cancelled', 
-        count: cancelledCount, 
-        pct: total > 0 ? Math.round((cancelledCount / total) * 100) : 0, 
-        color: t.danger  
+      {
+        label: 'Cancelled',
+        count: cancelledCount,
+        pct: Math.round((cancelledCount / total) * 100),
+        color: t.danger,
       },
     ];
   }, [data, totalBookings, isDark, t.warning, t.danger]);
@@ -1492,65 +1493,71 @@ const AdminDashboard = () => {
             aria-label="Booking Status Distribution"
             className="lg:col-span-1"
           >
-            <Card t={t} className="p-4 sm:p-5 h-full flex flex-col justify-between">
-              <div>
-                <SectionHeader title="Booking Distribution" icon={Calendar} t={t} />
-                <div className="flex items-center justify-center my-2 relative">
-                  <Donut segments={bookingBreakdown} size={120} stroke={16}
-                    onHoverSegment={setActiveDonutSeg} activeSegment={activeDonutSeg} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2 text-center">
-                    {activeDonutSeg ? (
-                      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
-                        <span className="text-base sm:text-lg font-black tabular-nums" style={{ color: activeDonutSeg.color }}>
-                          {activeDonutSeg.count.toLocaleString()}
-                        </span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider truncate max-w-[80px]" style={{ color: t.txtSub }}>
-                          {activeDonutSeg.label} ({activeDonutSeg.pct}%)
-                        </span>
-                      </motion.div>
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <span className="text-lg sm:text-xl font-black tabular-nums" style={{ color: t.txt }}>
-                          {(totalBookings || 0).toLocaleString()}
-                        </span>
-                        <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>Total</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-1.5 mt-2">
-                  {bookingBreakdown.map(b => {
-                    const isActive = activeDonutSeg?.label === b.label;
-                    return (
-                      <button key={b.label} type="button"
-                        onClick={() => setActiveDonutSeg(prev => prev?.label === b.label ? null : b)}
-                        onMouseEnter={() => setActiveDonutSeg(b)}
-                        onMouseLeave={() => setActiveDonutSeg(null)}
-                        className="w-full flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-                        style={{ background: isActive ? `${b.color}14` : t.inner, borderColor: isActive ? b.color : t.innerBorder, transform: isActive ? 'scale(1.01)' : 'scale(1)' }}>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: b.color }} />
-                          <span className="text-xs font-semibold" style={{ color: isActive ? t.txt : t.txtSub }}>{b.label}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold" style={{ color: t.txtMuted }}>{b.pct}%</span>
-                          <span className="text-xs font-black tabular-nums" style={{ color: t.txt }}>{b.count.toLocaleString()}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
+            <Card t={t} className="p-4 sm:p-5 h-full flex flex-col gap-4">
+              <SectionHeader title="Booking Distribution" icon={Calendar} t={t} />
+
+              {/* Donut */}
+              <div className="flex items-center justify-center relative" style={{ height: 120 }}>
+                <Donut segments={bookingBreakdown} size={120} stroke={16}
+                  onHoverSegment={setActiveDonutSeg} activeSegment={activeDonutSeg} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  {activeDonutSeg ? (
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
+                      <span className="text-base font-black tabular-nums" style={{ color: activeDonutSeg.color }}>
+                        {activeDonutSeg.count.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: t.txtSub }}>
+                        {activeDonutSeg.label} ({activeDonutSeg.pct}%)
+                      </span>
+                    </motion.div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <span className="text-xl font-black tabular-nums" style={{ color: t.txt }}>
+                        {(totalBookings || bookingBreakdown.reduce((s, b) => s + b.count, 0)).toLocaleString()}
+                      </span>
+                      <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>Total</span>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="mt-3 pt-3 grid grid-cols-2 gap-2 border-t" style={{ borderColor: t.divider }}>
+
+              {/* Legend rows */}
+              <div className="space-y-1.5">
+                {bookingBreakdown.map(b => {
+                  const isActive = activeDonutSeg?.label === b.label;
+                  return (
+                    <button key={b.label} type="button"
+                      onClick={() => setActiveDonutSeg(prev => prev?.label === b.label ? null : b)}
+                      onMouseEnter={() => setActiveDonutSeg(b)}
+                      onMouseLeave={() => setActiveDonutSeg(null)}
+                      aria-pressed={isActive}
+                      aria-label={`${b.label}: ${b.count} bookings (${b.pct}%)`}
+                      className="w-full flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                      style={{ background: isActive ? `${b.color}14` : t.inner, borderColor: isActive ? b.color : t.innerBorder, transform: isActive ? 'scale(1.01)' : 'scale(1)' }}>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: b.color }} />
+                        <span className="text-xs font-semibold" style={{ color: isActive ? t.txt : t.txtSub }}>{b.label}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold" style={{ color: t.txtMuted }}>{b.pct}%</span>
+                        <span className="text-xs font-black tabular-nums" style={{ color: t.txt }}>{b.count.toLocaleString()}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Mini stats */}
+              <div className="grid grid-cols-2 gap-2 pt-3 border-t" style={{ borderColor: t.divider }}>
                 {[
-                  { label: 'Avg Ticket',   value: '₱850',                color: t.warning },
-                  { label: 'Settlement',   value: '94.2%',               color: t.info    },
-                  { label: 'Clients',      value: clientsCount || 3,     color: t.pink    },
-                  { label: 'Total Vol.',   value: totalBookings || 0,    color: t.success },
+                  { label: 'Avg Ticket',  value: '₱850',             color: t.warning },
+                  { label: 'Settlement', value: '94.2%',             color: t.info    },
+                  { label: 'Clients',    value: clientsCount || 3,   color: t.pink    },
+                  { label: 'Total Vol.', value: totalBookings || bookingBreakdown.reduce((s, b) => s + b.count, 0), color: t.success },
                 ].map(s => (
                   <div key={s.label} className="p-2 rounded-xl text-center border" style={{ background: t.inner, borderColor: t.innerBorder }}>
                     <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>{s.label}</p>
-                    <p className="text-xs sm:text-sm font-black mt-0.5 tabular-nums" style={{ color: s.color }}>
+                    <p className="text-xs font-black mt-0.5 tabular-nums" style={{ color: s.color }}>
                       {typeof s.value === 'number' ? s.value.toLocaleString() : s.value}
                     </p>
                   </div>
@@ -1610,6 +1617,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </Card>
+          </motion.section>
         </div>
 
         {/* ══ ROW 5: THERAPIST STATUS + STAFF LEADERBOARD ═══════════ */}

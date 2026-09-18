@@ -126,15 +126,19 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         )
         .slice(0, 12);
 
-  /* outside click handler */
+  /* outside click handler (mouse + touch) */
   useEffect(() => {
     const handler = (e) => {
-      if (profileRef.current     && !profileRef.current.contains(e.target))     setShowProfile(false);
+      if (profileRef.current && !profileRef.current.contains(e.target)) setShowProfile(false);
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) setIsSearchFocused(false);
-      if (notifRef.current       && !notifRef.current.contains(e.target))       setShowNotifs(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false);
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
   }, []);
 
   /* Ctrl+K shortcut */
@@ -235,7 +239,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
       <Sidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* ── Right canvas ── */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen overflow-x-clip min-w-0">
 
         {/* ════════════════════════════════════════
             TOP HEADER BAR
@@ -457,8 +461,13 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.96 }}
                       transition={{ duration: 0.18 }}
-                      className="absolute right-0 mt-2.5 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl overflow-hidden z-50 shadow-2xl"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Notifications panel"
+                      className="absolute right-0 mt-2.5 rounded-2xl overflow-hidden z-50 shadow-2xl"
                       style={{
+                        width: 'min(320px, calc(100vw - 1rem))',
+                        right: 0,
                         background: isDark ? '#1c2333' : '#ffffff',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
                       }}
@@ -478,30 +487,40 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                         </div>
                         <button
                           onClick={markAllRead_local}
-                          className="text-[10px] font-bold hover:opacity-70 transition-opacity"
+                          className="text-[10px] font-bold hover:opacity-70 transition-opacity cursor-pointer"
                           style={{ color: isDark ? '#34d399' : '#0a3d30' }}
+                          aria-label="Mark all notifications as read"
                         >
                           Mark all read
                         </button>
                       </div>
 
-                      <div className="divide-y" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                      <div
+                        className="overflow-y-auto divide-y"
+                        style={{
+                          maxHeight: '65vh',
+                          borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                        }}
+                      >
                         {notifs.length === 0 ? (
-                          <div className="py-8 text-center text-xs" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }}>
-                            No notifications yet
+                          <div className="py-10 text-center text-xs flex flex-col items-center gap-2" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }}>
+                            <Bell className="w-8 h-8 opacity-20" />
+                            <span>No notifications yet</span>
                           </div>
                         ) : notifs.map(n => (
-                          <div
+                          <button
                             key={n.id}
-                            className="flex items-start gap-3 px-4 py-3 cursor-pointer transition-all"
+                            type="button"
+                            className="w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer transition-all focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
                             style={{
                               background: n.unread
                                 ? (isDark ? 'rgba(52,211,153,0.04)' : 'rgba(10,61,48,0.03)')
                                 : 'transparent',
                             }}
-                            onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)')}
+                            onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)')}
                             onMouseLeave={e => (e.currentTarget.style.background = n.unread ? (isDark ? 'rgba(52,211,153,0.04)' : 'rgba(10,61,48,0.03)') : 'transparent')}
                             onClick={() => handleNotifClick(n)}
+                            aria-label={`${n.title}: ${n.desc}`}
                           >
                             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm"
                               style={{ background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)' }}>
@@ -509,25 +528,26 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-[11px] font-bold truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
+                                <p className="text-[11px] font-bold" style={{ color: isDark ? '#e8ecf3' : '#1a1d23', wordBreak: 'break-word' }}>
                                   {n.title}
                                 </p>
-                                {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1" />}
+                                {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1" aria-label="Unread" />}
                               </div>
-                              <p className="text-[10px] truncate mt-0.5" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>{n.desc}</p>
+                              <p className="text-[10px] mt-0.5" style={{ color: isDark ? '#5c6a7e' : '#64748b', wordBreak: 'break-word' }}>{n.desc}</p>
                               <p className="text-[9px] mt-1 font-medium" style={{ color: isDark ? '#3d4f63' : '#94a3b8' }}>{n.time}</p>
                             </div>
-                          </div>
+                          </button>
                         ))}
                       </div>
 
                       <div className="p-2" style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
                         <button
+                          type="button"
                           onClick={() => {
                             setShowNotifs(false);
                             navigate('/admin/appointments?tab=pending');
                           }}
-                          className="w-full py-2 text-[11px] font-bold rounded-xl transition-all hover:opacity-80 cursor-pointer"
+                          className="w-full py-2 text-[11px] font-bold rounded-xl transition-all hover:opacity-80 cursor-pointer active:scale-95"
                           style={{
                             background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                             color: isDark ? '#a0aec0' : '#64748b',

@@ -90,42 +90,13 @@ class DatabaseSeeder extends Seeder
         );
         $staff->syncRoles([$staffRole]);
 
-        // Create Therapist Users
-        $therapist1 = User::firstOrCreate(
-            ['email' => 'therapist@example.com'],
-            [
-                'name' => 'John Therapist',
-                'password' => bcrypt('password'),
-            ]
-        );
-        $therapist1->syncRoles([$therapistRole]);
+        // Seed real staff (Jacky, Quenay, Lily, Jade, Allysa)
+        $this->call(StaffSeeder::class);
 
-        $therapist2 = User::firstOrCreate(
-            ['email' => 'maria@example.com'],
-            [
-                'name' => 'Maria Santos',
-                'password' => bcrypt('password'),
-            ]
-        );
-        $therapist2->syncRoles([$therapistRole]);
-
-        $therapist3 = User::firstOrCreate(
-            ['email' => 'sarah@example.com'],
-            [
-                'name' => 'Sarah Connor',
-                'password' => bcrypt('password'),
-            ]
-        );
-        $therapist3->syncRoles([$therapistRole]);
-
-        $therapist4 = User::firstOrCreate(
-            ['email' => 'ana@example.com'],
-            [
-                'name' => 'Ana Gomez',
-                'password' => bcrypt('password'),
-            ]
-        );
-        $therapist4->syncRoles([$therapistRole]);
+        // Resolve real therapists for appointment seeds
+        $therapist1 = User::where('email', 'jacky@example.com')->first() ?? $admin;
+        $therapist2 = User::where('email', 'quenay@example.com')->first() ?? $admin;
+        $therapist3 = User::where('email', 'lily@example.com')->first() ?? $admin;
 
         // Seed Services
         $services = [
@@ -212,41 +183,19 @@ class DatabaseSeeder extends Seeder
         $deep = Service::where('name', 'Deep Tissue Massage')->first();
         $hilot = Service::where('name', 'Hilot Massage')->first();
 
-        // Seed Therapist Availabilities
-        // John Therapist: available today (11th) and tomorrow (12th)
+        // Therapist availability is handled by StaffSeeder (7 days from today for each)
+        // Add extra historical dates for appointment seeds
         TherapistAvailability::firstOrCreate([
             'therapist_id' => $therapist1->id,
-            'date' => Carbon::parse('2026-07-11')->format('Y-m-d')
-        ]);
-        TherapistAvailability::firstOrCreate([
-            'therapist_id' => $therapist1->id,
-            'date' => Carbon::parse('2026-07-12')->format('Y-m-d')
-        ]);
-
-        // Maria Santos: available today (11th) and next day (13th)
-        TherapistAvailability::firstOrCreate([
-            'therapist_id' => $therapist2->id,
-            'date' => Carbon::parse('2026-07-11')->format('Y-m-d')
+            'date' => Carbon::today()->format('Y-m-d'),
         ]);
         TherapistAvailability::firstOrCreate([
             'therapist_id' => $therapist2->id,
-            'date' => Carbon::parse('2026-07-13')->format('Y-m-d')
-        ]);
-
-        // Sarah Connor: available tomorrow (12th) and next day (13th)
-        TherapistAvailability::firstOrCreate([
-            'therapist_id' => $therapist3->id,
-            'date' => Carbon::parse('2026-07-12')->format('Y-m-d')
+            'date' => Carbon::today()->format('Y-m-d'),
         ]);
         TherapistAvailability::firstOrCreate([
             'therapist_id' => $therapist3->id,
-            'date' => Carbon::parse('2026-07-13')->format('Y-m-d')
-        ]);
-
-        // Ana Gomez: available today (11th)
-        TherapistAvailability::firstOrCreate([
-            'therapist_id' => $therapist4->id,
-            'date' => Carbon::parse('2026-07-11')->format('Y-m-d')
+            'date' => Carbon::today()->addDay()->format('Y-m-d'),
         ]);
 
         // Seed Appointments
