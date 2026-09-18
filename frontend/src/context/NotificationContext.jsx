@@ -17,17 +17,27 @@ export const NotificationProvider = ({ children }) => {
   const [loading, setLoading]       = useState(false);
   const intervalRef                 = useRef(null);
 
-  /* Only fetch if the logged-in user is an admin */
-  const isAdmin = role === 'admin';
+  /* Fetch if user is admin or currently on admin dashboard */
+  const isAdmin = 
+    role?.toLowerCase() === 'admin' || 
+    user?.role?.toLowerCase() === 'admin' ||
+    (Array.isArray(user?.roles) && user.roles.some(r => (typeof r === 'string' ? r : r?.name)?.toLowerCase() === 'admin')) ||
+    (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
 
   const fetchNotifications = useCallback(async () => {
     if (!isAdmin) return;
     try {
+      setLoading(true);
       const { data } = await API.get('/admin/notifications');
-      setNotifs(data.notifications || []);
-      setUnreadCount(data.unread_count ?? 0);
-    } catch {
-      /* silently fail — don't spam errors on poll failures */
+      if (data && Array.isArray(data.notifications)) {
+        setNotifs(data.notifications);
+        setUnreadCount(data.unread_count ?? data.notifications.filter(n => n.unread).length);
+      }
+    } catch (err) {
+      /* fail gracefully without crashing UI */
+      console.warn('Failed to fetch admin notifications:', err);
+    } finally {
+      setLoading(false);
     }
   }, [isAdmin]);
 

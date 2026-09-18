@@ -429,131 +429,252 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               {/* ── Notification Bell ── */}
               <div className="relative" ref={notifRef}>
                 <button
-                  onClick={() => setShowNotifs(v => !v)}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotifs(v => !v);
+                  }}
                   aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                   aria-haspopup="dialog"
                   aria-expanded={showNotifs}
-                  className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+                  className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90 touch-manipulation cursor-pointer"
                   style={{
                     background: showNotifs
-                      ? (isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.08)')
+                      ? (isDark ? 'rgba(52,211,153,0.16)' : 'rgba(10,61,48,0.12)')
                       : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
-                    color: isDark ? '#a0aec0' : '#64748b',
+                    border: `1px solid ${showNotifs ? (isDark ? '#34d399' : '#0a3d30') : (isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)')}`,
+                    color: showNotifs ? (isDark ? '#34d399' : '#0a3d30') : (isDark ? '#a0aec0' : '#64748b'),
                   }}
                 >
-                  <Bell className="w-4 h-4" aria-hidden="true" />
+                  <Bell className="w-4 h-4 transition-transform duration-200" aria-hidden="true" />
                   {unreadCount > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }} animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
-                      style={{ background: '#ef4444' }}
+                    <span
+                      className="absolute top-0 right-0 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[9px] font-black text-white pointer-events-none shadow-sm z-10"
+                      style={{
+                        background: '#ef4444',
+                        border: `2px solid ${isDark ? '#0d111c' : '#ffffff'}`,
+                        lineHeight: 1,
+                      }}
                     >
-                      {unreadCount}
-                    </motion.span>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
                   )}
                 </button>
 
+                {/* Mobile Backdrop */}
                 <AnimatePresence>
                   {showNotifs && (
                     <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowNotifs(false);
+                      }}
+                      onTouchEnd={(e) => {
+                        e.stopPropagation();
+                        setShowNotifs(false);
+                      }}
+                      aria-hidden="true"
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* Notification Panel */}
+                <AnimatePresence>
+                  {showNotifs && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.18 }}
                       role="dialog"
                       aria-modal="true"
                       aria-label="Notifications panel"
-                      className="absolute right-0 mt-2.5 rounded-2xl overflow-hidden z-50 shadow-2xl"
+                      className="absolute right-[-44px] sm:right-0 top-full mt-2.5 rounded-2xl overflow-hidden z-50 shadow-2xl"
                       style={{
-                        width: 'min(320px, calc(100vw - 1rem))',
-                        right: 0,
-                        background: isDark ? '#1c2333' : '#ffffff',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                        width: 'min(380px, calc(100vw - 1.5rem))',
+                        maxWidth: 'calc(100vw - 1.5rem)',
+                        background: isDark ? '#18202f' : '#ffffff',
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
+                        boxShadow: isDark
+                          ? '0 20px 40px -15px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06)'
+                          : '0 20px 35px -10px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04)',
                       }}
                     >
+                      {/* Panel Header */}
                       <div
-                        className="px-4 py-3 flex items-center justify-between"
-                        style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}
+                        className="px-4 py-3 flex items-center justify-between gap-2"
+                        style={{
+                          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+                          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+                        }}
                       >
-                        <div className="flex items-center gap-2">
-                          <Bell className="w-3.5 h-3.5" style={{ color: isDark ? '#34d399' : '#0a3d30' }} />
-                          <span className="text-xs font-black" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>Notifications</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.08)' }}
+                          >
+                            <Bell className="w-3.5 h-3.5" style={{ color: isDark ? '#34d399' : '#0a3d30' }} />
+                          </div>
+                          <span className="text-xs font-black tracking-tight" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
+                            Notifications
+                          </span>
                           {unreadCount > 0 && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}>
+                            <span
+                              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                              style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}
+                            >
                               {unreadCount} new
                             </span>
                           )}
                         </div>
-                        <button
-                          onClick={markAllRead_local}
-                          className="text-[10px] font-bold hover:opacity-70 transition-opacity cursor-pointer"
-                          style={{ color: isDark ? '#34d399' : '#0a3d30' }}
-                          aria-label="Mark all notifications as read"
-                        >
-                          Mark all read
-                        </button>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {unreadCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markAllRead_local();
+                              }}
+                              className="text-[10px] font-bold px-2 py-1 rounded-lg transition-all active:scale-95 cursor-pointer"
+                              style={{
+                                background: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.08)',
+                                color: isDark ? '#34d399' : '#0a3d30',
+                              }}
+                              aria-label="Mark all notifications as read"
+                            >
+                              Mark all read
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowNotifs(false);
+                            }}
+                            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 transition-colors cursor-pointer active:scale-90"
+                            aria-label="Close notifications"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
+                      {/* Notification list items */}
                       <div
-                        className="overflow-y-auto divide-y"
+                        className="overflow-y-auto divide-y touch-auto overscroll-contain"
                         style={{
-                          maxHeight: '65vh',
+                          maxHeight: 'min(60vh, 400px)',
                           borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                          WebkitOverflowScrolling: 'touch',
                         }}
                       >
                         {notifs.length === 0 ? (
-                          <div className="py-10 text-center text-xs flex flex-col items-center gap-2" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }}>
-                            <Bell className="w-8 h-8 opacity-20" />
-                            <span>No notifications yet</span>
+                          <div className="py-10 px-4 text-center text-xs flex flex-col items-center gap-2.5" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }}>
+                            <div
+                              className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                              style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }}
+                            >
+                              <Bell className="w-5 h-5 opacity-40" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-300 text-xs">All caught up!</p>
+                              <p className="text-[10px] mt-0.5 opacity-70">No pending notifications right now.</p>
+                            </div>
                           </div>
                         ) : notifs.map(n => (
                           <button
                             key={n.id}
                             type="button"
-                            className="w-full text-left flex items-start gap-3 px-4 py-3 cursor-pointer transition-all focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                            className="w-full text-left flex items-start gap-3 p-3.5 cursor-pointer transition-all focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none active:scale-[0.99] touch-manipulation"
                             style={{
                               background: n.unread
-                                ? (isDark ? 'rgba(52,211,153,0.04)' : 'rgba(10,61,48,0.03)')
+                                ? (isDark ? 'rgba(52,211,153,0.06)' : 'rgba(10,61,48,0.04)')
                                 : 'transparent',
                             }}
                             onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = n.unread ? (isDark ? 'rgba(52,211,153,0.04)' : 'rgba(10,61,48,0.03)') : 'transparent')}
+                            onMouseLeave={e => (e.currentTarget.style.background = n.unread ? (isDark ? 'rgba(52,211,153,0.06)' : 'rgba(10,61,48,0.04)') : 'transparent')}
                             onClick={() => handleNotifClick(n)}
                             aria-label={`${n.title}: ${n.desc}`}
                           >
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm"
-                              style={{ background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)' }}>
-                              {n.icon}
+                            <div
+                              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm shadow-xs"
+                              style={{
+                                background: n.unread
+                                  ? (isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)')
+                                  : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+                                border: `1px solid ${n.unread ? (isDark ? 'rgba(52,211,153,0.3)' : 'rgba(10,61,48,0.2)') : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')}`,
+                              }}
+                            >
+                              {n.icon || '🔔'}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
-                                <p className="text-[11px] font-bold" style={{ color: isDark ? '#e8ecf3' : '#1a1d23', wordBreak: 'break-word' }}>
+                                <p
+                                  className={`text-[11px] leading-tight ${n.unread ? 'font-bold' : 'font-semibold'}`}
+                                  style={{ color: isDark ? '#e8ecf3' : '#1a1d23', wordBreak: 'break-word' }}
+                                >
                                   {n.title}
                                 </p>
-                                {n.unread && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0 mt-1" aria-label="Unread" />}
+                                {n.unread && (
+                                  <span className="flex h-2 w-2 relative flex-shrink-0 mt-0.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-[10px] mt-0.5" style={{ color: isDark ? '#5c6a7e' : '#64748b', wordBreak: 'break-word' }}>{n.desc}</p>
-                              <p className="text-[9px] mt-1 font-medium" style={{ color: isDark ? '#3d4f63' : '#94a3b8' }}>{n.time}</p>
+                              <p className="text-[10px] mt-1 line-clamp-2 leading-relaxed" style={{ color: isDark ? '#94a3b8' : '#64748b', wordBreak: 'break-word' }}>
+                                {n.desc}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-[9px] font-medium" style={{ color: isDark ? '#64748b' : '#94a3b8' }}>
+                                  {n.time}
+                                </span>
+                                {n.appointment_id && (
+                                  <span
+                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                                    style={{
+                                      background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                                      color: isDark ? '#a0aec0' : '#64748b',
+                                    }}
+                                  >
+                                    #{n.appointment_id}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </button>
                         ))}
                       </div>
 
-                      <div className="p-2" style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
+                      {/* Footer Actions */}
+                      <div
+                        className="p-2.5 flex items-center gap-2"
+                        style={{
+                          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                          background: isDark ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.02)',
+                        }}
+                      >
                         <button
                           type="button"
                           onClick={() => {
                             setShowNotifs(false);
-                            navigate('/admin/appointments?tab=pending');
+                            navigate('/admin/appointments');
                           }}
-                          className="w-full py-2 text-[11px] font-bold rounded-xl transition-all hover:opacity-80 cursor-pointer active:scale-95"
+                          className="flex-1 py-2 text-[11px] font-bold rounded-xl transition-all hover:opacity-80 active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
                           style={{
-                            background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                            color: isDark ? '#a0aec0' : '#64748b',
+                            background: isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.08)',
+                            color: isDark ? '#34d399' : '#0a3d30',
+                            border: `1px solid ${isDark ? 'rgba(52,211,153,0.2)' : 'rgba(10,61,48,0.15)'}`,
                           }}
                         >
-                          View all notifications
+                          View All Bookings
+                          <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </motion.div>
