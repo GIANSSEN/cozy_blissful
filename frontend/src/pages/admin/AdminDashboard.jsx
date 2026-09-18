@@ -1037,12 +1037,33 @@ const AdminDashboard = () => {
 
   /* ─── Booking Distribution Breakdown ────────────────────────────── */
   const bookingBreakdown = useMemo(() => {
-    const total = totalBookings || 1120;
-    const raw = data?.booking_breakdown || { confirmed: 940, pending: 124, cancelled: 56 };
+    const raw = data?.booking_breakdown || {};
+    const confirmedCount = raw.confirmed ?? 0;
+    const pendingCount   = raw.pending   ?? 0;
+    const cancelledCount = raw.cancelled ?? 0;
+    
+    // Compute total directly from parts or stats
+    const total = (confirmedCount + pendingCount + cancelledCount) || totalBookings || 1;
+
     return [
-      { label: 'Confirmed', count: raw.confirmed ?? 940, pct: Math.round(((raw.confirmed ?? 940) / total) * 100), color: isDark ? '#34d399' : '#0a3d30' },
-      { label: 'Pending',   count: raw.pending   ?? 124, pct: Math.round(((raw.pending   ?? 124) / total) * 100), color: t.warning },
-      { label: 'Cancelled', count: raw.cancelled ??  56, pct: Math.round(((raw.cancelled ??  56) / total) * 100), color: t.danger  },
+      { 
+        label: 'Confirmed', 
+        count: confirmedCount, 
+        pct: total > 0 ? Math.round((confirmedCount / total) * 100) : 0, 
+        color: isDark ? '#34d399' : '#0a3d30' 
+      },
+      { 
+        label: 'Pending',   
+        count: pendingCount,   
+        pct: total > 0 ? Math.round((pendingCount / total) * 100) : 0, 
+        color: t.warning 
+      },
+      { 
+        label: 'Cancelled', 
+        count: cancelledCount, 
+        pct: total > 0 ? Math.round((cancelledCount / total) * 100) : 0, 
+        color: t.danger  
+      },
     ];
   }, [data, totalBookings, isDark, t.warning, t.danger]);
 
@@ -1399,15 +1420,15 @@ const AdminDashboard = () => {
           </motion.section>
         </div>
 
-        {/* ══ ROW 4: REVENUE + BOOKING DISTRIBUTION + FUNNEL ═══════ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        {/* ══ ROW 4: REVENUE & ANALYTICS ═══════════════════════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 
           {/* Revenue Telemetry Area Chart */}
           <motion.section
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.30, ease: [0.22,1,0.36,1] }}
             aria-label="Revenue Analytics"
-            className="md:col-span-2 xl:col-span-1"
+            className="lg:col-span-2"
           >
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col justify-between">
               <div>
@@ -1469,34 +1490,35 @@ const AdminDashboard = () => {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.34, ease: [0.22,1,0.36,1] }}
             aria-label="Booking Status Distribution"
+            className="lg:col-span-1"
           >
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col justify-between">
               <div>
                 <SectionHeader title="Booking Distribution" icon={Calendar} t={t} />
-                <div className="flex items-center justify-center my-3 relative">
-                  <Donut segments={bookingBreakdown} size={134} stroke={18}
+                <div className="flex items-center justify-center my-2 relative">
+                  <Donut segments={bookingBreakdown} size={120} stroke={16}
                     onHoverSegment={setActiveDonutSeg} activeSegment={activeDonutSeg} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2 text-center">
                     {activeDonutSeg ? (
                       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
-                        <span className="text-lg sm:text-xl font-black tabular-nums" style={{ color: activeDonutSeg.color }}>
+                        <span className="text-base sm:text-lg font-black tabular-nums" style={{ color: activeDonutSeg.color }}>
                           {activeDonutSeg.count.toLocaleString()}
                         </span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider truncate max-w-[85px]" style={{ color: t.txtSub }}>
+                        <span className="text-[9px] font-bold uppercase tracking-wider truncate max-w-[80px]" style={{ color: t.txtSub }}>
                           {activeDonutSeg.label} ({activeDonutSeg.pct}%)
                         </span>
                       </motion.div>
                     ) : (
                       <div className="flex flex-col items-center">
-                        <span className="text-xl sm:text-2xl font-black tabular-nums" style={{ color: t.txt }}>
-                          {(totalBookings || 1120).toLocaleString()}
+                        <span className="text-lg sm:text-xl font-black tabular-nums" style={{ color: t.txt }}>
+                          {(totalBookings || 0).toLocaleString()}
                         </span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>Bookings</span>
+                        <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>Total</span>
                       </div>
                     )}
                   </div>
                 </div>
-                <div className="space-y-2 mt-2">
+                <div className="space-y-1.5 mt-2">
                   {bookingBreakdown.map(b => {
                     const isActive = activeDonutSeg?.label === b.label;
                     return (
@@ -1504,10 +1526,10 @@ const AdminDashboard = () => {
                         onClick={() => setActiveDonutSeg(prev => prev?.label === b.label ? null : b)}
                         onMouseEnter={() => setActiveDonutSeg(b)}
                         onMouseLeave={() => setActiveDonutSeg(null)}
-                        className="w-full flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-                        style={{ background: isActive ? `${b.color}14` : t.inner, borderColor: isActive ? b.color : t.innerBorder, transform: isActive ? 'scale(1.02)' : 'scale(1)' }}>
+                        className="w-full flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer text-left focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                        style={{ background: isActive ? `${b.color}14` : t.inner, borderColor: isActive ? b.color : t.innerBorder, transform: isActive ? 'scale(1.01)' : 'scale(1)' }}>
                         <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.color }} />
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: b.color }} />
                           <span className="text-xs font-semibold" style={{ color: isActive ? t.txt : t.txtSub }}>{b.label}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1519,14 +1541,14 @@ const AdminDashboard = () => {
                   })}
                 </div>
               </div>
-              <div className="mt-4 pt-3.5 grid grid-cols-2 gap-2 border-t" style={{ borderColor: t.divider }}>
+              <div className="mt-3 pt-3 grid grid-cols-2 gap-2 border-t" style={{ borderColor: t.divider }}>
                 {[
                   { label: 'Avg Ticket',   value: '₱850',                color: t.warning },
                   { label: 'Settlement',   value: '94.2%',               color: t.info    },
-                  { label: 'Clients',      value: clientsCount || 320,   color: t.pink    },
-                  { label: 'Total Vol.',   value: totalBookings || 1120, color: t.success },
+                  { label: 'Clients',      value: clientsCount || 3,     color: t.pink    },
+                  { label: 'Total Vol.',   value: totalBookings || 0,    color: t.success },
                 ].map(s => (
-                  <div key={s.label} className="p-2.5 rounded-xl text-center border" style={{ background: t.inner, borderColor: t.innerBorder }}>
+                  <div key={s.label} className="p-2 rounded-xl text-center border" style={{ background: t.inner, borderColor: t.innerBorder }}>
                     <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>{s.label}</p>
                     <p className="text-xs sm:text-sm font-black mt-0.5 tabular-nums" style={{ color: s.color }}>
                       {typeof s.value === 'number' ? s.value.toLocaleString() : s.value}
@@ -1536,13 +1558,16 @@ const AdminDashboard = () => {
               </div>
             </Card>
           </motion.section>
+        </div>
 
-          {/* Customer Funnel + Top Specialists */}
+        {/* ══ ROW 5: CUSTOMER FUNNEL & THERAPIST STATUS ═════════════ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+          {/* Customer Funnel */}
           <motion.section
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.38, ease: [0.22,1,0.36,1] }}
             aria-label="Customer Conversion Funnel"
-            className="md:col-span-2 xl:col-span-1"
+            className="md:col-span-1"
           >
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col justify-between">
               <div>
@@ -1566,13 +1591,13 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="mt-4 pt-3.5 border-t" style={{ borderColor: t.divider }}>
-                <p className="text-[9px] font-black uppercase tracking-wider mb-2.5" style={{ color: t.txtMuted }}>Top Rated Specialists</p>
+                <p className="text-[9px] font-black uppercase tracking-wider mb-2" style={{ color: t.txtMuted }}>Top Rated Specialists</p>
                 <div className="space-y-2">
-                  {sortedPerformers.slice(0, 3).map((p, i) => (
-                    <div key={p.name} className="flex items-center gap-2.5 p-2 rounded-xl border transition-transform hover:scale-[1.01]"
+                  {sortedPerformers.slice(0, 2).map((p, i) => (
+                    <div key={p.name} className="flex items-center gap-2 p-2 rounded-xl border transition-transform hover:scale-[1.01]"
                       style={{ background: t.inner, borderColor: t.innerBorder }}>
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white shrink-0"
-                        style={{ background: i === 0 ? 'linear-gradient(135deg,#062c22,#bfa15f)' : i === 1 ? 'linear-gradient(135deg,#1e293b,#64748b)' : 'linear-gradient(135deg,#451a03,#b45309)' }}>
+                      <div className="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black text-white shrink-0"
+                        style={{ background: i === 0 ? 'linear-gradient(135deg,#062c22,#bfa15f)' : 'linear-gradient(135deg,#1e293b,#64748b)' }}>
                         {p.name.charAt(0)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1585,7 +1610,6 @@ const AdminDashboard = () => {
                 </div>
               </div>
             </Card>
-          </motion.section>
         </div>
 
         {/* ══ ROW 5: THERAPIST STATUS + STAFF LEADERBOARD ═══════════ */}

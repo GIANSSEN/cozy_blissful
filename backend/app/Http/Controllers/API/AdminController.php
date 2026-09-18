@@ -80,6 +80,18 @@ class AdminController extends Controller
             ];
         });
 
+        // 5. Booking breakdown by status
+        $bookingBreakdownRaw = Appointment::selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        $bookingBreakdown = [
+            'confirmed' => (int) (($bookingBreakdownRaw['Confirmed'] ?? 0) + ($bookingBreakdownRaw['Completed'] ?? 0) + ($bookingBreakdownRaw['Completed by Therapist'] ?? 0)),
+            'pending'   => (int) (($bookingBreakdownRaw['Pending'] ?? 0) + ($bookingBreakdownRaw['Starting'] ?? 0)),
+            'cancelled' => (int) ($bookingBreakdownRaw['Cancelled'] ?? 0),
+        ];
+
         return response()->json([
             'message' => 'Admin dashboard metrics retrieved successfully',
             'stats' => [
@@ -88,6 +100,7 @@ class AdminController extends Controller
                 'active_therapists' => $activeTherapists,
                 'registered_clients' => $registeredClients,
             ],
+            'booking_breakdown' => $bookingBreakdown,
             'recent_appointments' => $recentAppointments,
             'services' => $services,
             'payments' => $payments
