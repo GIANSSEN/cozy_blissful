@@ -11,8 +11,8 @@ import {
   ChevronRight, ChevronLeft, Target, X, RefreshCw, Eye,
   UserCheck, Award, Flame, TrendingUp, Star,
   CheckCircle2, AlertCircle, Wifi, LayoutDashboard,
-  Search, Phone, Check, ShieldCheck, Sparkles,
-  ExternalLink, Layers, LayoutGrid, Table as TableIcon
+  Search, Phone, Check, ShieldCheck,
+  ExternalLink, LayoutGrid, Table as TableIcon
 } from 'lucide-react';
 
 /* ─── animation presets ──────────────────────────────────────────── */
@@ -258,7 +258,7 @@ const AreaChart = ({ data, color, height = 110, onHoverPoint }) => {
       const y = height - ((d.val - min) / range) * (height - padY * 2) - padY;
       return { x, y, ...d };
     });
-  }, [data, w, height, max, min, range]);
+  }, [data, w, height, min, range]);
 
   const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const areaD = `${pathD} L ${pts[pts.length - 1].x.toFixed(1)},${height} L ${pts[0].x.toFixed(1)},${height} Z`;
@@ -866,6 +866,14 @@ const SessionDetailModal = ({ session, onClose, t }) => {
   );
 };
 
+/* ─── Static Staff Data (defined outside component to avoid re-render reference changes) ── */
+const RAW_PERFORMERS = [
+  { name: 'Maria Santos', role: 'Lead Therapist',  sessions: 12, revenue: 9400, rating: 4.9, pct: 94 },
+  { name: 'John Doe',     role: 'Senior Therapist', sessions: 9,  revenue: 7200, rating: 4.7, pct: 76 },
+  { name: 'Anna Reyes',   role: 'Nail Specialist',  sessions: 7,  revenue: 4800, rating: 4.8, pct: 58 },
+  { name: 'Ben Torres',   role: 'Therapist',         sessions: 5,  revenue: 3500, rating: 4.5, pct: 40 },
+];
+
 /* ═══════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════ */
@@ -892,6 +900,16 @@ const AdminDashboard = () => {
 
   /* Staff Leaderboard sorting */
   const [staffSort, setStaffSort] = useState('rating'); // 'rating' | 'sessions' | 'revenue'
+
+  /* Sorted performers — defined unconditionally before any early returns */
+  const sortedPerformers = useMemo(() => {
+    return [...RAW_PERFORMERS].sort((a, b) => {
+      if (staffSort === 'rating')   return b.rating   - a.rating;
+      if (staffSort === 'sessions') return b.sessions - a.sessions;
+      if (staffSort === 'revenue')  return b.revenue  - a.revenue;
+      return 0;
+    });
+  }, [staffSort]);
 
   /* Appointments table filter, search, and pagination */
   const [apptFilter, setApptFilter] = useState('All');
@@ -1222,22 +1240,11 @@ const AdminDashboard = () => {
     { icon: Star,         color: '#f59e0b', text: '5-star review from Patricia Go',           time: '2h ago'  },
   ];
 
-  /* Staff Performance array with reactive sorting */
-  const rawPerformers = [
-    { name: 'Maria Santos', role: 'Lead Therapist',   sessions: 12, revenue: 9400,  rating: 4.9, pct: 94, color: t.accent },
-    { name: 'John Doe',     role: 'Senior Therapist',  sessions: 9,  revenue: 7200,  rating: 4.7, pct: 76, color: t.info   },
-    { name: 'Anna Reyes',   role: 'Nail Specialist',   sessions: 7,  revenue: 4800,  rating: 4.8, pct: 58, color: t.gold   },
-    { name: 'Ben Torres',   role: 'Therapist',         sessions: 5,  revenue: 3500,  rating: 4.5, pct: 40, color: t.pink   },
-  ];
-
-  const sortedPerformers = useMemo(() => {
-    return [...rawPerformers].sort((a, b) => {
-      if (staffSort === 'rating') return b.rating - a.rating;
-      if (staffSort === 'sessions') return b.sessions - a.sessions;
-      if (staffSort === 'revenue') return b.revenue - a.revenue;
-      return 0;
-    });
-  }, [rawPerformers, staffSort]);
+  /* Staff Performance colors mapped from theme tokens */
+  const performersWithColor = useMemo(() => {
+    const colors = [t.accent, t.info, t.gold, t.pink];
+    return sortedPerformers.map((p, i) => ({ ...p, color: colors[i % colors.length] }));
+  }, [sortedPerformers, t.accent, t.info, t.gold, t.pink]);
 
   const KPI_MODALS = {
     therapists: {
@@ -1284,24 +1291,27 @@ const AdminDashboard = () => {
       <div className="space-y-5 sm:space-y-6 pb-12">
 
         {/* ══ TOP STATUS BAR & QUICK ACTIONS ════════════════════════ */}
-        <motion.div {...fadeUp(0)} className="flex items-center justify-between flex-wrap gap-3">
+        <motion.div {...fadeUp(0)} className="flex items-center justify-between flex-wrap gap-3" role="banner" aria-label="Dashboard Status Bar">
           {/* Live system status pill + Date */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div
+              role="status"
+              aria-live="polite"
+              aria-label="System Status: Live"
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl shadow-sm"
               style={{
                 background: isDark ? 'rgba(52,211,153,0.08)' : 'rgba(10,61,48,0.06)',
                 border: `1px solid ${isDark ? 'rgba(52,211,153,0.2)' : 'rgba(10,61,48,0.12)'}`,
               }}
             >
-              <div className="relative flex h-2 w-2">
+              <div className="relative flex h-2 w-2" aria-hidden="true">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: t.success }} />
                 <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: t.success }} />
               </div>
               <span className="text-[11px] font-bold tracking-wide" style={{ color: t.success }}>Systems Live</span>
             </div>
 
-            <span className="hidden sm:inline-block text-xs font-semibold" style={{ color: t.txtMuted }}>
+            <span className="text-xs font-semibold" style={{ color: t.txtMuted }}>
               {now.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </span>
           </div>
@@ -1326,12 +1336,18 @@ const AdminDashboard = () => {
               <span>Clients</span>
             </button>
 
+            {/* aria-live region for refresh success — screen readers announce this */}
+            <div aria-live="polite" aria-atomic="true" className="sr-only">
+              {refreshSuccess ? 'Dashboard data has been synced successfully.' : ''}
+            </div>
+
             {refreshSuccess && (
               <motion.span
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}
                 className="text-[11px] font-bold text-emerald-500 flex items-center gap-1"
+                aria-hidden="true"
               >
                 <Check className="w-3.5 h-3.5" /> Synced
               </motion.span>
@@ -1749,7 +1765,7 @@ const AdminDashboard = () => {
               <div className="mt-4 pt-3.5 border-t" style={{ borderColor: t.divider }}>
                 <p className="text-[9px] font-black uppercase tracking-wider mb-2.5" style={{ color: t.txtMuted }}>Top Rated Specialists</p>
                 <div className="space-y-2">
-                  {sortedPerformers.slice(0, 3).map((p, i) => (
+                  {performersWithColor.slice(0, 3).map((p, i) => (
                     <div
                       key={p.name}
                       className="flex items-center gap-2.5 p-2 rounded-xl border transition-transform hover:scale-[1.01]"
@@ -1867,7 +1883,7 @@ const AdminDashboard = () => {
               </div>
 
               <div className="space-y-3">
-                {sortedPerformers.map((p, idx) => (
+                {performersWithColor.map((p, idx) => (
                   <motion.div
                     key={p.name}
                     layout
@@ -2121,11 +2137,13 @@ const AdminDashboard = () => {
                               <td className="px-4 sm:px-5 py-3.5"><Badge status={row.status} /></td>
                               <td className="px-4 sm:px-5 py-3.5">
                                 <button
-                                  aria-label="Inspect appointment"
-                                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:opacity-75 transition-opacity cursor-pointer"
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setApptModal(row); }}
+                                  aria-label={`Inspect appointment details for ${row.client}`}
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:opacity-75 transition-opacity cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
                                   style={{ background: t.inner, border: t.innerBorder, color: t.txtMuted }}
                                 >
-                                  <Eye className="w-3.5 h-3.5" />
+                                  <Eye className="w-3.5 h-3.5" aria-hidden="true" />
                                 </button>
                               </td>
                             </tr>

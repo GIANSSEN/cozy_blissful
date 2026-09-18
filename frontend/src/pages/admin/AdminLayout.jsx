@@ -224,6 +224,13 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         fontFamily: "'Inter', sans-serif",
       }}
     >
+      {/* ── Skip to Content ── */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[200] focus:px-4 focus:py-2 focus:rounded-xl focus:text-sm focus:font-bold focus:bg-white focus:text-emerald-800 focus:shadow-xl"
+      >
+        Skip to main content
+      </a>
       {/* ── Sidebar ── */}
       <Sidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
@@ -246,20 +253,23 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
           }}
         >
           {/* ── Main row ── */}
-          <div className="flex items-center justify-between h-14 gap-3">
+          <div className="flex items-center justify-between h-14 gap-2 sm:gap-3" role="toolbar" aria-label="Header Controls">
 
             {/* Left: Hamburger + Brand + Title */}
-            <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1 sm:mr-2">
               <button
                 onClick={() => setMobileSidebarOpen(true)}
-                className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+                aria-label="Open navigation sidebar"
+                aria-expanded={mobileSidebarOpen}
+                aria-controls="admin-sidebar"
+                className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
                   color: isDark ? '#a0aec0' : '#64748b',
                   border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
                 }}
               >
-                <Menu className="w-4 h-4" />
+                <Menu className="w-4 h-4" aria-hidden="true" />
               </button>
 
               {/* Logo mark — desktop only: per-page icon */}
@@ -295,13 +305,18 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
             </div>
 
             {/* Right controls */}
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+            <div
+              className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 overflow-x-auto"
+              style={{ scrollbarWidth: 'none' }}
+              role="toolbar"
+              aria-label="Right header controls"
+            >
 
               {/* Live Clock */}
               <LiveClock isDark={isDark} />
 
               {/* Search */}
-              <div className="relative" ref={searchContainerRef}>
+              <div className="relative" ref={searchContainerRef} role="search" aria-label="Admin search">
                 <div
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 w-28 focus-within:w-40 sm:focus-within:w-48 sm:w-44 md:w-52 lg:w-60"
                   style={{
@@ -314,10 +329,15 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       : 'none',
                   }}
                 >
-                  <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }} />
+                  <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }} aria-hidden="true" />
                   <input
                     ref={searchInputRef}
-                    type="text"
+                    type="search"
+                    role="searchbox"
+                    aria-label="Search pages and actions (Ctrl+K)"
+                    aria-autocomplete="list"
+                    aria-expanded={isSearchFocused && searchQuery.trim() !== ''}
+                    aria-haspopup="listbox"
                     placeholder="Search..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
@@ -406,7 +426,10 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setShowNotifs(v => !v)}
-                  className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+                  aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={showNotifs}
+                  className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
                   style={{
                     background: showNotifs
                       ? (isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.08)')
@@ -415,7 +438,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                     color: isDark ? '#a0aec0' : '#64748b',
                   }}
                 >
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-4 h-4" aria-hidden="true" />
                   {unreadCount > 0 && (
                     <motion.span
                       initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -521,6 +544,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               {/* Admin Role Badge */}
               <span
                 className="hidden md:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em]"
+                aria-label="User role: Administrator"
                 style={{
                   background: isDark
                     ? 'linear-gradient(135deg,rgba(52,211,153,0.1),rgba(52,211,153,0.06))'
@@ -529,7 +553,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                   color: isDark ? '#34d399' : '#041e16',
                 }}
               >
-                <Sparkles className="w-3 h-3 text-amber-400" />
+                <Sparkles className="w-3 h-3 text-amber-400" aria-hidden="true" />
                 Admin
               </span>
 
@@ -537,7 +561,10 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               <div className="relative" ref={profileRef}>
                 <button
                   onClick={() => setShowProfile(v => !v)}
-                  className="relative group p-0.5 rounded-full transition-all"
+                  aria-label={`User profile for ${user?.name || 'Admin'}. ${showProfile ? 'Close' : 'Open'} profile menu`}
+                  aria-haspopup="dialog"
+                  aria-expanded={showProfile}
+                  className="relative group p-0.5 rounded-full transition-all active:scale-95"
                   style={{
                     background: 'linear-gradient(135deg, #bfa15f, #e8cc8a, #bfa15f)',
                     boxShadow: showProfile
@@ -692,7 +719,11 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         </header>
 
         {/* ── Page Content ── */}
-        <main className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto">
+        <main
+          id="main-content"
+          className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto"
+          tabIndex={-1}
+        >
           {children}
         </main>
       </div>
