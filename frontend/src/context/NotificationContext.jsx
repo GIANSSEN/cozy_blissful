@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
 import API from '../api/axios';
 import { useAuth } from './AuthContext';
 
@@ -10,75 +17,121 @@ export const useNotifications = () => {
   return ctx;
 };
 
+const POLL_INTERVAL = 10_000; // 10s real-time polling
+
 export const NotificationProvider = ({ children }) => {
   const { user, role } = useAuth();
-  const [notifs, setNotifs]         = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading]       = useState(false);
-  const intervalRef                 = useRef(null);
 
-  /* Fetch if user is admin or currently on admin dashboard */
-  const isAdmin = 
-    role?.toLowerCase() === 'admin' || 
-    user?.role?.toLowerCase() === 'admin' ||
-    (Array.isArray(user?.roles) && user.roles.some(r => (typeof r === 'string' ? r : r?.name)?.toLowerCase() === 'admin')) ||
+  const [notifs,      setNotifs]      = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading,     setLoading]     = useState(false);
+  const [lastFetched, setLastFetched] = useState(null);
+
+  const intervalRef = useRef(null);
+
+  /* Robust admin/staff detection */
+  const storedRole = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+  const isAdmin =
+    role === 'admin' ||
+    role === 'staff' ||
+    storedRole === 'admin' ||
+    storedRole === 'staff' ||
+    (user && (user.role === 'admin' || user.role === 'staff')) ||
     (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
 
-  const fetchNotifications = useCallback(async () => {
+  /* ─── Core fetch ─────────────────────────────────────────────── */
+  const fetchNotifications = useCallback(async (silent = false) => {
     if (!isAdmin) return;
+
+    if (!silent) setLoading(true);
     try {
-      setLoading(true);
       const { data } = await API.get('/admin/notifications');
       if (data && Array.isArray(data.notifications)) {
         setNotifs(data.notifications);
-        setUnreadCount(data.unread_count ?? data.notifications.filter(n => n.unread).length);
+        setUnreadCount(
+          typeof data.unread_count === 'number'
+            ? data.unread_count
+            : data.notifications.filter((n) => n.unread).length
+        );
+        setLastFetched(new Date());
       }
     } catch (err) {
-      /* fail gracefully without crashing UI */
-      console.warn('Failed to fetch admin notifications:', err);
+      // Silently ignore auth errors (e.g. 401 on logout)
+      if (err?.response?.status !== 401) {
+        console.warn('[Notifications] fetch failed:', err?.message ?? err);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [isAdmin]);
 
-  /* Initial fetch + 30-second polling */
+  /* ─── Polling + focus re-fetch ───────────────────────────────── */
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin) {
+      setNotifs([]);
+      setUnreadCount(0);
+      return;
+    }
 
+    // Immediate first fetch
     fetchNotifications();
 
-    intervalRef.current = setInterval(fetchNotifications, 30_000);
+    // Poll every 10s
+    intervalRef.current = setInterval(() => fetchNotifications(true), POLL_INTERVAL);
 
-    /* Re-fetch on window focus */
-    const onFocus = () => fetchNotifications();
+    // Re-fetch on tab focus or visibility change
+    const onFocus = () => fetchNotifications(true);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications(true);
+      }
+    };
+
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
-      clearInterval(intervalRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [isAdmin, fetchNotifications]);
 
+  /* ─── Mark single read (optimistic) ─────────────────────────── */
   const markRead = useCallback(async (id) => {
+    // Optimistic update
+    setNotifs((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+
     try {
       await API.post(`/admin/notifications/${id}/read`);
-      setNotifs(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch { /* silent */ }
-  }, []);
+    } catch {
+      // Revert on failure
+      fetchNotifications(true);
+    }
+  }, [fetchNotifications]);
 
+  /* ─── Mark all read (optimistic) ────────────────────────────── */
   const markAllRead = useCallback(async () => {
+    setNotifs((prev) => prev.map((n) => ({ ...n, unread: false })));
+    setUnreadCount(0);
+
     try {
       await API.post('/admin/notifications/read-all');
-      setNotifs(prev => prev.map(n => ({ ...n, unread: false })));
-      setUnreadCount(0);
-    } catch { /* silent */ }
-  }, []);
+    } catch {
+      fetchNotifications(true);
+    }
+  }, [fetchNotifications]);
 
+  /* ─── Expose refresh so panel can force-refresh on open ──────── */
   const refresh = useCallback(() => fetchNotifications(), [fetchNotifications]);
 
   return (
-    <NotificationContext.Provider value={{ notifs, unreadCount, loading, markRead, markAllRead, refresh }}>
+    <NotificationContext.Provider
+      value={{ notifs, unreadCount, loading, lastFetched, markRead, markAllRead, refresh }}
+    >
       {children}
     </NotificationContext.Provider>
   );

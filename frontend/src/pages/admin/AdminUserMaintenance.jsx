@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
@@ -16,11 +16,12 @@ import {
   Layers, BarChart3,
   RefreshCw, Mail, Phone, Lock, Briefcase,
   Eye, EyeOff, Sparkles, ShieldAlert, Check, Copy, AlertCircle, Loader2, KeyRound,
-  Trash2,
+  Trash2, MoreVertical, Filter, ArrowUpDown, Download, RotateCcw,
 } from 'lucide-react';
+import { LuxurySelect, LuxuryDropdownMenu, LuxuryCombobox } from '../../components/ui/LuxuryDropdown';
 
 /* ─────────────────────────────────────────────────────────────── */
-/*  CONFIG                                                          */
+/*  CONFIG & CONSTANTS                                              */
 /* ─────────────────────────────────────────────────────────────── */
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -46,9 +47,35 @@ const PERM_META = {
   userMgmt:   { label: 'User Mgmt',  desc: 'Create & manage accounts',     icon: Users,             color: '#0ea5e9' },
 };
 
-/* Revenue split: Therapist earns 40%, Admin retains 60% of every booking */
-const THERAPIST_SHARE = 40;
-const ADMIN_SHARE     = 60;
+export const THERAPIST_DEFAULT_COMMISSION = 40;
+export const ADMIN_DEFAULT_COMMISSION = 60;
+
+const COMMISSION_TIERS = [
+  {
+    value: 40,
+    label: '40% Standard Therapist Split',
+    description: 'Therapist earns 40% · Salon retains 60% per completed appointment',
+    tag: 'Standard',
+    tagColor: '#d97706',
+    tagBg: 'rgba(217,119,6,0.12)',
+  },
+  {
+    value: 45,
+    label: '45% Senior Specialist Split',
+    description: 'Therapist earns 45% · Salon retains 55% per completed appointment',
+    tag: 'Senior',
+    tagColor: '#3b82f6',
+    tagBg: 'rgba(59,130,246,0.12)',
+  },
+  {
+    value: 50,
+    label: '50% Master Specialist Split',
+    description: 'Therapist earns 50% · Salon retains 50% for premier signature sessions',
+    tag: 'Master',
+    tagColor: '#10b981',
+    tagBg: 'rgba(16,185,129,0.12)',
+  },
+];
 
 const INITIAL_PERMS = {
   admin:     { bookings: true,  services: true,  history: true,  settings: true,  analytics: true,  userMgmt: true  },
@@ -57,15 +84,24 @@ const INITIAL_PERMS = {
 };
 
 const MOCK_USERS = [
-  { id: 1, name: 'Anna Reyes',     email: 'anna@cozy.spa',    phone: '+63 919 555 6666', role: 'therapist', specialty: 'Swedish & Hot Stone',     status: 'active',   joined: '2025-02-20' },
-  { id: 2, name: 'Grace Tan',      email: 'grace@cozy.spa',   phone: '+63 921 999 0000', role: 'therapist', specialty: 'Hilot & Shiatsu',          status: 'inactive', joined: '2025-06-01' },
-  { id: 3, name: 'Leo Garcia',     email: 'leo@cozy.spa',     phone: '+63 920 777 8888', role: 'therapist', specialty: 'Deep Tissue & Sports',     status: 'active',   joined: '2025-05-15' },
-  { id: 4, name: 'Maria Santos',   email: 'maria@cozy.spa',   phone: '+63 917 111 2222', role: 'staff',     specialty: 'Front Desk Coordinator',  status: 'active',   joined: '2025-03-10' },
-  { id: 5, name: 'Juan Dela Cruz', email: 'juan@cozy.spa',    phone: '+63 918 333 4444', role: 'staff',     specialty: 'Operations Lead',          status: 'active',   joined: '2025-04-01' },
-  { id: 6, name: 'Elena Ramos',    email: 'elena@cozy.spa',   phone: '+63 922 444 5555', role: 'staff',     specialty: 'Booking Coordinator',      status: 'active',   joined: '2025-07-12' },
+  { id: 1, name: 'Anna Reyes',     email: 'anna@cozy.spa',    phone: '+63 919 555 6666', role: 'therapist', specialty: 'Swedish & Hot Stone',     status: 'active',   joined: '2025-02-20', commRate: 40 },
+  { id: 2, name: 'Grace Tan',      email: 'grace@cozy.spa',   phone: '+63 921 999 0000', role: 'therapist', specialty: 'Hilot & Shiatsu',          status: 'inactive', joined: '2025-06-01', commRate: 40 },
+  { id: 3, name: 'Leo Garcia',     email: 'leo@cozy.spa',     phone: '+63 920 777 8888', role: 'therapist', specialty: 'Deep Tissue & Sports',     status: 'active',   joined: '2025-05-15', commRate: 45 },
+  { id: 4, name: 'Maria Santos',   email: 'maria@cozy.spa',   phone: '+63 917 111 2222', role: 'staff',     specialty: 'Front Desk Coordinator',  status: 'active',   joined: '2025-03-10', commRate: 0  },
+  { id: 5, name: 'Juan Dela Cruz', email: 'juan@cozy.spa',    phone: '+63 918 333 4444', role: 'staff',     specialty: 'Operations Lead',          status: 'active',   joined: '2025-04-01', commRate: 0  },
+  { id: 6, name: 'Elena Ramos',    email: 'elena@cozy.spa',   phone: '+63 922 444 5555', role: 'staff',     specialty: 'Booking Coordinator',      status: 'active',   joined: '2025-07-12', commRate: 0  },
 ];
 
-const EMPTY_FORM = { name: '', email: '', phone: '', specialty: '', role: 'therapist', status: 'active', password: '', confirmPassword: '' };
+const THERAPIST_SPECIALTY_PRESETS = [
+  'Swedish & Deep Tissue', 'Hot Stone Massage', 'Shiatsu & Hilot',
+  'Sports & Recovery', 'Aromatherapy', 'Prenatal Massage',
+  'Foot Reflexology', 'Thai Massage',
+];
+
+const STAFF_POSITION_PRESETS = [
+  'Front Desk Coordinator', 'Operations Lead', 'Booking Coordinator',
+  'Guest Relations', 'Shift Supervisor', 'Billing & Finance',
+];
 
 /* ─────────────────────────────────────────────────────────────── */
 /*  THEME HOOK                                                      */
@@ -136,108 +172,6 @@ function Toggle({ on, onChange, disabled, id }) {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────── */
-/*  MODAL SHELL                                                     */
-/* ─────────────────────────────────────────────────────────────── */
-function ModalShell({ children, onClose, maxWidth = 'max-w-lg' }) {
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    const esc = e => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', esc);
-    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', esc); };
-  }, [onClose]);
-
-  return (
-    <AnimatePresence>
-      <motion.div className={`fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4`}
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(10px)' }} onClick={onClose}>
-        <motion.div className={`w-full ${maxWidth} rounded-t-[28px] sm:rounded-[28px] overflow-hidden shadow-2xl`}
-          initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 380, damping: 35 }}
-          onClick={e => e.stopPropagation()}>
-          {/* Mobile drag handle */}
-          <div className="flex justify-center pt-2.5 pb-0 sm:hidden" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
-            <div className="w-10 h-1 rounded-full bg-white/20" />
-          </div>
-          {children}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/*  MODAL: USER DETAIL                                              */
-/* ─────────────────────────────────────────────────────────────── */
-function UserDetailModal({ user, onClose, onEdit, C }) {
-  if (!user) return null;
-  const meta = ROLE_META[user.role] || ROLE_META.staff;
-  const Icon = meta.icon;
-  return (
-    <ModalShell onClose={onClose}>
-      <div style={{ background: C.card }}>
-        {/* Gradient Hero */}
-        <div className="p-6 pt-8 sm:pt-6 relative text-white" style={{ background: meta.grad }}>
-          <button onClick={onClose} className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-all">
-            <X className="w-4 h-4" />
-          </button>
-          <div className="flex items-center gap-4">
-            <Avatar name={user.name} gradient="rgba(255,255,255,0.2)" size={56} />
-            <div>
-              <h3 className="font-black text-xl text-white leading-tight">{user.name}</h3>
-              <p className="text-xs text-white/75 mt-0.5">{user.email}</p>
-              <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                <span className="text-[9px] font-black px-2.5 py-1 rounded-full bg-white/20 uppercase tracking-wider text-white flex items-center gap-1">
-                  <Icon className="w-3 h-3" /> {meta.label}
-                </span>
-                <StatusDot status={user.status} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Details */}
-        <div className="p-5 space-y-3 max-h-[55vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Phone',         value: user.phone || '—',                      icon: Phone },
-              { label: 'Specialization',value: user.specialty || '—',                  icon: Briefcase },
-              { label: 'Revenue Share', value: user.role === 'therapist' ? '40% Earnings' : user.role === 'admin' ? '60% Revenue' : 'Salary-based', icon: TrendingUp },
-              { label: 'Date Joined',   value: user.joined || '—',                     icon: Calendar },
-            ].map(({ label, value, icon: Ic }) => (
-              <div key={label} className="p-3.5 rounded-2xl space-y-1" style={{ background: C.inner }}>
-                <div className="flex items-center gap-1.5">
-                  <Ic className="w-3 h-3 text-slate-400" />
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{label}</p>
-                </div>
-                <p className="text-xs font-bold" style={{ color: C.txt }}>{value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="p-3.5 rounded-2xl" style={{ background: C.inner }}>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Access & Permissions</p>
-            <p className="text-xs" style={{ color: C.txtSec }}>{meta.desc}</p>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 pb-6 sm:pb-5 pt-0 flex gap-3" style={{ borderTop: `1px solid ${C.divider}`, paddingTop: 14 }}>
-          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-xs font-bold transition-all hover:opacity-80"
-            style={{ background: C.inner, color: C.txtSec }}>Close</button>
-          <button onClick={() => { onClose(); onEdit(user); }}
-            className="flex-1 py-3 rounded-2xl text-xs font-bold text-white shadow-lg transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>Edit Profile</button>
-        </div>
-      </div>
-    </ModalShell>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-/*  FORM FIELD ATOM                                                  */
-/* ─────────────────────────────────────────────────────────────── */
 function FormField({ label, required, error, icon: Ic, children, hint }) {
   return (
     <div className="space-y-1.5">
@@ -276,22 +210,155 @@ function getPasswordStrength(pw) {
   return              { label: 'Very Strong', color: '#10b981', percent: 100 };
 }
 
-const THERAPIST_SPECIALTY_PRESETS = [
-  'Swedish & Deep Tissue', 'Hot Stone Massage', 'Shiatsu & Hilot',
-  'Sports & Recovery', 'Aromatherapy', 'Prenatal Massage',
-  'Foot Reflexology', 'Thai Massage',
-];
+/* ─────────────────────────────────────────────────────────────── */
+/*  MODAL SHELL                                                     */
+/* ─────────────────────────────────────────────────────────────── */
+function ModalShell({ children, onClose, maxWidth = 'max-w-lg' }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const esc = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', esc);
+    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', esc); };
+  }, [onClose]);
 
-const STAFF_POSITION_PRESETS = [
-  'Front Desk Coordinator', 'Operations Lead', 'Booking Coordinator',
-  'Guest Relations', 'Shift Supervisor', 'Billing & Finance',
-];
+  return (
+    <AnimatePresence>
+      <motion.div className={`fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4`}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        style={{ background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(10px)' }} onClick={onClose}>
+        <motion.div className={`w-full ${maxWidth} rounded-t-[28px] sm:rounded-[28px] overflow-hidden shadow-2xl`}
+          initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '100%', opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 35 }}
+          onClick={e => e.stopPropagation()}>
+          <div className="flex justify-center pt-2.5 pb-0 sm:hidden" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
+            <div className="w-10 h-1 rounded-full bg-white/20" />
+          </div>
+          {children}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  MODAL: USER DETAIL                                              */
+/* ─────────────────────────────────────────────────────────────── */
+function UserDetailModal({ user, onClose, onEdit, onManageSchedule, C }) {
+  if (!user) return null;
+  const meta = ROLE_META[user.role] || ROLE_META.staff;
+  const Icon = meta.icon;
+  return (
+    <ModalShell onClose={onClose}>
+      <div style={{ background: C.card }}>
+        <div className="p-6 pt-8 sm:pt-6 relative text-white" style={{ background: meta.grad }}>
+          <button onClick={onClose} className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-all cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-4">
+            <Avatar name={user.name} gradient="rgba(255,255,255,0.2)" size={56} />
+            <div>
+              <h3 className="font-black text-xl text-white leading-tight">{user.name}</h3>
+              <p className="text-xs text-white/75 mt-0.5">{user.email}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                <span className="text-[9px] font-black px-2.5 py-1 rounded-full bg-white/20 uppercase tracking-wider text-white flex items-center gap-1">
+                  <Icon className="w-3 h-3" /> {meta.label}
+                </span>
+                <StatusDot status={user.status} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-3 max-h-[55vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Phone',         value: user.phone || '—',                      icon: Phone },
+              { label: 'Specialization',value: user.specialty || '—',                  icon: Briefcase },
+              { label: 'Commission Tier', value: user.role === 'therapist' ? `${user.commRate || 40}% Rate` : 'Salary-based', icon: TrendingUp },
+              { label: 'Date Joined',   value: user.joined || '—',                     icon: Calendar },
+            ].map(({ label, value, icon: Ic }) => (
+              <div key={label} className="p-3.5 rounded-2xl space-y-1" style={{ background: C.inner }}>
+                <div className="flex items-center gap-1.5">
+                  <Ic className="w-3 h-3 text-slate-400" />
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{label}</p>
+                </div>
+                <p className="text-xs font-bold" style={{ color: C.txt }}>{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="p-3.5 rounded-2xl" style={{ background: C.inner }}>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Access & Permissions</p>
+            <p className="text-xs" style={{ color: C.txtSec }}>{meta.desc}</p>
+          </div>
+        </div>
+
+        <div className="px-5 pb-6 sm:pb-5 pt-0 flex gap-2.5" style={{ borderTop: `1px solid ${C.divider}`, paddingTop: 14 }}>
+          <button onClick={onClose} className="py-2.5 px-4 rounded-xl text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
+            style={{ background: C.inner, color: C.txtSec }}>Close</button>
+          {onManageSchedule && (user.role === 'therapist' || user.role === 'staff') && (
+            <button onClick={() => { onClose(); onManageSchedule(user.id); }}
+              className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer hover:opacity-90"
+              style={{ background: C.inner, borderColor: C.inputBdr, color: C.txt }}>
+              <Calendar className="w-3.5 h-3.5 text-amber-500" />
+              <span>Shifts</span>
+            </button>
+          )}
+          <button onClick={() => { onClose(); onEdit(user); }}
+            className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white shadow-lg transition-all hover:opacity-90 cursor-pointer"
+            style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>Edit Profile</button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  MODAL: DELETE CONFIRMATION                                      */
+/* ─────────────────────────────────────────────────────────────── */
+function DeleteUserConfirmModal({ user, onClose, onConfirm, C }) {
+  if (!user) return null;
+  return (
+    <ModalShell onClose={onClose} maxWidth="max-w-md">
+      <div className="p-6 space-y-4 text-center" style={{ background: C.card }}>
+        <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center bg-red-500/10 text-red-500 shadow-inner">
+          <Trash2 className="w-7 h-7" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-base font-black" style={{ color: C.txt }}>Revoke Team Account</h3>
+          <p className="text-xs leading-relaxed" style={{ color: C.txtSec }}>
+            Are you sure you want to remove <strong className="font-black text-red-400">{user.name}</strong>?
+            This will permanently revoke their portal credentials and unassign upcoming scheduled shift rosters.
+          </p>
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
+            style={{ background: C.inner, color: C.txtSec }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(user.id, user.name)}
+            className="flex-1 py-2.5 rounded-xl text-xs font-black text-white bg-red-600 hover:bg-red-700 shadow-md transition-all cursor-pointer"
+          >
+            Yes, Delete Account
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
 
 /* ─────────────────────────────────────────────────────────────── */
 /*  MODAL: ADD / EDIT USER                                           */
 /* ─────────────────────────────────────────────────────────────── */
 function AddEditUserModal({ user, onClose, onSave }) {
   const C = useC();
+  const { toast } = useToast();
   const isEdit = !!user;
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -300,6 +367,7 @@ function AddEditUserModal({ user, onClose, onSave }) {
     role: user?.role || 'therapist',
     status: user?.status || 'active',
     specialty: user?.specialty || (user?.role === 'staff' ? 'Front Desk Coordinator' : 'Swedish & Deep Tissue'),
+    commRate: user?.commRate || 40,
     password: '',
     confirmPassword: '',
   });
@@ -309,10 +377,9 @@ function AddEditUserModal({ user, onClose, onSave }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
 
-  const set = (k, v) => {
+  const set = useCallback((k, v) => {
     setForm(p => {
       const next = { ...p, [k]: v };
-      // Real-time error clearance & password match sync
       setErrors(prev => {
         const updated = { ...prev };
         delete updated[k];
@@ -329,10 +396,9 @@ function AddEditUserModal({ user, onClose, onSave }) {
       return next;
     });
     if (serverError) setServerError('');
-  };
+  }, [serverError]);
 
-  const handleRoleChange = newRole => {
-    // Strictly prevent admin role assignment
+  const handleRoleChange = useCallback((newRole) => {
     if (newRole === 'admin') return;
     setForm(p => ({
       ...p,
@@ -341,7 +407,13 @@ function AddEditUserModal({ user, onClose, onSave }) {
         ? (p.specialty && !STAFF_POSITION_PRESETS.includes(p.specialty) ? p.specialty : 'Swedish & Deep Tissue')
         : (p.specialty && !THERAPIST_SPECIALTY_PRESETS.includes(p.specialty) ? p.specialty : 'Front Desk Coordinator'),
     }));
-  };
+    setErrors(prev => {
+      const u = { ...prev };
+      delete u.role;
+      delete u.specialty;
+      return u;
+    });
+  }, []);
 
   const toggleSpecialtyTag = tag => {
     const current = form.specialty ? form.specialty.split(',').map(s => s.trim()).filter(Boolean) : [];
@@ -404,7 +476,6 @@ function AddEditUserModal({ user, onClose, onSave }) {
       }
     }
 
-    // Role strict check: NO ADMIN ROLE ALLOWED
     if (form.role === 'admin') {
       e.role = 'Security Rule: Administrator accounts cannot be created through this module.';
     } else if (!['therapist', 'staff'].includes(form.role)) {
@@ -448,146 +519,118 @@ function AddEditUserModal({ user, onClose, onSave }) {
 
     setIsSubmitting(true);
     try {
-      await onSave({
-        ...form,
-        password_confirmation: form.confirmPassword,
-      });
+      await onSave(form);
     } catch (err) {
+      const msg = err.response?.data?.message || err.response?.data?.errors?.email?.[0] || 'Failed to save team member account.';
+      setServerError(msg);
       if (err.response?.data?.errors) {
-        const fieldErrors = {};
-        Object.entries(err.response.data.errors).forEach(([k, v]) => {
-          const msg = Array.isArray(v) ? v[0] : v;
-          if (k === 'password' && (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('match'))) {
-            fieldErrors.confirmPassword = msg;
-          } else {
-            fieldErrors[k] = msg;
-          }
-        });
-        setErrors(fieldErrors);
+        setErrors(err.response.data.errors);
       }
-      setServerError(err.response?.data?.message || 'Could not save account details. Please verify the input.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const pwStrength = getPasswordStrength(form.password);
-  const passwordsMatch = !!(form.password && form.confirmPassword && form.password === form.confirmPassword);
-  const passwordsMismatch = !!(form.confirmPassword && form.password !== form.confirmPassword);
-
   const inputStyle = err => ({
-    background: C.inputBg,
-    border: `1.5px solid ${err ? '#f87171' : C.inputBdr}`,
+    background: C.inner,
+    border: `1.5px solid ${err ? '#ef4444' : C.inputBdr}`,
     color: C.txt,
-    boxShadow: err ? '0 0 0 3px rgba(248,113,113,0.12)' : 'none',
   });
+
+  const pwStrength = getPasswordStrength(form.password);
+  const passwordsMatch = form.password && form.confirmPassword && form.password === form.confirmPassword;
+  const passwordsMismatch = form.password && form.confirmPassword && form.password !== form.confirmPassword;
+
+  // Dropdown options for role selection
+  const roleDropdownOptions = [
+    {
+      value: 'therapist',
+      label: 'Therapist (Service Provider)',
+      icon: Stethoscope,
+      iconColor: '#d97706',
+      iconBg: 'rgba(217,119,6,0.12)',
+      description: 'Provides client treatments, queue assignments & revenue split earnings',
+      tag: 'Provider',
+      tagColor: '#d97706',
+      tagBg: 'rgba(217,119,6,0.12)',
+    },
+    {
+      value: 'staff',
+      label: 'Staff Coordinator (Reception & Shifts)',
+      icon: UserCog,
+      iconColor: '#3b82f6',
+      iconBg: 'rgba(59,130,246,0.12)',
+      description: 'Manages appointment queue, front-desk booking & therapist roster',
+      tag: 'Front-Desk',
+      tagColor: '#3b82f6',
+      tagBg: 'rgba(59,130,246,0.12)',
+    },
+    {
+      value: 'admin',
+      label: 'Administrator (Root System)',
+      icon: Crown,
+      iconColor: '#ef4444',
+      iconBg: 'rgba(239,68,68,0.12)',
+      description: 'Restricted root governance. Cannot be provisioned via staff onboarding.',
+      tag: 'Restricted',
+      tagColor: '#ef4444',
+      tagBg: 'rgba(239,68,68,0.12)',
+      disabled: true,
+    },
+  ];
+
+  // Dropdown options for status selection
+  const statusDropdownOptions = [
+    {
+      value: 'active',
+      label: 'Active (On Duty & Bookable)',
+      badgeColor: '#10b981',
+      description: 'Account is operational and eligible for appointment scheduling',
+    },
+    {
+      value: 'inactive',
+      label: 'Inactive (Deactivated / Off Duty)',
+      badgeColor: '#94a3b8',
+      description: 'Account is temporarily suspended from scheduling and queue rotation',
+    },
+  ];
 
   return (
     <ModalShell onClose={onClose} maxWidth="max-w-2xl">
-      <form onSubmit={submit} style={{ background: C.card }}
-        className="flex flex-col max-h-[92vh] sm:max-h-[88vh] w-full rounded-t-[28px] sm:rounded-[28px] overflow-hidden shadow-2xl border border-white/10">
-        
-        {/* Sticky Header */}
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-5 pb-4 flex-shrink-0 backdrop-blur-md"
-          style={{ borderBottom: `1px solid ${C.divider}`, background: C.card }}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md"
-              style={{
-                background: isEdit
-                  ? 'linear-gradient(135deg, rgba(59,130,246,0.2), rgba(37,99,235,0.3))'
-                  : 'linear-gradient(135deg, rgba(5,150,105,0.2), rgba(16,185,129,0.3))',
-                border: isEdit ? '1px solid rgba(59,130,246,0.3)' : '1px solid rgba(5,150,105,0.3)',
-              }}>
-              {isEdit ? <Edit3 className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-blue-500" />
-                : <Plus className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-emerald-500" />}
+      <form onSubmit={submit} style={{ background: C.card }} className="flex flex-col max-h-[92vh]">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 flex-shrink-0"
+          style={{ borderBottom: `1px solid ${C.divider}` }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)', color: '#fff' }}>
+              <UserCog className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-black text-sm sm:text-base md:text-lg tracking-tight truncate" style={{ color: C.txt }}>
-                  {isEdit ? 'Edit Team Member Profile' : 'Create New Account'}
-                </h3>
-                <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(5,150,105,0.12)', color: '#059669' }}>
-                  Team Onboarding
-                </span>
-              </div>
-              <p className="text-[11px] sm:text-xs truncate mt-0.5" style={{ color: C.txtMuted }}>
-                {isEdit ? 'Update credentials, service specialization & role details' : 'Register a new team member to the system'}
+            <div>
+              <h2 className="font-black text-base leading-tight" style={{ color: C.txt }}>
+                {isEdit ? 'Edit Team Member Profile' : 'Onboard New Team Member'}
+              </h2>
+              <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>
+                {isEdit ? 'Update credentials, commission and role permissions' : 'Create new therapist or staff coordinator portal credentials'}
               </p>
             </div>
           </div>
           <button type="button" onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:rotate-90 hover:opacity-80 flex-shrink-0 cursor-pointer"
-            style={{ background: C.inner, color: C.txtMuted }}>
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+            style={{ background: C.inner }}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5"
-          style={{ WebkitOverflowScrolling: 'touch' }}>
-          
-          {/* Server Error Alert */}
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
           {serverError && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-3 p-3.5 rounded-2xl"
-              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}>
-              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 text-xs font-semibold text-red-500 leading-snug">
-                {serverError}
-              </div>
-            </motion.div>
+            <div className="p-3.5 rounded-2xl flex items-center gap-2.5 text-xs text-red-400 font-bold"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{serverError}</span>
+            </div>
           )}
-
-          {/* Interactive Live Luxury Preview Card */}
-          <div className="p-3.5 sm:p-4 rounded-2xl relative overflow-hidden transition-all duration-300"
-            style={{
-              background: C.inner,
-              border: `1.5px solid ${form.role === 'therapist' ? 'rgba(217,119,6,0.3)' : 'rgba(59,130,246,0.3)'}`,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-            }}>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <Avatar name={form.name || '?'} gradient={ROLE_META[form.role]?.grad} size={44} />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-black truncate" style={{ color: C.txt }}>
-                      {form.name || 'Preview Name'}
-                    </p>
-                    <RolePill role={form.role} />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    <p className="text-xs truncate font-medium" style={{ color: C.txtMuted }}>
-                      {form.email || 'preview@email.com'}
-                    </p>
-                    {form.phone && (
-                      <span className="text-[10px] font-semibold text-slate-400">· {form.phone}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
-                <StatusDot status={form.status} />
-              </div>
-            </div>
-
-            {/* Specialization and compensation snippet in preview */}
-            <div className="mt-3 pt-3 flex flex-wrap items-center justify-between gap-2"
-              style={{ borderTop: `1px solid ${C.divider}` }}>
-              <div className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: C.txtSec }}>
-                <Briefcase className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="font-bold">{form.role === 'therapist' ? 'Specialty:' : 'Position:'}</span>
-                <span className="truncate max-w-[260px] sm:max-w-[340px]">{form.specialty || 'None assigned yet'}</span>
-              </div>
-              <div className="text-[10px] font-black px-2.5 py-1 rounded-lg"
-                style={{
-                  background: form.role === 'therapist' ? 'rgba(217,119,6,0.12)' : 'rgba(59,130,246,0.12)',
-                  color: form.role === 'therapist' ? '#d97706' : '#2563eb',
-                }}>
-                {form.role === 'therapist' ? '40% Revenue Split' : 'Fixed Operations Salary'}
-              </div>
-            </div>
-          </div>
 
           {/* Full Name */}
           <FormField label="Full Name" required error={errors.name} icon={User}>
@@ -613,71 +656,62 @@ function AddEditUserModal({ user, onClose, onSave }) {
             </FormField>
           </div>
 
-          {/* System Role Selection (STRICTLY NO ADMIN ALLOWED) */}
+          {/* System Role Selection with Luxury Select */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                <Shield className="w-3.5 h-3.5 text-emerald-500" /> System Role <span className="text-red-400">*</span>
-              </label>
               <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1">
-                <Lock className="w-3 h-3" /> No Admin Roles
+                <Lock className="w-3 h-3" /> No Admin Self-Provisioning
               </span>
             </div>
 
-            {/* Dual Card Role Selector */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Option 1: Therapist */}
+            <LuxurySelect
+              id="form-role-select"
+              label="System Operational Role"
+              required
+              icon={Shield}
+              value={form.role}
+              onChange={handleRoleChange}
+              options={roleDropdownOptions}
+              error={errors.role}
+              isDark={C.isDark}
+            />
+
+            {/* Visual Dual Card Selector in sync */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <button type="button" onClick={() => handleRoleChange('therapist')}
-                className="p-3.5 rounded-2xl text-left transition-all relative overflow-hidden flex items-start gap-3 border cursor-pointer"
+                className="p-3 rounded-2xl text-left transition-all relative overflow-hidden flex items-center gap-2.5 border cursor-pointer"
                 style={{
                   background: form.role === 'therapist' ? 'rgba(217,119,6,0.08)' : C.inner,
                   borderColor: form.role === 'therapist' ? '#d97706' : C.inputBdr,
                   boxShadow: form.role === 'therapist' ? '0 0 0 2px rgba(217,119,6,0.25)' : 'none',
                 }}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
                   style={{ background: 'linear-gradient(135deg,#78350f,#d97706)', color: '#fff' }}>
-                  <Stethoscope className="w-4.5 h-4.5" />
+                  <Stethoscope className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-black" style={{ color: C.txt }}>Therapist</p>
-                    {form.role === 'therapist' && (
-                      <span className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center">
-                        <Check className="w-3 h-3" />
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] mt-0.5 leading-snug" style={{ color: C.txtMuted }}>
-                    Service provider with appointment assignment & 40% revenue split
-                  </p>
+                  <p className="text-xs font-black" style={{ color: C.txt }}>Therapist</p>
+                  <p className="text-[9px] leading-tight" style={{ color: C.txtMuted }}>Service provider (40% split)</p>
                 </div>
+                {form.role === 'therapist' && <Check className="w-3.5 h-3.5 text-amber-500" />}
               </button>
 
-              {/* Option 2: Staff Coordinator */}
               <button type="button" onClick={() => handleRoleChange('staff')}
-                className="p-3.5 rounded-2xl text-left transition-all relative overflow-hidden flex items-start gap-3 border cursor-pointer"
+                className="p-3 rounded-2xl text-left transition-all relative overflow-hidden flex items-center gap-2.5 border cursor-pointer"
                 style={{
                   background: form.role === 'staff' ? 'rgba(59,130,246,0.08)' : C.inner,
                   borderColor: form.role === 'staff' ? '#3b82f6' : C.inputBdr,
                   boxShadow: form.role === 'staff' ? '0 0 0 2px rgba(59,130,246,0.25)' : 'none',
                 }}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
                   style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', color: '#fff' }}>
-                  <UserCog className="w-4.5 h-4.5" />
+                  <UserCog className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-black" style={{ color: C.txt }}>Staff Coordinator</p>
-                    {form.role === 'staff' && (
-                      <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center">
-                        <Check className="w-3 h-3" />
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[10px] mt-0.5 leading-snug" style={{ color: C.txtMuted }}>
-                    Front desk reception, booking queue & therapist schedule control
-                  </p>
+                  <p className="text-xs font-black" style={{ color: C.txt }}>Staff Coordinator</p>
+                  <p className="text-[9px] leading-tight" style={{ color: C.txtMuted }}>Front desk & shifts</p>
                 </div>
+                {form.role === 'staff' && <Check className="w-3.5 h-3.5 text-blue-500" />}
               </button>
             </div>
 
@@ -686,50 +720,40 @@ function AddEditUserModal({ user, onClose, onSave }) {
               style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)', color: C.txtSec }}>
               <ShieldAlert className="w-4 h-4 text-red-500 flex-shrink-0" />
               <span>
-                <strong className="text-red-500 font-bold">Admin Role Restricted:</strong> Administrator accounts require root governance and cannot be provisioned via staff onboarding.
+                <strong className="text-red-500 font-bold">Admin Role Restricted:</strong> System Administrator roles cannot be self-provisioned via staff maintenance.
               </span>
             </div>
-            {errors.role && <p className="text-[10px] font-bold text-red-400 flex items-center gap-1">⚠ {errors.role}</p>}
           </div>
 
-          {/* Status Selection */}
+          {/* Status Selection with Luxury Select */}
           <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Status
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => set('status', 'active')}
-                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer"
-                style={{
-                  background: form.status === 'active' ? 'rgba(16,185,129,0.12)' : C.inputBg,
-                  borderColor: form.status === 'active' ? '#10b981' : C.inputBdr,
-                  color: form.status === 'active' ? '#059669' : C.txtMuted,
-                }}>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Active
-              </button>
-              <button type="button" onClick={() => set('status', 'inactive')}
-                className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all border cursor-pointer"
-                style={{
-                  background: form.status === 'inactive' ? 'rgba(148,163,184,0.15)' : C.inputBg,
-                  borderColor: form.status === 'inactive' ? '#94a3b8' : C.inputBdr,
-                  color: form.status === 'inactive' ? C.txt : C.txtMuted,
-                }}>
-                <span className="w-2 h-2 rounded-full bg-slate-400" />
-                Inactive
-              </button>
-            </div>
+            <LuxurySelect
+              id="form-status-select"
+              label="Account Operational Status"
+              icon={CheckCircle2}
+              value={form.status}
+              onChange={v => set('status', v)}
+              options={statusDropdownOptions}
+              isDark={C.isDark}
+            />
           </div>
 
-          {/* Specialization / Role Position with Quick Select Chips */}
+          {/* Specialization / Position using Luxury Combobox */}
           {form.role === 'therapist' ? (
             <div className="space-y-2.5">
-              <FormField label="Specialization" required error={errors.specialty} icon={Briefcase}>
-                <input value={form.specialty} onChange={e => set('specialty', e.target.value)}
-                  placeholder="e.g. Swedish & Deep Tissue"
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                  style={inputStyle(errors.specialty)} />
-              </FormField>
+              <LuxuryCombobox
+                id="form-specialty-combobox"
+                value={form.specialty}
+                onChange={v => set('specialty', v)}
+                presets={THERAPIST_SPECIALTY_PRESETS}
+                placeholder="e.g. Swedish & Deep Tissue"
+                label="Therapist Treatment Specialization"
+                icon={Briefcase}
+                required
+                error={errors.specialty}
+                isDark={C.isDark}
+              />
+
               {/* Preset Tags */}
               <div className="space-y-1">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Quick-Add Treatments:</span>
@@ -750,27 +774,47 @@ function AddEditUserModal({ user, onClose, onSave }) {
                   })}
                 </div>
               </div>
-              {/* Revenue Policy Banner */}
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl"
-                style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.22)' }}>
-                <TrendingUp className="w-4 h-4 flex-shrink-0" style={{ color: '#d97706' }} />
-                <div>
-                  <p className="text-[10px] font-black" style={{ color: '#d97706' }}>Revenue Split (Fixed Policy)</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>
-                    Therapist earns <strong>40%</strong> per booking · Admin retains <strong>60%</strong> · Weekly salary payout every Friday
-                  </p>
+
+              {/* Commission Tier Selector */}
+              <div className="space-y-1.5 pt-1">
+                <LuxurySelect
+                  id="form-commission-select"
+                  label="Therapist Commission Split Tier"
+                  icon={TrendingUp}
+                  value={form.commRate}
+                  onChange={v => set('commRate', Number(v))}
+                  options={COMMISSION_TIERS}
+                  isDark={C.isDark}
+                />
+                <div className="flex items-center gap-3 p-3 rounded-2xl"
+                  style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.22)' }}>
+                  <TrendingUp className="w-4 h-4 flex-shrink-0" style={{ color: '#d97706' }} />
+                  <div>
+                    <p className="text-[10px] font-black" style={{ color: '#d97706' }}>
+                      Selected Rate: {form.commRate}% Therapist / {100 - form.commRate}% Salon Retention
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>
+                      Payout is automatically recorded upon booking completion and calculated in Friday payroll.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
             <div className="space-y-2.5">
-              <FormField label="Position / Role Title" required error={errors.specialty} icon={Briefcase}>
-                <input value={form.specialty} onChange={e => set('specialty', e.target.value)}
-                  placeholder="e.g. Front Desk Coordinator"
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                  style={inputStyle(errors.specialty)} />
-              </FormField>
-              {/* Preset Titles */}
+              <LuxuryCombobox
+                id="form-position-combobox"
+                value={form.specialty}
+                onChange={v => set('specialty', v)}
+                presets={STAFF_POSITION_PRESETS}
+                placeholder="e.g. Front Desk Coordinator"
+                label="Staff Position & Operational Title"
+                icon={Briefcase}
+                required
+                error={errors.specialty}
+                isDark={C.isDark}
+              />
+
               <div className="space-y-1">
                 <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Preset Positions:</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -790,14 +834,14 @@ function AddEditUserModal({ user, onClose, onSave }) {
                   })}
                 </div>
               </div>
-              {/* Staff Terms Banner */}
-              <div className="flex items-center gap-3 p-3.5 rounded-2xl"
+
+              <div className="flex items-center gap-3 p-3 rounded-2xl"
                 style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.22)' }}>
                 <TrendingUp className="w-4 h-4 flex-shrink-0 text-blue-500" />
                 <div>
-                  <p className="text-[10px] font-black text-blue-500">Staff Coordinator</p>
+                  <p className="text-[10px] font-black text-blue-500">Fixed Monthly Staff Salary</p>
                   <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>
-                    Fixed salary basis · Manages scheduling, clients & bookings across all shifts
+                    Staff Coordinators manage client check-ins, queue dispatch and day rosters across shifts.
                   </p>
                 </div>
               </div>
@@ -819,7 +863,6 @@ function AddEditUserModal({ user, onClose, onSave }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Password */}
               <FormField label="Password" required={!isEdit} error={errors.password} icon={Lock}>
                 <div className="relative">
                   <input type={showPw ? 'text' : 'password'} value={form.password}
@@ -834,7 +877,6 @@ function AddEditUserModal({ user, onClose, onSave }) {
                 </div>
               </FormField>
 
-              {/* Confirm Password */}
               <FormField label="Confirm Password" required={!isEdit || !!form.password} error={errors.confirmPassword} icon={Lock}>
                 <div className="relative">
                   <input type={showConfirmPw ? 'text' : 'password'} value={form.confirmPassword}
@@ -850,7 +892,6 @@ function AddEditUserModal({ user, onClose, onSave }) {
               </FormField>
             </div>
 
-            {/* Live Password Strength & Match Meter */}
             {form.password && (
               <div className="p-3 rounded-xl space-y-2" style={{ background: C.inner }}>
                 <div className="flex items-center justify-between text-[10px]">
@@ -915,21 +956,38 @@ function AddEditUserModal({ user, onClose, onSave }) {
 /* ─────────────────────────────────────────────────────────────── */
 /*  TAB 1: USER PROFILES                                            */
 /* ─────────────────────────────────────────────────────────────── */
-function TabProfiles({ users, onUsersChange }) {
+function TabProfiles({ users, onUsersChange, onSelectTab }) {
   const C = useC();
   const { toast } = useToast();
-  const [search, setSearch]           = useState('');
-  const [roleFilter, setRoleFilter]   = useState('all');
-  const [viewMode, setViewMode]       = useState('table');
-  const [viewingUser, setViewingUser] = useState(null);
-  const [editingUser, setEditingUser] = useState(null);
-  const [addingUser, setAddingUser]   = useState(false);
+  const [search, setSearch]             = useState('');
+  const [roleFilter, setRoleFilter]     = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy]             = useState('name-asc');
+  const [viewMode, setViewMode]         = useState('table');
+  const [viewingUser, setViewingUser]   = useState(null);
+  const [editingUser, setEditingUser]   = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [addingUser, setAddingUser]     = useState(false);
 
-  const filtered = useMemo(() => users.filter(u => {
-    const q = search.toLowerCase();
-    const mQ = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.specialty||'').toLowerCase().includes(q);
-    return mQ && (roleFilter === 'all' || u.role === roleFilter);
-  }), [users, search, roleFilter]);
+  // Sorting and filtering
+  const filtered = useMemo(() => {
+    let list = users.filter(u => {
+      const q = search.toLowerCase();
+      const mQ = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.specialty || '').toLowerCase().includes(q);
+      const mR = roleFilter === 'all' || u.role === roleFilter;
+      const mS = statusFilter === 'all' || u.status === statusFilter;
+      return mQ && mR && mS;
+    });
+
+    return [...list].sort((a, b) => {
+      if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+      if (sortBy === 'name-desc') return b.name.localeCompare(a.name);
+      if (sortBy === 'joined-desc') return (b.joined || '').localeCompare(a.joined || '');
+      if (sortBy === 'joined-asc') return (a.joined || '').localeCompare(b.joined || '');
+      if (sortBy === 'role') return a.role.localeCompare(b.role);
+      return 0;
+    });
+  }, [users, search, roleFilter, statusFilter, sortBy]);
 
   const toggleStatus = async id => {
     try {
@@ -952,9 +1010,6 @@ function TabProfiles({ users, onUsersChange }) {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to remove team member "${name}"? This will delete their account credentials.`)) {
-      return;
-    }
     try {
       await axios.delete(`/admin/team-members/${id}`);
       onUsersChange(prev => prev.filter(u => u.id !== id));
@@ -962,7 +1017,42 @@ function TabProfiles({ users, onUsersChange }) {
     } catch {
       onUsersChange(prev => prev.filter(u => u.id !== id));
       toast.info(`${name} removed from list.`);
+    } finally {
+      setUserToDelete(null);
     }
+  };
+
+  const handleCopyTempPassword = user => {
+    const tempPw = `Cozy@${Math.floor(1000 + Math.random() * 9000)}!`;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(tempPw);
+      toast.success(`Temporary password for ${user.name} copied: ${tempPw}`);
+    } else {
+      toast.info(`Generated temporary password: ${tempPw}`);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Role', 'Specialty', 'Status', 'Joined'];
+    const rows = filtered.map(u => [
+      u.id,
+      `"${u.name}"`,
+      `"${u.email}"`,
+      `"${u.phone || ''}"`,
+      u.role,
+      `"${u.specialty || ''}"`,
+      u.status,
+      u.joined || '',
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `cozy_blissful_team_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('User directory exported to CSV!');
   };
 
   const handleSave = async form => {
@@ -1010,10 +1100,101 @@ function TabProfiles({ users, onUsersChange }) {
     { label: 'Staff',       count: users.filter(u=>u.role==='staff').length,    color: '#8b5cf6', bg: 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(139,92,246,0.04))', icon: UserCog      },
   ];
 
+  // Dropdown options
+  const roleFilterOptions = [
+    { value: 'all',       label: `All Roles (${users.length})`, icon: Users },
+    { value: 'therapist', label: `Therapists (${users.filter(u => u.role === 'therapist').length})`, icon: Stethoscope, tag: 'Provider', tagColor: '#d97706', tagBg: 'rgba(217,119,6,0.12)' },
+    { value: 'staff',     label: `Staff (${users.filter(u => u.role === 'staff').length})`, icon: UserCog, tag: 'Reception', tagColor: '#3b82f6', tagBg: 'rgba(59,130,246,0.12)' },
+  ];
+
+  const statusFilterOptions = [
+    { value: 'all',      label: 'All Statuses' },
+    { value: 'active',   label: 'Active Members', badgeColor: '#10b981' },
+    { value: 'inactive', label: 'Inactive Members', badgeColor: '#94a3b8' },
+  ];
+
+  const sortOptions = [
+    { value: 'name-asc',    label: 'Name (A to Z)', icon: ArrowUpDown },
+    { value: 'name-desc',   label: 'Name (Z to A)', icon: ArrowUpDown },
+    { value: 'joined-desc', label: 'Newest First', icon: Calendar },
+    { value: 'joined-asc',  label: 'Oldest First', icon: Calendar },
+    { value: 'role',        label: 'By Role / Position', icon: Shield },
+  ];
+
+  // User Actions Dropdown Menu Items Generator
+  const getUserMenuItems = (u) => [
+    { type: 'header', label: `${u.name} Options` },
+    {
+      id: 'view',
+      label: 'View Profile & Stats',
+      icon: Eye,
+      onClick: () => setViewingUser(u),
+    },
+    {
+      id: 'edit',
+      label: 'Edit Account Credentials',
+      icon: Edit3,
+      onClick: () => setEditingUser(u),
+    },
+    {
+      id: 'status',
+      label: u.status === 'active' ? 'Deactivate Member' : 'Activate Member',
+      icon: u.status === 'active' ? UserX : UserCheck,
+      onClick: () => toggleStatus(u.id),
+      badge: u.status === 'active' ? 'Active' : 'Inactive',
+      badgeColor: u.status === 'active' ? '#10b981' : '#64748b',
+      badgeBg: u.status === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
+    },
+    {
+      id: 'schedule',
+      label: 'Manage Weekly Shifts',
+      icon: Calendar,
+      onClick: () => onSelectTab && onSelectTab('schedules', u.id),
+    },
+    {
+      id: 'password',
+      label: 'Generate Temp Password',
+      icon: KeyRound,
+      onClick: () => handleCopyTempPassword(u),
+    },
+    { type: 'divider' },
+    {
+      id: 'delete',
+      label: 'Revoke / Remove Account',
+      icon: Trash2,
+      danger: true,
+      onClick: () => setUserToDelete(u),
+    },
+  ];
+
   return (
     <div className="space-y-4">
-      {viewingUser && <UserDetailModal user={viewingUser} onClose={() => setViewingUser(null)} onEdit={u => { setViewingUser(null); setEditingUser(u); }} C={C} />}
-      {(addingUser || editingUser) && <AddEditUserModal user={editingUser} onClose={() => { setAddingUser(false); setEditingUser(null); }} onSave={handleSave} />}
+      {viewingUser && (
+        <UserDetailModal
+          user={viewingUser}
+          onClose={() => setViewingUser(null)}
+          onEdit={u => { setViewingUser(null); setEditingUser(u); }}
+          onManageSchedule={id => onSelectTab && onSelectTab('schedules', id)}
+          C={C}
+        />
+      )}
+
+      {(addingUser || editingUser) && (
+        <AddEditUserModal
+          user={editingUser}
+          onClose={() => { setAddingUser(false); setEditingUser(null); }}
+          onSave={handleSave}
+        />
+      )}
+
+      {userToDelete && (
+        <DeleteUserConfirmModal
+          user={userToDelete}
+          onClose={() => setUserToDelete(null)}
+          onConfirm={handleDelete}
+          C={C}
+        />
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1021,7 +1202,6 @@ function TabProfiles({ users, onUsersChange }) {
           <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.06 }}
             className="p-4 sm:p-5 rounded-2xl flex items-center justify-between overflow-hidden relative"
             style={{ background: C.card, boxShadow: C.shadow }}>
-            {/* Gradient accent background */}
             <div className="absolute inset-0 pointer-events-none rounded-2xl" style={{ background: s.bg }} />
             <div className="relative z-10">
               <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: C.txtMuted }}>{s.label}</p>
@@ -1035,50 +1215,121 @@ function TabProfiles({ users, onUsersChange }) {
         ))}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center p-3.5 rounded-2xl"
-        style={{ background: C.card, boxShadow: C.shadow }}>
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, specialty…"
-            className="w-full pl-9 pr-8 py-2.5 text-xs rounded-xl outline-none font-medium"
-            style={{ background: C.inner, border: `1.5px solid ${C.inputBdr}`, color: C.txt }} />
-          {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"><X className="w-3.5 h-3.5" /></button>}
+      {/* Senior Developer Toolbar with Accessible Dropdowns */}
+      <div className="p-3.5 rounded-2xl space-y-3" style={{ background: C.card, boxShadow: C.shadow }}>
+        {/* Row 1: Search + Quick Add + Tools */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name, email, specialty…"
+              className="w-full pl-9 pr-8 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
+              style={{ background: C.inner, border: `1.5px solid ${C.inputBdr}`, color: C.txt }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View Mode Toggle */}
+            <div className="flex items-center p-1 rounded-xl" style={{ background: C.inner }}>
+              {[['table', BarChart3], ['cards', Layers]].map(([m, Ico]) => (
+                <button
+                  key={m}
+                  onClick={() => setViewMode(m)}
+                  className="p-1.5 rounded-lg transition-all cursor-pointer"
+                  style={{ background: viewMode === m ? `${C.accent}20` : 'transparent', color: viewMode === m ? C.accent : C.txtMuted }}
+                  aria-label={`Switch to ${m} view`}
+                >
+                  <Ico className="w-4 h-4" />
+                </button>
+              ))}
+            </div>
+
+            {/* Export & Actions Dropdown */}
+            <LuxuryDropdownMenu
+              trigger={
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all hover:opacity-85 cursor-pointer"
+                  style={{ background: C.inner, borderColor: C.inputBdr, color: C.txtSec }}
+                  aria-label="Export tools menu"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="hidden sm:inline">Export</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              }
+              items={[
+                { type: 'header', label: 'Directory Tools' },
+                { label: 'Export to CSV Spreadsheet', icon: Download, onClick: handleExportCSV },
+                { label: 'Reload Directory', icon: RefreshCw, onClick: () => toast.info('Refreshed directory list') },
+              ]}
+              isDark={C.isDark}
+            />
+
+            {/* Add User Button */}
+            <button
+              onClick={() => setAddingUser(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90 active:scale-95 cursor-pointer"
+              style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Member</span>
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: C.inner }}>
-            {['all','staff','therapist'].map(r => (
-              <button key={r} onClick={() => setRoleFilter(r)}
-                className="px-3 py-1.5 rounded-lg text-xs font-black capitalize transition-all"
-                style={{ background: roleFilter === r ? C.accent : 'transparent', color: roleFilter === r ? '#fff' : C.txtSec }}>
-                {r}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center p-1 rounded-xl" style={{ background: C.inner }}>
-            {[['table', BarChart3], ['cards', Layers]].map(([m, Ico]) => (
-              <button key={m} onClick={() => setViewMode(m)} className="p-1.5 rounded-lg transition-all"
-                style={{ background: viewMode === m ? `${C.accent}20` : 'transparent', color: viewMode === m ? C.accent : C.txtMuted }}>
-                <Ico className="w-4 h-4" />
-              </button>
-            ))}
-          </div>
-          <button onClick={() => setAddingUser(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
-            <Plus className="w-4 h-4" /> Add User
-          </button>
+
+        {/* Row 2: Dropdown Filters & Sorting */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 border-t" style={{ borderColor: C.divider }}>
+          {/* Role Filter Dropdown */}
+          <LuxurySelect
+            id="profiles-role-filter"
+            aria-label="Filter by operational role"
+            value={roleFilter}
+            onChange={setRoleFilter}
+            options={roleFilterOptions}
+            size="sm"
+            isDark={C.isDark}
+          />
+
+          {/* Status Filter Dropdown */}
+          <LuxurySelect
+            id="profiles-status-filter"
+            aria-label="Filter by account status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={statusFilterOptions}
+            size="sm"
+            isDark={C.isDark}
+          />
+
+          {/* Sort By Dropdown */}
+          <LuxurySelect
+            id="profiles-sort-filter"
+            aria-label="Sort users by"
+            value={sortBy}
+            onChange={setSortBy}
+            options={sortOptions}
+            size="sm"
+            isDark={C.isDark}
+          />
         </div>
       </div>
 
-      {/* Table / Cards */}
+      {/* Table / Cards View with Senior Dropdown Menus */}
       {viewMode === 'table' ? (
         <div className="rounded-2xl overflow-hidden" style={{ background: C.card, boxShadow: C.shadow }}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px]">
               <thead>
                 <tr style={{ background: C.tableHead }}>
-                  {['User','Specialization','Role','Status','Commission','Joined','Actions'].map(h => (
+                  {['User', 'Specialization', 'Role', 'Status', 'Commission', 'Joined', 'Actions'].map(h => (
                     <th key={h} className="px-4 py-3.5 text-left text-[9px] font-black uppercase tracking-widest" style={{ color: C.txtMuted }}>{h}</th>
                   ))}
                 </tr>
@@ -1087,11 +1338,14 @@ function TabProfiles({ users, onUsersChange }) {
                 {filtered.map((u, i) => {
                   const meta = ROLE_META[u.role] || ROLE_META.staff;
                   return (
-                    <tr key={u.id} onClick={() => setViewingUser(u)}
+                    <tr
+                      key={u.id}
+                      onClick={() => setViewingUser(u)}
                       className="cursor-pointer transition-colors group"
                       style={{ borderTop: i === 0 ? 'none' : `1px solid ${C.divider}` }}
                       onMouseEnter={e => e.currentTarget.style.background = C.inner}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
                           <Avatar name={u.name} gradient={meta.grad} size={36} />
@@ -1105,33 +1359,56 @@ function TabProfiles({ users, onUsersChange }) {
                       <td className="px-4 py-3.5"><RolePill role={u.role} /></td>
                       <td className="px-4 py-3.5"><StatusDot status={u.status} /></td>
                       <td className="px-4 py-3.5">
-                        {u.role === 'therapist'
-                          ? <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(245,158,11,0.12)', color: '#d97706' }}>{u.commRate}% Comm.</span>
-                          : <span className="text-[10px]" style={{ color: C.txtMuted }}>—</span>}
+                        {u.role === 'therapist' ? (
+                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(245,158,11,0.12)', color: '#d97706' }}>
+                            {u.commRate || 40}% Comm.
+                          </span>
+                        ) : (
+                          <span className="text-[10px]" style={{ color: C.txtMuted }}>Salary</span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 text-[11px]" style={{ color: C.txtMuted }}>{u.joined}</td>
                       <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => setEditingUser(u)}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:opacity-80"
-                            style={{ background: C.inner, color: C.txtSec }}>
+                          {/* Quick Edit */}
+                          <button
+                            onClick={() => setEditingUser(u)}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:opacity-80 cursor-pointer"
+                            style={{ background: C.inner, color: C.txtSec }}
+                            title="Edit user"
+                            aria-label={`Edit ${u.name}`}
+                          >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => toggleStatus(u.id)}
-                            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:opacity-80"
-                            style={{
-                              background: u.status === 'active' ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
-                              color: u.status === 'active' ? '#ef4444' : '#059669',
-                            }}>
-                            {u.status === 'active' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-                          </button>
+
+                          {/* Senior Dropdown Action Menu */}
+                          <LuxuryDropdownMenu
+                            trigger={
+                              <button
+                                type="button"
+                                className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:opacity-90 cursor-pointer"
+                                style={{ background: C.inner, color: C.txtSec }}
+                                aria-label={`Open menu for ${u.name}`}
+                              >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                              </button>
+                            }
+                            items={getUserMenuItems(u)}
+                            menuWidth={230}
+                            align="right"
+                            isDark={C.isDark}
+                          />
                         </div>
                       </td>
                     </tr>
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: C.txtMuted }}>No users match your search or filter.</td></tr>
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-sm" style={{ color: C.txtMuted }}>
+                      No team members match your filter or search criteria.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -1142,9 +1419,12 @@ function TabProfiles({ users, onUsersChange }) {
           {filtered.map(u => {
             const meta = ROLE_META[u.role] || ROLE_META.staff;
             return (
-              <div key={u.id} onClick={() => setViewingUser(u)}
-                className="p-5 rounded-2xl space-y-3.5 cursor-pointer transition-all hover:-translate-y-1"
-                style={{ background: C.card, boxShadow: C.shadow }}>
+              <div
+                key={u.id}
+                onClick={() => setViewingUser(u)}
+                className="p-5 rounded-2xl space-y-3.5 cursor-pointer transition-all hover:-translate-y-1 relative"
+                style={{ background: C.card, boxShadow: C.shadow }}
+              >
                 <div className="flex items-start gap-3 justify-between">
                   <div className="flex items-center gap-3">
                     <Avatar name={u.name} gradient={meta.grad} size={42} />
@@ -1153,11 +1433,38 @@ function TabProfiles({ users, onUsersChange }) {
                       <p className="text-[10px] mt-0.5" style={{ color: C.txtMuted }}>{u.email}</p>
                     </div>
                   </div>
-                  <StatusDot status={u.status} />
+
+                  <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                    <StatusDot status={u.status} />
+                    <LuxuryDropdownMenu
+                      trigger={
+                        <button
+                          type="button"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                          style={{ background: C.inner }}
+                          aria-label={`Actions for ${u.name}`}
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                      }
+                      items={getUserMenuItems(u)}
+                      menuWidth={230}
+                      align="right"
+                      isDark={C.isDark}
+                    />
+                  </div>
                 </div>
+
                 <div className="flex items-center justify-between pt-3" style={{ borderTop: `1px solid ${C.divider}` }}>
-                  <span className="text-xs" style={{ color: C.txtMuted }}>{u.specialty || '—'}</span>
-                  <RolePill role={u.role} />
+                  <span className="text-xs truncate max-w-[150px]" style={{ color: C.txtMuted }}>{u.specialty || '—'}</span>
+                  <div className="flex items-center gap-1.5">
+                    {u.role === 'therapist' && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.12)', color: '#d97706' }}>
+                        {u.commRate || 40}%
+                      </span>
+                    )}
+                    <RolePill role={u.role} />
+                  </div>
                 </div>
               </div>
             );
@@ -1171,20 +1478,27 @@ function TabProfiles({ users, onUsersChange }) {
 /* ─────────────────────────────────────────────────────────────── */
 /*  TAB 2: WORK SCHEDULES                                           */
 /* ─────────────────────────────────────────────────────────────── */
-function TabSchedules({ users }) {
+function TabSchedules({ users, focusedMemberId }) {
   const C = useC();
   const { toast } = useToast();
   const buildDefault = () => Object.fromEntries(DAYS.map((d, i) => [d, i < 5 ? ['morning','afternoon'] : i === 5 ? ['morning'] : []]));
-  const teamUsers = users.filter(u => u.role === 'staff' || u.role === 'therapist');
+  const teamUsers = useMemo(() => users.filter(u => u.role === 'staff' || u.role === 'therapist'), [users]);
 
-  const [selected, setSelected]     = useState(teamUsers[0]?.id || null);
+  const [selected, setSelected]     = useState(focusedMemberId || teamUsers[0]?.id || null);
   const [schedules, setSchedules]   = useState(() => Object.fromEntries(users.map(u => [u.id, buildDefault()])));
   const [roleFilter, setRoleFilter] = useState('all');
   const [saving, setSaving]         = useState(false);
   const [saved, setSaved]           = useState(false);
 
-  const filteredTeam = teamUsers.filter(u => roleFilter === 'all' || u.role === roleFilter);
-  const person       = filteredTeam.find(u => u.id === selected) || null;
+  useEffect(() => {
+    if (focusedMemberId) setSelected(focusedMemberId);
+  }, [focusedMemberId]);
+
+  const filteredTeam = useMemo(() => {
+    return teamUsers.filter(u => roleFilter === 'all' || u.role === roleFilter);
+  }, [teamUsers, roleFilter]);
+
+  const person       = filteredTeam.find(u => u.id === selected) || teamUsers.find(u => u.id === selected) || null;
   const sched        = selected ? (schedules[selected] || {}) : {};
   const totalShifts  = Object.values(sched).reduce((a, b) => a + b.length, 0);
 
@@ -1197,30 +1511,124 @@ function TabSchedules({ users }) {
     setSaved(false);
   };
 
+  const applyShiftPreset = (type) => {
+    if (!selected) return;
+    setSchedules(prev => {
+      const targetSched = { ...(prev[selected] || {}) };
+      if (type === 'full-weekday') {
+        DAYS.forEach((d, i) => {
+          targetSched[d] = i < 5 ? ['morning', 'afternoon'] : [];
+        });
+      } else if (type === 'morning-weekday') {
+        DAYS.forEach((d, i) => {
+          targetSched[d] = i < 5 ? ['morning'] : [];
+        });
+      } else if (type === 'afternoon-weekday') {
+        DAYS.forEach((d, i) => {
+          targetSched[d] = i < 5 ? ['afternoon'] : [];
+        });
+      } else if (type === 'evening-weekday') {
+        DAYS.forEach((d, i) => {
+          targetSched[d] = i < 5 ? ['evening'] : [];
+        });
+      } else if (type === 'weekend-only') {
+        DAYS.forEach((d, i) => {
+          targetSched[d] = i >= 5 ? ['morning', 'afternoon'] : [];
+        });
+      } else if (type === 'clear') {
+        DAYS.forEach(d => {
+          targetSched[d] = [];
+        });
+      } else if (type === 'dup-mon') {
+        const monShifts = targetSched['Mon'] || [];
+        DAYS.forEach((d, i) => {
+          if (i < 5) targetSched[d] = [...monShifts];
+        });
+      }
+      return { ...prev, [selected]: targetSched };
+    });
+    toast.success('Roster template applied to shifts!');
+    setSaved(false);
+  };
+
   const save = async () => {
     setSaving(true);
     await new Promise(r => setTimeout(r, 500));
     setSaving(false); setSaved(true);
-    toast.success('Shifts saved!');
+    toast.success('Shift schedule saved successfully!');
     setTimeout(() => setSaved(false), 3000);
   };
+
+  // Dropdown options for selecting team members across all devices
+  const memberSelectOptions = filteredTeam.map(u => {
+    const hrs = Object.values(schedules[u.id] || {}).reduce((a, b) => a + b.length, 0) * 4;
+    return {
+      value: u.id,
+      label: `${u.name} (${u.role === 'therapist' ? 'Therapist' : 'Staff'}) — ${hrs} hrs`,
+      description: u.specialty || u.role,
+      tag: `${hrs}h`,
+      tagColor: hrs > 0 ? '#10b981' : '#64748b',
+      tagBg: hrs > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
+    };
+  });
+
+  const roleFilterOptions = [
+    { value: 'all',       label: `All Team Roles (${teamUsers.length})`, icon: Users },
+    { value: 'therapist', label: `Therapists Only (${teamUsers.filter(u => u.role === 'therapist').length})`, icon: Stethoscope },
+    { value: 'staff',     label: `Staff Coordinators (${teamUsers.filter(u => u.role === 'staff').length})`, icon: UserCog },
+  ];
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-black" style={{ color: C.txt }}>Work Schedules</h2>
-          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Assign and manage weekly shift rosters for your team</p>
+          <h2 className="text-lg font-black" style={{ color: C.txt }}>Work Schedules & Shift Rosters</h2>
+          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Assign weekly shift duties with instant automated scheduling templates</p>
         </div>
-        {person && (
-          <button onClick={save} disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
-            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : saved ? <CheckCheck className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-            {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Shifts'}
-          </button>
-        )}
+
+        <div className="flex items-center gap-2">
+          {/* Shift Presets Action Dropdown */}
+          {person && (
+            <LuxuryDropdownMenu
+              trigger={
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all hover:opacity-90 cursor-pointer"
+                  style={{ background: C.card, borderColor: C.inputBdr, color: C.txt }}
+                  aria-label="Shift presets menu"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Shift Templates</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              }
+              items={[
+                { type: 'header', label: 'Quick Schedule Presets' },
+                { label: 'Apply Mon–Fri Full Day (8h/day)', description: 'Morning + Afternoon shifts (8 AM – 5 PM)', onClick: () => applyShiftPreset('full-weekday') },
+                { label: 'Apply Mon–Fri Morning (4h/day)', description: 'Morning shifts (8 AM – 12 PM)', onClick: () => applyShiftPreset('morning-weekday') },
+                { label: 'Apply Mon–Fri Afternoon (4h/day)', description: 'Afternoon shifts (1 PM – 5 PM)', onClick: () => applyShiftPreset('afternoon-weekday') },
+                { label: 'Apply Mon–Fri Evening (4h/day)', description: 'Evening shifts (6 PM – 10 PM)', onClick: () => applyShiftPreset('evening-weekday') },
+                { label: 'Apply Weekend Only (Sat & Sun)', description: 'Weekend coverage shifts', onClick: () => applyShiftPreset('weekend-only') },
+                { label: 'Duplicate Monday to Weekdays', description: 'Copy Mon roster across Tue–Fri', onClick: () => applyShiftPreset('dup-mon') },
+                { type: 'divider' },
+                { label: 'Clear All Shifts for this User', description: 'Reset weekly shifts', danger: true, onClick: () => applyShiftPreset('clear') },
+              ]}
+              menuWidth={250}
+              align="right"
+              isDark={C.isDark}
+            />
+          )}
+
+          {person && (
+            <button onClick={save} disabled={saving}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90 cursor-pointer"
+              style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
+              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : saved ? <CheckCheck className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+              {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Shifts'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Shift legend */}
@@ -1236,29 +1644,42 @@ function TabSchedules({ users }) {
         ))}
       </div>
 
+      {/* Responsive Member Selector for Small Screens */}
+      <div className="block lg:hidden p-3.5 rounded-2xl space-y-2" style={{ background: C.card, boxShadow: C.shadow }}>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Team Member to Schedule:</p>
+        <LuxurySelect
+          id="mobile-schedule-member-select"
+          value={selected}
+          onChange={setSelected}
+          options={memberSelectOptions}
+          searchable
+          isDark={C.isDark}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Roster */}
-        <div className="lg:col-span-4 rounded-2xl overflow-hidden" style={{ background: C.card, boxShadow: C.shadow }}>
-          <div className="p-3.5" style={{ borderBottom: `1px solid ${C.divider}` }}>
-            <p className="text-[10px] font-black uppercase tracking-widest mb-2.5" style={{ color: C.txtMuted }}>Team Roster</p>
-            <div className="flex gap-1">
-              {['all','staff','therapist'].map(r => (
-                <button key={r} onClick={() => setRoleFilter(r)}
-                  className="flex-1 py-1.5 rounded-lg text-[10px] font-black capitalize transition-all"
-                  style={{ background: roleFilter === r ? C.accent : C.inner, color: roleFilter === r ? '#fff' : C.txtSec }}>
-                  {r}
-                </button>
-              ))}
-            </div>
+        {/* Roster Column */}
+        <div className="hidden lg:block lg:col-span-4 rounded-2xl overflow-hidden" style={{ background: C.card, boxShadow: C.shadow }}>
+          <div className="p-3.5 space-y-2" style={{ borderBottom: `1px solid ${C.divider}` }}>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.txtMuted }}>Team Roster</p>
+            <LuxurySelect
+              id="schedule-role-filter"
+              value={roleFilter}
+              onChange={setRoleFilter}
+              options={roleFilterOptions}
+              size="sm"
+              isDark={C.isDark}
+            />
           </div>
-          <div className="p-2 space-y-0.5 max-h-[62vh] overflow-y-auto">
+
+          <div className="p-2 space-y-0.5 max-h-[62vh] overflow-y-auto custom-scrollbar">
             {filteredTeam.map(u => {
               const isSel = selected === u.id;
               const meta  = ROLE_META[u.role] || ROLE_META.staff;
               const hrs   = Object.values(schedules[u.id] || {}).reduce((a, b) => a + b.length, 0) * 4;
               return (
                 <button key={u.id} onClick={() => setSelected(u.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left cursor-pointer"
                   style={{ background: isSel ? `${C.accent}12` : 'transparent', borderLeft: `3px solid ${isSel ? C.accent : 'transparent'}` }}>
                   <Avatar name={u.name} gradient={meta.grad} size={36} />
                   <div className="min-w-0 flex-1">
@@ -1280,7 +1701,7 @@ function TabSchedules({ users }) {
                 <Calendar className="w-6 h-6" style={{ color: C.txtMuted }} />
               </div>
               <p className="text-sm font-bold" style={{ color: C.txt }}>Select a team member</p>
-              <p className="text-xs mt-1" style={{ color: C.txtMuted }}>Choose from the roster on the left</p>
+              <p className="text-xs mt-1" style={{ color: C.txtMuted }}>Choose from the roster list or dropdown</p>
             </div>
           ) : (
             <>
@@ -1335,7 +1756,7 @@ function TabSchedules({ users }) {
                             const active = dayShifts.includes(sh.id);
                             return (
                               <button key={sh.id} onClick={() => toggle(day, sh.id)}
-                                className="flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl text-center transition-all text-[9px] font-bold"
+                                className="flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl text-center transition-all text-[9px] font-bold cursor-pointer"
                                 style={{ background: active ? sh.bg : C.card, color: active ? sh.color : C.txtMuted, outline: active ? `1.5px solid ${sh.color}50` : 'none' }}>
                                 <span>{sh.icon}</span>
                                 <span>{sh.label}</span>
@@ -1353,7 +1774,7 @@ function TabSchedules({ users }) {
                           const active = dayShifts.includes(sh.id);
                           return (
                             <button key={sh.id} onClick={() => toggle(day, sh.id)}
-                              className="flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl text-center transition-all hover:scale-[1.04] active:scale-95"
+                              className="flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl text-center transition-all hover:scale-[1.04] active:scale-95 cursor-pointer"
                               style={{ background: active ? sh.bg : C.card, color: active ? sh.color : C.txtMuted, outline: active ? `1.5px solid ${sh.color}50` : 'none' }}>
                               <span className="text-sm leading-none">{sh.icon}</span>
                               <span className="text-[10px] font-black">{sh.label}</span>
@@ -1392,11 +1813,24 @@ function TabSchedules({ users }) {
 /* ─────────────────────────────────────────────────────────────── */
 /*  TAB 3: THERAPIST QUEUE                                          */
 /* ─────────────────────────────────────────────────────────────── */
-function TabQueue({ users }) {
+function TabQueue({ users, onSelectTab }) {
   const C = useC();
   const { toast } = useToast();
-  const therapists = users.filter(u => u.role === 'therapist' && u.status === 'active');
-  const [queue, setQueue] = useState(therapists.map((t, i) => ({ ...t, position: i + 1, sessions: 0 })));
+  const therapists = useMemo(() => users.filter(u => u.role === 'therapist' && u.status === 'active'), [users]);
+  const [queue, setQueue] = useState(() => therapists.map((t, i) => ({ ...t, position: i + 1, sessions: 0 })));
+  const [queueFilter, setQueueFilter] = useState('all');
+
+  useEffect(() => {
+    setQueue(prev => {
+      // Retain previous session counts if present
+      const map = new Map(prev.map(p => [p.id, p]));
+      return therapists.map((t, i) => ({
+        ...t,
+        position: i + 1,
+        sessions: map.get(t.id)?.sessions || 0,
+      }));
+    });
+  }, [therapists]);
 
   const swap = (idx, dir) => {
     const ni = idx + dir;
@@ -1408,63 +1842,154 @@ function TabQueue({ users }) {
     });
   };
 
+  const moveToTop = (idx) => {
+    if (idx === 0) return;
+    setQueue(prev => {
+      const target = prev[idx];
+      const rest = prev.filter((_, i) => i !== idx);
+      toast.success(`${target.name} promoted to Next Up!`);
+      return [target, ...rest].map((t, i) => ({ ...t, position: i + 1 }));
+    });
+  };
+
+  const sendToEnd = (idx) => {
+    if (idx === queue.length - 1) return;
+    setQueue(prev => {
+      const target = prev[idx];
+      const rest = prev.filter((_, i) => i !== idx);
+      toast.info(`${target.name} moved to the end of the queue.`);
+      return [...rest, target].map((t, i) => ({ ...t, position: i + 1 }));
+    });
+  };
+
   const markServed = id => {
     setQueue(prev => {
       const target = prev.find(t => t.id === id);
       const rest   = prev.filter(t => t.id !== id);
-      toast.success(`Session assigned to ${target?.name}. Moved to end.`);
+      toast.success(`Session dispatched to ${target?.name}. Moved to end of queue.`);
       return [...rest, { ...target, sessions: target.sessions + 1 }].map((t, i) => ({ ...t, position: i + 1 }));
     });
   };
 
+  const resetCount = id => {
+    setQueue(prev => prev.map(t => t.id === id ? { ...t, sessions: 0 } : t));
+    toast.info('Session count reset.');
+  };
+
+  const queueFilterOptions = [
+    { value: 'all',       label: `All Active Queue (${queue.length})` },
+    { value: 'next',      label: 'Next Up Only (#1)' },
+    { value: 'served',    label: `Served Today (${queue.filter(t => t.sessions > 0).length})` },
+  ];
+
+  const filteredQueue = useMemo(() => {
+    if (queueFilter === 'next') return queue.slice(0, 1);
+    if (queueFilter === 'served') return queue.filter(t => t.sessions > 0);
+    return queue;
+  }, [queue, queueFilter]);
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-black" style={{ color: C.txt }}>Therapist Queue & Rotation</h2>
-        <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Fair dispatch scheduling for active therapists</p>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-black" style={{ color: C.txt }}>Therapist Queue & Rotation</h2>
+          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Fair dispatch scheduling & walk-in rotation for active therapists</p>
+        </div>
+
+        <div className="w-full sm:w-60">
+          <LuxurySelect
+            id="queue-filter"
+            value={queueFilter}
+            onChange={setQueueFilter}
+            options={queueFilterOptions}
+            size="sm"
+            isDark={C.isDark}
+          />
+        </div>
       </div>
 
       <div className="space-y-2.5">
-        {queue.map((t, idx) => (
-          <div key={t.id} className="flex items-center gap-3 p-4 rounded-2xl transition-all"
-            style={{ background: C.card, boxShadow: C.shadow, outline: idx === 0 ? `2px solid ${C.accent}40` : 'none' }}>
-            {/* Position badge */}
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs flex-shrink-0"
-              style={{ background: idx === 0 ? `linear-gradient(135deg,#059669,#0a5f3c)` : C.inner, color: idx === 0 ? '#fff' : C.txtMuted }}>
-              #{t.position}
-            </div>
-            <Avatar name={t.name} gradient={ROLE_META[t.role]?.grad} size={40} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center flex-wrap gap-2">
-                <p className="text-sm font-bold truncate" style={{ color: C.txt }}>{t.name}</p>
-                {idx === 0 && <span className="text-[9px] font-black px-2 py-0.5 rounded-full text-white" style={{ background: C.accent }}>NEXT UP</span>}
-                {t.sessions > 0 && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }}>{t.sessions} served</span>}
+        {filteredQueue.map((t, idx) => {
+          const isFirst = t.position === 1;
+          const queueActions = [
+            { type: 'header', label: `${t.name} Dispatch` },
+            { label: 'Assign Session & Rotate', icon: Sparkles, onClick: () => markServed(t.id) },
+            { label: 'Promote to Next Up (#1)', icon: Crown, disabled: isFirst, onClick: () => moveToTop(idx) },
+            { label: 'Move Up in Queue', icon: ChevronUp, disabled: idx === 0, onClick: () => swap(idx, -1) },
+            { label: 'Move Down in Queue', icon: ChevronDown, disabled: idx === queue.length - 1, onClick: () => swap(idx, 1) },
+            { label: 'Send to End of Queue', icon: RotateCcw, onClick: () => sendToEnd(idx) },
+            { label: 'Reset Served Session Count', icon: RefreshCw, onClick: () => resetCount(t.id) },
+            { type: 'divider' },
+            { label: 'View Schedule Shifts', icon: Calendar, onClick: () => onSelectTab && onSelectTab('schedules', t.id) },
+          ];
+
+          return (
+            <div key={t.id} className="flex items-center gap-3 p-4 rounded-2xl transition-all"
+              style={{ background: C.card, boxShadow: C.shadow, outline: isFirst ? `2px solid ${C.accent}40` : 'none' }}>
+              {/* Position badge */}
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs flex-shrink-0"
+                style={{ background: isFirst ? `linear-gradient(135deg,#059669,#0a5f3c)` : C.inner, color: isFirst ? '#fff' : C.txtMuted }}>
+                #{t.position}
               </div>
-              <p className="text-xs truncate mt-0.5" style={{ color: C.txtMuted }}>{t.specialty}</p>
+
+              <Avatar name={t.name} gradient={ROLE_META[t.role]?.grad} size={40} />
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center flex-wrap gap-2">
+                  <p className="text-sm font-bold truncate" style={{ color: C.txt }}>{t.name}</p>
+                  {isFirst && <span className="text-[9px] font-black px-2 py-0.5 rounded-full text-white" style={{ background: C.accent }}>NEXT UP</span>}
+                  {t.sessions > 0 && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }}>{t.sessions} served</span>}
+                </div>
+                <p className="text-xs truncate mt-0.5" style={{ color: C.txtMuted }}>{t.specialty}</p>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button onClick={() => swap(idx, -1)} disabled={idx === 0}
+                  className="p-2 rounded-xl transition-all hover:opacity-80 disabled:opacity-25 cursor-pointer"
+                  style={{ background: C.inner, color: C.txtSec }}
+                  title="Move Up"
+                  aria-label="Move Up">
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button onClick={() => swap(idx, 1)} disabled={idx === queue.length - 1}
+                  className="p-2 rounded-xl transition-all hover:opacity-80 disabled:opacity-25 cursor-pointer"
+                  style={{ background: C.inner, color: C.txtSec }}
+                  title="Move Down"
+                  aria-label="Move Down">
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                <button onClick={() => markServed(t.id)}
+                  className="px-3 sm:px-4 py-2 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90 whitespace-nowrap cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
+                  Assign & Rotate
+                </button>
+
+                {/* Queue Actions Dropdown */}
+                <LuxuryDropdownMenu
+                  trigger={
+                    <button
+                      type="button"
+                      className="p-2 rounded-xl text-slate-400 hover:text-slate-200 cursor-pointer"
+                      style={{ background: C.inner }}
+                      aria-label={`Queue options for ${t.name}`}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  }
+                  items={queueActions}
+                  menuWidth={230}
+                  align="right"
+                  isDark={C.isDark}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <button onClick={() => swap(idx, -1)} disabled={idx === 0}
-                className="p-2 rounded-xl transition-all hover:opacity-80 disabled:opacity-25"
-                style={{ background: C.inner, color: C.txtSec }}>
-                <ChevronUp className="w-4 h-4" />
-              </button>
-              <button onClick={() => swap(idx, 1)} disabled={idx === queue.length - 1}
-                className="p-2 rounded-xl transition-all hover:opacity-80 disabled:opacity-25"
-                style={{ background: C.inner, color: C.txtSec }}>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              <button onClick={() => markServed(t.id)}
-                className="px-3 sm:px-4 py-2 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90 whitespace-nowrap"
-                style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
-                Assign & Rotate
-              </button>
-            </div>
-          </div>
-        ))}
-        {queue.length === 0 && (
+          );
+        })}
+
+        {filteredQueue.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl" style={{ background: C.card }}>
-            <p className="text-sm font-bold" style={{ color: C.txt }}>No active therapists</p>
-            <p className="text-xs mt-1" style={{ color: C.txtMuted }}>All therapists are currently inactive</p>
+            <p className="text-sm font-bold" style={{ color: C.txt }}>No therapists in this queue view</p>
+            <p className="text-xs mt-1" style={{ color: C.txtMuted }}>All therapists are either inactive or filtered out</p>
           </div>
         )}
       </div>
@@ -1488,11 +2013,32 @@ function TabRBAC() {
     setSaved(false);
   };
 
+  const applyPreset = (template) => {
+    if (template === 'default') {
+      setPerms(INITIAL_PERMS);
+      toast.success('Applied default role permissions!');
+    } else if (template === 'staff-expanded') {
+      setPerms(prev => ({
+        ...prev,
+        staff: { bookings: true, services: true, history: true, settings: true, analytics: true, userMgmt: false },
+      }));
+      toast.success('Granted expanded operational access to Staff Coordinator!');
+    } else if (template === 'strict') {
+      setPerms(prev => ({
+        ...prev,
+        staff: { bookings: true, services: false, history: false, settings: false, analytics: false, userMgmt: false },
+        therapist: { bookings: true, services: false, history: false, settings: false, analytics: false, userMgmt: false },
+      }));
+      toast.info('Applied strict minimal access permissions!');
+    }
+    setSaved(false);
+  };
+
   const save = async () => {
     setSaving(true);
     try { await axios.post('/admin/rbac/permissions', { permissions: perms }); } catch {}
     setSaving(false); setSaved(true);
-    toast.success('RBAC permissions updated!');
+    toast.success('RBAC permissions updated and saved!');
     setTimeout(() => setSaved(false), 3000);
   };
 
@@ -1503,14 +2049,42 @@ function TabRBAC() {
           <h2 className="text-lg font-black flex items-center gap-2" style={{ color: C.txt }}>
             <Shield className="w-5 h-5" style={{ color: C.accent }} /> Role-Based Access Control
           </h2>
-          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Configure permission levels per system role</p>
+          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Configure system permission levels per operational role</p>
         </div>
-        <button onClick={save} disabled={saving}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90"
-          style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
-          {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : saved ? <CheckCheck className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Permissions'}
-        </button>
+
+        <div className="flex items-center gap-2">
+          {/* Permission Presets Dropdown */}
+          <LuxuryDropdownMenu
+            trigger={
+              <button
+                type="button"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all hover:opacity-90 cursor-pointer"
+                style={{ background: C.card, borderColor: C.inputBdr, color: C.txt }}
+                aria-label="Permission presets menu"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Permission Templates</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            }
+            items={[
+              { type: 'header', label: 'Preset Templates' },
+              { label: 'Reset to Factory Defaults', icon: RotateCcw, onClick: () => applyPreset('default') },
+              { label: 'Grant Expanded Staff Access', icon: UserCheck, description: 'Bookings, Services, History & Analytics', onClick: () => applyPreset('staff-expanded') },
+              { label: 'Strict Minimal Access Policy', icon: Shield, description: 'Restricts Staff to Bookings queue only', onClick: () => applyPreset('strict') },
+            ]}
+            menuWidth={260}
+            align="right"
+            isDark={C.isDark}
+          />
+
+          <button onClick={save} disabled={saving}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90 cursor-pointer"
+            style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
+            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : saved ? <CheckCheck className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+            {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Permissions'}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -1574,11 +2148,12 @@ function TabRBAC() {
 }
 
 /* ─────────────────────────────────────────────────────────────── */
-/*  ROOT                                                            */
+/*  ROOT COMPONENT: USER MANAGEMENT                                 */
 /* ─────────────────────────────────────────────────────────────── */
 export default function AdminUserMaintenance() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'profiles';
+  const [focusedMemberId, setFocusedMemberId] = useState(null);
   const [users, setUsers] = useState(MOCK_USERS);
 
   useEffect(() => {
@@ -1615,6 +2190,11 @@ export default function AdminUserMaintenance() {
       });
   }, []);
 
+  const handleNavigateTab = (tabName, memberId) => {
+    if (memberId) setFocusedMemberId(memberId);
+    setSearchParams({ tab: tabName });
+  };
+
   const subMap = { profiles: 'User Profiles', schedules: 'Work Schedules', queue: 'Therapist Queue', rbac: 'Permissions' };
 
   return (
@@ -1626,17 +2206,17 @@ export default function AdminUserMaintenance() {
       <AnimatePresence mode="wait">
         {activeTab === 'profiles' && (
           <motion.div key="profiles" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.16 }}>
-            <TabProfiles users={users} onUsersChange={setUsers} />
+            <TabProfiles users={users} onUsersChange={setUsers} onSelectTab={handleNavigateTab} />
           </motion.div>
         )}
         {activeTab === 'schedules' && (
           <motion.div key="schedules" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.16 }}>
-            <TabSchedules users={users} />
+            <TabSchedules users={users} focusedMemberId={focusedMemberId} />
           </motion.div>
         )}
         {activeTab === 'queue' && (
           <motion.div key="queue" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.16 }}>
-            <TabQueue users={users} />
+            <TabQueue users={users} onSelectTab={handleNavigateTab} />
           </motion.div>
         )}
         {activeTab === 'rbac' && (

@@ -100,7 +100,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
   const { theme, toggleTheme } = useTheme();
   const { user, logout }       = useAuth();
-  const { notifs, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifs, unreadCount, markRead, markAllRead, refresh } = useNotifications();
   const navigate               = useNavigate();
   const location               = useLocation();
 
@@ -126,7 +126,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         )
         .slice(0, 12);
 
-  /* outside click handler (mouse + touch) */
+  /* outside click handler */
   useEffect(() => {
     const handler = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) setShowProfile(false);
@@ -134,10 +134,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
       if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false);
     };
     document.addEventListener('mousedown', handler);
-    document.addEventListener('touchstart', handler, { passive: true });
     return () => {
       document.removeEventListener('mousedown', handler);
-      document.removeEventListener('touchstart', handler);
     };
   }, []);
 
@@ -239,13 +237,13 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
       <Sidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* ── Right canvas ── */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-x-clip min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
 
         {/* ════════════════════════════════════════
             TOP HEADER BAR
         ════════════════════════════════════════ */}
         <header
-          className="sticky top-0 z-30 px-4 sm:px-6 lg:px-8 backdrop-blur-xl"
+          className="sticky top-0 z-40 px-4 sm:px-6 lg:px-8 backdrop-blur-xl"
           style={{
             background: isDark
               ? 'rgba(13,17,28,0.96)'
@@ -310,8 +308,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
             {/* Right controls */}
             <div
-              className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 overflow-x-auto"
-              style={{ scrollbarWidth: 'none' }}
+              className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
               role="toolbar"
               aria-label="Right header controls"
             >
@@ -429,15 +426,20 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               {/* ── Notification Bell ── */}
               <div className="relative" ref={notifRef}>
                 <button
+                  id="notif-bell-btn"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setShowNotifs(v => !v);
+                    setShowNotifs((v) => {
+                      const next = !v;
+                      if (next && refresh) refresh();
+                      return next;
+                    });
                   }}
                   aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                   aria-haspopup="dialog"
                   aria-expanded={showNotifs}
-                  className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90 touch-manipulation cursor-pointer"
+                  className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 touch-manipulation cursor-pointer select-none"
                   style={{
                     background: showNotifs
                       ? (isDark ? 'rgba(52,211,153,0.16)' : 'rgba(10,61,48,0.12)')
@@ -449,10 +451,9 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                   <Bell className="w-4 h-4 transition-transform duration-200" aria-hidden="true" />
                   {unreadCount > 0 && (
                     <span
-                      className="absolute top-0 right-0 min-w-[17px] h-[17px] px-1 rounded-full flex items-center justify-center text-[9px] font-black text-white pointer-events-none shadow-sm z-10"
+                      className="absolute top-1 right-1 min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center text-[8.5px] font-bold text-white pointer-events-none shadow-xs z-10"
                       style={{
                         background: '#ef4444',
-                        border: `2px solid ${isDark ? '#0d111c' : '#ffffff'}`,
                         lineHeight: 1,
                       }}
                     >
@@ -469,12 +470,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
-                      className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden"
+                      className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 sm:hidden"
                       onClick={(e) => {
-                        e.stopPropagation();
-                        setShowNotifs(false);
-                      }}
-                      onTouchEnd={(e) => {
                         e.stopPropagation();
                         setShowNotifs(false);
                       }}
@@ -483,7 +480,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                   )}
                 </AnimatePresence>
 
-                {/* Notification Panel */}
+                {/* Notification Panel — Responsive across all devices */}
                 <AnimatePresence>
                   {showNotifs && (
                     <motion.div
@@ -494,9 +491,9 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       role="dialog"
                       aria-modal="true"
                       aria-label="Notifications panel"
-                      className="absolute right-[-44px] sm:right-0 top-full mt-2.5 rounded-2xl overflow-hidden z-50 shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                      className="fixed left-3 right-3 top-[64px] sm:inset-auto sm:absolute sm:right-0 sm:top-full sm:mt-2.5 rounded-2xl overflow-hidden z-50 shadow-2xl sm:w-[380px]"
                       style={{
-                        width: 'min(380px, calc(100vw - 1.5rem))',
                         maxWidth: 'calc(100vw - 1.5rem)',
                         background: isDark ? '#18202f' : '#ffffff',
                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
@@ -606,8 +603,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                               className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm shadow-xs"
                               style={{
                                 background: n.unread
-                                  ? (isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)')
-                                  : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+                                    ? (isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)')
+                                    : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
                                 border: `1px solid ${n.unread ? (isDark ? 'rgba(52,211,153,0.3)' : 'rgba(10,61,48,0.2)') : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')}`,
                               }}
                             >
