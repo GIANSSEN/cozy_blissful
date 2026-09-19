@@ -27,7 +27,7 @@ class TherapistController extends Controller
             ->count();
 
         // Total hours worked based on completed appointments
-        $hoursWorked = Appointment::where('therapist_id', $user->id)
+        $hoursWorked = Appointment::where('appointments.therapist_id', $user->id)
             ->whereIn('appointments.status', ['Completed by Therapist', 'Completed'])
             ->join('services', 'appointments.service_id', '=', 'services.id')
             ->sum('services.duration') / 60.0;

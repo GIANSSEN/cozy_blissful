@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { ToastProvider } from './context/ToastContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // Public Pages
@@ -113,7 +114,9 @@ function App() {
           <ToastProvider>
             <CartProvider>
               <BrowserRouter>
-                <AnimatedRoutes />
+                <ErrorBoundary>
+                  <AnimatedRoutes />
+                </ErrorBoundary>
               </BrowserRouter>
             </CartProvider>
           </ToastProvider>
