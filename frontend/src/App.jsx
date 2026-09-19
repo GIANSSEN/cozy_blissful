@@ -42,6 +42,9 @@ import ClientDashboard from './pages/client/ClientDashboard';
 import PaymentSuccess from './pages/payment/PaymentSuccess';
 import PaymentCancel from './pages/payment/PaymentCancel';
 
+// 404 Page
+import NotFound from './pages/NotFound';
+
 // Page transition wrapper
 const PageTransition = ({ children }) => (
   <motion.div
@@ -96,11 +99,12 @@ function AnimatedRoutes() {
         <Route path="/staff/appointments" element={<ProtectedRoute allowedRoles={['staff']}><PageTransition><StaffAppointments /></PageTransition></ProtectedRoute>} />
 
         {/* ── Client ─────────────────────────────────────────────────────── */}
-        <Route path="/booking/dashboard" element={<ProtectedRoute allowedRoles={['client']}><PageTransition><ClientDashboard /></PageTransition></ProtectedRoute>} />
+        {/* /booking/dashboard redirects to canonical /client/dashboard (MED-7) */}
+        <Route path="/booking/dashboard" element={<Navigate to="/client/dashboard" replace />} />
         <Route path="/client/dashboard"  element={<ProtectedRoute allowedRoles={['client']}><PageTransition><ClientDashboard /></PageTransition></ProtectedRoute>} />
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 404 — proper Not Found page instead of silent redirect (HIGH-4) */}
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );

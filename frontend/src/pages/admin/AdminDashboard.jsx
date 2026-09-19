@@ -907,6 +907,11 @@ const AdminDashboard = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  /* ─── Manual Refresh Handler ──────────────────────────────────────── */
+  const handleRefresh = useCallback(async () => {
+    await load(true);
+  }, [load]);
+
   /* ─── Auto-Refresh Countdown ─────────────────────────────────────── */
   useEffect(() => {
     if (!autoRefresh) return;
@@ -1259,47 +1264,40 @@ const AdminDashboard = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap" role="toolbar" aria-label="Dashboard Actions">
-            <button type="button" onClick={() => navigate('/admin/appointments')} aria-label="Go to Bookings Queue"
-              className="hidden md:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-              style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
-              <Calendar className="w-3.5 h-3.5" style={{ color: t.accent }} aria-hidden="true" />
-              <span>Bookings</span>
-            </button>
-
-            <button type="button" onClick={() => navigate('/admin/customers')} aria-label="Go to Customer Records"
-              className="hidden lg:inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-              style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
-              <Users className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
-              <span>Clients</span>
-            </button>
-
-            {/* Auto-refresh toggle with countdown */}
-            <button type="button" onClick={() => setAutoRefresh(!autoRefresh)}
-              aria-pressed={autoRefresh}
-              title={autoRefresh ? `Auto-sync ON — refreshes in ${countdown}s` : 'Enable auto-refresh every 30s'}
-              className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-              style={{ background: autoRefresh ? t.accentAlpha : t.inner, border: autoRefresh ? `1px solid ${t.accent}` : t.innerBorder, color: autoRefresh ? t.accent : t.txtMuted }}>
-              {autoRefresh
-                ? <><Pause className="w-3 h-3" aria-hidden="true" /><span className="tabular-nums font-mono text-[10px]">{countdown}s</span></>
-                : <><Play className="w-3 h-3" aria-hidden="true" /><span className="hidden sm:inline text-[11px]">Auto</span></>}
-            </button>
-
+          <div className="flex items-center gap-2" role="toolbar" aria-label="Dashboard Actions">
             <div aria-live="polite" aria-atomic="true" className="sr-only">
               {refreshSuccess ? 'Dashboard data refreshed.' : ''}
             </div>
             {refreshSuccess && (
-              <motion.span initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}
-                className="text-[11px] font-bold text-emerald-500 flex items-center gap-1 shrink-0" aria-hidden="true">
+              <motion.span
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-xs font-bold text-emerald-500 flex items-center gap-1 shrink-0"
+                aria-hidden="true"
+              >
                 <Check className="w-3.5 h-3.5" /> Synced
               </motion.span>
             )}
 
-            <button type="button" onClick={() => load(true)} disabled={refreshing} aria-label="Refresh dashboard"
-              className="flex items-center gap-2 text-xs font-bold px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl transition-all hover:opacity-85 active:scale-95 cursor-pointer disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-              style={{ background: t.inner, border: t.innerBorder, color: t.txtSub }}>
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} style={{ color: t.accent }} aria-hidden="true" />
-              <span className="hidden xs:inline">{refreshing ? 'Syncing...' : 'Refresh'}</span>
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              aria-label="Refresh dashboard data"
+              className="flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl transition-all hover:opacity-90 active:scale-95 cursor-pointer disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none shadow-sm"
+              style={{
+                background: isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.06)',
+                border: `1px solid ${isDark ? 'rgba(52,211,153,0.25)' : 'rgba(10,61,48,0.15)'}`,
+                color: isDark ? '#34d399' : '#0a3d30',
+              }}
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
+                style={{ color: isDark ? '#34d399' : '#0a3d30' }}
+                aria-hidden="true"
+              />
+              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
           </div>
         </motion.section>

@@ -19,9 +19,20 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    /*
+    |--------------------------------------------------------------------------
+    | SECURITY: Restrict allowed origins before deploying to production.
+    | Set CORS_ALLOWED_ORIGINS in your .env to a comma-separated list:
+    |   CORS_ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+    |
+    | For local development this defaults to localhost origins.
+    |--------------------------------------------------------------------------
+    */
+    'allowed_origins' => array_filter(
+        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5174,http://localhost:5173,http://127.0.0.1:5174'))
+    ),
 
-    'allowed_origins_patterns' => ['*'],
+    'allowed_origins_patterns' => [],
 
     'allowed_headers' => ['*'],
 
@@ -30,5 +41,6 @@ return [
     'max_age' => 0,
 
     'supports_credentials' => false,
+
 
 ];

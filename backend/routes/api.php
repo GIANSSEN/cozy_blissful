@@ -23,9 +23,8 @@ Route::post('/auth/facebook', [SocialAuthController::class, 'facebook'])->middle
 Route::get('/auth/facebook/redirect', [SocialAuthController::class, 'redirectFacebook']);
 Route::get('/auth/facebook/callback', [SocialAuthController::class, 'callbackFacebook']);
 
-// PayMongo Webhook — public (signature-verified internally)
+// PayMongo Webhook — public (signature-verified internally via PAYMONGO_WEBHOOK_SECRET)
 Route::post('/payment/webhook', [PaymentController::class, 'handleWebhook']);
-Route::post('/payment/test-webhook', [PaymentController::class, 'triggerTestWebhook']);
 
 // Protected routes group
 Route::middleware('auth:sanctum')->group(function () {
@@ -84,6 +83,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/audit-logs/export', [AuditLogController::class, 'export']);
         Route::delete('/audit-logs/bulk-delete', [AuditLogController::class, 'bulkDelete']);
         Route::apiResource('/audit-logs', AuditLogController::class);
+
+        // ── Test/Dev Utilities — admin only + local/testing env only ─────────
+        // SECURITY: These routes are BLOCKED in production to prevent fraud.
+        if (app()->environment('local', 'development', 'testing')) {
+            Route::post('/payment/test-webhook', [PaymentController::class, 'triggerTestWebhook']);
+        }
     });
 
     // Group 2: /therapist/* -> Therapist only
@@ -122,6 +127,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/create-checkout-session', [PaymentController::class, 'createCheckoutSession']);
         Route::get('/session-status/{sessionId}', [PaymentController::class, 'getSessionStatus']);
         Route::get('/verify', [PaymentController::class, 'verifyPayment']);
-        Route::post('/simulate-test-payment', [PaymentController::class, 'simulateTestPayment']);
+
+        // ── Payment simulator — local/testing env only ────────────────────────
+        // SECURITY: Disabled in production to prevent payment bypass fraud.
+        if (app()->environment('local', 'development', 'testing')) {
+            Route::post('/simulate-test-payment', [PaymentController::class, 'simulateTestPayment']);
+        }
     });
 });

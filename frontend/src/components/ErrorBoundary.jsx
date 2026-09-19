@@ -21,7 +21,14 @@ export default class ErrorBoundary extends React.Component {
   };
 
   handleGoHome = () => {
-    window.location.href = '/admin/dashboard';
+    const role = localStorage.getItem('role') || '';
+    const dashboardRoutes = {
+      admin: '/admin/dashboard',
+      staff: '/staff/dashboard',
+      therapist: '/therapist/dashboard',
+      client: '/client/dashboard',
+    };
+    window.location.href = dashboardRoutes[role] || '/';
   };
 
   render() {

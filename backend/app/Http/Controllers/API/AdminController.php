@@ -364,7 +364,7 @@ class AdminController extends Controller
         $actor = auth()->user()?->name ?? 'System Admin';
         $actorRole = auth()->user()?->roles?->first()?->name ?? 'admin';
 
-        \App\Models\AuditLog::log('update', 'Appointment', "Assigned therapist '" . ($appt->therapist?->name ?? 'Therapist') . "' to booking #{$appt->id}", [
+        AuditLog::log('update', 'Appointment', "Assigned therapist '" . ($appt->therapist?->name ?? 'Therapist') . "' to booking #{$appt->id}", [
             'actor' => $actor,
             'actor_role' => $actorRole,
             'module' => 'Bookings',
@@ -497,7 +497,7 @@ class AdminController extends Controller
             ]);
         }
 
-        \App\Models\AuditLog::log('update', 'Appointment', "Admin updated status of booking #{$appt->id} from {$oldStatus} to {$appt->status}", [
+        AuditLog::log('update', 'Appointment', "Admin updated status of booking #{$appt->id} from {$oldStatus} to {$appt->status}", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Bookings',
@@ -576,7 +576,7 @@ class AdminController extends Controller
         $tendered = $request->cash_tendered ? (float) $request->cash_tendered : (float) $request->amount_paid;
         $change = $request->change ? (float) $request->change : max(0, $tendered - (float) $request->amount_paid);
 
-        \App\Models\AuditLog::log('update', 'Appointment', "Admin settled cash payment of ₱" . number_format($request->amount_paid, 2) . " (Tendered: ₱" . number_format($tendered, 2) . ", Change: ₱" . number_format($change, 2) . ") for booking #{$appt->id}", [
+        AuditLog::log('update', 'Appointment', "Admin settled cash payment of ₱" . number_format($request->amount_paid, 2) . " (Tendered: ₱" . number_format($tendered, 2) . ", Change: ₱" . number_format($change, 2) . ") for booking #{$appt->id}", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Payments',
@@ -641,7 +641,7 @@ class AdminController extends Controller
 
         $appt->load(['client', 'therapist', 'service']);
 
-        \App\Models\AuditLog::log('update', 'Appointment', "Admin rescheduled booking #{$appt->id} from {$oldDatetime} to {$appt->datetime->format('Y-m-d H:i:s')}", [
+        AuditLog::log('update', 'Appointment', "Admin rescheduled booking #{$appt->id} from {$oldDatetime} to {$appt->datetime->format('Y-m-d H:i:s')}", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Bookings',
@@ -916,7 +916,7 @@ class AdminController extends Controller
         $actor = auth()->user()?->name ?? 'System Admin';
         $actorRole = auth()->user()?->roles?->first()?->name ?? 'admin';
 
-        \App\Models\AuditLog::log('update', 'RBAC Permissions', "Updated permissions for system roles", [
+        AuditLog::log('update', 'RBAC Permissions', "Updated permissions for system roles", [
             'actor' => $actor,
             'actor_role' => $actorRole,
             'module' => 'Access Control',
@@ -1011,7 +1011,7 @@ class AdminController extends Controller
         $user->assignRole($validated['role']);
 
         $roleLabel = $validated['role'] === 'therapist' ? 'Therapist' : 'Staff Coordinator';
-        \App\Models\AuditLog::log('create', 'User Management', "Admin provisioned new {$roleLabel} account: {$user->name} ({$user->email})", [
+        AuditLog::log('create', 'User Management', "Admin provisioned new {$roleLabel} account: {$user->name} ({$user->email})", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Team Members',
@@ -1100,7 +1100,7 @@ class AdminController extends Controller
         $user->update($updateData);
         $user->syncRoles([$validated['role']]);
 
-        \App\Models\AuditLog::log('update', 'User Management', "Admin updated team member #{$user->id}: {$user->name}", [
+        AuditLog::log('update', 'User Management', "Admin updated team member #{$user->id}: {$user->name}", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Team Members',
@@ -1142,7 +1142,7 @@ class AdminController extends Controller
         $user->status = $nextStatus;
         $user->save();
 
-        \App\Models\AuditLog::log('update', 'User Management', "Admin changed status of #{$user->id} ({$user->name}) to {$nextStatus}", [
+        AuditLog::log('update', 'User Management', "Admin changed status of #{$user->id} ({$user->name}) to {$nextStatus}", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Team Members',
@@ -1169,7 +1169,7 @@ class AdminController extends Controller
         $user->tokens()->delete();
         $user->delete();
 
-        \App\Models\AuditLog::log('delete', 'User Management', "Admin removed team member: {$userName} (#{$id})", [
+        AuditLog::log('delete', 'User Management', "Admin removed team member: {$userName} (#{$id})", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Team Members',

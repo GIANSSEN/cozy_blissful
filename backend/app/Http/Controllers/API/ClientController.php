@@ -193,7 +193,7 @@ class ClientController extends Controller
             'service_id' => 'required|exists:services,id',
             'therapist_id' => 'nullable|exists:users,id',
             'datetime' => 'required|date|after:now',
-            'notes' => 'nullable|string|max:2000',
+            'notes' => 'nullable|string|max:2000|not_regex:/<[^>]*>/',
             'client_name' => 'nullable|string|max:150',
             'client_phone' => 'nullable|string|max:50',
             'client_address' => 'nullable|string|max:500',
@@ -363,14 +363,17 @@ class ClientController extends Controller
             ], 422);
         }
 
-        $appt->status = 'Cancelled';
-        $appt->save();
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($appt) {
+            $appt->status = 'Cancelled';
+            $appt->save();
+            return $appt;
+        });
 
         return response()->json([
             'message' => 'Appointment cancelled successfully.',
             'booking' => [
-                'id' => $appt->id,
-                'status' => $appt->status,
+                'id' => $result->id,
+                'status' => $result->status,
             ],
         ]);
     }

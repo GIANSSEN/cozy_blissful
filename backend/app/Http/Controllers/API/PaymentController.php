@@ -334,7 +334,7 @@ class PaymentController extends Controller
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    public function handlePaymentPaid(array $resource): ?Appointment
+    private function handlePaymentPaid(array $resource): ?Appointment
     {
         $appointment = null;
 

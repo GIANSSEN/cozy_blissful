@@ -157,6 +157,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('user');
+    // Clear cart so a new user on the same device doesn't inherit the previous user's cart
+    localStorage.removeItem('cb_cart_v1');
   };
 
   return (
