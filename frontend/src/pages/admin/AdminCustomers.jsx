@@ -5,12 +5,12 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Users, Search, Star, UserCheck, Plus, X,
+  Users, Search, UserCheck, Plus, X,
   Phone, Mail, Calendar, CheckCircle2,
-  ChevronRight, Award, Edit3, Trash2, MessageCircle,
+  ChevronRight, Edit3, Trash2, MessageCircle,
   AlertCircle, FileText, Check, AlertTriangle,
   TrendingUp, RefreshCw, Clock, Hash, WifiOff,
-  Download, LayoutGrid, List, Crown,
+  Download, LayoutGrid, List,
   ArrowUpDown, User, Sparkles, Shield
 } from 'lucide-react';
 
@@ -76,10 +76,10 @@ const getWhatsAppUrl = (phone) => {
 /*  ACCESSIBLE ROCK-SOLID RESPONSIVE MODAL BACKDROP                    */
 /* ------------------------------------------------------------------ */
 const MODAL_SIZES = {
-  sm: { width: '100%', maxWidth: '440px' },
-  md: { width: '100%', maxWidth: '580px' },
-  lg: { width: '100%', maxWidth: '740px' },
-  xl: { width: '100%', maxWidth: '860px' },
+  sm: 'max-w-[440px]',
+  md: 'max-w-[560px]',
+  lg: 'max-w-[760px]',
+  xl: 'max-w-[880px]',
 };
 
 const ModalBackdrop = ({ onClose, children, labelId, descId, size = 'md', isAlert = false }) => {
@@ -136,8 +136,7 @@ const ModalBackdrop = ({ onClose, children, labelId, descId, size = 'md', isAler
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 14 }}
         transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-        style={MODAL_SIZES[size] || MODAL_SIZES.md}
-        className="w-full rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[86vh] sm:max-h-[85vh] my-auto bg-white dark:bg-[#0d131f] min-h-0"
+        className={`w-full ${MODAL_SIZES[size] || MODAL_SIZES.md} rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] my-auto bg-white dark:bg-[#0d131f] min-h-0`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -149,8 +148,9 @@ const ModalBackdrop = ({ onClose, children, labelId, descId, size = 'md', isAler
 /* ------------------------------------------------------------------ */
 /*  CUSTOMER CARD (GRID VIEW)                                          */
 /* ------------------------------------------------------------------ */
-const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, onToggleVip, isTogglingVip, C, idx }) => {
+const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, C, idx }) => {
   const waUrl = getWhatsAppUrl(c.phone);
+  const isActiveClient = (c.bookings || 0) > 0;
 
   return (
     <motion.article
@@ -171,14 +171,6 @@ const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, onToggleVi
               aria-hidden="true"
             >
               {(c.name || 'C').charAt(0).toUpperCase()}
-              {c.tier === 'VIP' && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-xs"
-                  title="VIP Member"
-                >
-                  <Crown className="w-2.5 h-2.5 stroke-[2.5]" />
-                </span>
-              )}
             </div>
 
             <div className="min-w-0 flex-1">
@@ -192,29 +184,16 @@ const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, onToggleVi
             </div>
           </div>
 
-          {/* VIP Toggle Button */}
-          <button
-            type="button"
-            onClick={() => onToggleVip(c)}
-            disabled={isTogglingVip}
-            aria-label={`Membership tier: ${c.tier}. Click to switch to ${c.tier === 'VIP' ? 'Regular' : 'VIP'}`}
-            aria-pressed={c.tier === 'VIP'}
-            title={`Click to switch to ${c.tier === 'VIP' ? 'Regular' : 'VIP'}`}
-            className={`text-[9px] sm:text-[10px] font-black px-2.5 py-1 rounded-full border flex items-center gap-1 shrink-0 transition-all cursor-pointer select-none active:scale-95 disabled:opacity-50 ${
-              c.tier === 'VIP'
-                ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-400/60 shadow-xs ring-1 ring-amber-400/20'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-amber-400/60'
+          {/* Activity Badge */}
+          <span
+            className={`text-[9px] sm:text-[10px] font-extrabold px-2.5 py-1 rounded-full border shrink-0 select-none ${
+              isActiveClient
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
             }`}
           >
-            {isTogglingVip ? (
-              <RefreshCw className="w-2.5 h-2.5 animate-spin text-amber-500" />
-            ) : c.tier === 'VIP' ? (
-              <Crown className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
-            ) : (
-              <Star className="w-2.5 h-2.5 text-slate-400" />
-            )}
-            <span>{c.tier === 'VIP' ? 'VIP' : 'Regular'}</span>
-          </button>
+            {isActiveClient ? 'Active Client' : 'New Client'}
+          </span>
         </div>
 
         {/* Contact Links */}
@@ -266,15 +245,15 @@ const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, onToggleVi
 
         {/* Treatment Notes preview */}
         {c.notes && (
-          <div className="p-2.5 rounded-xl text-[11px] font-medium leading-relaxed bg-slate-50 dark:bg-slate-900/60 border-l-2 border-[#bfa15f] text-slate-600 dark:text-slate-400">
+          <div className="p-2.5 rounded-xl text-[11px] font-medium leading-relaxed bg-slate-50 dark:bg-slate-900/60 border-l-2 border-emerald-500 text-slate-600 dark:text-slate-400">
             <p className="line-clamp-2">
-              <strong className="text-amber-800 dark:text-amber-300 font-bold">Notes: </strong>{c.notes}
+              <strong className="text-emerald-800 dark:text-emerald-300 font-bold">Notes: </strong>{c.notes}
             </p>
           </div>
         )}
       </div>
 
-      {/* Card Footer: Metrics & Actions (Protected against layout overlap) */}
+      {/* Card Footer: Metrics & Actions */}
       <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
         {/* Left Metrics */}
         <div className="flex items-center gap-2 text-[11px] font-bold min-w-0">
@@ -303,7 +282,7 @@ const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, onToggleVi
           <button
             type="button"
             onClick={onViewProfile}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black text-[#041e16] bg-gradient-to-r from-[#bfa15f] to-[#e8cc8a] hover:brightness-110 active:scale-95 transition flex items-center gap-1 shadow-xs cursor-pointer select-none"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black text-emerald-950 dark:text-emerald-100 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 border border-emerald-600/20 active:scale-95 transition flex items-center gap-1 shadow-xs cursor-pointer select-none"
             aria-label={`View profile and treatment logs for ${c.name}`}
           >
             <span>Profile &amp; Logs</span>
@@ -318,7 +297,7 @@ const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, onToggleVi
 /* ------------------------------------------------------------------ */
 /*  CUSTOMER ROW (TABLE VIEW)                                          */
 /* ------------------------------------------------------------------ */
-const CustomerTableRow = ({ customer: c, onViewProfile, onDeleteCustomer, onToggleVip, isTogglingVip, formatCurrency }) => {
+const CustomerTableRow = ({ customer: c, onViewProfile, onDeleteCustomer, formatCurrency }) => {
   const waUrl = getWhatsAppUrl(c.phone);
 
   return (
@@ -373,22 +352,9 @@ const CustomerTableRow = ({ customer: c, onViewProfile, onDeleteCustomer, onTogg
         )}
       </td>
 
-      {/* Tier */}
-      <td className="py-3 px-3 sm:px-4">
-        <button
-          type="button"
-          onClick={() => onToggleVip(c)}
-          disabled={isTogglingVip}
-          aria-label={`Toggle tier for ${c.name}`}
-          className={`text-[9px] font-black px-2 py-0.5 rounded-full border inline-flex items-center gap-1 cursor-pointer transition select-none disabled:opacity-50 ${
-            c.tier === 'VIP'
-              ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-400/60'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-          }`}
-        >
-          {c.tier === 'VIP' ? <Crown className="w-2.5 h-2.5 text-amber-500" /> : <Star className="w-2.5 h-2.5 text-slate-400" />}
-          <span>{c.tier}</span>
-        </button>
+      {/* Joined Date */}
+      <td className="py-3 px-3 sm:px-4 text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+        {c.created_at || '—'}
       </td>
 
       {/* Sessions */}
@@ -416,7 +382,7 @@ const CustomerTableRow = ({ customer: c, onViewProfile, onDeleteCustomer, onTogg
           <button
             type="button"
             onClick={onViewProfile}
-            className="px-2.5 py-1 rounded-xl text-xs font-extrabold text-[#041e16] bg-gradient-to-r from-[#bfa15f] to-[#e8cc8a] hover:brightness-110 transition shadow-xs cursor-pointer select-none"
+            className="px-2.5 py-1 rounded-xl text-xs font-extrabold text-emerald-950 dark:text-emerald-100 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 border border-emerald-600/20 transition shadow-xs cursor-pointer select-none"
             aria-label={`View logs for ${c.name}`}
           >
             Logs
@@ -437,7 +403,6 @@ const AdminCustomers = () => {
 
   const [customers, setCustomers]               = useState([]);
   const [searchQuery, setSearchQuery]           = useState('');
-  const [tierFilter, setTierFilter]             = useState('all'); // 'all' | 'vip' | 'regular' | 'frequent' | 'new'
   const [sortBy, setSortBy]                     = useState('recent'); // 'recent' | 'spent' | 'bookings' | 'name'
   const [viewMode, setViewMode]                 = useState('grid'); // 'grid' | 'table'
   const [loading, setLoading]                   = useState(true);
@@ -446,7 +411,6 @@ const AdminCustomers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [deleteTarget, setDeleteTarget]         = useState(null);
   const [showAddModal, setShowAddModal]         = useState(false);
-  const [togglingVipId, setTogglingVipId]       = useState(null);
 
   /* Fetch customers from API */
   const fetchCustomers = useCallback(async (showRefresh = false) => {
@@ -472,7 +436,7 @@ const AdminCustomers = () => {
   /* Color palette tokens */
   const C = {
     cardBg: isDark ? '#141927' : '#ffffff',
-    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(191,161,95,0.22)',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(5,150,105,0.15)',
     textPrimary: isDark ? '#f1f5f9' : '#0f172a',
     textSecondary: isDark ? '#cbd5e1' : '#334155',
     textMuted: isDark ? '#64748b' : '#94a3b8',
@@ -483,8 +447,7 @@ const AdminCustomers = () => {
   /* Computed metrics */
   const metrics = useMemo(() => ({
     total: customers.length,
-    vips: customers.filter(c => c.tier === 'VIP').length,
-    frequent: customers.filter(c => (c.bookings || 0) >= 3).length,
+    active: customers.filter(c => (c.bookings || 0) > 0).length,
     totalRevenue: customers.reduce((a, c) => a + (Number(c.totalSpent) || 0), 0),
     totalSessions: customers.reduce((a, c) => a + (Number(c.bookings) || 0), 0),
   }), [customers]);
@@ -500,18 +463,7 @@ const AdminCustomers = () => {
         (c.phone || '').includes(searchQuery) ||
         (c.notes || '').toLowerCase().includes(q);
 
-      if (!matchSearch) return false;
-
-      if (tierFilter === 'vip') return c.tier === 'VIP';
-      if (tierFilter === 'regular') return c.tier !== 'VIP';
-      if (tierFilter === 'frequent') return (c.bookings || 0) >= 3;
-      if (tierFilter === 'new') {
-        const createdDate = new Date(c.created_at || Date.now());
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        return createdDate >= thirtyDaysAgo;
-      }
-      return true;
+      return matchSearch;
     });
 
     // Sorting
@@ -524,26 +476,7 @@ const AdminCustomers = () => {
     });
 
     return list;
-  }, [customers, searchQuery, tierFilter, sortBy]);
-
-  /* 1-Click Toggle VIP status */
-  const handleToggleVip = async (customer) => {
-    if (togglingVipId === customer.id) return;
-    const newTier = customer.tier === 'VIP' ? 'Regular' : 'VIP';
-    setTogglingVipId(customer.id);
-    try {
-      await API.put(`/admin/customers/${customer.id}`, { tier: newTier });
-      setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, tier: newTier } : c));
-      if (selectedCustomer?.id === customer.id) {
-        setSelectedCustomer(prev => ({ ...prev, tier: newTier }));
-      }
-      toast.success(`${formatDisplayName(customer.name)} is now a ${newTier} member`);
-    } catch {
-      toast.error('Failed to update membership tier.');
-    } finally {
-      setTogglingVipId(null);
-    }
-  };
+  }, [customers, searchQuery, sortBy]);
 
   /* Add customer */
   const handleAddCustomerSubmit = async (data) => {
@@ -554,7 +487,7 @@ const AdminCustomers = () => {
     toast.success(`Client "${formatDisplayName(newCustomer.name)}" registered successfully`);
   };
 
-  /* Update profile (name, phone, tier, notes) */
+  /* Update profile (name, phone, notes) */
   const handleUpdateProfile = async (customerId, payload) => {
     await API.put(`/admin/customers/${customerId}`, payload);
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, ...payload } : c));
@@ -578,19 +511,18 @@ const AdminCustomers = () => {
     }
   };
 
-  /* CSV Export with injection protection */
+  /* CSV Export */
   const handleExportCsv = () => {
     if (!customers.length) {
       toast.error('No customer records to export.');
       return;
     }
-    const headers = ['ID', 'Name', 'Email', 'Phone', 'Tier', 'Total Bookings', 'Lifetime Spend (PHP)', 'Joined Date', 'Treatment Notes'];
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Total Bookings', 'Lifetime Spend (PHP)', 'Joined Date', 'Treatment Notes'];
     const rows = filteredCustomers.map(c => [
       c.id,
       `"${(c.name || '').replace(/"/g, '""')}"`,
       `"${(c.email || '').replace(/"/g, '""')}"`,
       `"${(c.phone || '').replace(/"/g, '""')}"`,
-      c.tier || 'Regular',
       c.bookings || 0,
       (Number(c.totalSpent) || 0).toFixed(2),
       c.created_at || '',
@@ -610,23 +542,15 @@ const AdminCustomers = () => {
 
   const KPI = [
     { label: 'Total Clients', value: metrics.total, badge: 'Registered', badgeClass: 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15', iconBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', Icon: Users },
-    { label: 'VIP Members', value: metrics.vips, badge: 'Priority Tier', badgeClass: 'text-amber-800 dark:text-amber-300 bg-amber-500/15', iconBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', Icon: Award },
+    { label: 'Active Clients', value: metrics.active, badge: 'With Bookings', badgeClass: 'text-teal-700 dark:text-teal-300 bg-teal-500/15', iconBg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400', Icon: UserCheck },
     { label: 'Total Sessions', value: metrics.totalSessions, badge: 'Concluded', badgeClass: 'text-sky-700 dark:text-sky-300 bg-sky-500/15', iconBg: 'bg-sky-500/10 text-sky-600 dark:text-sky-400', Icon: Calendar },
     { label: 'Total Revenue', value: formatCurrency(metrics.totalRevenue), badge: 'Lifetime', badgeClass: 'text-purple-700 dark:text-purple-300 bg-purple-500/15', iconBg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', Icon: TrendingUp },
-  ];
-
-  const FILTER_TABS = [
-    { id: 'all', label: 'All Clients', count: metrics.total },
-    { id: 'vip', label: 'VIP Priority', count: metrics.vips },
-    { id: 'regular', label: 'Regular Clients', count: metrics.total - metrics.vips },
-    { id: 'frequent', label: 'Frequent (3+ visits)', count: metrics.frequent },
-    { id: 'new', label: 'New This Month' },
   ];
 
   return (
     <AdminLayout
       title="Customer Registry"
-      subtitle="Unified Client Accounts, Session History &amp; Membership Profiles"
+      subtitle="Unified Client Accounts, Session History &amp; Profile Directory"
       icon={Users}
     >
       <div className="space-y-4 sm:space-y-5 pb-8">
@@ -652,7 +576,7 @@ const AdminCustomers = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-1 sm:gap-2">
-                <span className="text-base sm:text-xl lg:text-2xl font-black leading-none text-slate-900 dark:text-white truncate">
+                <span className="text-base sm:text-lg lg:text-xl xl:text-2xl font-black leading-none text-slate-900 dark:text-white truncate">
                   {m.value}
                 </span>
                 <span className={`text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap self-start sm:self-auto ${m.badgeClass}`}>
@@ -663,7 +587,7 @@ const AdminCustomers = () => {
           ))}
         </div>
 
-        {/* ── CONTROL & FILTER TOOLBAR ── */}
+        {/* ── CONTROL & FILTER TOOLBAR (Unified with other modules) ── */}
         <div
           className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl border space-y-3.5 shadow-xs"
           style={{ background: C.cardBg, borderColor: C.cardBorder }}
@@ -672,7 +596,7 @@ const AdminCustomers = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#bfa15f] shrink-0" aria-hidden="true" />
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
                 <span className="truncate">Client Directory &amp; Logs</span>
               </h2>
               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
@@ -731,15 +655,15 @@ const AdminCustomers = () => {
                 title="Refresh customer list"
                 className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-40 cursor-pointer active:scale-95"
               >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#bfa15f]' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
               </button>
 
-              {/* Add Customer CTA */}
+              {/* Add Customer CTA (Consistent with AdminUserMaintenance / AdminAppointments) */}
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-black text-[#041e16] shadow-sm hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
+                className="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-black text-white shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)' }}
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
                 <span>Add Customer</span>
@@ -747,42 +671,8 @@ const AdminCustomers = () => {
             </div>
           </div>
 
-          {/* Quick Filter Tabs (Smooth horizontal scrolling) */}
-          <div
-            className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-1 border-t border-slate-100 dark:border-slate-800 scroll-smooth -mx-1 px-1"
-            role="tablist"
-            aria-label="Filter customer accounts"
-          >
-            {FILTER_TABS.map((tab) => {
-              const isActive = tierFilter === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setTierFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                    isActive
-                      ? 'bg-[#062c22] text-[#e8cc8a] dark:bg-[#0a3d30] dark:text-[#e8cc8a] shadow-xs ring-1 ring-[#bfa15f]/50'
-                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-slate-700'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {typeof tab.count === 'number' && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                      isActive ? 'bg-[#e8cc8a] text-[#041e16]' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
           {/* Search and Sort controls */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/80">
             <div className="md:col-span-8 relative w-full">
               <label htmlFor="customer-search-input" className="sr-only">Search client directory</label>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden="true" />
@@ -792,7 +682,7 @@ const AdminCustomers = () => {
                 placeholder="Search by client name, email, phone, or treatment notes…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-medium transition focus:ring-2 focus:ring-[#bfa15f]/30 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
+                className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-medium transition focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
               />
               {searchQuery && (
                 <button
@@ -813,7 +703,7 @@ const AdminCustomers = () => {
                 id="customer-sort-select"
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="w-full pl-8 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-bold cursor-pointer bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 transition focus:ring-2 focus:ring-[#bfa15f]/30"
+                className="w-full pl-8 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-bold cursor-pointer bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 transition focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               >
                 <option value="recent">Sort: Most Recent</option>
                 <option value="spent">Sort: Highest Total Spend (₱)</option>
@@ -876,8 +766,8 @@ const AdminCustomers = () => {
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="mt-5 px-5 py-2.5 rounded-xl text-xs font-black text-[#041e16] shadow-md transition flex items-center gap-1.5 mx-auto cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
+                className="mt-5 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md hover:opacity-90 active:scale-95 transition flex items-center gap-1.5 mx-auto cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)' }}
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" /> Add First Customer
               </button>
@@ -890,14 +780,14 @@ const AdminCustomers = () => {
               <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
                 <Search className="w-7 h-7 text-slate-400" aria-hidden="true" />
               </div>
-              <p className="text-sm font-bold text-slate-800 dark:text-white">No customers match your active filter</p>
-              <p className="text-xs text-slate-400 mt-1">Try clearing your search keyword or resetting tier filters.</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white">No customers match your search query</p>
+              <p className="text-xs text-slate-400 mt-1">Try clearing your search keyword or entering a different query.</p>
               <button
                 type="button"
-                onClick={() => { setSearchQuery(''); setTierFilter('all'); }}
+                onClick={() => setSearchQuery('')}
                 className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 transition cursor-pointer"
               >
-                Reset All Filters
+                Clear Search
               </button>
             </motion.div>
           )}
@@ -917,8 +807,6 @@ const AdminCustomers = () => {
                   customer={cust}
                   onViewProfile={() => setSelectedCustomer(cust)}
                   onDeleteCustomer={(c) => setDeleteTarget(c)}
-                  onToggleVip={handleToggleVip}
-                  isTogglingVip={togglingVipId === cust.id}
                   C={C}
                   idx={idx}
                 />
@@ -942,7 +830,7 @@ const AdminCustomers = () => {
                       <th className="py-3 px-3 sm:px-4">Client Name</th>
                       <th className="py-3 px-3 sm:px-4">Email</th>
                       <th className="py-3 px-3 sm:px-4">Phone / WhatsApp</th>
-                      <th className="py-3 px-3 sm:px-4">Tier</th>
+                      <th className="py-3 px-3 sm:px-4">Joined Date</th>
                       <th className="py-3 px-3 sm:px-4">Sessions</th>
                       <th className="py-3 px-3 sm:px-4">Lifetime Spend</th>
                       <th className="py-3 px-3 sm:px-4 text-right">Actions</th>
@@ -955,8 +843,6 @@ const AdminCustomers = () => {
                         customer={c}
                         onViewProfile={() => setSelectedCustomer(c)}
                         onDeleteCustomer={(cust) => setDeleteTarget(cust)}
-                        onToggleVip={handleToggleVip}
-                        isTogglingVip={togglingVipId === c.id}
                         formatCurrency={formatCurrency}
                       />
                     ))}
@@ -987,8 +873,6 @@ const AdminCustomers = () => {
             customer={selectedCustomer}
             onClose={() => setSelectedCustomer(null)}
             onSaveProfile={handleUpdateProfile}
-            onToggleVip={handleToggleVip}
-            isTogglingVip={togglingVipId === selectedCustomer.id}
             onDeleteCustomer={(c) => {
               setSelectedCustomer(null);
               setDeleteTarget(c);
@@ -1012,12 +896,13 @@ const AdminCustomers = () => {
 };
 
 /* ------------------------------------------------------------------ */
-/*  ADD CUSTOMER MODAL (LUXURY SPA POLISHED & ACCESSIBLE)              */
+/*  ADD CUSTOMER MODAL (FUNCTIONAL, VALIDATED, ACCESSIBLE & RESPONSIVE)*/
 /* ------------------------------------------------------------------ */
 const AddCustomerModal = ({ onClose, onSubmit }) => {
   const firstRef = useRef(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', tier: 'Regular', notes: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' });
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
 
@@ -1025,60 +910,80 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
     firstRef.current?.focus();
   }, []);
 
-  const set = (k, v) => {
-    setForm(p => ({ ...p, [k]: v }));
-    setErrors(p => ({ ...p, [k]: null }));
-    setApiError(null);
-  };
+  const validateField = (field, value) => {
+    let error = null;
+    const v = (value || '').trim();
 
-  const handlePhoneChange = (e) => {
-    const raw = e.target.value;
-    set('phone', raw);
-  };
-
-  const validate = () => {
-    const e = {};
-    const trimmedName = form.name.trim();
-    if (!trimmedName) {
-      e.name = 'Full name is required.';
-    } else if (trimmedName.length < 2) {
-      e.name = 'Full name must be at least 2 characters.';
-    } else if (trimmedName.length > 100) {
-      e.name = 'Full name cannot exceed 100 characters.';
-    }
-
-    const trimmedEmail = form.email.trim();
-    if (!trimmedEmail) {
-      e.email = 'Email address is required.';
-    } else if (!validateEmail(trimmedEmail)) {
-      e.email = 'Please provide a valid email format (e.g. client@example.com).';
-    }
-
-    if (form.phone && form.phone.trim() !== '') {
-      if (!validatePhone(form.phone)) {
-        e.phone = 'Valid PH mobile required (e.g. 0917 123 4567 or +63 917 123 4567).';
+    if (field === 'name') {
+      if (!v) {
+        error = 'Full name is required.';
+      } else if (v.length < 2) {
+        error = 'Full name must be at least 2 characters.';
+      } else if (v.length > 100) {
+        error = 'Full name cannot exceed 100 characters.';
       }
     }
 
-    if (form.notes && form.notes.length > 1000) {
-      e.notes = 'Notes cannot exceed 1,000 characters.';
+    if (field === 'email') {
+      if (!v) {
+        error = 'Email address is required.';
+      } else if (!validateEmail(v)) {
+        error = 'Please enter a valid email address (e.g. client@example.com).';
+      }
     }
 
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    if (field === 'phone') {
+      if (v !== '' && !validatePhone(v)) {
+        error = 'Please enter a valid PH mobile (e.g. 0917 123 4567 or +63 917 123 4567).';
+      }
+    }
+
+    if (field === 'notes') {
+      if (v.length > 1000) {
+        error = 'Notes cannot exceed 1,000 characters.';
+      }
+    }
+
+    return error;
+  };
+
+  const handleChange = (field, value) => {
+    setForm(p => ({ ...p, [field]: value }));
+    setApiError(null);
+    if (touched[field]) {
+      const err = validateField(field, value);
+      setErrors(p => ({ ...p, [field]: err }));
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched(p => ({ ...p, [field]: true }));
+    const err = validateField(field, form[field]);
+    setErrors(p => ({ ...p, [field]: err }));
+  };
+
+  const validateAll = () => {
+    const newErrors = {};
+    ['name', 'email', 'phone', 'notes'].forEach(f => {
+      const err = validateField(f, form[f]);
+      if (err) newErrors[f] = err;
+    });
+    setErrors(newErrors);
+    setTouched({ name: true, email: true, phone: true, notes: true });
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validateAll()) return;
     setSubmitting(true);
     setApiError(null);
     try {
       await onSubmit({
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
-        phone: cleanPhoneNumber(form.phone.trim()),
-        tier: form.tier,
+        phone: cleanPhoneNumber(form.phone.trim()) || null,
+        tier: 'Regular',
         notes: form.notes.trim() || null,
       });
     } catch (err) {
@@ -1096,28 +1001,13 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
     }
   };
 
-  const PRESET_NOTES = [
-    'Soft pressure',
-    'Deep tissue',
-    'Lavender oil',
-    'Sensitive skin',
-    'No eucalyptus',
-    'Quiet session',
-  ];
-
-  const appendNotePreset = (preset) => {
-    const cur = form.notes ? form.notes.trim() : '';
-    if (cur.includes(preset)) return;
-    set('notes', cur ? `${cur}, ${preset}` : preset);
-  };
-
   return (
     <ModalBackdrop onClose={onClose} labelId="add-title" descId="add-desc" size="md">
-      <div className="flex flex-col h-full min-h-0 bg-white dark:bg-[#0d131f] overflow-hidden">
-        {/* Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-[#041e16] via-[#062c22] to-[#0a3d30] text-white flex items-center justify-between shrink-0 border-b border-[#bfa15f]/25 shadow-xs">
+      <div className="flex flex-col h-full max-h-[90vh] sm:max-h-[85vh] bg-white dark:bg-[#0d131f] overflow-hidden">
+        {/* Sticky Pinned Header */}
+        <div className="px-5 py-4 bg-gradient-to-r from-[#041e16] via-[#062c22] to-[#0a3d30] text-white flex items-center justify-between shrink-0 border-b border-emerald-500/20 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#bfa15f] to-[#e8cc8a] flex items-center justify-center text-[#041e16] shadow-sm shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shadow-sm shrink-0">
               <UserCheck className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
             </div>
             <div>
@@ -1139,8 +1029,8 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4" noValidate>
+        {/* Form Body - Scrollable */}
+        <form id="add-customer-form" onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4" noValidate>
           {apiError && (
             <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -1152,7 +1042,7 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
           <div>
             <div className="flex items-center justify-between mb-1">
               <label htmlFor="f-name" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <User className="w-3 h-3 text-[#bfa15f]" />
+                <User className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Full Name <span className="text-red-500">*</span></span>
               </label>
               {form.name && (
@@ -1168,138 +1058,89 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
                 type="text"
                 placeholder="e.g. Sarah Martinez"
                 value={form.name}
-                onChange={e => set('name', e.target.value)}
+                onChange={e => handleChange('name', e.target.value)}
+                onBlur={() => handleBlur('name')}
                 aria-invalid={!!errors.name}
                 aria-describedby={errors.name ? 'err-name' : undefined}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold outline-none transition-all ${
                   errors.name
                     ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
-                    : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/25'
+                    : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                 }`}
               />
             </div>
             {errors.name && (
-              <p id="err-name" className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
-                <AlertCircle className="w-3 h-3" /> {errors.name}
+              <p id="err-name" className="text-[11px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.name}
               </p>
             )}
           </div>
 
-          {/* Email & Phone Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Email Address */}
-            <div>
-              <label htmlFor="f-email" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                <Mail className="w-3 h-3 text-[#bfa15f]" />
-                <span>Email Address <span className="text-red-500">*</span></span>
-              </label>
-              <input
-                id="f-email"
-                type="email"
-                placeholder="sarah@example.com"
-                value={form.email}
-                onChange={e => set('email', e.target.value)}
-                aria-invalid={!!errors.email}
-                aria-describedby={errors.email ? 'err-email' : undefined}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
-                  errors.email
-                    ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
-                    : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/25'
-                }`}
-              />
-              {errors.email ? (
-                <p id="err-email" className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
-                  <AlertCircle className="w-3 h-3" /> {errors.email}
-                </p>
-              ) : (
-                <p className="text-[10px] text-slate-400 mt-1">For appointment receipts &amp; updates</p>
-              )}
-            </div>
-
-            {/* Phone Number */}
-            <div>
-              <label htmlFor="f-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                <Phone className="w-3 h-3 text-[#bfa15f]" />
-                <span>Phone <span className="text-slate-400 font-normal">(Optional)</span></span>
-              </label>
-              <input
-                id="f-phone"
-                type="tel"
-                placeholder="0917 123 4567"
-                value={form.phone}
-                onChange={handlePhoneChange}
-                aria-invalid={!!errors.phone}
-                aria-describedby={errors.phone ? 'err-phone' : undefined}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
-                  errors.phone
-                    ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
-                    : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/25'
-                }`}
-              />
-              {errors.phone ? (
-                <p id="err-phone" className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
-                  <AlertCircle className="w-3 h-3" /> {errors.phone}
-                </p>
-              ) : (
-                <p className="text-[10px] text-slate-400 mt-1">PH format: 09XX XXX XXXX</p>
-              )}
-            </div>
+          {/* Email Address */}
+          <div>
+            <label htmlFor="f-email" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
+              <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Email Address <span className="text-red-500">*</span></span>
+            </label>
+            <input
+              id="f-email"
+              type="email"
+              placeholder="sarah@example.com"
+              value={form.email}
+              onChange={e => handleChange('email', e.target.value)}
+              onBlur={() => handleBlur('email')}
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'err-email' : undefined}
+              className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold outline-none transition-all ${
+                errors.email
+                  ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
+                  : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+              }`}
+            />
+            {errors.email ? (
+              <p id="err-email" className="text-[11px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.email}
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-400 mt-1">Used for booking receipts, reminders, and verification</p>
+            )}
           </div>
 
-          {/* Membership Tier Cards */}
+          {/* Phone Number */}
           <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1.5">
-              <Award className="w-3 h-3 text-[#bfa15f]" />
-              <span>Membership Category</span>
-            </span>
-            <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Membership tier">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={form.tier === 'Regular'}
-                onClick={() => set('tier', 'Regular')}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  form.tier === 'Regular'
-                    ? 'bg-slate-100 dark:bg-slate-800 border-[#0a3d30] dark:border-[#e8cc8a] shadow-xs'
-                    : 'bg-slate-50 dark:bg-[#141d2e] border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-slate-400" /> Regular Client
-                  </span>
-                  {form.tier === 'Regular' && <Check className="w-3.5 h-3.5 text-[#0a3d30] dark:text-[#e8cc8a]" />}
-                </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">Standard appointment access</p>
-              </button>
-
-              <button
-                type="button"
-                role="radio"
-                aria-checked={form.tier === 'VIP'}
-                onClick={() => set('tier', 'VIP')}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  form.tier === 'VIP'
-                    ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-500 ring-1 ring-amber-500/30 shadow-xs'
-                    : 'bg-slate-50 dark:bg-[#141d2e] border-slate-200 dark:border-slate-700/80 hover:border-amber-400/50'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-black text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                    <Crown className="w-3.5 h-3.5 text-amber-500" /> VIP Member
-                  </span>
-                  {form.tier === 'VIP' && <Check className="w-3.5 h-3.5 text-amber-500" />}
-                </div>
-                <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80">Priority tier &amp; VIP perks</p>
-              </button>
-            </div>
+            <label htmlFor="f-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
+              <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Phone Number <span className="text-slate-400 font-normal">(Optional)</span></span>
+            </label>
+            <input
+              id="f-phone"
+              type="tel"
+              placeholder="0917 123 4567"
+              value={form.phone}
+              onChange={e => handleChange('phone', e.target.value)}
+              onBlur={() => handleBlur('phone')}
+              aria-invalid={!!errors.phone}
+              aria-describedby={errors.phone ? 'err-phone' : undefined}
+              className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold outline-none transition-all ${
+                errors.phone
+                  ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
+                  : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+              }`}
+            />
+            {errors.phone ? (
+              <p id="err-phone" className="text-[11px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.phone}
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-400 mt-1">Philippine mobile format: 09XX XXX XXXX or +63 9XX XXX XXXX</p>
+            )}
           </div>
 
           {/* Preferences & Treatment Notes */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label htmlFor="f-notes" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <FileText className="w-3 h-3 text-[#bfa15f]" />
+                <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Treatment Preferences &amp; Care Notes <span className="text-slate-400 font-normal">(Optional)</span></span>
               </label>
               <span className="text-[10px] text-slate-400 font-bold">{form.notes.length} / 1000</span>
@@ -1307,48 +1148,36 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
             <textarea
               id="f-notes"
               rows={3}
-              placeholder="e.g. Prefers soft to medium pressure, allergic to eucalyptus oil, likes lavender aromatherapy…"
+              placeholder="e.g. Prefers medium to firm pressure, allergic to eucalyptus oil, likes lavender aromatherapy…"
               value={form.notes}
-              onChange={e => set('notes', e.target.value)}
+              onChange={e => handleChange('notes', e.target.value)}
               maxLength={1000}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white text-xs font-medium outline-none resize-none leading-relaxed focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/25"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white text-xs sm:text-sm font-medium outline-none resize-none leading-relaxed focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
             />
-            {/* Quick preset chips */}
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              <span className="text-[10px] text-slate-400 font-bold self-center mr-1">Quick Add:</span>
-              {PRESET_NOTES.map(preset => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => appendNotePreset(preset)}
-                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 hover:text-amber-900 dark:hover:bg-amber-500/20 dark:hover:text-amber-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
-                >
-                  + {preset}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Sticky Actions Footer */}
-          <div className="pt-3.5 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-5 py-2 rounded-xl text-xs font-black text-[#041e16] transition-all hover:brightness-110 active:scale-95 shadow-md flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
-            >
-              {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              <span>{submitting ? 'Registering…' : 'Register Customer'}</span>
-            </button>
           </div>
         </form>
+
+        {/* Sticky Pinned Footer - Never Cut Off on Any Device */}
+        <div className="px-5 py-3.5 sm:py-4 shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-[#0a0f18]/95 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="add-customer-form"
+            disabled={submitting}
+            className="px-5 py-2.5 rounded-xl text-xs font-black text-white transition-all hover:opacity-90 active:scale-95 shadow-md flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+            style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)' }}
+          >
+            {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            <span>{submitting ? 'Registering…' : 'Register Customer'}</span>
+          </button>
+        </div>
       </div>
     </ModalBackdrop>
   );
@@ -1357,7 +1186,7 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
 /* ------------------------------------------------------------------ */
 /*  CUSTOMER DETAIL MODAL (LOGS, PREFERENCES, PROFILE EDIT)            */
 /* ------------------------------------------------------------------ */
-const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, isTogglingVip, onDeleteCustomer }) => {
+const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustomer }) => {
   const [activeTab, setActiveTab] = useState('history'); // 'history' | 'notes' | 'edit'
 
   // History filtering
@@ -1367,7 +1196,6 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
   // Editable fields
   const [editName, setEditName]       = useState(customer.name || '');
   const [editPhone, setEditPhone]     = useState(customer.phone || '');
-  const [editTier, setEditTier]       = useState(customer.tier || 'Regular');
   const [editNotes, setEditNotes]     = useState(customer.notes || '');
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving]           = useState(false);
@@ -1375,17 +1203,6 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
   const [apiError, setApiError]       = useState(null);
 
   const waUrl = getWhatsAppUrl(customer.phone);
-
-  const NOTE_PRESETS = [
-    'Soft pressure preferred',
-    'Deep tissue & firm pressure',
-    'Focus on upper back / neck',
-    'Sensitive skin',
-    'Allergic to eucalyptus oil',
-    'Prefers lavender aromatherapy',
-    'Prefers female specialist',
-    'Prefers quiet session',
-  ];
 
   // Filtered appointment history logs
   const filteredHistory = useMemo(() => {
@@ -1437,9 +1254,8 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
     try {
       await onSaveProfile(customer.id, {
         name: editName.trim(),
-        phone: cleanPhoneNumber(editPhone.trim()),
-        tier: editTier,
-        notes: editNotes.trim(),
+        phone: cleanPhoneNumber(editPhone.trim()) || null,
+        notes: editNotes.trim() || null,
       });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
@@ -1448,15 +1264,6 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleAppendPreset = (preset) => {
-    setEditNotes((prev) => {
-      const current = prev ? prev.trim() : '';
-      if (!current) return preset;
-      if (current.includes(preset)) return current;
-      return `${current}, ${preset}`;
-    });
   };
 
   // Status badge style helper
@@ -1492,9 +1299,9 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
 
   return (
     <ModalBackdrop onClose={onClose} labelId="detail-title" descId="detail-desc" size="lg">
-      <div className="flex flex-col h-full min-h-0 bg-white dark:bg-[#0d131f] overflow-hidden">
+      <div className="flex flex-col h-full max-h-[90vh] sm:max-h-[85vh] bg-white dark:bg-[#0d131f] overflow-hidden">
         {/* Header with Luxury Emerald Styling */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#041e16] via-[#062c22] to-[#0a3d30] text-white relative shrink-0 border-b border-[#bfa15f]/25">
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#041e16] via-[#062c22] to-[#0a3d30] text-white relative shrink-0 border-b border-emerald-500/20">
           <button
             type="button"
             onClick={onClose}
@@ -1518,30 +1325,19 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                 <h2 id="detail-title" className="text-base sm:text-lg font-black text-white truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {formatDisplayName(customer.name)}
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => onToggleVip(customer)}
-                  disabled={isTogglingVip}
-                  className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 cursor-pointer transition select-none disabled:opacity-50 ${
-                    customer.tier === 'VIP'
-                      ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-xs'
-                      : 'bg-white/10 text-emerald-200 border-white/20 hover:bg-white/20'
-                  }`}
-                  title="Click to switch membership tier"
-                >
-                  <Crown className="w-2.5 h-2.5" />
-                  <span>{customer.tier === 'VIP' ? 'VIP Member' : 'Regular'}</span>
-                </button>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 border border-white/20">
+                  Registered Client
+                </span>
               </div>
 
               <div id="detail-desc" className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-emerald-100/85">
                 <span className="flex items-center gap-1 truncate">
-                  <Mail className="w-3 h-3 shrink-0 text-[#e8cc8a]" aria-hidden="true" />
+                  <Mail className="w-3 h-3 shrink-0 text-emerald-300" aria-hidden="true" />
                   <span className="truncate">{customer.email}</span>
                 </span>
                 {customer.phone && (
                   <span className="flex items-center gap-1 shrink-0">
-                    <Phone className="w-3 h-3 shrink-0 text-[#e8cc8a]" aria-hidden="true" />
+                    <Phone className="w-3 h-3 shrink-0 text-emerald-300" aria-hidden="true" />
                     <span>{formatPhoneDisplay(customer.phone)}</span>
                   </span>
                 )}
@@ -1583,7 +1379,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
             <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-100/90 ml-auto">
               <span>{customer.bookings || 0} Sessions</span>
               <span>·</span>
-              <span className="text-[#e8cc8a] font-black">{formatCurrency(customer.totalSpent)} Total</span>
+              <span className="text-emerald-200 font-black">{formatCurrency(customer.totalSpent)} Total</span>
             </div>
           </div>
         </div>
@@ -1606,7 +1402,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                 onClick={() => setActiveTab(tab.id)}
                 className={`pb-2.5 px-3 text-xs font-extrabold flex items-center gap-1.5 transition-all border-b-2 cursor-pointer select-none ${
                   isActive
-                    ? 'border-[#0a3d30] text-[#0a3d30] dark:border-[#e8cc8a] dark:text-[#e8cc8a]'
+                    ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300'
                     : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
               >
@@ -1615,7 +1411,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                 {typeof tab.count === 'number' && (
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
                     isActive
-                      ? 'bg-[#0a3d30] text-emerald-200 dark:bg-[#e8cc8a] dark:text-[#041e16]'
+                      ? 'bg-emerald-600 text-white dark:bg-emerald-500/20 dark:text-emerald-300'
                       : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}>
                     {tab.count}
@@ -1662,7 +1458,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                     value={historySearch}
                     onChange={(e) => setHistorySearch(e.target.value)}
                     placeholder="Search logs by service or therapist…"
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#141d2e] text-slate-800 dark:text-white outline-none focus:border-[#bfa15f] focus:ring-1 focus:ring-[#bfa15f]/30"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#141d2e] text-slate-800 dark:text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
                   />
                 </div>
               </div>
@@ -1684,10 +1480,10 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                     return (
                       <div
                         key={b.id}
-                        className="p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-slate-50/70 dark:bg-[#141d2e] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition hover:border-[#bfa15f]/40 hover:shadow-xs"
+                        className="p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-slate-50/70 dark:bg-[#141d2e] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition hover:border-emerald-500/40 hover:shadow-xs"
                       >
                         <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <div className="w-8 h-8 rounded-xl bg-[#0a3d30]/10 dark:bg-[#e8cc8a]/10 text-[#0a3d30] dark:text-[#e8cc8a] flex items-center justify-center shrink-0 mt-0.5">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
                             <Sparkles className="w-4 h-4" aria-hidden="true" />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -1717,7 +1513,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                           </span>
 
                           {b.amount > 0 && (
-                            <span className="font-black text-xs sm:text-sm text-[#0a3d30] dark:text-[#e8cc8a] tabular-nums">
+                            <span className="font-black text-xs sm:text-sm text-emerald-700 dark:text-emerald-300 tabular-nums">
                               {formatCurrency(b.amount)}
                             </span>
                           )}
@@ -1736,7 +1532,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label htmlFor="detail-notes-input" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <FileText className="w-3 h-3 text-[#bfa15f]" />
+                    <FileText className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                     <span>Client Sensitivities &amp; Staff Observations</span>
                   </label>
                   <span className="text-[10px] font-bold text-slate-400">
@@ -1745,32 +1541,13 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                 </div>
                 <textarea
                   id="detail-notes-input"
-                  rows={4}
+                  rows={5}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   maxLength={1000}
                   placeholder="Record client sensitivities, favorite aromatherapy oils, pressure preferences, or front-desk notes…"
-                  className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white text-xs font-medium outline-none resize-none leading-relaxed focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/30"
+                  className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white text-xs font-medium outline-none resize-none leading-relaxed focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
-              </div>
-
-              {/* Preset Chips */}
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                  Click to Add Common Spa Observation Presets:
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {NOTE_PRESETS.map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => handleAppendPreset(preset)}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 hover:text-amber-900 dark:hover:bg-amber-500/20 dark:hover:text-amber-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
-                    >
-                      + {preset}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -1784,8 +1561,8 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                   type="button"
                   onClick={handleSaveAll}
                   disabled={saving}
-                  className="px-4 py-2 rounded-xl text-xs font-black text-[#041e16] transition hover:brightness-110 active:scale-95 shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                  style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
+                  className="px-4 py-2 rounded-xl text-xs font-black text-white transition hover:opacity-90 active:scale-95 shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)' }}
                 >
                   {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>{saving ? 'Saving…' : 'Save Notes'}</span>
@@ -1806,7 +1583,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
 
               <div>
                 <label htmlFor="edit-name" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                  <User className="w-3 h-3 text-[#bfa15f]" />
+                  <User className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   <span>Full Name <span className="text-red-500">*</span></span>
                 </label>
                 <input
@@ -1820,7 +1597,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                   className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
                     fieldErrors.name
                       ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20'
-                      : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/30'
+                      : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                   }`}
                 />
                 {fieldErrors.name && (
@@ -1830,55 +1607,37 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label htmlFor="edit-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                    <Phone className="w-3 h-3 text-[#bfa15f]" />
-                    <span>Phone Number</span>
-                  </label>
-                  <input
-                    id="edit-phone"
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => {
-                      setEditPhone(e.target.value);
-                      setFieldErrors(p => ({ ...p, phone: null }));
-                    }}
-                    placeholder="0917 123 4567"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
-                      fieldErrors.phone
-                        ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20'
-                        : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/30'
-                    }`}
-                  />
-                  {fieldErrors.phone && (
-                    <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> {fieldErrors.phone}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="edit-tier" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                    <Crown className="w-3 h-3 text-[#bfa15f]" />
-                    <span>Membership Category</span>
-                  </label>
-                  <select
-                    id="edit-tier"
-                    value={editTier}
-                    onChange={(e) => setEditTier(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white text-xs font-bold outline-none cursor-pointer focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/30"
-                  >
-                    <option value="Regular">Regular Client</option>
-                    <option value="VIP">VIP Client (Priority Tier)</option>
-                  </select>
-                </div>
+              <div>
+                <label htmlFor="edit-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
+                  <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>Phone Number</span>
+                </label>
+                <input
+                  id="edit-phone"
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => {
+                    setEditPhone(e.target.value);
+                    setFieldErrors(p => ({ ...p, phone: null }));
+                  }}
+                  placeholder="0917 123 4567"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
+                    fieldErrors.phone
+                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20'
+                      : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                  }`}
+                />
+                {fieldErrors.phone && (
+                  <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.phone}
+                  </p>
+                )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label htmlFor="edit-email" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <Mail className="w-3 h-3 text-[#bfa15f]" />
+                    <Mail className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                     <span>Primary Login Email</span>
                   </label>
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Verified Client Credential</span>
@@ -1903,8 +1662,8 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 rounded-xl text-xs font-black text-[#041e16] transition hover:brightness-110 active:scale-95 shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                  style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
+                  className="px-5 py-2 rounded-xl text-xs font-black text-white transition hover:opacity-90 active:scale-95 shadow-xs flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)' }}
                 >
                   {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>{saving ? 'Updating…' : 'Save Changes'}</span>
@@ -1915,7 +1674,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onToggleVip, is
 
         </div>
 
-        {/* Sticky Pinned Modal Footer (Never cut off by taskbar) */}
+        {/* Sticky Pinned Modal Footer (Never cut off on any device) */}
         <div className="px-5 py-3.5 shrink-0 flex items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/95 dark:bg-[#111827]/95 backdrop-blur-sm">
           <button
             type="button"

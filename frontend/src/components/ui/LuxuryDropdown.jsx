@@ -6,8 +6,8 @@ import { ChevronDown, Check, Search, AlertCircle, X } from 'lucide-react';
 /* ─────────────────────────────────────────────────────────────── */
 /*  HELPER: FIXED / COLLISION-SAFE POSITIONING                     */
 /* ─────────────────────────────────────────────────────────────── */
-function useDropdownPosition(isOpen, triggerRef, menuWidth = 240, align = 'auto', preferredPlacement = 'bottom') {
-  const [coords, setCoords] = useState({ top: 0, left: 0, placement: 'bottom', align: 'left', width: menuWidth });
+function useDropdownPosition(isOpen, triggerRef, menuWidth = 240, align = 'auto', preferredPlacement = 'bottom', estimatedHeight = 160) {
+  const [coords, setCoords] = useState({ top: 0, left: 0, placement: 'bottom', align: 'left', width: menuWidth, maxHeight: estimatedHeight });
 
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
@@ -15,16 +15,15 @@ function useDropdownPosition(isOpen, triggerRef, menuWidth = 240, align = 'auto'
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     const gap = 6;
-    const estimatedHeight = 260; // Estimated max height of dropdown panel
 
     // Vertical placement
     let placement = preferredPlacement;
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
 
-    if (preferredPlacement === 'bottom' && spaceBelow < estimatedHeight && spaceAbove > spaceBelow) {
+    if (preferredPlacement === 'bottom' && spaceBelow < 120 && spaceAbove > spaceBelow + 40) {
       placement = 'top';
-    } else if (preferredPlacement === 'top' && spaceAbove < estimatedHeight && spaceBelow > spaceAbove) {
+    } else if (preferredPlacement === 'top' && spaceAbove < 120 && spaceBelow > spaceAbove + 40) {
       placement = 'bottom';
     }
 
@@ -48,6 +47,9 @@ function useDropdownPosition(isOpen, triggerRef, menuWidth = 240, align = 'auto'
     }
 
     let top = placement === 'bottom' ? rect.bottom + gap : rect.top - gap;
+    const computedMaxHeight = placement === 'bottom'
+      ? Math.max(120, Math.min(estimatedHeight, spaceBelow - gap - 12))
+      : Math.max(120, Math.min(estimatedHeight, spaceAbove - gap - 12));
 
     setCoords({
       top,
@@ -56,8 +58,9 @@ function useDropdownPosition(isOpen, triggerRef, menuWidth = 240, align = 'auto'
       align: effectiveAlign,
       width: resolvedWidth,
       triggerWidth: rect.width,
+      maxHeight: computedMaxHeight,
     });
-  }, [triggerRef, menuWidth, align, preferredPlacement]);
+  }, [triggerRef, menuWidth, align, preferredPlacement, estimatedHeight]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -94,6 +97,7 @@ export function LuxurySelect({
   menuWidth = 'auto',
   id: customId,
   'aria-label': ariaLabel,
+  portal = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,7 +109,7 @@ export function LuxurySelect({
   const id = customId || autoId;
   const listboxId = `${id}-listbox`;
 
-  const coords = useDropdownPosition(isOpen, triggerRef, menuWidth === 'auto' ? undefined : menuWidth);
+  const coords = useDropdownPosition(isOpen && portal, triggerRef, menuWidth === 'auto' ? undefined : menuWidth);
 
   // Filter options if searchable
   const filteredOptions = searchable && searchQuery.trim()
@@ -324,25 +328,182 @@ export function LuxurySelect({
         </p>
       )}
 
-      {/* Portal Dropdown Menu */}
-      {typeof document !== 'undefined' && createPortal(
+      {/* Dropdown Menu */}
+      {portal ? (
+        typeof document !== 'undefined' && createPortal(
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                id={listboxId}
+                ref={listboxRef}
+                role="listbox"
+                aria-label={label || placeholder}
+                initial={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="fixed z-[9999] rounded-2xl overflow-hidden shadow-2xl border flex flex-col"
+                style={{
+                  top: coords.placement === 'bottom' ? coords.top : undefined,
+                  bottom: coords.placement === 'top' ? (window.innerHeight - coords.top) : undefined,
+                  left: coords.left,
+                  width: coords.width,
+                  maxHeight: coords.maxHeight || 300,
+                  background: bgCard,
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                  boxShadow: isDark
+                    ? '0 16px 40px -8px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)'
+                    : '0 16px 40px -8px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05)',
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Search Bar */}
+                {searchable && (
+                  <div
+                    className="p-2.5 flex items-center gap-2 border-b flex-shrink-0"
+                    style={{
+                      background: bgInner,
+                      borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <Search className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => {
+                        setSearchQuery(e.target.value);
+                        setActiveIndex(0);
+                      }}
+                      placeholder="Search options…"
+                      className="w-full bg-transparent text-xs font-medium outline-none"
+                      style={{ color: txtCol }}
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="p-0.5 rounded-full hover:bg-slate-500/20 text-slate-400"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Options List */}
+                <div
+                  ref={listboxRef}
+                  className="overflow-y-auto p-1.5 space-y-1 custom-scrollbar flex-1"
+                  tabIndex={-1}
+                >
+                  {filteredOptions.length === 0 ? (
+                    <div className="py-6 px-4 text-center text-xs" style={{ color: txtMuted }}>
+                      No matching options found
+                    </div>
+                  ) : (
+                    filteredOptions.map((opt, idx) => {
+                      const isSelected = opt.value === value;
+                      const isActive = idx === activeIndex;
+
+                      return (
+                        <div
+                          key={opt.value}
+                          data-index={idx}
+                          role="option"
+                          aria-selected={isSelected}
+                          aria-disabled={opt.disabled}
+                          onClick={() => handleSelectOption(opt)}
+                          onMouseEnter={() => !opt.disabled && setActiveIndex(idx)}
+                          className={`flex items-start gap-2.5 p-2.5 rounded-xl transition-all select-none ${
+                            opt.disabled
+                              ? 'opacity-40 cursor-not-allowed'
+                              : 'cursor-pointer'
+                          }`}
+                          style={{
+                            background: isSelected
+                              ? 'rgba(5,150,105,0.14)'
+                              : isActive
+                                ? isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'
+                                : 'transparent',
+                            border: isSelected ? '1px solid rgba(5,150,105,0.3)' : '1px solid transparent',
+                          }}
+                        >
+                          {opt.icon && (
+                            <div
+                              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                              style={{
+                                background: opt.iconBg || (isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'),
+                                color: opt.iconColor || (isSelected ? '#059669' : txtCol),
+                              }}
+                            >
+                              {React.isValidElement(opt.icon) ? opt.icon : <opt.icon className="w-3.5 h-3.5" />}
+                            </div>
+                          )}
+
+                          {opt.badgeColor && (
+                            <div className="pt-1.5 flex-shrink-0">
+                              <span className="w-2 h-2 rounded-full block" style={{ background: opt.badgeColor }} />
+                            </div>
+                          )}
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <p
+                                className={`text-xs leading-tight truncate ${isSelected ? 'font-black' : 'font-semibold'}`}
+                                style={{ color: isSelected ? '#059669' : txtCol }}
+                              >
+                                {opt.label}
+                              </p>
+                              {opt.tag && (
+                                <span
+                                  className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex-shrink-0"
+                                  style={{
+                                    background: opt.tagBg || 'rgba(5,150,105,0.12)',
+                                    color: opt.tagColor || '#059669',
+                                  }}
+                                >
+                                  {opt.tag}
+                                </span>
+                              )}
+                            </div>
+                            {opt.description && (
+                              <p className="text-[10px] mt-0.5 leading-snug line-clamp-2" style={{ color: txtMuted }}>
+                                {opt.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {isSelected && (
+                            <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                              <Check className="w-3 h-3" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )
+      ) : (
         <AnimatePresence>
           {isOpen && (
             <motion.div
               id={listboxId}
+              ref={listboxRef}
               role="listbox"
               aria-label={label || placeholder}
-              initial={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
+              initial={{ opacity: 0, scale: 0.97, y: -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="fixed z-[9999] rounded-2xl overflow-hidden shadow-2xl border flex flex-col"
+              exit={{ opacity: 0, scale: 0.97, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="absolute top-full left-0 right-0 mt-1.5 z-50 rounded-2xl overflow-hidden shadow-2xl border flex flex-col"
               style={{
-                top: coords.placement === 'bottom' ? coords.top : undefined,
-                bottom: coords.placement === 'top' ? (window.innerHeight - coords.top) : undefined,
-                left: coords.left,
-                width: coords.width,
-                maxHeight: 320,
+                maxHeight: 220,
                 background: bgCard,
                 borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                 boxShadow: isDark
@@ -423,7 +584,6 @@ export function LuxurySelect({
                           border: isSelected ? '1px solid rgba(5,150,105,0.3)' : '1px solid transparent',
                         }}
                       >
-                        {/* Option Icon or Badge */}
                         {opt.icon && (
                           <div
                             className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -442,7 +602,6 @@ export function LuxurySelect({
                           </div>
                         )}
 
-                        {/* Text / Desc */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <p
@@ -470,7 +629,6 @@ export function LuxurySelect({
                           )}
                         </div>
 
-                        {/* Checkmark */}
                         {isSelected && (
                           <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
                             <Check className="w-3 h-3" />
@@ -483,8 +641,7 @@ export function LuxurySelect({
               </div>
             </motion.div>
           )}
-        </AnimatePresence>,
-        document.body
+        </AnimatePresence>
       )}
     </div>
   );
@@ -719,6 +876,7 @@ export function LuxuryCombobox({
   isDark = true,
   className = '',
   id: customId,
+  portal = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [filterText, setFilterText] = useState('');
@@ -728,7 +886,7 @@ export function LuxuryCombobox({
   const id = customId || autoId;
   const listboxId = `${id}-listbox`;
 
-  const coords = useDropdownPosition(isOpen, containerRef, 'auto');
+  const coords = useDropdownPosition(isOpen && portal, containerRef, 'auto');
 
   const filteredPresets = presets.filter(p =>
     p.toLowerCase().includes(filterText.toLowerCase())
@@ -750,7 +908,6 @@ export function LuxuryCombobox({
     onChange(preset);
     setFilterText('');
     setIsOpen(false);
-    inputRef.current?.focus();
   };
 
   const bgCard = isDark ? '#111827' : '#ffffff';
@@ -763,6 +920,44 @@ export function LuxuryCombobox({
       : isDark
         ? 'rgba(255,255,255,0.1)'
         : 'rgba(0,0,0,0.1)';
+
+  const dropdownListContent = (
+    <>
+      <div className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
+        <span>Select from Presets:</span>
+        <span className="text-[9px] text-emerald-500">{filteredPresets.length} available</span>
+      </div>
+      <div className="overflow-y-auto space-y-0.5 custom-scrollbar flex-1 max-h-44">
+        {filteredPresets.length === 0 ? (
+          <div className="py-3 text-center text-xs" style={{ color: txtMuted }}>
+            No preset matches &ldquo;{filterText}&rdquo; (custom entry will be saved)
+          </div>
+        ) : (
+          filteredPresets.map(preset => {
+            const isSelected = value === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => handleSelectPreset(preset)}
+                className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
+                  isSelected
+                    ? 'bg-emerald-500/15 text-emerald-500 font-black'
+                    : 'hover:bg-slate-500/10'
+                }`}
+                style={{ color: isSelected ? '#059669' : txtCol }}
+              >
+                <span>{preset}</span>
+                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </>
+  );
 
   return (
     <div className={`relative w-full ${className}`}>
@@ -797,7 +992,9 @@ export function LuxuryCombobox({
             setFilterText(e.target.value);
             if (!isOpen) setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            if (!value && !isOpen) setIsOpen(true);
+          }}
           placeholder={placeholder}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
@@ -815,7 +1012,8 @@ export function LuxuryCombobox({
               setFilterText('');
               inputRef.current?.focus();
             }}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            title="Clear"
           >
             <X className="w-3 h-3" />
           </button>
@@ -826,6 +1024,7 @@ export function LuxuryCombobox({
           onClick={() => setIsOpen(prev => !prev)}
           tabIndex={-1}
           className="p-1 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors cursor-pointer"
+          title="Toggle presets"
         >
           <ChevronDown
             className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-emerald-500' : ''}`}
@@ -839,24 +1038,20 @@ export function LuxuryCombobox({
         </p>
       )}
 
-      {/* Preset List Dropdown via Portal */}
-      {typeof document !== 'undefined' && createPortal(
+      {/* Preset List Dropdown */}
+      {!portal ? (
         <AnimatePresence>
           {isOpen && (
             <motion.div
               id={listboxId}
               role="listbox"
-              initial={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
+              initial={{ opacity: 0, scale: 0.97, y: -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
-              transition={{ duration: 0.14 }}
-              className="fixed z-[9999] rounded-2xl overflow-hidden shadow-2xl border flex flex-col p-1.5"
+              exit={{ opacity: 0, scale: 0.97, y: -4 }}
+              transition={{ duration: 0.12 }}
+              className="absolute top-full left-0 right-0 mt-1.5 z-50 rounded-2xl overflow-hidden shadow-2xl border flex flex-col p-1.5"
               style={{
-                top: coords.placement === 'bottom' ? coords.top : undefined,
-                bottom: coords.placement === 'top' ? (window.innerHeight - coords.top) : undefined,
-                left: coords.left,
-                width: coords.width,
-                maxHeight: 240,
+                maxHeight: 220,
                 background: bgCard,
                 borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
                 boxShadow: isDark
@@ -865,43 +1060,42 @@ export function LuxuryCombobox({
               }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                <span>Select from Presets:</span>
-                <span className="text-[9px] text-emerald-500">{filteredPresets.length} available</span>
-              </div>
-              <div className="overflow-y-auto space-y-0.5 custom-scrollbar flex-1">
-                {filteredPresets.length === 0 ? (
-                  <div className="py-4 text-center text-xs" style={{ color: txtMuted }}>
-                    No preset matches &ldquo;{filterText}&rdquo; (custom title will be saved)
-                  </div>
-                ) : (
-                  filteredPresets.map(preset => {
-                    const isSelected = value === preset;
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => handleSelectPreset(preset)}
-                        className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-500/15 text-emerald-500 font-black'
-                            : 'hover:bg-slate-500/10'
-                        }`}
-                        style={{ color: isSelected ? '#059669' : txtCol }}
-                      >
-                        <span>{preset}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
+              {dropdownListContent}
             </motion.div>
           )}
-        </AnimatePresence>,
-        document.body
+        </AnimatePresence>
+      ) : (
+        typeof document !== 'undefined' && createPortal(
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                id={listboxId}
+                role="listbox"
+                initial={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: coords.placement === 'bottom' ? -4 : 4 }}
+                transition={{ duration: 0.14 }}
+                className="fixed z-[9999] rounded-2xl overflow-hidden shadow-2xl border flex flex-col p-1.5"
+                style={{
+                  top: coords.placement === 'bottom' ? coords.top : undefined,
+                  bottom: coords.placement === 'top' ? (window.innerHeight - coords.top) : undefined,
+                  left: coords.left,
+                  width: coords.width,
+                  maxHeight: coords.maxHeight || 240,
+                  background: bgCard,
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                  boxShadow: isDark
+                    ? '0 16px 40px -8px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.05)'
+                    : '0 16px 40px -8px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.05)',
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                {dropdownListContent}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )
       )}
     </div>
   );

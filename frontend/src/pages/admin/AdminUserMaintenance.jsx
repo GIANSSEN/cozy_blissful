@@ -249,18 +249,18 @@ function UserDetailModal({ user, onClose, onEdit, onManageSchedule, C }) {
   const meta = ROLE_META[user.role] || ROLE_META.staff;
   const Icon = meta.icon;
   return (
-    <ModalShell onClose={onClose}>
-      <div style={{ background: C.card }}>
-        <div className="p-6 pt-8 sm:pt-6 relative text-white" style={{ background: meta.grad }}>
-          <button onClick={onClose} className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-all cursor-pointer">
+    <ModalShell onClose={onClose} maxWidth="max-w-lg">
+      <div style={{ background: C.card }} className="flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+        <div className="p-5 sm:p-6 pt-7 sm:pt-6 relative text-white flex-shrink-0" style={{ background: meta.grad }}>
+          <button onClick={onClose} aria-label="Close dialog" className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center transition-all cursor-pointer">
             <X className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-4">
-            <Avatar name={user.name} gradient="rgba(255,255,255,0.2)" size={56} />
-            <div>
-              <h3 className="font-black text-xl text-white leading-tight">{user.name}</h3>
-              <p className="text-xs text-white/75 mt-0.5">{user.email}</p>
-              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+            <Avatar name={user.name} gradient="rgba(255,255,255,0.2)" size={54} />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-black text-lg sm:text-xl text-white leading-tight truncate">{user.name}</h3>
+              <p className="text-xs text-white/75 mt-0.5 truncate">{user.email}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <span className="text-[9px] font-black px-2.5 py-1 rounded-full bg-white/20 uppercase tracking-wider text-white flex items-center gap-1">
                   <Icon className="w-3 h-3" /> {meta.label}
                 </span>
@@ -270,8 +270,8 @@ function UserDetailModal({ user, onClose, onEdit, onManageSchedule, C }) {
           </div>
         </div>
 
-        <div className="p-5 space-y-3 max-h-[55vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="p-4 sm:p-5 space-y-3 overflow-y-auto flex-1 custom-scrollbar">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {[
               { label: 'Phone',         value: user.phone || '—',                      icon: Phone },
               { label: 'Specialization',value: user.specialty || '—',                  icon: Briefcase },
@@ -283,29 +283,29 @@ function UserDetailModal({ user, onClose, onEdit, onManageSchedule, C }) {
                   <Ic className="w-3 h-3 text-slate-400" />
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{label}</p>
                 </div>
-                <p className="text-xs font-bold" style={{ color: C.txt }}>{value}</p>
+                <p className="text-xs font-bold truncate" style={{ color: C.txt }} title={value}>{value}</p>
               </div>
             ))}
           </div>
           <div className="p-3.5 rounded-2xl" style={{ background: C.inner }}>
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Access & Permissions</p>
-            <p className="text-xs" style={{ color: C.txtSec }}>{meta.desc}</p>
+            <p className="text-xs leading-relaxed" style={{ color: C.txtSec }}>{meta.desc}</p>
           </div>
         </div>
 
-        <div className="px-5 pb-6 sm:pb-5 pt-0 flex gap-2.5" style={{ borderTop: `1px solid ${C.divider}`, paddingTop: 14 }}>
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 flex gap-2.5 flex-shrink-0" style={{ borderTop: `1px solid ${C.divider}` }}>
           <button onClick={onClose} className="py-2.5 px-4 rounded-xl text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
             style={{ background: C.inner, color: C.txtSec }}>Close</button>
           {onManageSchedule && (user.role === 'therapist' || user.role === 'staff') && (
             <button onClick={() => { onClose(); onManageSchedule(user.id); }}
-              className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer hover:opacity-90"
+              className="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all cursor-pointer hover:opacity-90 active:scale-95"
               style={{ background: C.inner, borderColor: C.inputBdr, color: C.txt }}>
               <Calendar className="w-3.5 h-3.5 text-amber-500" />
               <span>Shifts</span>
             </button>
           )}
           <button onClick={() => { onClose(); onEdit(user); }}
-            className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white shadow-lg transition-all hover:opacity-90 cursor-pointer"
+            className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold text-white shadow-lg transition-all hover:opacity-90 active:scale-95 cursor-pointer"
             style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>Edit Profile</button>
         </div>
       </div>
@@ -320,18 +320,18 @@ function DeleteUserConfirmModal({ user, onClose, onConfirm, C }) {
   if (!user) return null;
   return (
     <ModalShell onClose={onClose} maxWidth="max-w-md">
-      <div className="p-6 space-y-4 text-center" style={{ background: C.card }}>
-        <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center bg-red-500/10 text-red-500 shadow-inner">
-          <Trash2 className="w-7 h-7" />
+      <div className="p-5 sm:p-6 space-y-4 text-center" style={{ background: C.card }}>
+        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl mx-auto flex items-center justify-center bg-red-500/10 text-red-500 shadow-inner">
+          <Trash2 className="w-6 h-6 sm:w-7 sm:h-7" />
         </div>
         <div className="space-y-1.5">
-          <h3 className="text-base font-black" style={{ color: C.txt }}>Revoke Team Account</h3>
+          <h3 className="text-base sm:text-lg font-black" style={{ color: C.txt }}>Revoke Team Account</h3>
           <p className="text-xs leading-relaxed" style={{ color: C.txtSec }}>
             Are you sure you want to remove <strong className="font-black text-red-400">{user.name}</strong>?
             This will permanently revoke their portal credentials and unassign upcoming scheduled shift rosters.
           </p>
         </div>
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-2.5 sm:gap-3 pt-2">
           <button
             type="button"
             onClick={onClose}
@@ -343,7 +343,7 @@ function DeleteUserConfirmModal({ user, onClose, onConfirm, C }) {
           <button
             type="button"
             onClick={() => onConfirm(user.id, user.name)}
-            className="flex-1 py-2.5 rounded-xl text-xs font-black text-white bg-red-600 hover:bg-red-700 shadow-md transition-all cursor-pointer"
+            className="flex-1 py-2.5 rounded-xl text-xs font-black text-white bg-red-600 hover:bg-red-700 shadow-md transition-all cursor-pointer active:scale-95"
           >
             Yes, Delete Account
           </button>
@@ -600,35 +600,35 @@ function AddEditUserModal({ user, onClose, onSave }) {
 
   return (
     <ModalShell onClose={onClose} maxWidth="max-w-xl">
-      <form onSubmit={submit} style={{ background: C.card }} className="flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+      <form onSubmit={submit} style={{ background: C.card }} className="flex flex-col max-h-[92vh] sm:max-h-[88vh]">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 sm:px-6 py-4 flex-shrink-0"
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${C.divider}` }}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
               style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)', color: '#fff' }}>
-              <UserCog className="w-5 h-5" />
+              <UserCog className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="font-black text-base leading-tight" style={{ color: C.txt }}>
+            <div className="min-w-0">
+              <h2 className="font-black text-sm sm:text-base leading-tight truncate" style={{ color: C.txt }}>
                 {isEdit ? 'Edit Team Member Profile' : 'Onboard New Team Member'}
               </h2>
-              <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>
-                {isEdit ? 'Update credentials, commission and role permissions' : 'Create new therapist or staff coordinator portal credentials'}
+              <p className="text-[11px] sm:text-xs mt-0.5 truncate" style={{ color: C.txtMuted }}>
+                {isEdit ? 'Update credentials, commission and role permissions' : 'Create new therapist or staff coordinator credentials'}
               </p>
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close dialog"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all cursor-pointer flex-shrink-0"
             style={{ background: C.inner }}>
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+        <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
           {serverError && (
-            <div className="p-3.5 rounded-2xl flex items-center gap-2.5 text-xs text-red-400 font-bold"
+            <div className="p-3 sm:p-3.5 rounded-2xl flex items-center gap-2.5 text-xs text-red-400 font-bold"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{serverError}</span>
@@ -749,8 +749,8 @@ function AddEditUserModal({ user, onClose, onSave }) {
             )}
           </div>
 
-          {/* Specialization / Position (LuxuryCombobox with presets in dropdown) */}
-          <div className="space-y-1.5">
+          {/* Specialization / Position (Collision-safe combobox with quick preset pills) */}
+          <div className="space-y-2">
             <LuxuryCombobox
               id="form-specialty-combobox"
               value={form.specialty}
@@ -762,7 +762,43 @@ function AddEditUserModal({ user, onClose, onSave }) {
               required
               error={errors.specialty}
               isDark={C.isDark}
+              portal={false}
             />
+
+            {/* Quick-Pick Popular Presets Pill Bar */}
+            <div className="space-y-1 pt-0.5">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-emerald-500" />
+                Quick Preset Picks:
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-0.5">
+                {(form.role === 'therapist' ? THERAPIST_SPECIALTY_PRESETS : STAFF_POSITION_PRESETS).map(preset => {
+                  const isSelected = form.specialty === preset;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => set('specialty', preset)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer select-none active:scale-95 ${
+                        isSelected
+                          ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-sm'
+                          : 'hover:border-slate-500/40 text-slate-400 hover:text-slate-200'
+                      }`}
+                      style={{
+                        background: isSelected
+                          ? (C.isDark ? 'rgba(5,150,105,0.2)' : 'rgba(5,150,105,0.12)')
+                          : C.inner,
+                        borderColor: isSelected ? '#059669' : C.inputBdr,
+                        color: isSelected ? (C.isDark ? '#34d399' : '#059669') : C.txtSec,
+                      }}
+                    >
+                      {preset}
+                      {isSelected && <Check className="w-2.5 h-2.5 inline-block ml-1 text-emerald-500 stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Status & Compensation Grid */}
@@ -776,6 +812,7 @@ function AddEditUserModal({ user, onClose, onSave }) {
               onChange={v => set('status', v)}
               options={statusDropdownOptions}
               isDark={C.isDark}
+              portal={false}
             />
 
             {/* Commission for Therapist or Fixed Salary for Staff */}
@@ -788,6 +825,7 @@ function AddEditUserModal({ user, onClose, onSave }) {
                 onChange={v => set('commRate', Number(v))}
                 options={COMMISSION_TIERS}
                 isDark={C.isDark}
+                portal={false}
               />
             ) : (
               <div className="space-y-1.5">
@@ -892,13 +930,13 @@ function AddEditUserModal({ user, onClose, onSave }) {
         </div>
 
         {/* Sticky Footer */}
-        <div className="flex items-center justify-end gap-3 px-5 sm:px-6 py-3.5 sm:py-4 flex-shrink-0"
+        <div className="flex items-center justify-end gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0"
           style={{ borderTop: `1px solid ${C.divider}`, background: C.card }}>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
+            className="px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
             style={{ background: C.inner, color: C.txtSec }}
           >
             Cancel
@@ -906,7 +944,7 @@ function AddEditUserModal({ user, onClose, onSave }) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-lg transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-lg transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 cursor-pointer"
             style={{
               background: isSubmitting ? '#059669' : 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)',
               boxShadow: '0 4px 16px rgba(5,150,105,0.3)',
