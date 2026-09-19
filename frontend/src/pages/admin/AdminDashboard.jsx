@@ -1567,14 +1567,14 @@ const AdminDashboard = () => {
           </motion.section>
         </div>
 
-        {/* ══ ROW 5: CUSTOMER FUNNEL & THERAPIST STATUS ═════════════ */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        {/* ══ ROW 5: CUSTOMER FUNNEL, THERAPIST STATUS & STAFF LEADERBOARD ══ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {/* Customer Funnel */}
           <motion.section
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.38, ease: [0.22,1,0.36,1] }}
             aria-label="Customer Conversion Funnel"
-            className="md:col-span-1"
+            className="col-span-1"
           >
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col justify-between">
               <div>
@@ -1597,37 +1597,28 @@ const AdminDashboard = () => {
                   })}
                 </div>
               </div>
-              <div className="mt-4 pt-3.5 border-t" style={{ borderColor: t.divider }}>
-                <p className="text-[9px] font-black uppercase tracking-wider mb-2" style={{ color: t.txtMuted }}>Top Rated Specialists</p>
-                <div className="space-y-2">
-                  {sortedPerformers.slice(0, 2).map((p, i) => (
-                    <div key={p.name} className="flex items-center gap-2 p-2 rounded-xl border transition-transform hover:scale-[1.01]"
-                      style={{ background: t.inner, borderColor: t.innerBorder }}>
-                      <div className="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black text-white shrink-0"
-                        style={{ background: i === 0 ? 'linear-gradient(135deg,#062c22,#bfa15f)' : 'linear-gradient(135deg,#1e293b,#64748b)' }}>
-                        {p.name.charAt(0)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold truncate" style={{ color: t.txt }}>{p.name}</p>
-                        <p className="text-[10px]" style={{ color: t.txtMuted }}>{p.sessions} sessions · ₱{p.revenue.toLocaleString()}</p>
-                      </div>
-                      <span className="text-[11px] font-black shrink-0" style={{ color: t.gold }}>★ {p.rating}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="mt-4 pt-3.5 space-y-1.5 border-t" style={{ borderColor: t.divider }}>
+                <p className="text-[9px] font-black uppercase tracking-wider mb-2" style={{ color: t.txtMuted }}>Conversion Analytics</p>
+                {[
+                  { label: 'Overall Conversion',    value: '10.1%', color: t.success },
+                  { label: 'Booking Request Rate',  value: '12.1%', color: t.accent  },
+                  { label: 'Treatment Fulfilment',  value: '92.1%', color: t.info    },
+                ].map(r => (
+                  <div key={r.label} className="flex items-center justify-between py-1 px-1.5 text-xs">
+                    <span style={{ color: t.txtSub }}>{r.label}</span>
+                    <span className="font-black tabular-nums" style={{ color: r.color }}>{r.value}</span>
+                  </div>
+                ))}
               </div>
             </Card>
           </motion.section>
-        </div>
-
-        {/* ══ ROW 5: THERAPIST STATUS + STAFF LEADERBOARD ═══════════ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 
           {/* Therapist Availability */}
           <motion.section
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.42, ease: [0.22,1,0.36,1] }}
             aria-label="Therapist Availability Status"
+            className="col-span-1"
           >
             <Card t={t} className="p-4 sm:p-5 h-full flex flex-col justify-between">
               <div>
@@ -1674,62 +1665,64 @@ const AdminDashboard = () => {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.44, ease: [0.22,1,0.36,1] }}
             aria-label="Staff Performance Leaderboard"
-            className="lg:col-span-2"
+            className="col-span-1 md:col-span-2 lg:col-span-1"
           >
-            <Card t={t} className="p-4 sm:p-5 h-full">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0" style={{ background: t.accentAlpha }}>
-                    <Award className="w-4 h-4" style={{ color: t.accent }} aria-hidden="true" />
+            <Card t={t} className="p-4 sm:p-5 h-full flex flex-col justify-between">
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0" style={{ background: t.accentAlpha }}>
+                      <Award className="w-4 h-4" style={{ color: t.accent }} aria-hidden="true" />
+                    </div>
+                    <h2 className="text-sm sm:text-base font-black truncate" style={{ color: t.txt }}>Staff Leaderboard</h2>
                   </div>
-                  <h2 className="text-sm sm:text-base font-black" style={{ color: t.txt }}>Staff Performance & Ratings</h2>
+                  <div role="tablist" aria-label="Sort leaderboard by"
+                    className="flex items-center rounded-xl p-0.5 border self-start sm:self-auto shrink-0"
+                    style={{ background: t.inner, borderColor: t.innerBorder }}>
+                    {[{ id: 'rating', label: 'Rating' }, { id: 'sessions', label: 'Sessions' }, { id: 'revenue', label: 'Revenue' }].map(tab => (
+                      <button key={tab.id} role="tab" aria-selected={staffSort === tab.id} type="button"
+                        onClick={() => setStaffSort(tab.id)}
+                        className="px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                        style={{ background: staffSort === tab.id ? t.accent : 'transparent', color: staffSort === tab.id ? '#fff' : t.txtMuted }}>
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div role="tablist" aria-label="Sort leaderboard by"
-                  className="flex items-center rounded-xl p-0.5 border self-start sm:self-auto"
-                  style={{ background: t.inner, borderColor: t.innerBorder }}>
-                  {[{ id: 'rating', label: 'Rating' }, { id: 'sessions', label: 'Sessions' }, { id: 'revenue', label: 'Revenue' }].map(tab => (
-                    <button key={tab.id} role="tab" aria-selected={staffSort === tab.id} type="button"
-                      onClick={() => setStaffSort(tab.id)}
-                      className="px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-                      style={{ background: staffSort === tab.id ? t.accent : 'transparent', color: staffSort === tab.id ? '#fff' : t.txtMuted }}>
-                      {tab.label}
-                    </button>
+                <div className="space-y-2.5">
+                  {sortedPerformers.map((p, idx) => (
+                    <motion.div key={p.name} layout transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                      className="p-3 rounded-2xl border transition-all duration-200 hover:shadow-sm"
+                      style={{ background: t.inner, borderColor: t.innerBorder }}>
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="relative shrink-0">
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shadow-sm"
+                              style={{ background: `${p.color}18`, border: `1px solid ${p.color}30`, color: p.color }}>
+                              {p.name.charAt(0)}
+                            </div>
+                            <span className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
+                              style={{ background: idx === 0 ? '#bfa15f' : idx === 1 ? '#64748b' : idx === 2 ? '#b45309' : '#475569' }}>
+                              {idx + 1}
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-bold truncate" style={{ color: t.txt }}>{p.name}</span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-md font-bold shrink-0 hidden xs:inline-block" style={{ background: t.tag, color: t.tagTxt }}>{p.role}</span>
+                            </div>
+                            <span className="text-[10px] font-semibold" style={{ color: t.gold }}>★ {p.rating}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 text-right">
+                          <span className="text-[10px] font-medium hidden sm:inline" style={{ color: t.txtMuted }}>{p.sessions} sess.</span>
+                          <span className="text-xs font-black tabular-nums" style={{ color: p.color }}>₱{p.revenue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <Bar pct={p.pct} color={p.color} t={t} height={5} />
+                    </motion.div>
                   ))}
                 </div>
-              </div>
-              <div className="space-y-3">
-                {sortedPerformers.map((p, idx) => (
-                  <motion.div key={p.name} layout transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                    className="p-3.5 rounded-2xl border transition-all duration-200 hover:shadow-sm"
-                    style={{ background: t.inner, borderColor: t.innerBorder }}>
-                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black shadow-sm"
-                            style={{ background: `${p.color}18`, border: `1px solid ${p.color}30`, color: p.color }}>
-                            {p.name.charAt(0)}
-                          </div>
-                          <span className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white"
-                            style={{ background: idx === 0 ? '#bfa15f' : idx === 1 ? '#64748b' : idx === 2 ? '#b45309' : '#475569' }}>
-                            {idx + 1}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs sm:text-sm font-bold" style={{ color: t.txt }}>{p.name}</span>
-                            <span className="text-[9px] px-2 py-0.5 rounded-md font-bold" style={{ background: t.tag, color: t.tagTxt }}>{p.role}</span>
-                          </div>
-                          <span className="text-[11px] font-semibold" style={{ color: t.gold }}>★ {p.rating}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-[11px] font-medium" style={{ color: t.txtMuted }}>{p.sessions} sessions</span>
-                        <span className="text-xs sm:text-sm font-black tabular-nums" style={{ color: p.color }}>₱{p.revenue.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <Bar pct={p.pct} color={p.color} t={t} height={6} />
-                  </motion.div>
-                ))}
               </div>
             </Card>
           </motion.section>

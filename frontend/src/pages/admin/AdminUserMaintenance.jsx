@@ -13,7 +13,7 @@ import {
   TrendingUp, Activity, SlidersHorizontal,
   CheckCheck, Plus,
   UserCheck, UserX,
-  Layers, BarChart3,
+  Layers, BarChart3, LayoutList, LayoutGrid,
   RefreshCw, Mail, Phone, Lock, Briefcase,
   Eye, EyeOff, Sparkles, ShieldAlert, Check, Copy, AlertCircle, Loader2, KeyRound,
   Trash2, MoreVertical, Filter, ArrowUpDown, Download, RotateCcw,
@@ -457,12 +457,12 @@ function AddEditUserModal({ user, onClose, onSave }) {
       e.name = 'Full name is required';
     } else if (nameTrimmed.length < 2) {
       e.name = 'Full name must be at least 2 characters';
-    } else if (!/^[a-zA-Z\s.\-']+$/.test(nameTrimmed)) {
-      e.name = 'Full name can only contain letters, spaces, hyphens, and periods';
+    } else if (!/^[\p{L}\s.'-]+$/u.test(nameTrimmed)) {
+      e.name = 'Full name can only contain letters, spaces, hyphens, apostrophes, and periods';
     }
 
     const emailTrimmed = form.email.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailTrimmed) {
       e.email = 'Email address is required';
     } else if (!emailRegex.test(emailTrimmed)) {
@@ -471,19 +471,20 @@ function AddEditUserModal({ user, onClose, onSave }) {
 
     if (form.phone && form.phone.trim()) {
       const cleanPhone = form.phone.replace(/[\s\-().+]/g, '');
-      if (cleanPhone.length < 7 || cleanPhone.length > 16 || !/^\+?[0-9\s\-().]+$/.test(form.phone.trim())) {
-        e.phone = 'Please enter a valid contact number (e.g. +63 917 123 4567)';
+      if (cleanPhone.length < 7 || cleanPhone.length > 15 || !/^\+?[0-9\s\-().]+$/.test(form.phone.trim())) {
+        e.phone = 'Please enter a valid phone number (e.g. +63 917 123 4567 or 09171234567)';
       }
     }
 
-    if (form.role === 'admin') {
-      e.role = 'Security Rule: Administrator accounts cannot be created through this module.';
-    } else if (!['therapist', 'staff'].includes(form.role)) {
+    if (!['therapist', 'staff'].includes(form.role)) {
       e.role = 'Please select a valid operational role (Therapist or Staff Coordinator).';
     }
 
-    if (form.role === 'therapist' && !form.specialty.trim()) {
-      e.specialty = 'Specialization is required for therapist scheduling (e.g. Swedish, Deep Tissue)';
+    const specTrimmed = (form.specialty || '').trim();
+    if (!specTrimmed) {
+      e.specialty = form.role === 'therapist'
+        ? 'Treatment specialization is required (e.g. Swedish & Deep Tissue)'
+        : 'Position title is required (e.g. Front Desk Coordinator)';
     }
 
     if (!isEdit) {
@@ -496,14 +497,16 @@ function AddEditUserModal({ user, onClose, onSave }) {
       if (!form.confirmPassword) {
         e.confirmPassword = 'Confirmation password is required';
       } else if (form.password !== form.confirmPassword) {
-        e.confirmPassword = 'Password confirmation does not match';
+        e.confirmPassword = 'Passwords do not match';
       }
     } else if (form.password) {
       if (form.password.length < 8) {
         e.password = 'Password must be at least 8 characters';
       }
-      if (form.password !== form.confirmPassword) {
-        e.confirmPassword = 'Password confirmation does not match';
+      if (!form.confirmPassword) {
+        e.confirmPassword = 'Confirmation password is required';
+      } else if (form.password !== form.confirmPassword) {
+        e.confirmPassword = 'Passwords do not match';
       }
     }
 
@@ -596,8 +599,8 @@ function AddEditUserModal({ user, onClose, onSave }) {
   ];
 
   return (
-    <ModalShell onClose={onClose} maxWidth="max-w-2xl">
-      <form onSubmit={submit} style={{ background: C.card }} className="flex flex-col max-h-[92vh]">
+    <ModalShell onClose={onClose} maxWidth="max-w-xl">
+      <form onSubmit={submit} style={{ background: C.card }} className="flex flex-col max-h-[90vh] sm:max-h-[85vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${C.divider}` }}>
@@ -615,7 +618,7 @@ function AddEditUserModal({ user, onClose, onSave }) {
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose}
+          <button type="button" onClick={onClose} aria-label="Close dialog"
             className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
             style={{ background: C.inner }}>
             <X className="w-4 h-4" />
@@ -634,230 +637,185 @@ function AddEditUserModal({ user, onClose, onSave }) {
 
           {/* Full Name */}
           <FormField label="Full Name" required error={errors.name} icon={User}>
-            <input value={form.name} onChange={e => set('name', e.target.value)}
+            <input
+              autoFocus={!isEdit}
+              value={form.name}
+              onChange={e => set('name', e.target.value)}
               placeholder="e.g. Maria Santos"
-              className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-              style={inputStyle(errors.name)} />
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all focus:ring-2 focus:ring-emerald-500/30"
+              style={inputStyle(errors.name)}
+            />
           </FormField>
 
           {/* Email + Phone */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField label="Email Address" required error={errors.email} icon={Mail}>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
+              <input
+                type="email"
+                value={form.email}
+                onChange={e => set('email', e.target.value)}
                 placeholder="maria@cozy.spa"
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                style={inputStyle(errors.email)} />
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all focus:ring-2 focus:ring-emerald-500/30"
+                style={inputStyle(errors.email)}
+              />
             </FormField>
-            <FormField label="Phone Number" error={errors.phone} icon={Phone} hint="Optional (e.g. +63 9XX)">
-              <input value={form.phone} onChange={e => set('phone', e.target.value)}
+            <FormField label="Phone Number" error={errors.phone} icon={Phone} hint="Optional">
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={e => set('phone', e.target.value)}
                 placeholder="+63 917 123 4567"
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                style={inputStyle(errors.phone)} />
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl outline-none font-medium transition-all focus:ring-2 focus:ring-emerald-500/30"
+                style={inputStyle(errors.phone)}
+              />
             </FormField>
           </div>
 
-          {/* System Role Selection with Luxury Select */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1">
-                <Lock className="w-3 h-3" /> No Admin Self-Provisioning
-              </span>
-            </div>
-
-            <LuxurySelect
-              id="form-role-select"
-              label="System Operational Role"
-              required
-              icon={Shield}
-              value={form.role}
-              onChange={handleRoleChange}
-              options={roleDropdownOptions}
-              error={errors.role}
-              isDark={C.isDark}
-            />
-
-            {/* Visual Dual Card Selector in sync */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-              <button type="button" onClick={() => handleRoleChange('therapist')}
-                className="p-3 rounded-2xl text-left transition-all relative overflow-hidden flex items-center gap-2.5 border cursor-pointer"
+          {/* Role Selection (Single Elegant Dual-Card Selector) */}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+              <Shield className="w-3.5 h-3.5 text-emerald-500" />
+              Operational Role <span className="text-red-400 font-bold">*</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" role="radiogroup" aria-label="Select operational role">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={form.role === 'therapist'}
+                onClick={() => handleRoleChange('therapist')}
+                className="p-3.5 rounded-2xl text-left transition-all relative overflow-hidden flex items-center gap-3 border cursor-pointer group outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 style={{
-                  background: form.role === 'therapist' ? 'rgba(217,119,6,0.08)' : C.inner,
+                  background: form.role === 'therapist' ? 'rgba(217,119,6,0.1)' : C.inner,
                   borderColor: form.role === 'therapist' ? '#d97706' : C.inputBdr,
                   boxShadow: form.role === 'therapist' ? '0 0 0 2px rgba(217,119,6,0.25)' : 'none',
-                }}>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                }}
+              >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-105"
                   style={{ background: 'linear-gradient(135deg,#78350f,#d97706)', color: '#fff' }}>
                   <Stethoscope className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black" style={{ color: C.txt }}>Therapist</p>
-                  <p className="text-[9px] leading-tight" style={{ color: C.txtMuted }}>Service provider (40% split)</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-black" style={{ color: C.txt }}>Therapist</p>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded font-bold" style={{ background: 'rgba(217,119,6,0.15)', color: '#d97706' }}>
+                      Provider
+                    </span>
+                  </div>
+                  <p className="text-[10px] mt-0.5" style={{ color: C.txtMuted }}>Sessions & commission split</p>
                 </div>
-                {form.role === 'therapist' && <Check className="w-3.5 h-3.5 text-amber-500" />}
+                {form.role === 'therapist' && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center bg-amber-500 text-white shadow-sm flex-shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                )}
               </button>
 
-              <button type="button" onClick={() => handleRoleChange('staff')}
-                className="p-3 rounded-2xl text-left transition-all relative overflow-hidden flex items-center gap-2.5 border cursor-pointer"
+              <button
+                type="button"
+                role="radio"
+                aria-checked={form.role === 'staff'}
+                onClick={() => handleRoleChange('staff')}
+                className="p-3.5 rounded-2xl text-left transition-all relative overflow-hidden flex items-center gap-3 border cursor-pointer group outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 style={{
-                  background: form.role === 'staff' ? 'rgba(59,130,246,0.08)' : C.inner,
+                  background: form.role === 'staff' ? 'rgba(59,130,246,0.1)' : C.inner,
                   borderColor: form.role === 'staff' ? '#3b82f6' : C.inputBdr,
                   boxShadow: form.role === 'staff' ? '0 0 0 2px rgba(59,130,246,0.25)' : 'none',
-                }}>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                }}
+              >
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-105"
                   style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)', color: '#fff' }}>
                   <UserCog className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black" style={{ color: C.txt }}>Staff Coordinator</p>
-                  <p className="text-[9px] leading-tight" style={{ color: C.txtMuted }}>Front desk & shifts</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-black" style={{ color: C.txt }}>Staff Coordinator</p>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded font-bold" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}>
+                      Front Desk
+                    </span>
+                  </div>
+                  <p className="text-[10px] mt-0.5" style={{ color: C.txtMuted }}>Queue, shifts & reservations</p>
                 </div>
-                {form.role === 'staff' && <Check className="w-3.5 h-3.5 text-blue-500" />}
+                {form.role === 'staff' && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500 text-white shadow-sm flex-shrink-0">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                )}
               </button>
             </div>
-
-            {/* Security Guard Notice */}
-            <div className="flex items-center gap-2 p-2.5 rounded-xl text-[10px]"
-              style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)', color: C.txtSec }}>
-              <ShieldAlert className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <span>
-                <strong className="text-red-500 font-bold">Admin Role Restricted:</strong> System Administrator roles cannot be self-provisioned via staff maintenance.
-              </span>
-            </div>
+            {errors.role && (
+              <p className="text-[10px] font-bold text-red-400 flex items-center gap-1 mt-1">
+                <AlertCircle className="w-3 h-3" /> {errors.role}
+              </p>
+            )}
           </div>
 
-          {/* Status Selection with Luxury Select */}
+          {/* Specialization / Position (LuxuryCombobox with presets in dropdown) */}
           <div className="space-y-1.5">
+            <LuxuryCombobox
+              id="form-specialty-combobox"
+              value={form.specialty}
+              onChange={v => set('specialty', v)}
+              presets={form.role === 'therapist' ? THERAPIST_SPECIALTY_PRESETS : STAFF_POSITION_PRESETS}
+              placeholder={form.role === 'therapist' ? "e.g. Swedish & Deep Tissue" : "e.g. Front Desk Coordinator"}
+              label={form.role === 'therapist' ? "Treatment Specialization" : "Operational Position Title"}
+              icon={Briefcase}
+              required
+              error={errors.specialty}
+              isDark={C.isDark}
+            />
+          </div>
+
+          {/* Status & Compensation Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Status Dropdown */}
             <LuxurySelect
               id="form-status-select"
-              label="Account Operational Status"
+              label="Account Status"
               icon={CheckCircle2}
               value={form.status}
               onChange={v => set('status', v)}
               options={statusDropdownOptions}
               isDark={C.isDark}
             />
+
+            {/* Commission for Therapist or Fixed Salary for Staff */}
+            {form.role === 'therapist' ? (
+              <LuxurySelect
+                id="form-commission-select"
+                label="Commission Split Tier"
+                icon={TrendingUp}
+                value={form.commRate}
+                onChange={v => set('commRate', Number(v))}
+                options={COMMISSION_TIERS}
+                isDark={C.isDark}
+              />
+            ) : (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-500" /> Compensation Mode
+                </label>
+                <div className="p-2.5 rounded-xl border flex items-center justify-between"
+                  style={{ background: C.inner, borderColor: C.inputBdr }}>
+                  <span className="text-xs font-bold" style={{ color: C.txt }}>Fixed Staff Salary</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400">Monthly Payroll</span>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Specialization / Position using Luxury Combobox */}
-          {form.role === 'therapist' ? (
-            <div className="space-y-2.5">
-              <LuxuryCombobox
-                id="form-specialty-combobox"
-                value={form.specialty}
-                onChange={v => set('specialty', v)}
-                presets={THERAPIST_SPECIALTY_PRESETS}
-                placeholder="e.g. Swedish & Deep Tissue"
-                label="Therapist Treatment Specialization"
-                icon={Briefcase}
-                required
-                error={errors.specialty}
-                isDark={C.isDark}
-              />
-
-              {/* Preset Tags */}
-              <div className="space-y-1">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Quick-Add Treatments:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {THERAPIST_SPECIALTY_PRESETS.map(tag => {
-                    const active = (form.specialty || '').includes(tag);
-                    return (
-                      <button key={tag} type="button" onClick={() => toggleSpecialtyTag(tag)}
-                        className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer"
-                        style={{
-                          background: active ? 'rgba(217,119,6,0.2)' : C.pillBg,
-                          color: active ? '#d97706' : C.txtSec,
-                          border: active ? '1px solid rgba(217,119,6,0.4)' : '1px solid transparent',
-                        }}>
-                        {active ? '✓ ' : '+ '} {tag}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Commission Tier Selector */}
-              <div className="space-y-1.5 pt-1">
-                <LuxurySelect
-                  id="form-commission-select"
-                  label="Therapist Commission Split Tier"
-                  icon={TrendingUp}
-                  value={form.commRate}
-                  onChange={v => set('commRate', Number(v))}
-                  options={COMMISSION_TIERS}
-                  isDark={C.isDark}
-                />
-                <div className="flex items-center gap-3 p-3 rounded-2xl"
-                  style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.22)' }}>
-                  <TrendingUp className="w-4 h-4 flex-shrink-0" style={{ color: '#d97706' }} />
-                  <div>
-                    <p className="text-[10px] font-black" style={{ color: '#d97706' }}>
-                      Selected Rate: {form.commRate}% Therapist / {100 - form.commRate}% Salon Retention
-                    </p>
-                    <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>
-                      Payout is automatically recorded upon booking completion and calculated in Friday payroll.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              <LuxuryCombobox
-                id="form-position-combobox"
-                value={form.specialty}
-                onChange={v => set('specialty', v)}
-                presets={STAFF_POSITION_PRESETS}
-                placeholder="e.g. Front Desk Coordinator"
-                label="Staff Position & Operational Title"
-                icon={Briefcase}
-                required
-                error={errors.specialty}
-                isDark={C.isDark}
-              />
-
-              <div className="space-y-1">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Preset Positions:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {STAFF_POSITION_PRESETS.map(pos => {
-                    const active = form.specialty === pos;
-                    return (
-                      <button key={pos} type="button" onClick={() => set('specialty', pos)}
-                        className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer"
-                        style={{
-                          background: active ? 'rgba(59,130,246,0.2)' : C.pillBg,
-                          color: active ? '#2563eb' : C.txtSec,
-                          border: active ? '1px solid rgba(59,130,246,0.4)' : '1px solid transparent',
-                        }}>
-                        {pos}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-2xl"
-                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.22)' }}>
-                <TrendingUp className="w-4 h-4 flex-shrink-0 text-blue-500" />
-                <div>
-                  <p className="text-[10px] font-black text-blue-500">Fixed Monthly Staff Salary</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: C.txtSec }}>
-                    Staff Coordinators manage client check-ins, queue dispatch and day rosters across shifts.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Password & Security Section */}
-          <div className="space-y-3 pt-2">
+          {/* Security Credentials Section */}
+          <div className="space-y-3 pt-2 border-t" style={{ borderColor: C.divider }}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-emerald-500" />
-                {isEdit ? 'Security Credentials (Optional)' : 'Security Credentials'}
+                {isEdit ? 'Portal Password (Optional)' : 'Portal Password'}
               </span>
-              <button type="button" onClick={generateSecurePassword}
-                className="text-[10px] font-black flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all hover:opacity-85 shadow-sm cursor-pointer"
-                style={{ background: 'linear-gradient(135deg,rgba(5,150,105,0.15),rgba(16,185,129,0.25))', color: '#059669', border: '1px solid rgba(5,150,105,0.3)' }}>
+              <button
+                type="button"
+                onClick={generateSecurePassword}
+                className="text-[10px] font-black flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all hover:opacity-85 shadow-sm cursor-pointer active:scale-95"
+                style={{ background: 'linear-gradient(135deg,rgba(5,150,105,0.15),rgba(16,185,129,0.25))', color: '#059669', border: '1px solid rgba(5,150,105,0.3)' }}
+              >
                 <Sparkles className="w-3 h-3 text-emerald-500" /> Auto-Generate Secure
               </button>
             </div>
@@ -865,13 +823,20 @@ function AddEditUserModal({ user, onClose, onSave }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Password" required={!isEdit} error={errors.password} icon={Lock}>
                 <div className="relative">
-                  <input type={showPw ? 'text' : 'password'} value={form.password}
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={form.password}
                     onChange={e => set('password', e.target.value)}
                     placeholder={isEdit ? 'Leave blank to keep current' : 'Min. 8 characters'}
-                    className="w-full pl-3.5 pr-9 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                    style={inputStyle(errors.password)} />
-                  <button type="button" onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer">
+                    className="w-full pl-3.5 pr-9 py-2.5 text-xs rounded-xl outline-none font-medium transition-all focus:ring-2 focus:ring-emerald-500/30"
+                    style={inputStyle(errors.password)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    aria-label={showPw ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                  >
                     {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
@@ -879,13 +844,20 @@ function AddEditUserModal({ user, onClose, onSave }) {
 
               <FormField label="Confirm Password" required={!isEdit || !!form.password} error={errors.confirmPassword} icon={Lock}>
                 <div className="relative">
-                  <input type={showConfirmPw ? 'text' : 'password'} value={form.confirmPassword}
+                  <input
+                    type={showConfirmPw ? 'text' : 'password'}
+                    value={form.confirmPassword}
                     onChange={e => set('confirmPassword', e.target.value)}
                     placeholder="Repeat password"
-                    className="w-full pl-3.5 pr-9 py-2.5 text-xs rounded-xl outline-none font-medium transition-all"
-                    style={inputStyle(errors.confirmPassword)} />
-                  <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer">
+                    className="w-full pl-3.5 pr-9 py-2.5 text-xs rounded-xl outline-none font-medium transition-all focus:ring-2 focus:ring-emerald-500/30"
+                    style={inputStyle(errors.confirmPassword)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPw(!showConfirmPw)}
+                    aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                  >
                     {showConfirmPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
@@ -920,21 +892,26 @@ function AddEditUserModal({ user, onClose, onSave }) {
         </div>
 
         {/* Sticky Footer */}
-        <div className="flex items-center justify-end gap-3 px-4 sm:px-6 py-3.5 sm:py-4 flex-shrink-0 backdrop-blur-md"
+        <div className="flex items-center justify-end gap-3 px-5 sm:px-6 py-3.5 sm:py-4 flex-shrink-0"
           style={{ borderTop: `1px solid ${C.divider}`, background: C.card }}>
-          <button type="button" onClick={onClose} disabled={isSubmitting}
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
             className="px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:opacity-80 cursor-pointer"
-            style={{ background: C.inner, color: C.txtSec }}>
+            style={{ background: C.inner, color: C.txtSec }}
+          >
             Cancel
           </button>
-          <button type="submit" disabled={isSubmitting}
+          <button
+            type="submit"
+            disabled={isSubmitting}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black text-white shadow-lg transition-all hover:opacity-95 active:scale-95 disabled:opacity-50 cursor-pointer"
             style={{
-              background: isSubmitting
-                ? '#059669'
-                : 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)',
+              background: isSubmitting ? '#059669' : 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)',
               boxShadow: '0 4px 16px rgba(5,150,105,0.3)',
-            }}>
+            }}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -943,7 +920,7 @@ function AddEditUserModal({ user, onClose, onSave }) {
             ) : (
               <>
                 <Save className="w-3.5 h-3.5" />
-                <span>{isEdit ? 'Update Profile' : 'Create Account'}</span>
+                <span>{isEdit ? 'Save Changes' : 'Create Account'}</span>
               </>
             )}
           </button>
@@ -1237,18 +1214,33 @@ function TabProfiles({ users, onUsersChange, onSelectTab }) {
 
           <div className="flex items-center gap-2 flex-wrap">
             {/* View Mode Toggle */}
-            <div className="flex items-center p-1 rounded-xl" style={{ background: C.inner }}>
-              {[['table', BarChart3], ['cards', Layers]].map(([m, Ico]) => (
-                <button
-                  key={m}
-                  onClick={() => setViewMode(m)}
-                  className="p-1.5 rounded-lg transition-all cursor-pointer"
-                  style={{ background: viewMode === m ? `${C.accent}20` : 'transparent', color: viewMode === m ? C.accent : C.txtMuted }}
-                  aria-label={`Switch to ${m} view`}
-                >
-                  <Ico className="w-4 h-4" />
-                </button>
-              ))}
+            <div className="flex items-center p-0.5 rounded-xl border" style={{ background: C.inner, borderColor: C.inputBdr }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className="p-1.5 rounded-lg transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                style={{
+                  background: viewMode === 'table' ? (C.isDark ? 'rgba(5,150,105,0.25)' : 'rgba(5,150,105,0.15)') : 'transparent',
+                  color: viewMode === 'table' ? C.accent : C.txtMuted,
+                }}
+                title="Table View"
+                aria-label="Table View"
+              >
+                <LayoutList className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className="p-1.5 rounded-lg transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                style={{
+                  background: viewMode === 'cards' ? (C.isDark ? 'rgba(5,150,105,0.25)' : 'rgba(5,150,105,0.15)') : 'transparent',
+                  color: viewMode === 'cards' ? C.accent : C.txtMuted,
+                }}
+                title="Grid Cards View"
+                aria-label="Grid Cards View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
             </div>
 
             {/* Export & Actions Dropdown */}
@@ -1310,15 +1302,31 @@ function TabProfiles({ users, onUsersChange, onSelectTab }) {
           />
 
           {/* Sort By Dropdown */}
-          <LuxurySelect
-            id="profiles-sort-filter"
-            aria-label="Sort users by"
-            value={sortBy}
-            onChange={setSortBy}
-            options={sortOptions}
-            size="sm"
-            isDark={C.isDark}
-          />
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <LuxurySelect
+                id="profiles-sort-filter"
+                aria-label="Sort users by"
+                value={sortBy}
+                onChange={setSortBy}
+                options={sortOptions}
+                size="sm"
+                isDark={C.isDark}
+              />
+            </div>
+            {(search || roleFilter !== 'all' || statusFilter !== 'all' || sortBy !== 'name-asc') && (
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setRoleFilter('all'); setStatusFilter('all'); setSortBy('name-asc'); }}
+                title="Reset all active filters"
+                aria-label="Reset all active filters"
+                className="p-2 rounded-xl text-xs font-bold border flex items-center justify-center transition-all hover:opacity-85 text-amber-500 cursor-pointer shrink-0"
+                style={{ background: C.inner, borderColor: C.inputBdr }}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1405,8 +1413,20 @@ function TabProfiles({ users, onUsersChange, onSelectTab }) {
                 })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-sm" style={{ color: C.txtMuted }}>
-                      No team members match your filter or search criteria.
+                    <td colSpan={7} className="py-16 text-center px-4">
+                      <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-inner" style={{ background: C.inner }}>
+                        <Users className="w-6 h-6 opacity-40" style={{ color: C.txtMuted }} aria-hidden="true" />
+                      </div>
+                      <p className="text-sm font-black" style={{ color: C.txt }}>No team members match your criteria</p>
+                      <p className="text-xs mt-1 max-w-sm mx-auto" style={{ color: C.txtMuted }}>Try adjusting your search query, role filter, or status selection.</p>
+                      <button
+                        type="button"
+                        onClick={() => { setSearch(''); setRoleFilter('all'); setStatusFilter('all'); setSortBy('name-asc'); }}
+                        className="mt-4 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-85 cursor-pointer shadow-sm active:scale-95"
+                        style={{ background: C.inner, border: `1px solid ${C.inputBdr}`, color: C.accent }}
+                      >
+                        Reset All Filters
+                      </button>
                     </td>
                   </tr>
                 )}
@@ -1415,61 +1435,81 @@ function TabProfiles({ users, onUsersChange, onSelectTab }) {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map(u => {
-            const meta = ROLE_META[u.role] || ROLE_META.staff;
-            return (
-              <div
-                key={u.id}
-                onClick={() => setViewingUser(u)}
-                className="p-5 rounded-2xl space-y-3.5 cursor-pointer transition-all hover:-translate-y-1 relative"
-                style={{ background: C.card, boxShadow: C.shadow }}
+        <>
+          {filtered.length === 0 ? (
+            <div className="p-12 text-center rounded-2xl border" style={{ background: C.card, borderColor: C.divider, boxShadow: C.shadow }}>
+              <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-inner" style={{ background: C.inner }}>
+                <Users className="w-6 h-6 opacity-40" style={{ color: C.txtMuted }} aria-hidden="true" />
+              </div>
+              <p className="text-sm font-black" style={{ color: C.txt }}>No team members found</p>
+              <p className="text-xs mt-1 max-w-sm mx-auto" style={{ color: C.txtMuted }}>No profiles match your search or active filter criteria.</p>
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setRoleFilter('all'); setStatusFilter('all'); setSortBy('name-asc'); }}
+                className="mt-4 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-85 cursor-pointer shadow-sm active:scale-95"
+                style={{ background: C.inner, border: `1px solid ${C.inputBdr}`, color: C.accent }}
               >
-                <div className="flex items-start gap-3 justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={u.name} gradient={meta.grad} size={42} />
-                    <div>
-                      <p className="font-bold text-sm leading-tight" style={{ color: C.txt }}>{u.name}</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: C.txtMuted }}>{u.email}</p>
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filtered.map(u => {
+                const meta = ROLE_META[u.role] || ROLE_META.staff;
+                return (
+                  <div
+                    key={u.id}
+                    onClick={() => setViewingUser(u)}
+                    className="p-5 rounded-2xl space-y-3.5 cursor-pointer transition-all hover:-translate-y-1 relative"
+                    style={{ background: C.card, boxShadow: C.shadow }}
+                  >
+                    <div className="flex items-start gap-3 justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={u.name} gradient={meta.grad} size={42} />
+                        <div>
+                          <p className="font-bold text-sm leading-tight" style={{ color: C.txt }}>{u.name}</p>
+                          <p className="text-[10px] mt-0.5" style={{ color: C.txtMuted }}>{u.email}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                        <StatusDot status={u.status} />
+                        <LuxuryDropdownMenu
+                          trigger={
+                            <button
+                              type="button"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                              style={{ background: C.inner }}
+                              aria-label={`Actions for ${u.name}`}
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+                          }
+                          items={getUserMenuItems(u)}
+                          menuWidth={230}
+                          align="right"
+                          isDark={C.isDark}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3" style={{ borderTop: `1px solid ${C.divider}` }}>
+                      <span className="text-xs truncate max-w-[150px]" style={{ color: C.txtMuted }}>{u.specialty || '—'}</span>
+                      <div className="flex items-center gap-1.5">
+                        {u.role === 'therapist' && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.12)', color: '#d97706' }}>
+                            {u.commRate || 40}%
+                          </span>
+                        )}
+                        <RolePill role={u.role} />
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                    <StatusDot status={u.status} />
-                    <LuxuryDropdownMenu
-                      trigger={
-                        <button
-                          type="button"
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-200 cursor-pointer"
-                          style={{ background: C.inner }}
-                          aria-label={`Actions for ${u.name}`}
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-                      }
-                      items={getUserMenuItems(u)}
-                      menuWidth={230}
-                      align="right"
-                      isDark={C.isDark}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3" style={{ borderTop: `1px solid ${C.divider}` }}>
-                  <span className="text-xs truncate max-w-[150px]" style={{ color: C.txtMuted }}>{u.specialty || '—'}</span>
-                  <div className="flex items-center gap-1.5">
-                    {u.role === 'therapist' && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.12)', color: '#d97706' }}>
-                        {u.commRate || 40}%
-                      </span>
-                    )}
-                    <RolePill role={u.role} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
