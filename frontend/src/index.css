@@ -30,6 +30,8 @@
 
   :root {
     color-scheme: light;
+    --background: #faf9f7;
+    --foreground: #1e293b;
     --bg: #faf9f7;
     --panel: #ffffff;
     --panel-soft: #f3ede4;
@@ -48,6 +50,8 @@
 
   .dark {
     color-scheme: dark;
+    --background: #0b1320;
+    --foreground: #f8fafc;
     --bg: #0f1720;
     --panel: #111827;
     --panel-soft: #1f2937;

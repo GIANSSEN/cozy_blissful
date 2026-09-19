@@ -70,7 +70,7 @@ function ConveyorLoop({
               animation:
                 "loading-ui-conveyor-loop var(--duration, 1.8s) linear infinite",
               animationDelay: `calc(var(--delay, 0.05s) * ${index})`,
-              backgroundColor: "var(--mask-color, var(--background, inherit))",
+              backgroundColor: "var(--mask-color, var(--background))",
             }}
           >
             {glyph}
