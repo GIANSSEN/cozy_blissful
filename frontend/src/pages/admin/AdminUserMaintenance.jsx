@@ -1559,189 +1559,218 @@ function TabProfiles({ users, onUsersChange, onSelectTab }) {
 function TabSchedules({ users, focusedMemberId }) {
   const C = useC();
   const { toast } = useToast();
-  const buildDefault = () => Object.fromEntries(DAYS.map((d, i) => [d, i < 5 ? ['morning','afternoon'] : i === 5 ? ['morning'] : []]));
+  const buildDefault = () =>
+    Object.fromEntries(DAYS.map((d, i) => [d, i < 5 ? ['morning', 'afternoon'] : i === 5 ? ['morning'] : []]));
   const teamUsers = useMemo(() => users.filter(u => u.role === 'staff' || u.role === 'therapist'), [users]);
 
-  const [selected, setSelected]     = useState(focusedMemberId || teamUsers[0]?.id || null);
-  const [schedules, setSchedules]   = useState(() => Object.fromEntries(users.map(u => [u.id, buildDefault()])));
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [saving, setSaving]         = useState(false);
-  const [saved, setSaved]           = useState(false);
+  const [selected, setSelected]       = useState(focusedMemberId || teamUsers[0]?.id || null);
+  const [schedules, setSchedules]     = useState(() => Object.fromEntries(users.map(u => [u.id, buildDefault()])));
+  const [roleFilter, setRoleFilter]   = useState('all');
+  const [saving, setSaving]           = useState(false);
+  const [saved, setSaved]             = useState(false);
+  const [isDirty, setIsDirty]         = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
+  const presetsRef                    = useRef(null);
 
+  useEffect(() => { if (focusedMemberId) setSelected(focusedMemberId); }, [focusedMemberId]);
+
+  // Close preset dropdown on outside click
   useEffect(() => {
-    if (focusedMemberId) setSelected(focusedMemberId);
-  }, [focusedMemberId]);
+    if (!showPresets) return;
+    const handler = e => { if (presetsRef.current && !presetsRef.current.contains(e.target)) setShowPresets(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPresets]);
 
-  const filteredTeam = useMemo(() => {
-    return teamUsers.filter(u => roleFilter === 'all' || u.role === roleFilter);
-  }, [teamUsers, roleFilter]);
+  const filteredTeam = useMemo(() => teamUsers.filter(u => roleFilter === 'all' || u.role === roleFilter), [teamUsers, roleFilter]);
 
-  const person       = filteredTeam.find(u => u.id === selected) || teamUsers.find(u => u.id === selected) || null;
-  const sched        = selected ? (schedules[selected] || {}) : {};
-  const totalShifts  = Object.values(sched).reduce((a, b) => a + b.length, 0);
+  const person      = filteredTeam.find(u => u.id === selected) || teamUsers.find(u => u.id === selected) || null;
+  const sched       = selected ? (schedules[selected] || {}) : {};
+  const totalShifts = Object.values(sched).reduce((a, b) => a + b.length, 0);
+  const totalHours  = totalShifts * 4;
 
   const toggle = (day, shiftId) => {
     setSchedules(prev => {
       const curr = prev[selected]?.[day] || [];
       const next = curr.includes(shiftId) ? curr.filter(s => s !== shiftId) : [...curr, shiftId];
-      return { ...prev, [selected]: { ...(prev[selected]||{}), [day]: next } };
+      return { ...prev, [selected]: { ...(prev[selected] || {}), [day]: next } };
     });
     setSaved(false);
+    setIsDirty(true);
   };
 
-  const applyShiftPreset = (type) => {
+  const applyShiftPreset = type => {
     if (!selected) return;
     setSchedules(prev => {
-      const targetSched = { ...(prev[selected] || {}) };
-      if (type === 'full-weekday') {
-        DAYS.forEach((d, i) => {
-          targetSched[d] = i < 5 ? ['morning', 'afternoon'] : [];
-        });
-      } else if (type === 'morning-weekday') {
-        DAYS.forEach((d, i) => {
-          targetSched[d] = i < 5 ? ['morning'] : [];
-        });
-      } else if (type === 'afternoon-weekday') {
-        DAYS.forEach((d, i) => {
-          targetSched[d] = i < 5 ? ['afternoon'] : [];
-        });
-      } else if (type === 'evening-weekday') {
-        DAYS.forEach((d, i) => {
-          targetSched[d] = i < 5 ? ['evening'] : [];
-        });
-      } else if (type === 'weekend-only') {
-        DAYS.forEach((d, i) => {
-          targetSched[d] = i >= 5 ? ['morning', 'afternoon'] : [];
-        });
-      } else if (type === 'clear') {
-        DAYS.forEach(d => {
-          targetSched[d] = [];
-        });
-      } else if (type === 'dup-mon') {
-        const monShifts = targetSched['Mon'] || [];
-        DAYS.forEach((d, i) => {
-          if (i < 5) targetSched[d] = [...monShifts];
-        });
-      }
-      return { ...prev, [selected]: targetSched };
+      const t = { ...(prev[selected] || {}) };
+      if (type === 'full-weekday')        DAYS.forEach((d, i) => { t[d] = i < 5 ? ['morning', 'afternoon'] : []; });
+      else if (type === 'morning-only')   DAYS.forEach((d, i) => { t[d] = i < 5 ? ['morning'] : []; });
+      else if (type === 'afternoon-only') DAYS.forEach((d, i) => { t[d] = i < 5 ? ['afternoon'] : []; });
+      else if (type === 'evening-only')   DAYS.forEach((d, i) => { t[d] = i < 5 ? ['evening'] : []; });
+      else if (type === 'weekend-only')   DAYS.forEach((d, i) => { t[d] = i >= 5 ? ['morning', 'afternoon'] : []; });
+      else if (type === 'dup-mon')        { const m = t['Mon'] || []; DAYS.forEach((d, i) => { if (i < 5) t[d] = [...m]; }); }
+      else if (type === 'clear')          DAYS.forEach(d => { t[d] = []; });
+      return { ...prev, [selected]: t };
     });
-    toast.success('Roster template applied to shifts!');
+    setShowPresets(false);
+    setIsDirty(true);
     setSaved(false);
+    toast.success('Schedule template applied!');
   };
 
   const save = async () => {
+    if (!isDirty) return;
     setSaving(true);
-    await new Promise(r => setTimeout(r, 500));
-    setSaving(false); setSaved(true);
-    toast.success('Shift schedule saved successfully!');
+    await new Promise(r => setTimeout(r, 600));
+    setSaving(false);
+    setSaved(true);
+    setIsDirty(false);
+    toast.success(`Shift schedule saved for ${person?.name || 'team member'}!`);
     setTimeout(() => setSaved(false), 3000);
   };
 
-  // Dropdown options for selecting team members across all devices
-  const memberSelectOptions = filteredTeam.map(u => {
-    const hrs = Object.values(schedules[u.id] || {}).reduce((a, b) => a + b.length, 0) * 4;
-    return {
-      value: u.id,
-      label: `${u.name} (${u.role === 'therapist' ? 'Therapist' : 'Staff'}) — ${hrs} hrs`,
-      description: u.specialty || u.role,
-      tag: `${hrs}h`,
-      tagColor: hrs > 0 ? '#10b981' : '#64748b',
-      tagBg: hrs > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
-    };
-  });
-
   const roleFilterOptions = [
-    { value: 'all',       label: `All Team Roles (${teamUsers.length})`, icon: Users },
-    { value: 'therapist', label: `Therapists Only (${teamUsers.filter(u => u.role === 'therapist').length})`, icon: Stethoscope },
-    { value: 'staff',     label: `Staff Coordinators (${teamUsers.filter(u => u.role === 'staff').length})`, icon: UserCog },
+    { value: 'all',       label: `All Roles (${teamUsers.length})`,                                       icon: Users },
+    { value: 'therapist', label: `Therapists (${teamUsers.filter(u => u.role === 'therapist').length})`, icon: Stethoscope },
+    { value: 'staff',     label: `Staff (${teamUsers.filter(u => u.role === 'staff').length})`,          icon: UserCog },
+  ];
+
+  const PRESET_OPTIONS = [
+    { key: 'full-weekday',    label: 'Mon-Fri Full Day',        desc: 'Morning + Afternoon (8 AM - 5 PM)' },
+    { key: 'morning-only',   label: 'Mon-Fri Mornings',        desc: 'Morning shifts only (8 AM - 12 PM)' },
+    { key: 'afternoon-only', label: 'Mon-Fri Afternoons',      desc: 'Afternoon shifts only (1 PM - 5 PM)' },
+    { key: 'evening-only',   label: 'Mon-Fri Evenings',        desc: 'Evening shifts only (6 PM - 10 PM)' },
+    { key: 'weekend-only',   label: 'Weekends Only',           desc: 'Sat & Sun (Morning + Afternoon)' },
+    { key: 'dup-mon',        label: 'Copy Monday to Weekdays', desc: 'Duplicate Mon roster across Tue-Fri' },
   ];
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-black" style={{ color: C.txt }}>Work Schedules & Shift Rosters</h2>
-          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Assign weekly shift duties with instant automated scheduling templates</p>
+          <h2 className="text-base sm:text-lg font-black flex items-center gap-2" style={{ color: C.txt }}>
+            <Calendar className="w-5 h-5 text-emerald-500 shrink-0" aria-hidden="true" />
+            Work Schedules &amp; Shift Rosters
+          </h2>
+          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>
+            Assign weekly shift duties. Unsaved changes are highlighted automatically.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Shift Presets Action Dropdown */}
-          {person && (
-            <LuxuryDropdownMenu
-              trigger={
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all hover:opacity-90 cursor-pointer"
-                  style={{ background: C.card, borderColor: C.inputBdr, color: C.txt }}
-                  aria-label="Shift presets menu"
+        {person && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div ref={presetsRef} className="relative">
+              <button
+                type="button"
+                id="schedule-templates-btn"
+                onClick={() => setShowPresets(v => !v)}
+                aria-haspopup="true"
+                aria-expanded={showPresets}
+                aria-controls="schedule-presets-menu"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all hover:opacity-90 cursor-pointer"
+                style={{ background: C.card, borderColor: C.inputBdr, color: C.txt }}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" aria-hidden="true" />
+                <span className="hidden sm:inline">Templates</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${showPresets ? 'rotate-180' : ''}`}
+                  style={{ color: C.txtMuted }}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {showPresets && (
+                <div
+                  id="schedule-presets-menu"
+                  role="menu"
+                  aria-labelledby="schedule-templates-btn"
+                  className="absolute right-0 top-[calc(100%+6px)] z-30 w-64 rounded-2xl border shadow-2xl overflow-hidden"
+                  style={{ background: C.card, borderColor: C.inputBdr }}
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Shift Templates</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                </button>
-              }
-              items={[
-                { type: 'header', label: 'Quick Schedule Presets' },
-                { label: 'Apply Mon–Fri Full Day (8h/day)', description: 'Morning + Afternoon shifts (8 AM – 5 PM)', onClick: () => applyShiftPreset('full-weekday') },
-                { label: 'Apply Mon–Fri Morning (4h/day)', description: 'Morning shifts (8 AM – 12 PM)', onClick: () => applyShiftPreset('morning-weekday') },
-                { label: 'Apply Mon–Fri Afternoon (4h/day)', description: 'Afternoon shifts (1 PM – 5 PM)', onClick: () => applyShiftPreset('afternoon-weekday') },
-                { label: 'Apply Mon–Fri Evening (4h/day)', description: 'Evening shifts (6 PM – 10 PM)', onClick: () => applyShiftPreset('evening-weekday') },
-                { label: 'Apply Weekend Only (Sat & Sun)', description: 'Weekend coverage shifts', onClick: () => applyShiftPreset('weekend-only') },
-                { label: 'Duplicate Monday to Weekdays', description: 'Copy Mon roster across Tue–Fri', onClick: () => applyShiftPreset('dup-mon') },
-                { type: 'divider' },
-                { label: 'Clear All Shifts for this User', description: 'Reset weekly shifts', danger: true, onClick: () => applyShiftPreset('clear') },
-              ]}
-              menuWidth={250}
-              align="right"
-              isDark={C.isDark}
-            />
-          )}
+                  <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${C.divider}` }}>
+                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.txtMuted }}>Quick Presets</p>
+                  </div>
+                  <div className="p-1.5 space-y-0.5">
+                    {PRESET_OPTIONS.map(opt => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => applyShiftPreset(opt.key)}
+                        className="w-full text-left px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                        style={{ background: 'transparent' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = C.inner; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <p className="text-xs font-bold" style={{ color: C.txt }}>{opt.label}</p>
+                        <p className="text-[10px]" style={{ color: C.txtMuted }}>{opt.desc}</p>
+                      </button>
+                    ))}
+                    <div className="my-1" style={{ borderTop: `1px solid ${C.divider}` }} />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => applyShiftPreset('clear')}
+                      className="w-full text-left px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                      style={{ background: 'transparent', color: '#ef4444' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <p className="text-xs font-bold">Clear All Shifts</p>
+                      <p className="text-[10px] opacity-70">Reset this member's weekly roster</p>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
-          {person && (
-            <button onClick={save} disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90 cursor-pointer"
-              style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
+            <button
+              type="button"
+              id="save-shifts-btn"
+              onClick={save}
+              disabled={saving || !isDirty}
+              aria-label={saving ? 'Saving...' : saved ? 'Saved' : 'Save shift schedule'}
+              className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}
+            >
               {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : saved ? <CheckCheck className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-              {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Shifts'}
+              <span>{saving ? 'Saving...' : saved ? 'Saved!' : 'Save Shifts'}</span>
+              {isDirty && !saving && !saved && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
+              )}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Shift legend */}
-      <div className="flex flex-wrap gap-2 p-3.5 rounded-2xl" style={{ background: C.card, boxShadow: C.shadow }}>
-        <span className="text-[10px] font-black uppercase tracking-widest mr-1 self-center" style={{ color: C.txtMuted }}>Shift Times:</span>
+      {/* SHIFT LEGEND */}
+      <div
+        className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 rounded-2xl"
+        style={{ background: C.card, boxShadow: C.shadow }}
+        aria-label="Shift time legend"
+      >
+        <span className="text-[10px] font-black uppercase tracking-widest self-center" style={{ color: C.txtMuted }}>Shift Times:</span>
         {SHIFTS.map(sh => (
-          <span key={sh.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold"
-            style={{ background: sh.bg, color: sh.color }}>
-            <span>{sh.icon}</span>
+          <span key={sh.id} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-bold" style={{ background: sh.bg, color: sh.color }}>
+            <span aria-hidden="true">{sh.icon}</span>
             <span className="font-black">{sh.label}</span>
             <span className="font-medium opacity-80 hidden sm:inline">{sh.time}</span>
           </span>
         ))}
       </div>
 
-      {/* Responsive Member Selector for Small Screens */}
-      <div className="block lg:hidden p-3.5 rounded-2xl space-y-2" style={{ background: C.card, boxShadow: C.shadow }}>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Team Member to Schedule:</p>
-        <LuxurySelect
-          id="mobile-schedule-member-select"
-          value={selected}
-          onChange={setSelected}
-          options={memberSelectOptions}
-          searchable
-          isDark={C.isDark}
-        />
-      </div>
-
+      {/* MAIN GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Roster Column */}
-        <div className="hidden lg:block lg:col-span-4 rounded-2xl overflow-hidden" style={{ background: C.card, boxShadow: C.shadow }}>
-          <div className="p-3.5 space-y-2" style={{ borderBottom: `1px solid ${C.divider}` }}>
+
+        {/* Roster panel - desktop only */}
+        <div className="hidden lg:flex lg:col-span-4 flex-col rounded-2xl overflow-hidden" style={{ background: C.card, boxShadow: C.shadow }}>
+          <div className="p-3.5 space-y-2.5 flex-shrink-0" style={{ borderBottom: `1px solid ${C.divider}` }}>
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.txtMuted }}>Team Roster</p>
             <LuxurySelect
               id="schedule-role-filter"
+              aria-label="Filter roster by role"
               value={roleFilter}
               onChange={setRoleFilter}
               options={roleFilterOptions}
@@ -1749,42 +1778,76 @@ function TabSchedules({ users, focusedMemberId }) {
               isDark={C.isDark}
             />
           </div>
-
-          <div className="p-2 space-y-0.5 max-h-[62vh] overflow-y-auto custom-scrollbar">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-0.5">
+            {filteredTeam.length === 0 && (
+              <p className="text-xs text-center py-8" style={{ color: C.txtMuted }}>No team members found.</p>
+            )}
             {filteredTeam.map(u => {
               const isSel = selected === u.id;
               const meta  = ROLE_META[u.role] || ROLE_META.staff;
               const hrs   = Object.values(schedules[u.id] || {}).reduce((a, b) => a + b.length, 0) * 4;
               return (
-                <button key={u.id} onClick={() => setSelected(u.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left cursor-pointer"
-                  style={{ background: isSel ? `${C.accent}12` : 'transparent', borderLeft: `3px solid ${isSel ? C.accent : 'transparent'}` }}>
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => setSelected(u.id)}
+                  aria-pressed={isSel}
+                  aria-label={`${u.name} - ${hrs} hrs/week`}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+                  style={{ background: isSel ? `${C.accent}18` : 'transparent', borderLeft: `3px solid ${isSel ? C.accent : 'transparent'}` }}
+                >
                   <Avatar name={u.name} gradient={meta.grad} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold truncate" style={{ color: C.txt }}>{u.name}</p>
                     <p className="text-[10px] truncate" style={{ color: C.txtMuted }}>{u.specialty || u.role}</p>
                   </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-lg flex-shrink-0" style={{ background: C.inner, color: C.accent }}>{hrs}h</span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-lg flex-shrink-0" style={{ background: C.inner, color: hrs > 0 ? C.accent : C.txtMuted }}>{hrs}h</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Shift editor */}
-        <div className="lg:col-span-8 rounded-2xl overflow-hidden" style={{ background: C.card, boxShadow: C.shadow }}>
+        {/* Shift editor panel */}
+        <div className="lg:col-span-8 rounded-2xl overflow-hidden flex flex-col" style={{ background: C.card, boxShadow: C.shadow }}>
+          {/* Mobile member picker */}
+          <div className="lg:hidden p-3.5 flex-shrink-0 space-y-2" style={{ borderBottom: `1px solid ${C.divider}` }}>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.txtMuted }}>Select Team Member:</p>
+            <LuxurySelect
+              id="mobile-schedule-member-select"
+              aria-label="Select team member to schedule"
+              value={selected}
+              onChange={setSelected}
+              options={teamUsers.map(u => {
+                const hrs = Object.values(schedules[u.id] || {}).reduce((a, b) => a + b.length, 0) * 4;
+                return {
+                  value: u.id,
+                  label: u.name,
+                  description: `${u.specialty || u.role} - ${hrs} hrs/week`,
+                  tag: `${hrs}h`,
+                  tagColor: hrs > 0 ? '#10b981' : '#64748b',
+                  tagBg: hrs > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
+                };
+              })}
+              searchable
+              isDark={C.isDark}
+            />
+          </div>
+
           {!person ? (
-            <div className="flex flex-col items-center justify-center p-16 text-center">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: C.inner }}>
-                <Calendar className="w-6 h-6" style={{ color: C.txtMuted }} />
+            <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: C.inner }}>
+                <Calendar className="w-7 h-7" style={{ color: C.txtMuted }} aria-hidden="true" />
               </div>
               <p className="text-sm font-bold" style={{ color: C.txt }}>Select a team member</p>
-              <p className="text-xs mt-1" style={{ color: C.txtMuted }}>Choose from the roster list or dropdown</p>
+              <p className="text-xs mt-1 max-w-xs" style={{ color: C.txtMuted }}>
+                Choose from the roster panel (or the dropdown above on mobile) to assign shifts.
+              </p>
             </div>
           ) : (
             <>
-              {/* Person header */}
-              <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5" style={{ borderBottom: `1px solid ${C.divider}` }}>
+              {/* Person header strip */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 flex-shrink-0" style={{ borderBottom: `1px solid ${C.divider}` }}>
                 <div className="flex items-center gap-3">
                   <Avatar name={person.name} gradient={ROLE_META[person.role]?.grad} size={44} />
                   <div>
@@ -1792,71 +1855,116 @@ function TabSchedules({ users, focusedMemberId }) {
                     <p className="text-xs" style={{ color: C.txtMuted }}>{person.specialty || person.role}</p>
                   </div>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex items-center gap-4">
+                  {isDirty && (
+                    <span className="text-[10px] font-bold text-amber-400 flex items-center gap-1 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" aria-hidden="true" />
+                      Unsaved changes
+                    </span>
+                  )}
                   <div className="text-right">
                     <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: C.txtMuted }}>Shifts</p>
                     <p className="text-base font-black" style={{ color: C.txt }}>{totalShifts}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: C.txtMuted }}>Total Hrs</p>
-                    <p className="text-base font-black" style={{ color: C.accent }}>{totalShifts * 4}h</p>
+                    <p className="text-base font-black" style={{ color: C.accent }}>{totalHours}h</p>
                   </div>
                 </div>
               </div>
 
-              {/* Column headers (desktop) */}
-              <div className="hidden sm:grid px-4 pt-3 pb-0 gap-2 text-center"
-                style={{ gridTemplateColumns: '3rem 1fr 1fr 1fr' }}>
+              {/* Column headers */}
+              <div
+                className="hidden sm:grid px-4 py-2 gap-2 text-center flex-shrink-0"
+                style={{ gridTemplateColumns: '3.5rem 1fr 1fr 1fr', borderBottom: `1px solid ${C.divider}` }}
+                aria-hidden="true"
+              >
                 <div />
                 {SHIFTS.map(sh => (
-                  <div key={sh.id}>
-                    <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: sh.color }}>{sh.icon} {sh.label}</p>
-                    <p className="text-[8px] font-medium" style={{ color: C.txtMuted }}>{sh.time}</p>
+                  <div key={sh.id} className="py-1">
+                    <p className="text-[10px] font-black uppercase tracking-wider" style={{ color: sh.color }}>{sh.icon} {sh.label}</p>
+                    <p className="text-[9px] font-medium mt-0.5" style={{ color: C.txtMuted }}>{sh.time}</p>
                   </div>
                 ))}
               </div>
 
               {/* Day rows */}
-              <div className="p-3 sm:p-4 space-y-2">
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-2">
                 {DAYS.map((day, di) => {
                   const dayShifts = sched[day] || [];
-                  const isWE = di >= 5;
+                  const isWE      = di >= 5;
+                  const dayHours  = dayShifts.length * 4;
                   return (
                     <div key={day} className="rounded-xl overflow-hidden" style={{ background: C.inner }}>
-                      {/* Mobile layout */}
-                      <div className="sm:hidden p-3 space-y-2">
+                      {/* Mobile */}
+                      <div className="sm:hidden p-3 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-black" style={{ color: isWE ? C.txtMuted : C.txt }}>{day}</span>
-                          {isWE && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: C.card, color: C.txtMuted }}>Weekend</span>}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black" style={{ color: isWE ? C.txtMuted : C.txt }}>{day}</span>
+                            {isWE && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: C.card, color: C.txtMuted }}>Weekend</span>}
+                          </div>
+                          <span className="text-[10px] font-bold" style={{ color: dayHours > 0 ? C.accent : C.txtMuted }}>
+                            {dayHours > 0 ? `${dayHours}h` : 'Off'}
+                          </span>
                         </div>
-                        <div className="flex gap-1.5">
+                        <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={`${day} shift selection`}>
                           {SHIFTS.map(sh => {
                             const active = dayShifts.includes(sh.id);
                             return (
-                              <button key={sh.id} onClick={() => toggle(day, sh.id)}
-                                className="flex-1 flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl text-center transition-all text-[9px] font-bold cursor-pointer"
-                                style={{ background: active ? sh.bg : C.card, color: active ? sh.color : C.txtMuted, outline: active ? `1.5px solid ${sh.color}50` : 'none' }}>
-                                <span>{sh.icon}</span>
-                                <span>{sh.label}</span>
-                                <span className="opacity-70 font-medium leading-tight hidden xs:block">{sh.time}</span>
+                              <button
+                                key={sh.id}
+                                type="button"
+                                onClick={() => toggle(day, sh.id)}
+                                aria-pressed={active}
+                                aria-label={`${day} ${sh.label}: ${active ? 'on, tap to remove' : 'off, tap to add'}`}
+                                className="flex flex-col items-center gap-1 py-3 rounded-xl text-[10px] font-bold transition-all active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:outline-none"
+                                style={{
+                                  background: active ? sh.bg : C.card,
+                                  color: active ? sh.color : C.txtMuted,
+                                  outline: active ? `2px solid ${sh.color}40` : 'none',
+                                  boxShadow: active ? `0 2px 8px ${sh.color}20` : 'none',
+                                }}
+                              >
+                                <span className="text-base leading-none" aria-hidden="true">{sh.icon}</span>
+                                <span className="font-black">{sh.label}</span>
+                                <span className="opacity-70 text-[9px]">{active ? '4h' : '--'}</span>
                               </button>
                             );
                           })}
                         </div>
                       </div>
 
-                      {/* Desktop layout */}
-                      <div className="hidden sm:grid items-center gap-2 px-3 py-2" style={{ gridTemplateColumns: '3rem 1fr 1fr 1fr' }}>
-                        <span className="text-xs font-black" style={{ color: isWE ? C.txtMuted : C.txt }}>{day}</span>
+                      {/* Desktop */}
+                      <div
+                        className="hidden sm:grid items-center gap-2 px-3 py-2"
+                        style={{ gridTemplateColumns: '3.5rem 1fr 1fr 1fr' }}
+                        role="group"
+                        aria-label={`${day} shifts`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black" style={{ color: isWE ? C.txtMuted : C.txt }}>{day}</span>
+                          {isWE && <span className="text-[8px]" style={{ color: C.txtMuted }}>Weekend</span>}
+                        </div>
                         {SHIFTS.map(sh => {
                           const active = dayShifts.includes(sh.id);
                           return (
-                            <button key={sh.id} onClick={() => toggle(day, sh.id)}
-                              className="flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl text-center transition-all hover:scale-[1.04] active:scale-95 cursor-pointer"
-                              style={{ background: active ? sh.bg : C.card, color: active ? sh.color : C.txtMuted, outline: active ? `1.5px solid ${sh.color}50` : 'none' }}>
-                              <span className="text-sm leading-none">{sh.icon}</span>
+                            <button
+                              key={sh.id}
+                              type="button"
+                              onClick={() => toggle(day, sh.id)}
+                              aria-pressed={active}
+                              aria-label={`${day} ${sh.label}: ${active ? 'on' : 'off'}`}
+                              className="flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl text-center transition-all hover:scale-[1.04] active:scale-95 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+                              style={{
+                                background: active ? sh.bg : C.card,
+                                color: active ? sh.color : C.txtMuted,
+                                outline: active ? `1.5px solid ${sh.color}50` : 'none',
+                                boxShadow: active ? `0 2px 10px ${sh.color}20` : 'none',
+                              }}
+                            >
+                              <span className="text-sm leading-none" aria-hidden="true">{sh.icon}</span>
                               <span className="text-[10px] font-black">{sh.label}</span>
-                              <span className="text-[8px] opacity-70 font-medium">{active ? sh.time : '—'}</span>
+                              <span className="text-[8px] opacity-70">{active ? sh.time : '--'}</span>
                             </button>
                           );
                         })}
@@ -1867,18 +1975,37 @@ function TabSchedules({ users, focusedMemberId }) {
               </div>
 
               {/* Summary footer */}
-              <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-3" style={{ borderTop: `1px solid ${C.divider}`, background: C.inner }}>
-                {SHIFTS.map(sh => {
-                  const cnt = DAYS.filter(d => (sched[d]||[]).includes(sh.id)).length;
-                  return (
-                    <span key={sh.id} className="flex items-center gap-1.5 text-xs">
-                      <span className="w-2 h-2 rounded-full" style={{ background: sh.color }} />
-                      <span className="font-bold" style={{ color: sh.color }}>{sh.label}</span>
-                      <span style={{ color: C.txtMuted }}>{cnt}d · {cnt*4}h</span>
-                    </span>
-                  );
-                })}
-                <span className="ml-auto text-xs font-black" style={{ color: C.accent }}>{totalShifts * 4} hrs / week</span>
+              <div className="flex-shrink-0 px-4 sm:px-5 py-3.5 space-y-2" style={{ borderTop: `1px solid ${C.divider}`, background: C.inner }}>
+                <div className="flex flex-wrap items-center gap-3">
+                  {SHIFTS.map(sh => {
+                    const cnt = DAYS.filter(d => (sched[d] || []).includes(sh.id)).length;
+                    return (
+                      <span key={sh.id} className="flex items-center gap-1.5 text-xs">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: sh.color }} aria-hidden="true" />
+                        <span className="font-bold" style={{ color: sh.color }}>{sh.label}</span>
+                        <span style={{ color: C.txtMuted }}>{cnt}d Â· {cnt * 4}h</span>
+                      </span>
+                    );
+                  })}
+                  <span className="ml-auto text-xs font-black" style={{ color: C.accent }}>{totalHours} hrs / week</span>
+                </div>
+                <div className="flex items-end gap-0.5 h-5" aria-hidden="true">
+                  {DAYS.map(d => {
+                    const cnt = (sched[d] || []).length;
+                    const pct = cnt === 0 ? 4 : cnt === 1 ? 40 : cnt === 2 ? 70 : 100;
+                    const col = cnt === 0 ? C.divider : cnt === 1 ? '#f59e0b' : cnt === 2 ? '#059669' : '#0ea5e9';
+                    return (
+                      <div key={d} className="flex-1 flex flex-col justify-end" title={`${d}: ${cnt * 4}h`}>
+                        <div className="rounded-t-sm transition-all duration-300" style={{ height: `${pct}%`, background: col, opacity: 0.85 }} />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-0.5" aria-hidden="true">
+                  {DAYS.map(d => (
+                    <p key={d} className="flex-1 text-center" style={{ fontSize: 8, color: C.txtMuted, fontWeight: 700 }}>{d}</p>
+                  ))}
+                </div>
               </div>
             </>
           )}
