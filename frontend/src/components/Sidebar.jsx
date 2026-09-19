@@ -170,8 +170,10 @@ const Sidebar = ({ isOpen, onClose }) => {
         {isOpen && (
           <motion.div
             key="bd"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[90] lg:hidden"
             onClick={onClose}
           />
         )}
@@ -180,7 +182,8 @@ const Sidebar = ({ isOpen, onClose }) => {
       <aside
         role="navigation"
         aria-label="Admin Navigation"
-        className={`fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        id="admin-sidebar"
+        className={`fixed lg:sticky top-0 h-screen flex flex-col z-[100] lg:z-30 antialiased transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{
           width: 272, minWidth: 272,
           background: t.sidebar,
@@ -209,7 +212,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             </div>
           </button>
 
-          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
             <button onClick={toggleTheme}
               aria-label={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
               className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
@@ -219,10 +222,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             </button>
             <button
               aria-label="Close sidebar navigation"
-              className="lg:hidden w-7 h-7 rounded-lg flex items-center justify-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-              style={{ background: t.hover, color: t.txtMuted }}
+              className="lg:hidden w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 touch-manipulation cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                color: isDark ? '#e8ecf3' : '#1a1d23',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              }}
               onClick={onClose}>
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>

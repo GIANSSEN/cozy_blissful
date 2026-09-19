@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import {
   Menu, Search, LogOut, Home, X, Settings, Sun, Moon,
-  Sparkles, Command, Bell, ChevronRight, Clock,
+  Sparkles, Command, Bell, ChevronRight, Clock, ArrowLeft,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -93,6 +93,7 @@ const LiveClock = ({ isDark }) => {
  */
 const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, searchData = [], onSearchSelect }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,6 +106,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
   const location = useLocation();
 
   const searchInputRef = useRef(null);
+  const mobileSearchInputRef = useRef(null);
   const searchContainerRef = useRef(null);
   const profileRef = useRef(null);
   const notifRef = useRef(null);
@@ -148,7 +150,9 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         setIsSearchFocused(true);
       }
       if (e.key === 'Escape') {
+        setMobileSidebarOpen(false);
         setIsSearchFocused(false);
+        setMobileSearchOpen(false);
         setShowProfile(false);
         setShowNotifs(false);
       }
@@ -162,6 +166,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
   const handleSelectSearchResult = (item) => {
     setSearchQuery('');
     setIsSearchFocused(false);
+    setMobileSearchOpen(false);
     if (item.onSelect) {
       navigate(item.path);
       setTimeout(() => {
@@ -243,7 +248,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
             TOP HEADER BAR
         ════════════════════════════════════════ */}
         <header
-          className="sticky top-0 z-40 px-4 sm:px-6 lg:px-8 backdrop-blur-xl"
+          className={`sticky top-0 z-30 px-3 sm:px-6 lg:px-8 backdrop-blur-xl transition-all duration-200 ${mobileSidebarOpen ? 'max-lg:invisible max-lg:opacity-0 max-lg:pointer-events-none' : ''}`}
           style={{
             background: isDark
               ? 'rgba(13,17,28,0.96)'
@@ -254,174 +259,309 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               : '0 4px 20px rgba(0,0,0,0.04)',
           }}
         >
-          {/* ── Main row ── */}
-          <div className="flex items-center justify-between h-14 gap-2 sm:gap-3" role="toolbar" aria-label="Header Controls">
-
-            {/* Left: Hamburger + Brand + Title */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1 sm:mr-2">
+          {/* ── Mobile Search Active Bar (When search is open on mobile) ── */}
+          {mobileSearchOpen ? (
+            <div className="flex items-center h-14 gap-2 w-full sm:hidden">
               <button
-                onClick={() => setMobileSidebarOpen(true)}
-                aria-label="Open navigation sidebar"
-                aria-expanded={mobileSidebarOpen}
-                aria-controls="admin-sidebar"
-                className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95"
+                type="button"
+                onClick={() => {
+                  setMobileSearchOpen(false);
+                  setSearchQuery('');
+                }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-95"
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
                   color: isDark ? '#a0aec0' : '#64748b',
                   border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
                 }}
+                aria-label="Back to navigation"
               >
-                <Menu className="w-4 h-4" aria-hidden="true" />
+                <ArrowLeft className="w-4 h-4" />
               </button>
 
-              {/* Logo mark — desktop only: per-page icon */}
               <div
-                className="hidden lg:flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0"
+                className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl transition-all"
                 style={{
-                  background: 'linear-gradient(135deg,#041e16 0%,#0c4a36 60%,#bfa15f 100%)',
-                  boxShadow: '0 2px 12px rgba(10,61,48,0.35)',
+                  background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  border: `1px solid ${isDark ? '#34d399' : '#0a3d30'}`,
+                  boxShadow: `0 0 0 3px ${isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)'}`,
                 }}
               >
-                {PageIcon
-                  ? <PageIcon className="w-4 h-4 text-amber-300" />
-                  : <Sparkles className="w-4 h-4 text-amber-300" />}
-              </div>
-
-              {/* Title + subtitle */}
-              <div className="min-w-0">
-                <h1
-                  className="text-sm sm:text-base font-black tracking-tight leading-tight truncate"
-                  style={{ color: isDark ? '#e8ecf3' : '#0d1117' }}
-                >
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p
-                    className="hidden sm:block text-[10px] mt-0 font-medium truncate"
-                    style={{ color: isDark ? '#4e5e72' : '#94a3b8' }}
+                <Search className="w-4 h-4 shrink-0" style={{ color: isDark ? '#34d399' : '#0a3d30' }} />
+                <input
+                  ref={mobileSearchInputRef}
+                  type="search"
+                  autoFocus
+                  placeholder="Search pages, bookings..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400 min-w-0"
+                  style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   >
-                    {subtitle}
-                  </p>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
-            </div>
 
-            {/* Right controls */}
-            <div
-              className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0"
-              role="toolbar"
-              aria-label="Right header controls"
-            >
-
-              {/* Live Clock */}
-              <LiveClock isDark={isDark} />
-
-              {/* Search */}
-              <div className="relative" ref={searchContainerRef} role="search" aria-label="Admin search">
+              {/* Mobile search dropdown overlay */}
+              {searchQuery.trim() !== '' && (
                 <div
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 w-28 focus-within:w-40 sm:focus-within:w-48 sm:w-44 md:w-52 lg:w-60"
+                  className="fixed left-3 right-3 top-16 max-h-[72vh] overflow-y-auto rounded-2xl z-50 shadow-2xl p-1.5"
                   style={{
-                    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                    border: isSearchFocused
-                      ? `1px solid ${isDark ? '#34d399' : '#0a3d30'}`
-                      : `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
-                    boxShadow: isSearchFocused
-                      ? `0 0 0 3px ${isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)'}`
-                      : 'none',
+                    background: isDark ? '#1c2333' : '#ffffff',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
                   }}
                 >
-                  <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }} aria-hidden="true" />
-                  <input
-                    ref={searchInputRef}
-                    type="search"
-                    role="searchbox"
-                    aria-label="Search pages and actions (Ctrl+K)"
-                    aria-autocomplete="list"
-                    aria-expanded={isSearchFocused && searchQuery.trim() !== ''}
-                    aria-haspopup="listbox"
-                    placeholder="Search..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    onFocus={() => setIsSearchFocused(true)}
-                    className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400 min-w-0"
-                    style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
-                  />
-                  {searchQuery ? (
-                    <button onClick={() => setSearchQuery('')} className="p-0.5 rounded-md hover:opacity-75 transition-opacity">
-                      <X className="w-3 h-3 text-slate-400" />
-                    </button>
-                  ) : (
-                    <kbd
-                      className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded"
-                      style={{
-                        background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                        color: isDark ? '#8a9ab0' : '#94a3b8',
+                  <div
+                    className="px-3 py-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider"
+                    style={{
+                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                      color: isDark ? '#8a9ab0' : '#64748b',
+                    }}
+                  >
+                    <span>Results ({filteredSearch.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileSearchOpen(false);
+                        setSearchQuery('');
                       }}
+                      className="text-[10px] lowercase opacity-70 underline"
                     >
-                      <Command className="w-2.5 h-2.5" />K
-                    </kbd>
-                  )}
+                      close
+                    </button>
+                  </div>
+                  <div className="space-y-0.5 mt-1">
+                    {filteredSearch.length > 0 ? filteredSearch.map((item, idx) => {
+                      const isBkg = item.category === 'Booking';
+                      const isSt = item.category === 'Settings';
+                      const bbg = isBkg ? 'rgba(5,150,105,0.15)' : isSt ? 'rgba(99,102,241,0.15)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)');
+                      const bc = isBkg ? '#059669' : isSt ? '#6366f1' : (isDark ? '#a0aec0' : '#475569');
+                      return (
+                        <button
+                          key={item._key || `${item.label}-${idx}`}
+                          onClick={() => handleSelectSearchResult(item)}
+                          className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between transition-all active:scale-98"
+                          style={{ background: 'transparent' }}
+                        >
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
+                              {isBkg && <span style={{ marginRight: 4, opacity: 0.7 }}>📅</span>}
+                              {item.label}
+                            </p>
+                            <p className="text-[10px] mt-0.5 truncate" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>{item.desc}</p>
+                          </div>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ml-2 shrink-0" style={{ background: bbg, color: bc }}>{item.category}</span>
+                        </button>
+                      );
+                    }) : (
+                      <div className="py-6 text-center text-xs" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>
+                        No results for "{searchQuery}"
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Main row ── */
+            <div className="flex items-center justify-between h-14 gap-2 sm:gap-3" role="toolbar" aria-label="Header Controls">
+
+              {/* Left: Hamburger + Brand + Title */}
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1 sm:mr-2">
+                <button
+                  onClick={() => {
+                    setIsSearchFocused(false);
+                    setMobileSearchOpen(false);
+                    setShowProfile(false);
+                    setShowNotifs(false);
+                    setMobileSidebarOpen(true);
+                  }}
+                  aria-label="Open navigation sidebar"
+                  aria-expanded={mobileSidebarOpen}
+                  aria-controls="admin-sidebar"
+                  className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0"
+                  style={{
+                    background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+                    color: isDark ? '#a0aec0' : '#64748b',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
+                  }}
+                >
+                  <Menu className="w-4 h-4" aria-hidden="true" />
+                </button>
+
+                {/* Logo mark — desktop only: per-page icon */}
+                <div
+                  className="hidden lg:flex items-center justify-center w-8 h-8 rounded-xl shrink-0"
+                  style={{
+                    background: 'linear-gradient(135deg,#041e16 0%,#0c4a36 60%,#bfa15f 100%)',
+                    boxShadow: '0 2px 12px rgba(10,61,48,0.35)',
+                  }}
+                >
+                  {PageIcon
+                    ? <PageIcon className="w-4 h-4 text-amber-300" />
+                    : <Sparkles className="w-4 h-4 text-amber-300" />}
                 </div>
 
-                {/* Search dropdown */}
-                <AnimatePresence>
-                  {isSearchFocused && searchQuery.trim() !== '' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 max-w-sm rounded-2xl overflow-hidden z-50 shadow-2xl"
-                      style={{
-                        background: isDark ? '#1c2333' : '#ffffff',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-                      }}
+                {/* Title + subtitle */}
+                <div className="min-w-0 flex-1">
+                  <h1
+                    className="text-sm sm:text-base font-black tracking-tight leading-tight truncate"
+                    style={{ color: isDark ? '#e8ecf3' : '#0d1117' }}
+                  >
+                    {title}
+                  </h1>
+                  {subtitle && (
+                    <p
+                      className="hidden sm:block text-[10px] mt-0 font-medium truncate"
+                      style={{ color: isDark ? '#4e5e72' : '#94a3b8' }}
                     >
-                      <div
-                        className="px-4 py-2.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider"
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Right controls */}
+              <div
+                className="flex items-center gap-1.5 sm:gap-2 shrink-0"
+                role="toolbar"
+                aria-label="Right header controls"
+              >
+
+                {/* Live Clock */}
+                <LiveClock isDark={isDark} />
+
+                {/* Desktop Search Bar (hidden on mobile, visible on sm+) */}
+                <div className="relative hidden sm:block" ref={searchContainerRef} role="search" aria-label="Admin search">
+                  <div
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 sm:w-44 md:w-52 lg:w-60 focus-within:w-48 sm:focus-within:w-64"
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                      border: isSearchFocused
+                        ? `1px solid ${isDark ? '#34d399' : '#0a3d30'}`
+                        : `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
+                      boxShadow: isSearchFocused
+                        ? `0 0 0 3px ${isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)'}`
+                        : 'none',
+                    }}
+                  >
+                    <Search className="w-3.5 h-3.5 shrink-0" style={{ color: isDark ? '#5c6a7e' : '#94a3b8' }} aria-hidden="true" />
+                    <input
+                      ref={searchInputRef}
+                      type="search"
+                      role="searchbox"
+                      aria-label="Search pages and actions (Ctrl+K)"
+                      aria-autocomplete="list"
+                      aria-expanded={isSearchFocused && searchQuery.trim() !== ''}
+                      aria-haspopup="listbox"
+                      placeholder="Search..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      onFocus={() => setIsSearchFocused(true)}
+                      className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400 min-w-0"
+                      style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
+                    />
+                    {searchQuery ? (
+                      <button onClick={() => setSearchQuery('')} className="p-0.5 rounded-md hover:opacity-75 transition-opacity">
+                        <X className="w-3 h-3 text-slate-400" />
+                      </button>
+                    ) : (
+                      <kbd
+                        className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded"
                         style={{
-                          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                          color: isDark ? '#8a9ab0' : '#64748b',
+                          background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                          color: isDark ? '#8a9ab0' : '#94a3b8',
                         }}
                       >
-                        <span>Results ({filteredSearch.length})</span>
-                        <span className="text-[9px] lowercase opacity-70">esc to close</span>
-                      </div>
-                      <div className="max-h-72 overflow-y-auto p-1.5 space-y-0.5">
-                        {filteredSearch.length > 0 ? filteredSearch.map((item, idx) => {
-                          const isBkg = item.category === 'Booking';
-                          const isSt = item.category === 'Settings';
-                          const bbg = isBkg ? 'rgba(5,150,105,0.15)' : isSt ? 'rgba(99,102,241,0.15)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)');
-                          const bc = isBkg ? '#059669' : isSt ? '#6366f1' : (isDark ? '#a0aec0' : '#475569');
-                          return (
-                            <button
-                              key={item._key || `${item.label}-${idx}`}
-                              onClick={() => handleSelectSearchResult(item)}
-                              className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between transition-all"
-                              style={{ background: 'transparent' }}
-                              onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(52,211,153,0.08)' : 'rgba(10,61,48,0.05)')}
-                              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                            >
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
-                                  {isBkg && <span style={{ marginRight: 4, opacity: 0.7 }}>📅</span>}
-                                  {item.label}
-                                </p>
-                                <p className="text-[10px] mt-0.5 truncate" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>{item.desc}</p>
-                              </div>
-                              <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ml-2 flex-shrink-0" style={{ background: bbg, color: bc }}>{item.category}</span>
-                            </button>
-                          );
-                        }) : (
-                          <div className="py-6 text-center text-xs" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>
-                            No results for "{searchQuery}"
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                        <Command className="w-2.5 h-2.5" />K
+                      </kbd>
+                    )}
+                  </div>
+
+                  {/* Search dropdown */}
+                  <AnimatePresence>
+                    {isSearchFocused && searchQuery.trim() !== '' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 mt-2 w-80 max-w-sm rounded-2xl overflow-hidden z-50 shadow-2xl"
+                        style={{
+                          background: isDark ? '#1c2333' : '#ffffff',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                        }}
+                      >
+                        <div
+                          className="px-4 py-2.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider"
+                          style={{
+                            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                            color: isDark ? '#8a9ab0' : '#64748b',
+                          }}
+                        >
+                          <span>Results ({filteredSearch.length})</span>
+                          <span className="text-[9px] lowercase opacity-70">esc to close</span>
+                        </div>
+                        <div className="max-h-72 overflow-y-auto p-1.5 space-y-0.5">
+                          {filteredSearch.length > 0 ? filteredSearch.map((item, idx) => {
+                            const isBkg = item.category === 'Booking';
+                            const isSt = item.category === 'Settings';
+                            const bbg = isBkg ? 'rgba(5,150,105,0.15)' : isSt ? 'rgba(99,102,241,0.15)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)');
+                            const bc = isBkg ? '#059669' : isSt ? '#6366f1' : (isDark ? '#a0aec0' : '#475569');
+                            return (
+                              <button
+                                key={item._key || `${item.label}-${idx}`}
+                                onClick={() => handleSelectSearchResult(item)}
+                                className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between transition-all"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(52,211,153,0.08)' : 'rgba(10,61,48,0.05)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                              >
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
+                                    {isBkg && <span style={{ marginRight: 4, opacity: 0.7 }}>📅</span>}
+                                    {item.label}
+                                  </p>
+                                  <p className="text-[10px] mt-0.5 truncate" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>{item.desc}</p>
+                                </div>
+                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ml-2 shrink-0" style={{ background: bbg, color: bc }}>{item.category}</span>
+                              </button>
+                            );
+                          }) : (
+                            <div className="py-6 text-center text-xs" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>
+                              No results for "{searchQuery}"
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Mobile Search Button (visible only on mobile) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileSearchOpen(true);
+                    setTimeout(() => mobileSearchInputRef.current?.focus(), 50);
+                  }}
+                  className="sm:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 touch-manipulation cursor-pointer shrink-0"
+                  style={{
+                    background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
+                    color: isDark ? '#a0aec0' : '#64748b',
+                  }}
+                  aria-label="Open search"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
 
               {/* ── Notification Bell ── */}
               <div className="relative" ref={notifRef}>
@@ -832,28 +972,31 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
               </div>
             </div>
           </div>
+        )}
 
           {/* ── Breadcrumb sub-row ── */}
-          <div
-            className="flex items-center gap-1.5 pb-2 -mt-0.5 overflow-x-auto"
-            style={{ color: isDark ? '#3d4f63' : '#94a3b8', scrollbarWidth: 'none' }}
-          >
-            {breadcrumbs.map((crumb, i) => (
-              <React.Fragment key={crumb}>
-                {i > 0 && <ChevronRight className="w-3 h-3 flex-shrink-0" />}
-                <span
-                  className="text-[10px] font-semibold"
-                  style={{
-                    color: i === breadcrumbs.length - 1
-                      ? (isDark ? '#34d399' : '#0a3d30')
-                      : (isDark ? '#3d4f63' : '#94a3b8'),
-                  }}
-                >
-                  {crumb}
-                </span>
-              </React.Fragment>
-            ))}
-          </div>
+          {!mobileSearchOpen && (
+            <div
+              className="flex items-center gap-1.5 pb-2 -mt-0.5 overflow-x-auto"
+              style={{ color: isDark ? '#3d4f63' : '#94a3b8', scrollbarWidth: 'none' }}
+            >
+              {breadcrumbs.map((crumb, i) => (
+                <React.Fragment key={crumb}>
+                  {i > 0 && <ChevronRight className="w-3 h-3 flex-shrink-0" />}
+                  <span
+                    className="text-[10px] font-semibold"
+                    style={{
+                      color: i === breadcrumbs.length - 1
+                        ? (isDark ? '#34d399' : '#0a3d30')
+                        : (isDark ? '#3d4f63' : '#94a3b8'),
+                    }}
+                  >
+                    {crumb}
+                  </span>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
         </header>
 
         {/* ── Page Content ── */}

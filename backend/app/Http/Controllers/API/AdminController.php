@@ -137,8 +137,8 @@ class AdminController extends Controller
                 ->where('payment_status', 'paid')
                 ->sum('amount_paid');
             if ($dayVal == 0) {
-                $dayVal = (float) Appointment::whereDate('datetime', $dayDate->toDateString())
-                    ->where('status', 'Completed')
+                $dayVal = (float) Appointment::whereDate('appointments.datetime', $dayDate->toDateString())
+                    ->where('appointments.status', 'Completed')
                     ->join('services', 'appointments.service_id', '=', 'services.id')
                     ->sum('services.price');
             }
@@ -147,7 +147,7 @@ class AdminController extends Controller
 
         // Category breakdown
         $catBreakdownRaw = Appointment::join('services', 'appointments.service_id', '=', 'services.id')
-            ->selectRaw('services.category, count(*) as count, sum(case when appointments.payment_status = "paid" then coalesce(appointments.amount_paid, services.price) else services.price end) as rev')
+            ->selectRaw("services.category, count(*) as count, sum(case when appointments.payment_status = 'paid' then coalesce(appointments.amount_paid, services.price) else services.price end) as rev")
             ->groupBy('services.category')
             ->get();
         $catTotal = (float) $catBreakdownRaw->sum('rev') ?: 1;
