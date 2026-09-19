@@ -48,18 +48,18 @@ export default function CashSettlementModal({
   const rawDt = appt.datetime || '';
   const fmtFullDate = rawDt
     ? new Date(rawDt).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
     : '—';
   const fmtTime = rawDt
     ? new Date(rawDt).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      })
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
     : '';
   const clientName = appt.client_name || appt.client || 'Client';
   const serviceName = appt.service || 'Spa Treatment';
@@ -397,8 +397,8 @@ export default function CashSettlementModal({
                         background: isSelected
                           ? 'linear-gradient(135deg, #062c22, #0a3d30)'
                           : isDark
-                          ? 'rgba(255,255,255,0.06)'
-                          : '#f1f5f9',
+                            ? 'rgba(255,255,255,0.06)'
+                            : '#f1f5f9',
                         color: isSelected ? '#ffffff' : textColor,
                         border: isSelected ? '1px solid #062c22' : `1px solid ${cardBorder}`,
                         boxShadow: isSelected ? '0 2px 8px rgba(6,44,34,0.25)' : 'none',
@@ -423,12 +423,12 @@ export default function CashSettlementModal({
                       ? 'rgba(239,68,68,0.12)'
                       : '#fef2f2'
                     : isExact
-                    ? isDark
-                      ? 'rgba(16,185,129,0.12)'
-                      : '#f0fdf4'
-                    : isDark
-                    ? 'rgba(2,132,199,0.12)'
-                    : '#f0f9ff',
+                      ? isDark
+                        ? 'rgba(16,185,129,0.12)'
+                        : '#f0fdf4'
+                      : isDark
+                        ? 'rgba(2,132,199,0.12)'
+                        : '#f0f9ff',
                   transition: 'all 0.2s',
                 }}
               >
@@ -446,8 +446,8 @@ export default function CashSettlementModal({
                       {isUnderpaid
                         ? 'Payment Shortfall (Underpaid)'
                         : isExact
-                        ? 'Exact Payment — No Change Due'
-                        : 'Change to Return to Client'}
+                          ? 'Exact Payment — No Change Due'
+                          : 'Change to Return to Client'}
                     </span>
                     <p
                       style={{
@@ -474,8 +474,8 @@ export default function CashSettlementModal({
                       background: isUnderpaid
                         ? 'rgba(239,68,68,0.15)'
                         : isExact
-                        ? 'rgba(16,185,129,0.15)'
-                        : 'rgba(2,132,199,0.15)',
+                          ? 'rgba(16,185,129,0.15)'
+                          : 'rgba(2,132,199,0.15)',
                       color: isUnderpaid ? '#dc2626' : isExact ? '#059669' : '#0284c7',
                     }}
                   >
@@ -585,8 +585,8 @@ export default function CashSettlementModal({
                 background: canSettle
                   ? 'linear-gradient(135deg, #059669 0%, #047857 100%)'
                   : isDark
-                  ? '#1e293b'
-                  : '#e2e8f0',
+                    ? '#1e293b'
+                    : '#e2e8f0',
                 color: canSettle ? '#ffffff' : isDark ? '#64748b' : '#94a3b8',
                 border: 'none',
                 boxShadow: canSettle ? '0 4px 14px rgba(5,150,105,0.35)' : 'none',

@@ -95,14 +95,14 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
   const ss = getStatusStyle(appt.status, isDark);
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    modalBg:       isDark ? '#141927' : '#ffffff',
-    cardBg:        isDark ? '#0f1420' : '#f8fafc',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    noteBg:        isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
-    noteBorder:    isDark ? 'rgba(245,158,11,0.2)' : 'rgba(253,230,138,1)',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    modalBg: isDark ? '#141927' : '#ffffff',
+    cardBg: isDark ? '#0f1420' : '#f8fafc',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    noteBg: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
+    noteBorder: isDark ? 'rgba(245,158,11,0.2)' : 'rgba(253,230,138,1)',
   };
 
   return (
@@ -283,13 +283,13 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    modalBg:       isDark ? '#141927' : '#ffffff',
-    cardBg:        isDark ? '#0f1420' : '#f8fafc',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    footerBg:      isDark ? '#0f1420' : '#f8fafc',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    modalBg: isDark ? '#141927' : '#ffffff',
+    cardBg: isDark ? '#0f1420' : '#f8fafc',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    footerBg: isDark ? '#0f1420' : '#f8fafc',
   };
 
   const apptDateStr = appt.datetime
@@ -448,14 +448,14 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    modalBg:       isDark ? '#141927' : '#ffffff',
-    cardBg:        isDark ? '#0f1420' : '#f8fafc',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    inputBg:       isDark ? '#0f1420' : '#ffffff',
-    presetBg:      isDark ? '#1e293b' : '#f1f5f9',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    modalBg: isDark ? '#141927' : '#ffffff',
+    cardBg: isDark ? '#0f1420' : '#f8fafc',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    inputBg: isDark ? '#0f1420' : '#ffffff',
+    presetBg: isDark ? '#1e293b' : '#f1f5f9',
   };
 
   const presets = [
@@ -567,13 +567,13 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    modalBg:       isDark ? '#141927' : '#ffffff',
-    cardBg:        isDark ? '#0f1420' : '#f8fafc',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    inputBg:       isDark ? '#0f1420' : '#ffffff',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    modalBg: isDark ? '#141927' : '#ffffff',
+    cardBg: isDark ? '#0f1420' : '#f8fafc',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    inputBg: isDark ? '#0f1420' : '#ffffff',
   };
 
   useEffect(() => {
@@ -691,18 +691,18 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
   }, [calPickerOpen]);
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
-    headerBg:      isDark ? '#1a2236' : '#dde3ec',
-    rowBorder:     isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
-    popupBg:       isDark ? '#1a2236' : '#ffffff',
-    popupBorder:   isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-    inputBg:       isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-    inputBorder:   isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
-    inputTxt:      isDark ? '#e8ecf3' : '#0f172a',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    cardBg: isDark ? '#141927' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
+    headerBg: isDark ? '#1a2236' : '#dde3ec',
+    rowBorder: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
+    popupBg: isDark ? '#1a2236' : '#ffffff',
+    popupBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    inputBg: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+    inputBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    inputTxt: isDark ? '#e8ecf3' : '#0f172a',
   };
 
   const dayAppts = appointments.filter(a => {
@@ -928,13 +928,13 @@ const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => 
   const pending = appointments.filter(a => a.status === 'Pending');
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
-    noteBg:        isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
-    noteBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(253,230,138,1)',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    cardBg: isDark ? '#141927' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
+    noteBg: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
+    noteBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(253,230,138,1)',
   };
 
   if (pending.length === 0) {
@@ -1097,11 +1097,11 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
   const isDark = theme === 'dark';
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    cardBg: isDark ? '#141927' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
   };
 
   const doneItems = useMemo(
@@ -1185,14 +1185,14 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
   const [search, setSearch] = useState('');
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    inputBg:       isDark ? '#0f1420' : '#ffffff',
-    pillBg:        isDark ? '#1e2a3a' : '#f8fafc',
-    pillBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    cardBg: isDark ? '#141927' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    inputBg: isDark ? '#0f1420' : '#ffffff',
+    pillBg: isDark ? '#1e2a3a' : '#f8fafc',
+    pillBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
   };
 
   const confirmed = useMemo(() => {
@@ -1202,9 +1202,9 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
       const q = search.toLowerCase();
       if (!q) return true;
       return (a.service || '').toLowerCase().includes(q) ||
-             (a.client_name || a.client || '').toLowerCase().includes(q) ||
-             (a.therapist_name || '').toLowerCase().includes(q) ||
-             String(a.id).includes(q);
+        (a.client_name || a.client || '').toLowerCase().includes(q) ||
+        (a.therapist_name || '').toLowerCase().includes(q) ||
+        String(a.id).includes(q);
     }).sort((a, b) => {
       const order = { 'In Progress': 1, 'Confirmed': 2 };
       return (order[a.status] || 3) - (order[b.status] || 3);
@@ -1531,13 +1531,13 @@ const TabButtonItem = ({ tab, active, isDark, C, onClick }) => {
         background: active
           ? (isDark ? 'linear-gradient(135deg, rgba(16,185,129,0.22) 0%, rgba(5,150,105,0.16) 100%)' : '#059669')
           : tabHov
-          ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
-          : 'transparent',
+            ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+            : 'transparent',
         color: active
           ? (isDark ? '#34d399' : '#ffffff')
           : tabHov
-          ? (isDark ? '#f1f5f9' : '#0f172a')
-          : (isDark ? '#94a3b8' : '#64748b'),
+            ? (isDark ? '#f1f5f9' : '#0f172a')
+            : (isDark ? '#94a3b8' : '#64748b'),
         boxShadow: active
           ? (isDark ? '0 2px 12px rgba(16,185,129,0.25)' : '0 2px 10px rgba(5,150,105,0.25)')
           : 'none',
@@ -1557,18 +1557,18 @@ const TabButtonItem = ({ tab, active, isDark, C, onClick }) => {
             background: active
               ? (isDark ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.25)')
               : tab.pulse
-              ? 'rgba(245,158,11,0.25)'
-              : (tab.id === 'pending' ? 'rgba(217,119,6,0.22)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                ? 'rgba(245,158,11,0.25)'
+                : (tab.id === 'pending' ? 'rgba(217,119,6,0.22)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
             color: active
               ? (isDark ? '#a7f3d0' : '#ffffff')
               : tab.pulse
-              ? '#b45309'
-              : (tab.id === 'pending' ? '#fbbf24' : isDark ? '#94a3b8' : '#64748b'),
+                ? '#b45309'
+                : (tab.id === 'pending' ? '#fbbf24' : isDark ? '#94a3b8' : '#64748b'),
             border: active
               ? (isDark ? '1px solid rgba(52,211,153,0.45)' : '1px solid rgba(255,255,255,0.3)')
               : tab.pulse
-              ? '1px solid rgba(245,158,11,0.5)'
-              : (tab.id === 'pending' ? '1px solid rgba(217,119,6,0.4)' : '1px solid transparent'),
+                ? '1px solid rgba(245,158,11,0.5)'
+                : (tab.id === 'pending' ? '1px solid rgba(217,119,6,0.4)' : '1px solid transparent'),
             minWidth: 18,
             textAlign: 'center',
             animation: tab.pulse && !active ? 'pulse-badge 1.6s cubic-bezier(0.4,0,0.6,1) infinite' : 'none',
@@ -1591,12 +1591,12 @@ const AdminAppointments = () => {
   const navigate = useNavigate();
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
-    pillBg:        isDark ? '#1e2a3a' : '#f1f5f9',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    cardBg: isDark ? '#141927' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
+    pillBg: isDark ? '#1e2a3a' : '#f1f5f9',
   };
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1729,16 +1729,16 @@ const AdminAppointments = () => {
 
   const STAT_CARDS = [
     { label: 'Upcoming Scheduled', value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck, tab: 'confirmed' },
-    { label: 'Pending Queue',       value: pendingCount,        color: '#d97706', accent: 'rgba(217,119,6,0.12)',  Icon: Clock, tab: 'pending' },
-    { label: 'In Treatment Now',    value: inProgressCount,     color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap, tab: 'confirmed' },
-    { label: 'Awaiting Sign-off',   value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, tab: 'requests' },
+    { label: 'Pending Queue', value: pendingCount, color: '#d97706', accent: 'rgba(217,119,6,0.12)', Icon: Clock, tab: 'pending' },
+    { label: 'In Treatment Now', value: inProgressCount, color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap, tab: 'confirmed' },
+    { label: 'Awaiting Sign-off', value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, tab: 'requests' },
   ];
 
   const TABS = [
-    { id: 'calendar',  label: 'Schedule Calendar', icon: CalendarDays },
-    { id: 'pending',   label: 'Pending Queue',      icon: Clock,         badge: pendingCount },
-    { id: 'confirmed', label: 'Active Treatments',  icon: CheckCircle2,  badge: confirmedOnlyCount + inProgressCount },
-    { id: 'requests',  label: 'Therapist Done',     icon: CheckCircle,   badge: awaitingSignoffCount, pulse: awaitingSignoffCount > 0 },
+    { id: 'calendar', label: 'Schedule Calendar', icon: CalendarDays },
+    { id: 'pending', label: 'Pending Queue', icon: Clock, badge: pendingCount },
+    { id: 'confirmed', label: 'Active Treatments', icon: CheckCircle2, badge: confirmedOnlyCount + inProgressCount },
+    { id: 'requests', label: 'Therapist Done', icon: CheckCircle, badge: awaitingSignoffCount, pulse: awaitingSignoffCount > 0 },
   ];
 
   return (

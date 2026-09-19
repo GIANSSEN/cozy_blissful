@@ -27,7 +27,7 @@ class AdminController extends Controller
         $totalBookings = Appointment::count();
         $completedCount = Appointment::where('status', 'Completed')->count();
         $confirmedCount = Appointment::whereIn('status', ['Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])->count();
-        $pendingCount   = Appointment::whereIn('status', ['Pending', 'Starting'])->count();
+        $pendingCount = Appointment::whereIn('status', ['Pending', 'Starting'])->count();
         $cancelledCount = Appointment::where('status', 'Cancelled')->count();
 
         // Total revenue
@@ -66,43 +66,43 @@ class AdminController extends Controller
                 'label' => 'On Duty & Available',
                 'count' => $onDutyCount,
                 'color' => '#10b981',
-                'pct'   => $activeTherapists > 0 ? (int) round(($onDutyCount / $activeTherapists) * 100) : 100,
+                'pct' => $activeTherapists > 0 ? (int) round(($onDutyCount / $activeTherapists) * 100) : 100,
             ],
             [
                 'label' => 'In Active Treatment',
                 'count' => $inTreatmentCount,
                 'color' => '#f59e0b',
-                'pct'   => $activeTherapists > 0 ? (int) round(($inTreatmentCount / $activeTherapists) * 100) : 0,
+                'pct' => $activeTherapists > 0 ? (int) round(($inTreatmentCount / $activeTherapists) * 100) : 0,
             ],
             [
                 'label' => 'Break / Offline',
                 'count' => $breakCount,
                 'color' => '#7e93a8',
-                'pct'   => $activeTherapists > 0 ? (int) round(($breakCount / $activeTherapists) * 100) : 0,
+                'pct' => $activeTherapists > 0 ? (int) round(($breakCount / $activeTherapists) * 100) : 0,
             ],
         ];
 
         // 3. Customer Funnel (calculated based on real DB appointments and activity)
         $bookingReqCount = max(1, $totalBookings);
         $serviceClicks = max(45, (int) round($bookingReqCount * 3.9));
-        $pageVisits    = max(100, (int) round($serviceClicks * 2.15));
+        $pageVisits = max(100, (int) round($serviceClicks * 2.15));
 
         $overallConversionRate = round(($completedCount / max(1, $pageVisits)) * 100, 1);
-        $bookingRequestRate    = round(($totalBookings / max(1, $pageVisits)) * 100, 1);
-        $treatmentFulfilment   = round(($completedCount / max(1, $confirmedCount)) * 100, 1);
+        $bookingRequestRate = round(($totalBookings / max(1, $pageVisits)) * 100, 1);
+        $treatmentFulfilment = round(($completedCount / max(1, $confirmedCount)) * 100, 1);
 
         $customerFunnel = [
             'steps' => [
-                ['step' => 'Page Visits',         'count' => number_format($pageVisits),         'pct' => 100],
-                ['step' => 'Service Clicks',      'count' => number_format($serviceClicks),      'pct' => (int) round(($serviceClicks / $pageVisits) * 100)],
-                ['step' => 'Bookings Requested',  'count' => number_format($totalBookings),      'pct' => (int) round(($totalBookings / $pageVisits) * 100)],
-                ['step' => 'Bookings Confirmed',  'count' => number_format($confirmedCount),     'pct' => (int) round(($confirmedCount / $pageVisits) * 100)],
-                ['step' => 'Completed Treatment', 'count' => number_format($completedCount),    'pct' => (int) round(($completedCount / $pageVisits) * 100)],
+                ['step' => 'Page Visits', 'count' => number_format($pageVisits), 'pct' => 100],
+                ['step' => 'Service Clicks', 'count' => number_format($serviceClicks), 'pct' => (int) round(($serviceClicks / $pageVisits) * 100)],
+                ['step' => 'Bookings Requested', 'count' => number_format($totalBookings), 'pct' => (int) round(($totalBookings / $pageVisits) * 100)],
+                ['step' => 'Bookings Confirmed', 'count' => number_format($confirmedCount), 'pct' => (int) round(($confirmedCount / $pageVisits) * 100)],
+                ['step' => 'Completed Treatment', 'count' => number_format($completedCount), 'pct' => (int) round(($completedCount / $pageVisits) * 100)],
             ],
             'analytics' => [
-                ['label' => 'Overall Conversion',   'value' => "{$overallConversionRate}%", 'color' => '#10b981'],
-                ['label' => 'Booking Request Rate', 'value' => "{$bookingRequestRate}%",    'color' => '#34d399'],
-                ['label' => 'Treatment Fulfilment', 'value' => "{$treatmentFulfilment}%",   'color' => '#6366f1'],
+                ['label' => 'Overall Conversion', 'value' => "{$overallConversionRate}%", 'color' => '#10b981'],
+                ['label' => 'Booking Request Rate', 'value' => "{$bookingRequestRate}%", 'color' => '#34d399'],
+                ['label' => 'Treatment Fulfilment', 'value' => "{$treatmentFulfilment}%", 'color' => '#6366f1'],
             ],
         ];
 
@@ -116,15 +116,15 @@ class AdminController extends Controller
         $staffRetentionRate = $activeTherapists > 0 ? round((($activeTherapists - $breakCount) / $activeTherapists) * 100, 1) : 95.0;
 
         $operationalKpis = [
-            ['label' => 'Avg Ticket Size',  'value' => '₱' . number_format($avgTicket), 'color' => '#f59e0b'],
-            ['label' => 'Staff Retention',  'value' => "{$staffRetentionRate}%",         'color' => '#6366f1'],
-            ['label' => 'Client Retention', 'value' => "{$clientRetentionRate}%",        'color' => '#10b981'],
+            ['label' => 'Avg Ticket Size', 'value' => '₱' . number_format($avgTicket), 'color' => '#f59e0b'],
+            ['label' => 'Staff Retention', 'value' => "{$staffRetentionRate}%", 'color' => '#6366f1'],
+            ['label' => 'Client Retention', 'value' => "{$clientRetentionRate}%", 'color' => '#10b981'],
         ];
 
         // 5. Booking breakdown
         $bookingBreakdown = [
             'confirmed' => $confirmedCount,
-            'pending'   => $pendingCount,
+            'pending' => $pendingCount,
             'cancelled' => $cancelledCount,
         ];
 
@@ -133,12 +133,12 @@ class AdminController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $dayDate = Carbon::today()->subDays($i);
             $dayName = $dayDate->format('D');
-            $dayVal = (float) Appointment::whereDate('appointments.datetime', $dayDate->toDateString())
-                ->where('appointments.payment_status', 'paid')
+            $dayVal = (float) Appointment::whereDate('datetime', $dayDate->toDateString())
+                ->where('payment_status', 'paid')
                 ->sum('amount_paid');
             if ($dayVal == 0) {
-                $dayVal = (float) Appointment::whereDate('appointments.datetime', $dayDate->toDateString())
-                    ->where('appointments.status', 'Completed')
+                $dayVal = (float) Appointment::whereDate('datetime', $dayDate->toDateString())
+                    ->where('status', 'Completed')
                     ->join('services', 'appointments.service_id', '=', 'services.id')
                     ->sum('services.price');
             }
@@ -147,7 +147,7 @@ class AdminController extends Controller
 
         // Category breakdown
         $catBreakdownRaw = Appointment::join('services', 'appointments.service_id', '=', 'services.id')
-            ->selectRaw("services.category, count(*) as count, sum(case when appointments.payment_status = 'paid' then coalesce(appointments.amount_paid, services.price) else services.price end) as rev")
+            ->selectRaw('services.category, count(*) as count, sum(case when appointments.payment_status = "paid" then coalesce(appointments.amount_paid, services.price) else services.price end) as rev')
             ->groupBy('services.category')
             ->get();
         $catTotal = (float) $catBreakdownRaw->sum('rev') ?: 1;
@@ -156,7 +156,7 @@ class AdminController extends Controller
                 'label' => $c->category ?: 'Signature Treatments',
                 'value' => '₱' . number_format($c->rev),
                 'count' => (int) $c->count,
-                'pct'   => (int) round(($c->rev / $catTotal) * 100),
+                'pct' => (int) round(($c->rev / $catTotal) * 100),
             ];
         })->values()->toArray();
 

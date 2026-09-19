@@ -11,28 +11,28 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SEARCH_INDEX = [
-  { label: 'Dashboard',            desc: 'Overview & Analytics',           path: '/admin/dashboard',               category: 'Pages'     },
-  { label: 'Bookings',             desc: 'Manage Bookings & Schedules',     path: '/admin/appointments',            category: 'Pages'     },
-  { label: 'Customers',            desc: 'Client Records & History',        path: '/admin/customers',               category: 'Pages'     },
-  { label: 'Services Menu',        desc: 'Manage Massage & Spa Offerings',  path: '/admin/services',                category: 'Pages'     },
-  { label: 'Staff & Therapists',   desc: 'Staff Accounts & Availability',   path: '/admin/staff',                   category: 'Pages'     },
-  { label: 'History',              desc: 'Completed & Cancelled Sessions',  path: '/admin/history',                 category: 'Pages'     },
-  { label: 'User Maintenance',     desc: 'System RBAC & Roles',             path: '/admin/users',                   category: 'Pages'     },
-  { label: 'Audit Logs',           desc: 'System Logs & Security',          path: '/admin/audit-logs',              category: 'Pages'     },
-  { label: 'System Settings',      desc: 'General & Spa Preferences',       path: '/admin/settings',                category: 'Settings'  },
+  { label: 'Dashboard', desc: 'Overview & Analytics', path: '/admin/dashboard', category: 'Pages' },
+  { label: 'Bookings', desc: 'Manage Bookings & Schedules', path: '/admin/appointments', category: 'Pages' },
+  { label: 'Customers', desc: 'Client Records & History', path: '/admin/customers', category: 'Pages' },
+  { label: 'Services Menu', desc: 'Manage Massage & Spa Offerings', path: '/admin/services', category: 'Pages' },
+  { label: 'Staff & Therapists', desc: 'Staff Accounts & Availability', path: '/admin/staff', category: 'Pages' },
+  { label: 'History', desc: 'Completed & Cancelled Sessions', path: '/admin/history', category: 'Pages' },
+  { label: 'User Maintenance', desc: 'System RBAC & Roles', path: '/admin/users', category: 'Pages' },
+  { label: 'Audit Logs', desc: 'System Logs & Security', path: '/admin/audit-logs', category: 'Pages' },
+  { label: 'System Settings', desc: 'General & Spa Preferences', path: '/admin/settings', category: 'Settings' },
 ];
 
 /* ── Breadcrumb path map ─────────────────────────────────────────── */
 const BREADCRUMB_MAP = {
-  '/admin/dashboard':   ['Admin', 'Dashboard'],
-  '/admin/appointments':['Admin', 'Bookings'],
-  '/admin/customers':   ['Admin', 'Customers'],
-  '/admin/services':    ['Admin', 'Services'],
-  '/admin/staff':       ['Admin', 'Staff'],
-  '/admin/history':     ['Admin', 'History'],
-  '/admin/users':       ['Admin', 'User Maintenance'],
-  '/admin/audit-logs':  ['Admin', 'Audit Logs'],
-  '/admin/settings':    ['Admin', 'Settings'],
+  '/admin/dashboard': ['Admin', 'Dashboard'],
+  '/admin/appointments': ['Admin', 'Bookings'],
+  '/admin/customers': ['Admin', 'Customers'],
+  '/admin/services': ['Admin', 'Services'],
+  '/admin/staff': ['Admin', 'Staff'],
+  '/admin/history': ['Admin', 'History'],
+  '/admin/users': ['Admin', 'User Maintenance'],
+  '/admin/audit-logs': ['Admin', 'Audit Logs'],
+  '/admin/settings': ['Admin', 'Settings'],
 };
 
 /* ── Remove static mock — now driven by NotificationContext ─────── */
@@ -46,9 +46,9 @@ const LiveClock = ({ isDark }) => {
     return () => clearInterval(t);
   }, []);
 
-  const hh  = now.getHours().toString().padStart(2, '0');
-  const mm  = now.getMinutes().toString().padStart(2, '0');
-  const ss  = now.getSeconds().toString().padStart(2, '0');
+  const hh = now.getHours().toString().padStart(2, '0');
+  const mm = now.getMinutes().toString().padStart(2, '0');
+  const ss = now.getSeconds().toString().padStart(2, '0');
   const day = now.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
 
   return (
@@ -93,23 +93,23 @@ const LiveClock = ({ isDark }) => {
  */
 const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, searchData = [], onSearchSelect }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [showProfile,       setShowProfile]        = useState(false);
-  const [showNotifs,        setShowNotifs]          = useState(false);
-  const [searchQuery,       setSearchQuery]         = useState('');
-  const [isSearchFocused,   setIsSearchFocused]     = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
-  const { user, logout }       = useAuth();
+  const { user, logout } = useAuth();
   const { notifs, unreadCount, markRead, markAllRead, refresh } = useNotifications();
-  const navigate               = useNavigate();
-  const location               = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const searchInputRef      = useRef(null);
-  const searchContainerRef  = useRef(null);
-  const profileRef          = useRef(null);
-  const notifRef            = useRef(null);
+  const searchInputRef = useRef(null);
+  const searchContainerRef = useRef(null);
+  const profileRef = useRef(null);
+  const notifRef = useRef(null);
 
-  const isDark      = theme === 'dark';
+  const isDark = theme === 'dark';
 
   const breadcrumbs = BREADCRUMB_MAP[location.pathname] || ['Admin', title];
 
@@ -119,12 +119,12 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
   const filteredSearch = searchQuery.trim() === ''
     ? []
     : allSearchItems
-        .filter(item =>
-          item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.category.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .slice(0, 12);
+      .filter(item =>
+        item.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .slice(0, 12);
 
   /* outside click handler */
   useEffect(() => {
@@ -390,9 +390,9 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       <div className="max-h-72 overflow-y-auto p-1.5 space-y-0.5">
                         {filteredSearch.length > 0 ? filteredSearch.map((item, idx) => {
                           const isBkg = item.category === 'Booking';
-                          const isSt  = item.category === 'Settings';
-                          const bbg   = isBkg ? 'rgba(5,150,105,0.15)' : isSt ? 'rgba(99,102,241,0.15)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)');
-                          const bc    = isBkg ? '#059669' : isSt ? '#6366f1' : (isDark ? '#a0aec0' : '#475569');
+                          const isSt = item.category === 'Settings';
+                          const bbg = isBkg ? 'rgba(5,150,105,0.15)' : isSt ? 'rgba(99,102,241,0.15)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)');
+                          const bc = isBkg ? '#059669' : isSt ? '#6366f1' : (isDark ? '#a0aec0' : '#475569');
                           return (
                             <button
                               key={item._key || `${item.label}-${idx}`}
@@ -603,8 +603,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                               className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm shadow-xs"
                               style={{
                                 background: n.unread
-                                    ? (isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)')
-                                    : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
+                                  ? (isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)')
+                                  : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'),
                                 border: `1px solid ${n.unread ? (isDark ? 'rgba(52,211,153,0.3)' : 'rgba(10,61,48,0.2)') : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')}`,
                               }}
                             >
@@ -776,7 +776,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       <div className="p-2 space-y-0.5 text-left">
                         {[
                           { label: 'System Settings', icon: Settings, onClick: () => { setShowProfile(false); navigate('/admin/settings'); }, iconClass: 'text-emerald-500 group-hover:rotate-45 transition-transform' },
-                          { label: 'Public Website',  icon: Home,     onClick: () => { setShowProfile(false); navigate('/'); },                iconClass: 'text-amber-500' },
+                          { label: 'Public Website', icon: Home, onClick: () => { setShowProfile(false); navigate('/'); }, iconClass: 'text-amber-500' },
                         ].map(item => (
                           <button
                             key={item.label}

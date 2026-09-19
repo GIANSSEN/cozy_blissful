@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
@@ -17,6 +17,7 @@ import {
   RefreshCw, Mail, Phone, Lock, Briefcase,
   Eye, EyeOff, Sparkles, ShieldAlert, Check, Copy, AlertCircle, Loader2, KeyRound,
   Trash2, MoreVertical, Filter, ArrowUpDown, Download, RotateCcw,
+  CalendarDays, Clock, ArrowLeft, ArrowRight, Sun, Moon, Sunrise, Zap, Coffee, CheckSquare, ListOrdered, Share2
 } from 'lucide-react';
 import { LuxurySelect, LuxuryDropdownMenu, LuxuryCombobox } from '../../components/ui/LuxuryDropdown';
 
@@ -2093,15 +2094,23 @@ function TabQueue({ users, onSelectTab }) {
     return queue;
   }, [queue, queueFilter]);
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-black" style={{ color: C.txt }}>Therapist Queue & Rotation</h2>
-          <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>Fair dispatch scheduling & walk-in rotation for active therapists</p>
-        </div>
+  const totalServed = queue.reduce((s, t) => s + t.sessions, 0);
+  const servedCount = queue.filter(t => t.sessions > 0).length;
 
-        <div className="w-full sm:w-60">
+  return (
+    <div className="space-y-5">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-black tracking-tight" style={{ color: C.txt }}>
+            Therapist Queue &amp; Rotation
+          </h2>
+          <p className="text-xs mt-0.5 font-medium" style={{ color: C.txtMuted }}>
+            Fair dispatch scheduling &amp; walk-in rotation for active therapists
+          </p>
+        </div>
+        <div className="w-full sm:w-56 flex-shrink-0">
           <LuxurySelect
             id="queue-filter"
             value={queueFilter}
@@ -2113,88 +2122,208 @@ function TabQueue({ users, onSelectTab }) {
         </div>
       </div>
 
+      {/* Summary Stats */}
+      {queue.length > 0 && (
+        <div
+          className="grid grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl"
+          style={{
+            background: C.isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)',
+            border: `1px solid ${C.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+          }}
+        >
+          {[
+            { label: 'In Queue',       value: queue.length,  color: C.accent,  bg: `${C.accent}18` },
+            { label: 'Served Today',   value: servedCount,   color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+            { label: 'Total Sessions', value: totalServed,   color: '#0284c7', bg: 'rgba(2,132,199,0.12)'  },
+          ].map(s => (
+            <div
+              key={s.label}
+              className="flex flex-col items-center justify-center py-2.5 px-1 rounded-xl gap-0.5"
+              style={{ background: s.bg }}
+            >
+              <span className="text-xl sm:text-2xl font-black tabular-nums" style={{ color: s.color }}>{s.value}</span>
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-center leading-tight" style={{ color: C.txtMuted }}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Queue Cards */}
       <div className="space-y-2.5">
         {filteredQueue.map((t, idx) => {
           const isFirst = t.position === 1;
           const queueActions = [
             { type: 'header', label: `${t.name} Dispatch` },
-            { label: 'Assign Session & Rotate', icon: Sparkles, onClick: () => markServed(t.id) },
-            { label: 'Promote to Next Up (#1)', icon: Crown, disabled: isFirst, onClick: () => moveToTop(idx) },
-            { label: 'Move Up in Queue', icon: ChevronUp, disabled: idx === 0, onClick: () => swap(idx, -1) },
-            { label: 'Move Down in Queue', icon: ChevronDown, disabled: idx === queue.length - 1, onClick: () => swap(idx, 1) },
-            { label: 'Send to End of Queue', icon: RotateCcw, onClick: () => sendToEnd(idx) },
-            { label: 'Reset Served Session Count', icon: RefreshCw, onClick: () => resetCount(t.id) },
+            { label: 'Assign Session & Rotate',    icon: Zap,        onClick: () => markServed(t.id) },
+            { label: 'Promote to Next Up (#1)',     icon: Crown,      disabled: isFirst, onClick: () => moveToTop(idx) },
+            { label: 'Move Up in Queue',            icon: ChevronUp,  disabled: idx === 0, onClick: () => swap(idx, -1) },
+            { label: 'Move Down in Queue',          icon: ChevronDown,disabled: idx === queue.length - 1, onClick: () => swap(idx, 1) },
+            { label: 'Send to End of Queue',        icon: RotateCcw,  onClick: () => sendToEnd(idx) },
+            { label: 'Reset Served Session Count',  icon: RefreshCw,  onClick: () => resetCount(t.id) },
             { type: 'divider' },
             { label: 'View Schedule Shifts', icon: Calendar, onClick: () => onSelectTab && onSelectTab('schedules', t.id) },
           ];
 
           return (
-            <div key={t.id} className="flex items-center gap-3 p-4 rounded-2xl transition-all"
-              style={{ background: C.card, boxShadow: C.shadow, outline: isFirst ? `2px solid ${C.accent}40` : 'none' }}>
-              {/* Position badge */}
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs flex-shrink-0"
-                style={{ background: isFirst ? `linear-gradient(135deg,#059669,#0a5f3c)` : C.inner, color: isFirst ? '#fff' : C.txtMuted }}>
-                #{t.position}
-              </div>
-
-              <Avatar name={t.name} gradient={ROLE_META[t.role]?.grad} size={40} />
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center flex-wrap gap-2">
-                  <p className="text-sm font-bold truncate" style={{ color: C.txt }}>{t.name}</p>
-                  {isFirst && <span className="text-[9px] font-black px-2 py-0.5 rounded-full text-white" style={{ background: C.accent }}>NEXT UP</span>}
-                  {t.sessions > 0 && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }}>{t.sessions} served</span>}
+            <motion.div
+              key={t.id}
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className="rounded-2xl overflow-hidden transition-all"
+              style={{
+                background: isFirst
+                  ? (C.isDark
+                      ? 'linear-gradient(145deg,rgba(5,150,105,0.18),rgba(5,150,105,0.07))'
+                      : 'linear-gradient(145deg,rgba(5,150,105,0.08),rgba(5,150,105,0.03))')
+                  : C.card,
+                border: isFirst
+                  ? `2px solid ${C.accent}55`
+                  : `1px solid ${C.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'}`,
+                boxShadow: isFirst ? `0 6px 28px ${C.accent}22` : C.shadow,
+              }}
+            >
+              {/* Next-Up label strip */}
+              {isFirst && (
+                <div className="flex items-center gap-2 px-4 pt-3 pb-1 flex-wrap">
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.14em] px-2.5 py-0.5 rounded-full"
+                    style={{ background: C.accent, color: '#fff' }}
+                  >
+                    ✦ Next Up
+                  </span>
+                  <span className="text-[11px] font-semibold" style={{ color: C.accent }}>
+                    Dispatch for the next walk-in
+                  </span>
                 </div>
-                <p className="text-xs truncate mt-0.5" style={{ color: C.txtMuted }}>{t.specialty}</p>
-              </div>
+              )}
 
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button onClick={() => swap(idx, -1)} disabled={idx === 0}
-                  className="p-2 rounded-xl transition-all hover:opacity-80 disabled:opacity-25 cursor-pointer"
-                  style={{ background: C.inner, color: C.txtSec }}
-                  title="Move Up"
-                  aria-label="Move Up">
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <button onClick={() => swap(idx, 1)} disabled={idx === queue.length - 1}
-                  className="p-2 rounded-xl transition-all hover:opacity-80 disabled:opacity-25 cursor-pointer"
-                  style={{ background: C.inner, color: C.txtSec }}
-                  title="Move Down"
-                  aria-label="Move Down">
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                <button onClick={() => markServed(t.id)}
-                  className="px-3 sm:px-4 py-2 rounded-xl text-xs font-black text-white shadow-md transition-all hover:opacity-90 whitespace-nowrap cursor-pointer"
-                  style={{ background: 'linear-gradient(135deg,#059669,#0a5f3c)' }}>
-                  Assign & Rotate
-                </button>
+              <div className="p-3 sm:p-4 flex flex-col gap-3">
+                {/* Identity row */}
+                <div className="flex items-center gap-3">
+                  {/* Position badge */}
+                  <div
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-xs flex-shrink-0"
+                    style={{
+                      background: isFirst ? 'linear-gradient(135deg,#059669,#0a5f3c)' : C.inner,
+                      color: isFirst ? '#fff' : C.txtMuted,
+                    }}
+                  >
+                    #{t.position}
+                  </div>
 
-                {/* Queue Actions Dropdown */}
-                <LuxuryDropdownMenu
-                  trigger={
+                  <Avatar name={t.name} gradient={ROLE_META[t.role]?.grad} size={40} />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="text-sm font-black truncate" style={{ color: C.txt }}>{t.name}</p>
+                      {t.sessions > 0 && (
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+                          style={{ background: 'rgba(139,92,246,0.14)', color: '#8b5cf6' }}
+                        >
+                          {t.sessions} served
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] mt-0.5 font-medium truncate" style={{ color: C.txtMuted }}>
+                      {t.specialty || 'General Therapist'}
+                    </p>
+                  </div>
+
+                  {/* Compact up/down + overflow */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <button
-                      type="button"
-                      className="p-2 rounded-xl text-slate-400 hover:text-slate-200 cursor-pointer"
-                      style={{ background: C.inner }}
-                      aria-label={`Queue options for ${t.name}`}
+                      onClick={() => swap(idx, -1)}
+                      disabled={idx === 0}
+                      title="Move Up"
+                      aria-label="Move Up in Queue"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                      style={{ background: C.inner, color: C.txtSec }}
                     >
-                      <MoreVertical className="w-4 h-4" />
+                      <ChevronUp className="w-4 h-4" />
                     </button>
-                  }
-                  items={queueActions}
-                  menuWidth={230}
-                  align="right"
-                  isDark={C.isDark}
-                />
+                    <button
+                      onClick={() => swap(idx, 1)}
+                      disabled={idx === queue.length - 1}
+                      title="Move Down"
+                      aria-label="Move Down in Queue"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                      style={{ background: C.inner, color: C.txtSec }}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    <LuxuryDropdownMenu
+                      trigger={
+                        <button
+                          type="button"
+                          className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-200 cursor-pointer transition-all active:scale-90"
+                          style={{ background: C.inner }}
+                          aria-label={`Queue options for ${t.name}`}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      }
+                      items={queueActions}
+                      menuWidth={230}
+                      align="right"
+                      isDark={C.isDark}
+                    />
+                  </div>
+                </div>
+
+                {/* Assign & Rotate CTA — full width */}
+                <button
+                  onClick={() => markServed(t.id)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-black text-white transition-all active:scale-[0.98] hover:opacity-90 cursor-pointer"
+                  style={{
+                    background: isFirst
+                      ? 'linear-gradient(135deg,#059669 0%,#047857 100%)'
+                      : `linear-gradient(135deg,${C.isDark ? '#1d4ed8' : '#1565c0'} 0%,${C.isDark ? '#1e3a8a' : '#0d47a1'} 100%)`,
+                    boxShadow: isFirst
+                      ? '0 4px 16px rgba(5,150,105,0.35)'
+                      : '0 4px 14px rgba(21,101,192,0.28)',
+                  }}
+                >
+                  <Zap className="w-4 h-4 flex-shrink-0" />
+                  <span>Assign &amp; Rotate</span>
+                </button>
               </div>
-            </div>
+            </motion.div>
           );
         })}
 
+        {/* Empty State */}
         {filteredQueue.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl" style={{ background: C.card }}>
-            <p className="text-sm font-bold" style={{ color: C.txt }}>No therapists in this queue view</p>
-            <p className="text-xs mt-1" style={{ color: C.txtMuted }}>All therapists are either inactive or filtered out</p>
+          <div
+            className="flex flex-col items-center justify-center py-16 px-6 text-center rounded-2xl gap-3"
+            style={{
+              background: C.card,
+              border: `1px dashed ${C.isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+            }}
+          >
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: C.inner }}>
+              <ListOrdered className="w-7 h-7" style={{ color: C.txtMuted }} />
+            </div>
+            <div>
+              <p className="text-sm font-bold" style={{ color: C.txt }}>No therapists in this view</p>
+              <p className="text-xs mt-1 max-w-xs mx-auto" style={{ color: C.txtMuted }}>
+                {queueFilter === 'served'
+                  ? 'No sessions have been dispatched today yet.'
+                  : 'All therapists are either inactive or not available.'}
+              </p>
+            </div>
+            {queueFilter !== 'all' && (
+              <button
+                onClick={() => setQueueFilter('all')}
+                className="text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95"
+                style={{ background: C.inner, color: C.accent }}
+              >
+                Show All Queue
+              </button>
+            )}
           </div>
         )}
       </div>
