@@ -11,7 +11,6 @@ import {
   useSpring,
 } from "framer-motion";
 import {
-  Sparkles,
   ArrowRight,
   Star,
   Calendar,
@@ -25,7 +24,6 @@ import {
   ChevronDown,
   Quote,
   Leaf,
-  Sparkle,
   UserCheck,
   ShoppingCart,
   Plus,
@@ -490,7 +488,7 @@ const Card = ({ s, i, cat, catKey }) => {
 /* ── Navbar Links (module scope — stable identity for observers) ──── */
 const NAV_LINKS = [
   { href: "#story", label: "Our Story", Icon: Leaf },
-  { href: "#services", label: "Services", Icon: Sparkles },
+  { href: "#services", label: "Services", Icon: Star },
   { href: "#how-it-works", label: "How It Works", Icon: Calendar },
   { href: "#testimonials", label: "Reviews", Icon: Star },
 ];
@@ -716,7 +714,7 @@ export default function LandingPage() {
               <Link to="/login" className="px-4 xl:px-5 py-2 text-xs font-bold rounded-xl hover:bg-white/10 transition-all duration-300 text-white/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60" style={{ border: "1px solid rgba(255,255,255,0.12)" }}>Log In</Link>
               <MagneticBtn strength={0.25}>
                 <Link to="/register" id="nav-book" className="px-4 xl:px-5 py-2.5 text-xs font-black text-[#041e16] rounded-xl flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all duration-200" style={{ background: "linear-gradient(135deg,#bfa15f,#e8cc8a)", boxShadow: "0 4px 18px rgba(191,161,95,0.45)" }}>
-                  <Sparkles className="w-3.5 h-3.5" />Book Now
+                  Book Now
                 </Link>
               </MagneticBtn>
             </div>
@@ -847,7 +845,7 @@ export default function LandingPage() {
                 <div className="flex gap-2.5">
                   <Link to="/login" onClick={() => setMobile(false)} className="flex-1 text-center py-3 rounded-xl text-sm font-bold text-white/80 border border-white/10 bg-white/5 active:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60">Log In</Link>
                   <Link to="/register" onClick={() => setMobile(false)} className="flex-1 text-center py-3 rounded-xl text-sm font-bold text-[#041e16] flex items-center justify-center gap-2 bg-gradient-to-r from-[#bfa15f] to-[#d4b87a] active:scale-95 transition-transform" style={{ boxShadow: "0 4px 16px rgba(191,161,95,0.35)" }}>
-                    <Sparkles className="w-3.5 h-3.5" />Book Now
+                    Book Now
                   </Link>
                 </div>
                 <div className="flex items-center justify-center gap-2 mt-4">
@@ -898,7 +896,6 @@ export default function LandingPage() {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] font-bold text-amber-300 mb-6"
                 style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(191,161,95,0.28)", backdropFilter: "blur(10px)" }}>
-                <Sparkles className="w-3.5 h-3.5" />
                 <span>Cozy Blissful Salon & Spa · Premium Wellness Destination</span>
               </motion.div>
 
@@ -1120,7 +1117,6 @@ export default function LandingPage() {
           {/* Section Header */}
           <Reveal className="text-center mb-12 md:mb-16">
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 mb-4 shadow-sm">
-              <Sparkle className="w-3.5 h-3.5 text-amber-600" />
               <span>Our Story & Craft</span>
             </span>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 leading-tight" style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "-0.01em" }}>
@@ -1301,7 +1297,7 @@ export default function LandingPage() {
             {[
               { icon: Calendar, color: "#0a3d30", bg: "rgba(10,61,48,0.1)", title: "Book Your Visit", desc: "Choose your service online or by phone, pick a date & time — and we'll handle the rest." },
               { icon: UserCheck, color: "#6b5a2e", bg: "rgba(107,90,46,0.1)", title: "We Assign Your Specialist", desc: "Our admin team carefully matches you with a certified therapist suited for your chosen treatment." },
-              { icon: Sparkles, color: "#1e3a5f", bg: "rgba(30,58,95,0.1)", title: "Arrive & Unwind", desc: "Walk into your private suite, breathe in the ambiance, and let our specialists work their magic." },
+              { icon: Star, color: "#1e3a5f", bg: "rgba(30,58,95,0.1)", title: "Arrive & Unwind", desc: "Walk into your private suite, breathe in the ambiance, and let our specialists work their magic." },
             ].map((step, idx) => {
               const Icon = step.icon;
               return (

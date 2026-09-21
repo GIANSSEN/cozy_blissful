@@ -9,7 +9,7 @@ import API from '../../api/axios';
 import {
   Calendar, Clock, CheckCircle, AlertCircle,
   LogOut, Plus, ChevronRight, ChevronLeft,
-  Sparkles, Award, Gift, Send, UserCheck, Star, X,
+  Award, Gift, Send, UserCheck, Star, X,
   Zap, MessageSquare, Scissors, XCircle, RefreshCw,
   CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
   CheckCircle2, Compass, Heart, PhoneCall, MapPin,
@@ -79,7 +79,7 @@ const STEP_LABELS = ['Choose Treatment', 'Date & Time', 'Client Details & Billin
 const statusStyle = (status) => {
   switch (status) {
     case 'In Progress':
-      return { bg: 'rgba(2,132,199,0.08)', color: '#0284c7', border: 'rgba(2,132,199,0.25)', icon: <Sparkles className="w-3.5 h-3.5 animate-pulse" /> };
+      return { bg: 'rgba(2,132,199,0.08)', color: '#0284c7', border: 'rgba(2,132,199,0.25)', icon: <Star className="w-3.5 h-3.5" /> };
     case 'Confirmed':
       return { bg: 'rgba(6,44,34,0.06)', color: '#062c22', border: 'rgba(6,44,34,0.2)', icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> };
     case 'Completed':
@@ -99,9 +99,9 @@ const StepIndicator = ({ step }) => (
       const isDone = i < step;
       return (
         <React.Fragment key={i}>
-          <div className="flex flex-col items-center gap-1">
+          <div className="flex flex-col items-center gap-1 min-w-0">
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-black transition-all duration-300 flex-shrink-0"
               style={{
                 background: isDone
                   ? 'linear-gradient(135deg,#bfa15f,#e8cc8a)'
@@ -120,7 +120,7 @@ const StepIndicator = ({ step }) => (
           </div>
           {i < STEP_LABELS.length - 1 && (
             <div
-              className="w-8 sm:w-14 h-0.5 mb-4 rounded-full transition-all duration-300"
+              className="w-5 sm:w-14 h-0.5 mb-0 sm:mb-4 mx-0.5 rounded-full transition-all duration-300 flex-shrink-0"
               style={{ background: i < step ? 'linear-gradient(90deg,#bfa15f,#e8cc8a)' : 'rgba(0,0,0,0.08)' }}
             />
           )}
@@ -161,7 +161,7 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-            <Sparkles className="w-4 h-4 text-[#bfa15f]" /> Select Your Wellness Therapy
+            Select Your Wellness Therapy
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">Explore our signature salon treatments and holistic therapies</p>
         </div>
@@ -446,7 +446,7 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
           ) : (
             <div className="space-y-4">
               {renderSlotGroup('Morning Calm (9:00 AM – 12:00 PM)', <Clock className="w-3.5 h-3.5 text-amber-500" />, morningSlots)}
-              {renderSlotGroup('Afternoon Refresh (12:00 PM – 5:00 PM)', <Sparkles className="w-3.5 h-3.5 text-emerald-600" />, afternoonSlots)}
+              {renderSlotGroup('Afternoon Refresh (12:00 PM – 5:00 PM)', <Star className="w-3.5 h-3.5 text-emerald-600" />, afternoonSlots)}
               {renderSlotGroup('Evening Glow (5:00 PM – 9:00 PM)', <Heart className="w-3.5 h-3.5 text-indigo-500" />, eveningSlots)}
             </div>
           )}
@@ -473,6 +473,59 @@ const PAYMENT_OPTIONS = [
     icon: Wallet,
   },
 ];
+
+// Normalize any stored payment value to a canonical channel id
+const normalizeClientMethod = (raw) => {
+  const m = String(raw || '').toLowerCase().trim();
+  if (['cash', 'counter', 'walkin', 'walk-in', 'cod', 'pay at counter', 'cash on visit'].includes(m)) return 'cash';
+  if (['gcash', 'g-cash', 'gcash / maya qr'].includes(m)) return 'gcash';
+  if (['maya', 'paymaya'].includes(m)) return 'maya';
+  if (['qrph', 'qr_ph', 'qr', 'qrcode'].includes(m)) return 'qrph';
+  if (['online', 'card', 'paymongo'].includes(m)) return 'online';
+  return 'cash';
+};
+
+// Client-facing label for a payment channel
+const clientMethodLabel = (raw) => {
+  switch (normalizeClientMethod(raw)) {
+    case 'gcash': return 'GCash';
+    case 'maya': return 'Maya';
+    case 'qrph': return 'QR Ph';
+    case 'online': return 'Online Payment';
+    default: return 'Cash on Visit';
+  }
+};
+
+// Strip the internal "[Billing & Contact Info]" block before showing notes to clients
+const clientDisplayNotes = (notes) => {
+  if (!notes) return '';
+  const marker = '[Billing & Contact Info]';
+  const idx = String(notes).indexOf(marker);
+  const visible = (idx >= 0 ? String(notes).slice(0, idx) : String(notes)).trim();
+  return visible.length > 280 ? `${visible.slice(0, 280)}…` : visible;
+};
+
+// Safe date parsing — never render "Invalid Date" to the UI
+const safeApptDate = (dt) => {
+  if (!dt) return null;
+  const d = new Date(dt);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+const fmtApptDate = (dt, opts) => {
+  const d = safeApptDate(dt);
+  if (!d) return 'Date to be confirmed';
+  return d.toLocaleDateString('en-US', opts || { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+};
+const fmtApptTime = (dt) => {
+  const d = safeApptDate(dt);
+  if (!d) return 'Time to be confirmed';
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+};
+const fmtApptDateTime = (dt) => {
+  const d = safeApptDate(dt);
+  if (!d) return 'Schedule to be confirmed';
+  return d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+};
 
 const ReviewStep = ({
   service,
@@ -679,7 +732,6 @@ const ReviewStep = ({
           {/* Treatment Preferences */}
           <div className="rounded-2xl p-4 sm:p-5 space-y-2 bg-white border border-slate-200/80 shadow-xs">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#bfa15f]" />
               Treatment Preferences &amp; Special Requests (Optional)
             </label>
             <textarea
@@ -753,7 +805,7 @@ const ReviewStep = ({
               <div className="pt-2.5 border-t border-white/15 flex items-baseline justify-between">
                 <div>
                   <span className="text-xs uppercase tracking-wider font-bold text-emerald-200">Total Due</span>
-                  <p className="text-[10px] text-emerald-300/70 font-medium">To settle upon visit or online</p>
+                  <p className="text-[10px] text-emerald-300/70 font-medium">{paymentMethod === 'cash' ? 'To settle in cash upon visit' : 'To settle online or upon visit'}</p>
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-black text-[#e8cc8a] tracking-tight">{formattedPrice}</span>
@@ -773,9 +825,11 @@ const ReviewStep = ({
             <ShieldCheck className="w-4 h-4 text-emerald-800 flex-shrink-0 mt-0.5" />
             <div className="space-y-0.5">
               <p className="font-bold text-slate-800 text-[11px]">Peace of Mind Guarantee</p>
-              <p className="text-[10px] text-slate-500 leading-relaxed">
-                Pay safely via QR / Card or at the salon reception. Free schedule changes up to 2 hours before your appointment.
-              </p>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  {paymentMethod === 'cash'
+                    ? 'Pay in cash at the salon reception after your session — no online payment needed. Free schedule changes up to 2 hours before your appointment.'
+                    : 'Pay online via GCash / Maya QR now, or at the salon reception on arrival. Free schedule changes up to 2 hours before your appointment.'}
+                </p>
             </div>
           </div>
         </div>
@@ -785,56 +839,73 @@ const ReviewStep = ({
 };
 
 // ─── STEP 4: CONFIRMATION ────────────────────────────────────────────────────
+// Branches on the client's chosen payment channel:
+//  • Cash on Visit  → primary CTA is "done / pay at counter", NO online push.
+//  • Online channel → primary CTA is "pay online now", counter as fallback.
 const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
   const price = Number(booking?.service_price ?? 0);
   const formattedPrice = price > 0 ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null;
+  const method = normalizeClientMethod(booking?.payment_method);
+  const methodName = clientMethodLabel(booking?.payment_method);
+  const isCash = method === 'cash';
 
   return (
-    <div className="text-center space-y-5 py-4">
+    <div className="text-center space-y-4 sm:space-y-5 py-3 sm:py-4 px-1">
       <motion.div
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className="w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-lg"
+        className="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mx-auto shadow-lg"
         style={{ background: 'linear-gradient(135deg,#062c22,#0a3d30)' }}
       >
-        <CheckCircle2 className="w-8 h-8 text-[#e8cc8a]" />
+        <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8 text-[#e8cc8a]" />
       </motion.div>
       <div>
-        <h3 className="text-xl font-black text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h3 className="text-lg sm:text-xl font-black text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
           Booking Request Confirmed!
         </h3>
-        <p className="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
-          Your appointment has been registered in our system. You may settle online via GCash, Maya, or directly at the salon counter.
+        <p className="text-xs text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed px-2">
+          {isCash ? (
+            <>Your appointment is registered. <strong className="text-emerald-900">No online payment needed</strong> — simply pay {formattedPrice || 'in cash'} at the salon counter after your session.</>
+          ) : (
+            <>Your appointment is registered with <strong className="text-emerald-900">{methodName}</strong>. Complete your online payment below to secure your slot — or pay at the counter on arrival.</>
+          )}
         </p>
       </div>
 
       <div
-        className="rounded-2xl p-4 sm:p-5 text-left space-y-2.5 max-w-sm mx-auto shadow-xs bg-white border border-slate-200/80"
+        className="rounded-2xl p-4 sm:p-5 text-left space-y-2.5 w-full max-w-sm mx-auto shadow-xs bg-white border border-slate-200/80"
       >
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking Reference</p>
           <p className="text-sm font-black text-emerald-900 font-mono">#{String(booking?.id || 1).padStart(5, '0')}</p>
         </div>
 
-        <div>
-          <p className="text-sm font-black text-slate-800">{booking?.service}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{booking?.datetime}</p>
+        <div className="min-w-0">
+          <p className="text-sm font-black text-slate-800 break-words">{booking?.service}</p>
+          <p className="text-xs text-slate-500 mt-0.5 break-words">{booking?.datetime}</p>
         </div>
 
         {formattedPrice && (
-          <div className="flex items-center justify-between text-xs pt-1">
+          <div className="flex items-center justify-between gap-2 text-xs pt-1">
             <span className="text-slate-500 font-semibold">Total Amount:</span>
-            <span className="font-black text-emerald-900 text-sm">{formattedPrice}</span>
+            <span className="font-black text-emerald-900 text-sm whitespace-nowrap">{formattedPrice}</span>
           </div>
         )}
 
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-          <span className="text-slate-500 font-semibold">Payment Mode:</span>
-          <span className="font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 capitalize">
-            {booking?.payment_method === 'cash' ? 'Cash on Visit' : booking?.payment_method === 'gcash' ? 'GCash / Maya QR' : (booking?.payment_method || 'Pay at Counter')}
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]">
+          <span className="text-slate-500 font-semibold flex-shrink-0">Payment Mode:</span>
+          <span className="font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-right">
+            {methodName}
           </span>
         </div>
+
+        {isCash && (
+          <div className="pt-2 border-t border-slate-100 flex items-start gap-1.5 text-[10px] font-semibold text-slate-600 leading-relaxed">
+            <Banknote className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0 mt-px" />
+            <span>Cash on Visit — settle {formattedPrice || 'your balance'} at the counter. Please arrive 10 minutes early.</span>
+          </div>
+        )}
 
         <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 text-[10px] font-bold text-emerald-800">
           <UserCheck className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
@@ -842,36 +913,63 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
         </div>
       </div>
 
-      <p className="text-xs text-slate-400">📧 A confirmation email has been dispatched to your account.</p>
+      <p className="text-xs text-slate-400 px-2">📧 A confirmation email has been dispatched to your account.</p>
 
-      {/* Action Buttons */}
-      <div className="space-y-2.5 max-w-sm mx-auto w-full pt-1">
-        <motion.button
-          type="button"
-          onClick={() => onPayOnline?.(booking)}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full inline-flex items-center justify-center gap-2.5 py-3 px-6 text-[#041e16] font-extrabold rounded-2xl text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md hover:brightness-110"
-          style={{
-            background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)',
-            boxShadow: '0 4px 16px rgba(191,161,95,0.35)',
-          }}
-        >
-          <Wallet className="w-4 h-4 text-[#041e16]" />
-          <span>Pay Online (GCash, Maya, QR Ph)</span>
-          <ChevronRight className="w-4 h-4 text-[#041e16]/80" />
-        </motion.button>
+      {/* Action Buttons — ordered by the client's chosen channel */}
+      {isCash ? (
+        <div className="space-y-2.5 w-full max-w-sm mx-auto pt-1">
+          <motion.button
+            type="button"
+            onClick={onDone}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 sm:px-6 text-white font-extrabold rounded-2xl text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md hover:brightness-110 min-h-[48px]"
+            style={{
+              background: 'linear-gradient(135deg, #062c22 0%, #0a3d30 100%)',
+              boxShadow: '0 4px 16px rgba(6,44,34,0.35)',
+            }}
+          >
+            <CheckCircle2 className="w-4 h-4 text-[#e8cc8a] flex-shrink-0" />
+            <span className="text-center leading-snug">Done — I&apos;ll Pay {formattedPrice || ''} at the Counter</span>
+          </motion.button>
 
-        <motion.button
-          type="button"
-          onClick={onDone}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-6 text-slate-700 font-bold rounded-2xl text-xs transition-all duration-200 cursor-pointer border border-slate-200 bg-white hover:bg-slate-50"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-800" /> Pay Later at Counter &amp; Return to Dashboard
-        </motion.button>
-      </div>
+          <button
+            type="button"
+            onClick={() => onPayOnline?.(booking)}
+            className="w-full text-[11px] font-semibold text-slate-400 hover:text-emerald-800 transition cursor-pointer py-2 min-h-[40px]"
+          >
+            Prefer to pay online instead? <span className="underline underline-offset-2">Pay with GCash / Maya</span>
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2.5 w-full max-w-sm mx-auto pt-1">
+          <motion.button
+            type="button"
+            onClick={() => onPayOnline?.(booking)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 sm:px-6 text-[#041e16] font-extrabold rounded-2xl text-xs sm:text-sm cursor-pointer transition-all duration-200 shadow-md hover:brightness-110 min-h-[48px]"
+            style={{
+              background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)',
+              boxShadow: '0 4px 16px rgba(191,161,95,0.35)',
+            }}
+          >
+            <Wallet className="w-4 h-4 text-[#041e16] flex-shrink-0" />
+            <span className="text-center leading-snug">Pay {formattedPrice || ''} Online with {methodName} Now</span>
+            <ChevronRight className="w-4 h-4 text-[#041e16]/80 flex-shrink-0" />
+          </motion.button>
+
+          <motion.button
+            type="button"
+            onClick={onDone}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 sm:px-6 text-slate-700 font-bold rounded-2xl text-xs transition-all duration-200 cursor-pointer border border-slate-200 bg-white hover:bg-slate-50 min-h-[48px]"
+          >
+            <span className="text-center leading-snug">I&apos;ll Pay at the Counter Instead</span>
+          </motion.button>
+        </div>
+      )}
     </div>
   );
 };
@@ -1001,8 +1099,22 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
       .finally(() => setLoadingSlots(false));
   }, [selectedDate, booking.service_id]);
 
+  // Escape to close (unless submitting)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !submitting) onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [submitting, onClose]);
+
   const handleReschedule = async () => {
     if (!selectedDate || !selectedTime) { setError('Please select a new date and time.'); return; }
+    // Client-side past guard (server re-validates): block past datetimes
+    const picked = new Date(`${selectedDate}T${selectedTime}:00`);
+    if (Number.isNaN(picked.getTime())) { setError('Invalid date or time selected.'); return; }
+    if (picked <= new Date()) { setError('The new schedule must be in the future. Please pick another slot.'); return; }
+    // Must differ from the current booking schedule
+    const current = safeApptDate(booking.datetime);
+    if (current && Math.abs(picked.getTime() - current.getTime()) < 60 * 1000) { setError('This is already your current schedule. Please pick a different slot.'); return; }
     setSubmitting(true);
     setError('');
     try {
@@ -1029,49 +1141,53 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto no-scrollbar"
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="client-resched-title"
     >
       <motion.div
         initial={{ scale: 0.94, opacity: 0, y: 16 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.94, opacity: 0, y: 16 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="w-full max-w-md max-h-[90vh] flex flex-col rounded-[2rem] overflow-hidden shadow-2xl bg-white border border-slate-200"
+        className="w-full max-w-md my-auto max-h-[96dvh] sm:max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-[2rem] overflow-hidden shadow-2xl bg-white border border-slate-200"
       >
-        <div className="px-6 py-5 flex-shrink-0 bg-gradient-to-r from-[#062c22] to-[#0a3d30] text-white">
+        <div className="px-5 sm:px-6 py-5 flex-shrink-0 bg-gradient-to-r from-[#062c22] to-[#0a3d30] text-white">
           <div className="flex items-center justify-between mb-2">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/15">
               <CalendarCheck className="w-5 h-5 text-[#e8cc8a]" />
             </div>
-            <button type="button" onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-emerald-200 hover:text-white bg-white/10 transition cursor-pointer">
+            <button type="button" onClick={onClose} disabled={submitting} aria-label="Close reschedule dialog" className="w-9 h-9 rounded-xl flex items-center justify-center text-emerald-200 hover:text-white bg-white/10 transition cursor-pointer disabled:opacity-50">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <h2 className="text-white font-black text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>Reschedule Appointment</h2>
-          <p className="text-emerald-200/80 text-xs mt-0.5">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
+          <h2 id="client-resched-title" className="text-white font-black text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>Reschedule Appointment</h2>
+          <p className="text-emerald-200/80 text-xs mt-0.5 break-words">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
         </div>
 
-        <div className="p-6 space-y-4 flex-1 overflow-y-auto no-scrollbar">
+        <div className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto no-scrollbar">
           <div className="rounded-2xl p-3.5 space-y-1.5 bg-slate-50 border border-slate-200/80">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Schedule</p>
             <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-              <Clock className="w-3.5 h-3.5 text-emerald-800" />
-              <span>{new Date(booking.datetime).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true })}</span>
+              <Clock className="w-3.5 h-3.5 text-emerald-800 flex-shrink-0" />
+              <span className="break-words">{fmtApptDateTime(booking.datetime)}</span>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+            <label htmlFor="client-resched-date" className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-emerald-800" /> Pick New Date
             </label>
             <input
+              id="client-resched-date"
               type="date"
               min={todayStr}
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl text-xs text-slate-800 bg-white border border-slate-200 focus:border-[#bfa15f] focus:outline-none shadow-xs"
+              onChange={(e) => { setSelectedDate(e.target.value); setError(''); }}
+              className="w-full px-3.5 py-2.5 rounded-xl text-xs text-slate-800 bg-white border border-slate-200 focus:border-[#bfa15f] focus:outline-none shadow-xs min-h-[44px]"
             />
           </div>
 
@@ -1081,16 +1197,16 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
                 <Clock className="w-3.5 h-3.5 text-emerald-800" /> Choose New Time
               </label>
               {loadingSlots ? (
-                <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2" role="status">
                   <span className="w-4 h-4 border-2 border-emerald-200 border-t-emerald-700 rounded-full animate-spin" />
                   Loading available slots…
                 </div>
               ) : slots.available_slots.length === 0 ? (
-                <div className="py-4 rounded-2xl text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+                <div className="py-4 px-3 rounded-2xl text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200">
                   No available slots on this date. Try a different day.
                 </div>
               ) : (
-                <div className="grid grid-cols-3 gap-2 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1" role="group" aria-label="Available time slots">
                   {slots.all_slots.map((slot) => {
                     const isAvailable = slots.available_slots.includes(slot);
                     const isSelected = selectedTime === slot;
@@ -1099,12 +1215,14 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
                         key={slot}
                         type="button"
                         disabled={!isAvailable}
-                        onClick={() => setSelectedTime(slot)}
-                        className={`py-2.5 px-1 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
+                        aria-pressed={isSelected}
+                        aria-label={`${formatSlot(slot)}${isAvailable ? '' : ' (unavailable)'}`}
+                        onClick={() => { setSelectedTime(slot); setError(''); }}
+                        className={`py-2.5 px-1 rounded-xl text-xs font-bold transition-all text-center min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
                           isSelected
-                            ? 'bg-[#062c22] text-[#e8cc8a] shadow-md ring-1 ring-[#bfa15f]'
+                            ? 'bg-[#062c22] text-[#e8cc8a] shadow-md ring-1 ring-[#bfa15f] cursor-pointer'
                             : isAvailable
-                            ? 'bg-white text-slate-700 border border-slate-200 hover:border-[#bfa15f] hover:bg-slate-50'
+                            ? 'bg-white text-slate-700 border border-slate-200 hover:border-[#bfa15f] hover:bg-slate-50 cursor-pointer'
                             : 'bg-slate-100 text-slate-300 line-through cursor-not-allowed border border-slate-200/50'
                         }`}
                       >
@@ -1118,24 +1236,24 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
           )}
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl text-xs text-red-700 bg-red-50 border border-red-200">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+            <div role="alert" className="flex items-start gap-2 p-3 rounded-xl text-xs text-red-700 bg-red-50 border border-red-200">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" /> <span className="break-words">{error}</span>
             </div>
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex gap-3 flex-shrink-0">
-          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-600 transition hover:bg-slate-200 cursor-pointer border border-slate-200 bg-white">
+        <div className="px-5 sm:px-6 py-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row gap-2.5 sm:gap-3 flex-shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <button type="button" onClick={onClose} disabled={submitting} className="flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-600 transition hover:bg-slate-200 cursor-pointer border border-slate-200 bg-white min-h-[44px] disabled:opacity-50">
             Cancel
           </button>
           <button
             type="button"
             onClick={handleReschedule}
             disabled={submitting || !selectedDate || !selectedTime}
-            className="flex-1 py-2.5 rounded-2xl text-xs font-black text-white bg-[#062c22] hover:bg-[#0a3d30] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+            className="flex-1 py-2.5 px-4 rounded-2xl text-xs font-black text-white bg-[#062c22] hover:bg-[#0a3d30] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer shadow-md min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
           >
-            {submitting ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 text-[#e8cc8a]" />}
-            Confirm Reschedule
+            {submitting ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin flex-shrink-0" /> : <RefreshCw className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />}
+            <span className="text-center leading-snug">{submitting ? 'Rescheduling…' : 'Confirm Reschedule'}</span>
           </button>
         </div>
       </motion.div>
@@ -1206,7 +1324,14 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
 
   const handleSubmit = async () => {
     if (!clientName.trim()) { setError('Please provide your full name.'); return; }
+    if (clientName.trim().length < 2) { setError('Full name must be at least 2 characters.'); return; }
     if (!clientPhone.trim()) { setError('Please provide your mobile number.'); return; }
+    const digits = clientPhone.replace(/\D/g, '');
+    const localDigits = digits.startsWith('63') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits;
+    if (!/^9\d{9}$/.test(localDigits)) { setError('Please enter a valid PH mobile number (e.g. 0917 123 4567).'); return; }
+    if (!['cash', 'gcash'].includes(paymentMethod)) { setError('Please choose a valid payment method.'); return; }
+    if (!selectedService?.id) { setError('Please select a treatment first.'); return; }
+    if (!selectedDate || !selectedTime) { setError('Please select a date and time slot.'); return; }
 
     setSubmitting(true);
     setError('');
@@ -1247,16 +1372,13 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
         exit={{ scale: 0.95, opacity: 0, y: 16 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         className={`w-full ${
-          step === 2 ? 'max-w-4xl' : 'max-w-2xl'
-        } max-h-[90vh] sm:max-h-[88vh] flex flex-col rounded-[2.2rem] overflow-hidden transition-all duration-300 shadow-2xl bg-white border border-[rgba(191,161,95,0.3)]`}
+          step === 2 ? 'max-w-4xl' : step === 3 ? 'max-w-xl' : 'max-w-2xl'
+        } max-h-[92dvh] sm:max-h-[88vh] my-auto flex flex-col rounded-3xl sm:rounded-[2.2rem] overflow-hidden transition-all duration-300 shadow-2xl bg-white border border-[rgba(191,161,95,0.3)]`}
       >
         {/* Fixed Header */}
         <div className="flex-shrink-0 px-5 sm:px-7 pt-5 pb-3 border-b border-slate-100 bg-white">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#062c22] text-[#e8cc8a] flex items-center justify-center shadow-xs">
-                <Sparkles className="w-4 h-4" />
-              </div>
               <div>
                 <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Book a Sanctuary Session
@@ -1350,12 +1472,12 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
               </div>
             )}
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={handleBack}
                 disabled={step === 0}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed border border-slate-200 bg-white"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed border border-slate-200 bg-white min-h-[44px]"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Back
               </button>
@@ -1546,7 +1668,7 @@ const ClientDashboard = () => {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="space-y-2 max-w-xl">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/10 text-[#e8cc8a] border border-white/15">
-                <Sparkles className="w-3 h-3 text-[#fde68a]" /> Client Sanctuary Lounge
+                Client Sanctuary Lounge
               </span>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                 {greeting}, {user?.name?.split(' ')[0] || 'Valued Guest'} ✨
@@ -1595,40 +1717,51 @@ const ClientDashboard = () => {
                 <h3 className="text-base font-black text-slate-800 mt-0.5">
                   {nextSession.service}
                 </h3>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 mt-0.5">
                   <span className="font-semibold text-slate-700 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-emerald-800" />
-                    {new Date(nextSession.datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    <Calendar className="w-3.5 h-3.5 text-emerald-800 flex-shrink-0" />
+                    {fmtApptDate(nextSession.datetime, { weekday: 'short', month: 'short', day: 'numeric' })}
                   </span>
-                  <span>•</span>
+                  <span aria-hidden="true">•</span>
                   <span className="font-semibold text-slate-700 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-emerald-800" />
-                    {new Date(nextSession.datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    <Clock className="w-3.5 h-3.5 text-emerald-800 flex-shrink-0" />
+                    {fmtApptTime(nextSession.datetime)}
                   </span>
-                  <span>•</span>
+                  <span aria-hidden="true">•</span>
                   <span className="text-emerald-800 font-bold">
                     Specialist: {nextSession.therapist_name || 'Reception Matching'}
                   </span>
                 </div>
+                {nextSession.payment_status !== 'paid' && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-300 mt-1.5 w-fit">
+                    {normalizeClientMethod(nextSession.payment_method) === 'cash' ? (
+                      <><Banknote className="w-3 h-3 text-amber-700" /> Cash on Visit</>
+                    ) : (
+                      <><Wallet className="w-3 h-3 text-amber-700" /> {clientMethodLabel(nextSession.payment_method)}</>
+                    )}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end md:self-center">
-              {nextSession.payment_status !== 'paid' && (
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full md:w-auto self-stretch md:self-center">
+              {nextSession.payment_status !== 'paid' && normalizeClientMethod(nextSession.payment_method) !== 'cash' && (
                 <button
                   type="button"
                   onClick={() => setPaymentTarget(nextSession)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  aria-label={`Pay ${clientMethodLabel(nextSession.payment_method)} online for booking ${String(nextSession.id).padStart(5, '0')}`}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
                 >
-                  <Wallet className="w-3.5 h-3.5" /> Pay Online
+                  <Wallet className="w-3.5 h-3.5 flex-shrink-0" /> Pay Online
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setRescheduleTarget(nextSession)}
-                className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer border border-slate-200 flex items-center gap-1.5"
+                aria-label={`Reschedule booking ${String(nextSession.id).padStart(5, '0')}`}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer border border-slate-200 flex items-center justify-center gap-1.5 min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
               >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-500" /> Reschedule
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" /> Reschedule
               </button>
             </div>
           </motion.div>
@@ -1695,9 +1828,6 @@ const ClientDashboard = () => {
           </LuxuryCard>
 
           <LuxuryCard className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-indigo-50 text-indigo-600">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
-            </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VIP Tier</p>
               <p className="text-lg font-black text-slate-800">Gold Sanctuary</p>
@@ -1803,7 +1933,7 @@ const ClientDashboard = () => {
                   </h3>
 
                   {/* Filter Tabs */}
-                  <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-2xl self-start sm:self-auto border border-slate-200">
+                  <div role="tablist" aria-label="Filter appointments" className="flex flex-wrap items-center gap-1 bg-slate-200/60 p-1 rounded-2xl self-start sm:self-auto border border-slate-200 max-w-full">
                     {[
                       { id: 'all', label: 'All' },
                       { id: 'active', label: 'Upcoming' },
@@ -1813,8 +1943,10 @@ const ClientDashboard = () => {
                       <button
                         key={tab.id}
                         type="button"
+                        role="tab"
+                        aria-selected={bookingFilter === tab.id}
                         onClick={() => setBookingFilter(tab.id)}
-                        className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer min-h-[36px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
                           bookingFilter === tab.id
                             ? 'bg-white text-slate-900 shadow-xs'
                             : 'text-slate-500 hover:text-slate-800'
@@ -1870,7 +2002,7 @@ const ClientDashboard = () => {
                                 {b.status === 'Cancelled' ? (
                                   <Ban className="w-5 h-5 text-red-500" />
                                 ) : b.status === 'In Progress' ? (
-                                  <Sparkles className="w-5 h-5 text-sky-600 animate-pulse" />
+                                  <Star className="w-5 h-5 text-sky-600" />
                                 ) : b.status === 'Completed' ? (
                                   <CheckCheck className="w-5 h-5 text-emerald-600" />
                                 ) : b.status === 'Confirmed' ? (
@@ -1907,26 +2039,26 @@ const ClientDashboard = () => {
                                   )}
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs text-slate-500">
                                   <span className="flex items-center gap-1 text-slate-700 font-semibold">
-                                    <Calendar className="w-3.5 h-3.5 text-emerald-800" />
-                                    {new Date(b.datetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                    <Calendar className="w-3.5 h-3.5 text-emerald-800 flex-shrink-0" />
+                                    {fmtApptDate(b.datetime)}
                                   </span>
-                                  <span>·</span>
+                                  <span aria-hidden="true">·</span>
                                   <span className="flex items-center gap-1 text-slate-700 font-semibold">
-                                    <Clock className="w-3.5 h-3.5 text-emerald-800" />
-                                    {new Date(b.datetime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                    <Clock className="w-3.5 h-3.5 text-emerald-800 flex-shrink-0" />
+                                    {fmtApptTime(b.datetime)}
                                   </span>
                                   {b.service_duration && (
                                     <>
-                                      <span>·</span>
+                                      <span aria-hidden="true">·</span>
                                       <span className="flex items-center gap-1 text-amber-800 font-semibold">
                                         <Zap className="w-3 h-3 text-amber-600" /> {b.service_duration} min
                                       </span>
                                     </>
                                   )}
                                 </div>
-                                {b.notes && <p className="text-[11px] text-slate-500 italic pt-0.5">📋 Notes: {b.notes}</p>}
+                                {clientDisplayNotes(b.notes) && <p className="text-[11px] text-slate-500 italic pt-0.5 break-words">📋 Notes: {clientDisplayNotes(b.notes)}</p>}
                               </div>
                             </div>
 
@@ -1938,19 +2070,26 @@ const ClientDashboard = () => {
                             </span>
                           </div>
 
-                          {/* Payment Status Pill */}
-                          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                          {/* Payment Status Pill — always reflects the client's chosen channel */}
+                          <div className="flex flex-wrap items-center gap-2 pt-0.5" role="status" aria-live="polite">
                             {b.payment_status === 'paid' ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-3 py-0.5 rounded-full border border-emerald-300">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Paid • ₱{Number(b.amount_paid || b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-300 max-w-full">
+                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                                <span className="break-words">Paid • ₱{Number(b.amount_paid || b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} via {clientMethodLabel(b.payment_method)}</span>
                               </span>
                             ) : b.payment_status === 'awaiting_payment' ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-800 bg-sky-100/80 px-3 py-0.5 rounded-full border border-sky-300">
-                                <Clock className="w-3.5 h-3.5 text-sky-600" /> Awaiting Payment Confirmation
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-800 bg-sky-100/80 px-3 py-1 rounded-full border border-sky-300 max-w-full">
+                                <Clock className="w-3.5 h-3.5 text-sky-600 flex-shrink-0" /> Awaiting Payment Confirmation
+                              </span>
+                            ) : normalizeClientMethod(b.payment_method) === 'cash' ? (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-300 max-w-full">
+                                <Banknote className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+                                <span className="break-words">Unpaid • ₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} · Cash at Counter</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/80 px-3 py-0.5 rounded-full border border-amber-300">
-                                <Wallet className="w-3.5 h-3.5 text-amber-700" /> Unpaid • ₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (Pay Online or Counter)
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-300 max-w-full">
+                                <Wallet className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+                                <span className="break-words">Unpaid • ₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} · {clientMethodLabel(b.payment_method)} or Counter</span>
                               </span>
                             )}
                           </div>
@@ -1958,27 +2097,28 @@ const ClientDashboard = () => {
                           {/* 4-Step Lifecycle Progress Tracker */}
                           {b.status !== 'Cancelled' ? (
                             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-                              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 mb-2">
+                              <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-slate-500 mb-2">
                                 <span className="uppercase tracking-wider text-[9px] font-bold text-slate-400">Appointment Workflow</span>
-                                <span className="font-bold text-emerald-900">
+                                <span className="font-bold text-emerald-900" role="status">
                                   {activeStep === 1 && 'Step 1 of 4: Booking Received'}
                                   {activeStep === 2 && 'Step 2 of 4: Specialist Assigned & Confirmed'}
                                   {activeStep === 3 && 'Step 3 of 4: Treatment In Progress'}
                                   {activeStep === 4 && 'Step 4 of 4: Treatment Completed'}
                                 </span>
                               </div>
-                              <div className="grid grid-cols-4 gap-2">
+                              <ol aria-label={`Appointment progress: step ${activeStep} of 4`} className="grid grid-cols-4 gap-1.5 sm:gap-2 list-none m-0 p-0">
                                 {[
                                   { num: 1, label: 'Requested', desc: 'Received by Desk' },
-                                  { num: 2, label: 'Assigned', desc: hasTherapist ? b.therapist_name.split(' ')[0] : 'Reception Desk' },
+                                  { num: 2, label: 'Assigned', desc: hasTherapist ? String(b.therapist_name).split(' ')[0] : 'Reception Desk' },
                                   { num: 3, label: 'In Treatment', desc: 'Active Session' },
                                   { num: 4, label: 'Completed', desc: 'Service Concluded' },
                                 ].map((st) => {
                                   const isCurrent = activeStep === st.num;
                                   const isPast = activeStep > st.num;
                                   return (
-                                    <div key={st.num} className="flex flex-col items-center text-center">
+                                    <li key={st.num} aria-current={isCurrent ? 'step' : undefined} className="flex flex-col items-center text-center min-w-0">
                                       <div
+                                        aria-hidden="true"
                                         className={`w-full h-1.5 rounded-full mb-1.5 transition-all ${
                                           isPast
                                             ? 'bg-emerald-600'
@@ -1987,16 +2127,16 @@ const ClientDashboard = () => {
                                             : 'bg-slate-200'
                                         }`}
                                       />
-                                      <span className={`text-[10px] font-bold truncate w-full ${isCurrent ? (st.num === 3 ? 'text-sky-600' : 'text-emerald-900') : isPast ? 'text-emerald-800' : 'text-slate-400'}`}>
+                                      <span className={`text-[9px] sm:text-[10px] font-bold truncate w-full ${isCurrent ? (st.num === 3 ? 'text-sky-600' : 'text-emerald-900') : isPast ? 'text-emerald-800' : 'text-slate-400'}`}>
                                         {st.label}
                                       </span>
                                       <span className="text-[8px] text-slate-400 truncate w-full hidden sm:block">
                                         {st.desc}
                                       </span>
-                                    </div>
+                                    </li>
                                   );
                                 })}
-                              </div>
+                              </ol>
                             </div>
                           ) : (
                             <div className="p-3 rounded-2xl bg-red-50/60 border border-red-100 flex items-center gap-2 text-xs text-red-600">
@@ -2005,32 +2145,51 @@ const ClientDashboard = () => {
                             </div>
                           )}
 
-                          {/* Action Buttons */}
+                          {/* Action Buttons — ordered by the client's chosen payment channel */}
                           {canManage && (
-                            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-                              {b.payment_status !== 'paid' && (
+                            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pt-3 border-t border-slate-100">
+                              {b.payment_status !== 'paid' && normalizeClientMethod(b.payment_method) !== 'cash' && (
                                 <button
                                   type="button"
                                   onClick={() => setPaymentTarget(b)}
-                                  className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer shadow-xs"
+                                  aria-label={`Pay ${clientMethodLabel(b.payment_method)} online for booking ${String(b.id).padStart(5, '0')}`}
+                                  className="w-full sm:w-auto sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-extrabold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer shadow-xs min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
                                 >
-                                  <Wallet className="w-3.5 h-3.5" /> Pay Online (GCash / Maya / QR Ph)
+                                  <Wallet className="w-3.5 h-3.5 flex-shrink-0" />
+                                  <span className="text-center leading-snug">Pay Online with {clientMethodLabel(b.payment_method)}</span>
                                 </button>
+                              )}
+                              {b.payment_status !== 'paid' && normalizeClientMethod(b.payment_method) === 'cash' && (
+                                <div className="w-full sm:w-auto sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 min-h-[44px]" role="note">
+                                  <Banknote className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+                                  <span className="text-center leading-snug">Cash on Visit — pay at the counter</span>
+                                </div>
                               )}
                               <button
                                 type="button"
                                 onClick={() => setRescheduleTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer border border-slate-200"
+                                aria-label={`Reschedule booking ${String(b.id).padStart(5, '0')}`}
+                                className="w-full sm:w-auto sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition cursor-pointer border border-slate-200 min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
                               >
-                                <RefreshCw className="w-3.5 h-3.5 text-slate-500" /> Reschedule
+                                <RefreshCw className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" /> Reschedule
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setCancelTarget(b)}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition cursor-pointer border border-red-200"
+                                aria-label={`Cancel booking ${String(b.id).padStart(5, '0')}`}
+                                className="w-full sm:w-auto sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 transition cursor-pointer border border-red-200 min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
                               >
-                                <XCircle className="w-3.5 h-3.5" /> Cancel Appointment
+                                <XCircle className="w-3.5 h-3.5 flex-shrink-0" /> Cancel Appointment
                               </button>
+                              {b.payment_status !== 'paid' && normalizeClientMethod(b.payment_method) === 'cash' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentTarget(b)}
+                                  className="w-full text-[11px] font-semibold text-slate-400 hover:text-sky-700 transition cursor-pointer py-1.5 min-h-[36px]"
+                                >
+                                  Prefer GCash / Maya? <span className="underline underline-offset-2">Pay online instead</span>
+                                </button>
+                              )}
                             </div>
                           )}
 

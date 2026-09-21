@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\AuditLog;
+use App\Models\Notification;
 use App\Models\TherapistAvailability;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -181,14 +183,14 @@ class TherapistController extends Controller
         $appt->load(['client', 'service']);
 
         if ($targetStatus === 'In Progress') {
-            \App\Models\Notification::create([
+            Notification::create([
                 'type'           => 'in_progress',
                 'title'          => 'Session Started',
                 'description'    => "Therapist {$user->name} began session with " . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ')',
                 'appointment_id' => $appt->id,
             ]);
         } elseif ($targetStatus === 'Completed by Therapist') {
-            \App\Models\Notification::create([
+            Notification::create([
                 'type'           => 'completed_by_therapist',
                 'title'          => 'Session Concluded by Therapist',
                 'description'    => "Therapist {$user->name} completed session #{$appt->id} with " . ($appt->client?->name ?? 'Client') . '. Awaiting Admin verification.',
@@ -196,7 +198,7 @@ class TherapistController extends Controller
             ]);
         }
 
-        \App\Models\AuditLog::log('update', 'Appointment', "Therapist {$user->name} marked booking #{$appt->id} as {$targetStatus} (was {$oldStatus})", [
+        AuditLog::log('update', 'Appointment', "Therapist {$user->name} marked booking #{$appt->id} as {$targetStatus} (was {$oldStatus})", [
             'actor' => $user->name,
             'actor_role' => 'therapist',
             'module' => 'Therapist Portal',
@@ -248,7 +250,7 @@ class TherapistController extends Controller
         $appt->status = 'Confirmed';
         $appt->save();
 
-        \App\Models\AuditLog::log('assign', 'Appointment', "Therapist '{$user->name}' claimed booking #{$appt->id}", [
+        AuditLog::log('assign', 'Appointment', "Therapist '{$user->name}' claimed booking #{$appt->id}", [
             'actor' => $user->name,
             'actor_role' => 'therapist',
             'module' => 'Therapist Portal',
@@ -259,7 +261,7 @@ class TherapistController extends Controller
             ]
         ]);
 
-        \App\Models\Notification::create([
+        Notification::create([
             'type'           => 'therapist_assigned',
             'title'          => 'Job Claimed by Therapist',
             'description'    => "Therapist {$user->name} accepted booking #{$appt->id} (" . ($appt->service?->name ?? 'Service') . ')',
@@ -319,7 +321,7 @@ class TherapistController extends Controller
 
         $user->save();
 
-        \App\Models\AuditLog::log('update', 'User', "Therapist '{$user->name}' updated their profile settings", [
+        AuditLog::log('update', 'User', "Therapist '{$user->name}' updated their profile settings", [
             'actor' => $user->name,
             'actor_role' => 'therapist',
             'module' => 'Therapist Portal',

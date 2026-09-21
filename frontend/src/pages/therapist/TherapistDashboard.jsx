@@ -8,7 +8,7 @@ import API from '../../api/axios';
 import {
   Briefcase, Star, Clock, MapPin, Calendar,
   CheckCircle, LogOut, TrendingUp,
-  UserCheck, Sparkles, AlertCircle, RefreshCw,
+  UserCheck, AlertCircle, RefreshCw,
   Search, X, Edit3, Key, CheckCircle2,
   ChevronDown, Copy, Eye, EyeOff, CheckCheck,
   User, Phone, Handshake, Zap, Check,
@@ -431,10 +431,7 @@ const TherapistDashboard = () => {
             boxShadow: '0 16px 36px rgba(6,44,34,0.18)',
           }}
         >
-          {/* Subtle ambient decorative shapes */}
-          <div className="absolute right-0 top-0 opacity-10 pointer-events-none translate-x-12 -translate-y-12">
-            <Sparkles className="w-72 h-72 text-white" />
-          </div>
+          {/* Hero content — decorative watermark removed for neutral icon set */}
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2 max-w-2xl">

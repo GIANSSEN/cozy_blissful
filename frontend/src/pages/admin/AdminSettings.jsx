@@ -5,7 +5,7 @@ import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Sliders, Globe, Bell, Save, CheckCircle2, UserPlus,
-  Users, Shield, Clock, Phone, Sparkles,
+  Users, Shield, Clock, Phone,
   Search, X, Edit3, Eye, EyeOff,
 } from 'lucide-react';
 
@@ -440,7 +440,7 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff }) {
                     onClick={generateStrongPassword}
                     className="text-[11px] font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 transition"
                   >
-                    <Sparkles className="w-3 h-3" /> Auto-Generate Secure Pass
+                    Auto-Generate Secure Pass
                   </button>
                 </div>
 
@@ -1259,7 +1259,6 @@ const AdminSettings = () => {
                 isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'
               }`}>
                 <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-4 h-4 text-emerald-500" />
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Client Preview Card</h3>
                 </div>
 

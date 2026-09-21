@@ -38,7 +38,7 @@ class BookingApprovedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '🎉 Your Booking is Approved – Cozy Blissful Spa',
+            subject: 'Booking Approved (#CB-' . str_pad($this->bookingId, 5, '0', STR_PAD_LEFT) . ') – Cozy Blissful Spa',
         );
     }
 

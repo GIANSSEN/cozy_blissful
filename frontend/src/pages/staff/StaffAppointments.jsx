@@ -625,7 +625,7 @@ const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, onStatus, onOpenSet
                             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105 cursor-pointer"
                             style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
                           >
-                            <Banknote className="w-3.5 h-3.5 text-amber-300" /> Settle Cash &amp; Complete Treatment
+                            <Banknote className="w-3.5 h-3.5 text-amber-300" /> Verify &amp; Complete Treatment
                           </button>
                           <button
                             onClick={() => onStatus(appt.id, 'Cancelled')}
@@ -643,14 +643,14 @@ const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, onStatus, onOpenSet
                           </span>
                           {appt.payment_status === 'paid' ? (
                             <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-xl border border-emerald-300 flex items-center gap-1">
-                              <Check className="w-3 h-3 text-emerald-600" /> Paid in Cash {appt.amount_paid ? `(₱${Number(appt.amount_paid).toFixed(2)})` : ''}
+                              <Check className="w-3 h-3 text-emerald-600" /> Paid {appt.payment_method && appt.payment_method !== 'cash' ? `via ${appt.payment_method.toUpperCase()} ` : 'in Cash '}{appt.amount_paid ? `(₱${Number(appt.amount_paid).toFixed(2)})` : ''}
                             </span>
                           ) : (
                             <button
                               onClick={() => onOpenSettleCash(appt)}
                               className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 transition hover:scale-105 cursor-pointer"
                             >
-                              <Banknote className="w-3 h-3 text-amber-700" /> Settle Cash
+                              <Banknote className="w-3 h-3 text-amber-700" /> Verify &amp; Complete
                             </button>
                           )}
                         </div>
@@ -739,7 +739,7 @@ const StaffAppointments = () => {
   const handleSettleCash = async (apptId, payload) => {
     try {
       const res = await API.post(`/staff/appointments/${apptId}/settle-payment`, payload);
-      toast.success(res.data.message || 'Cash payment settled and treatment completed!');
+      toast.success(res.data.message || 'Session verified and treatment completed!');
       loadAppointments(true);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to settle cash payment.');

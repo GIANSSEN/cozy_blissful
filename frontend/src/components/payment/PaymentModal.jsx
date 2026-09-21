@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Wallet, QrCode, Smartphone,
-  ShieldCheck, Loader2, ExternalLink, AlertCircle, Sparkles,
+  ShieldCheck, Loader2, ExternalLink, AlertCircle,
   CheckCircle, Info,
 } from 'lucide-react';
 import { createCheckoutSession, simulateTestPayment, PAYMENT_METHODS } from '../../api/paymongo';
@@ -271,7 +271,6 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-300" />
                     <span>⚡ Complete Test Payment (Instant Sandbox Confirm)</span>
                   </>
                 )}
@@ -317,7 +316,6 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
                   <span>Pay {formattedPrice} via {methodLabel}</span>
                   <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                 </>

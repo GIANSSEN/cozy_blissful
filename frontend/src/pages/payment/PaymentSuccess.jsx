@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, Sparkles, Calendar, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Loader2 } from 'lucide-react';
 import { verifyPayment } from '../../api/paymongo';
 
 export default function PaymentSuccess() {
@@ -81,9 +81,6 @@ export default function PaymentSuccess() {
           className="px-8 pt-10 pb-8 text-center relative overflow-hidden"
           style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}
         >
-          <div className="absolute inset-0 opacity-5 pointer-events-none">
-            <Sparkles className="w-full h-full" />
-          </div>
 
           {status === 'loading' && (
             <motion.div
@@ -168,7 +165,6 @@ export default function PaymentSuccess() {
             className="flex items-start gap-3 p-4 rounded-2xl text-xs"
             style={{ background: 'rgba(191,161,95,0.08)', border: '1px solid rgba(191,161,95,0.2)' }}
           >
-            <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <p className="text-slate-600 leading-relaxed">
               <span className="font-bold text-amber-700">Cozy Blissful Spa</span> — A confirmation email will be sent to your inbox. Please arrive 5 minutes before your appointment.
             </p>

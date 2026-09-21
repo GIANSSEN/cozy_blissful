@@ -10,8 +10,8 @@ import {
   Calendar, Clock, CheckCircle, AlertCircle,
   XCircle, Check, X, ChevronLeft, ChevronRight, UserCheck,
   Zap, Mail, CalendarDays,
-  Search, RotateCcw, CheckCircle2, CalendarCheck, Sparkles, Banknote,
-  ArrowRight, Shield, Star,
+  Search, RotateCcw, CheckCircle2, CalendarCheck, Banknote,
+  Shield,
 } from 'lucide-react';
 import { MiniCalendar } from '../../components/ui/mini-calendar';
 import { DatePickerInput } from '../../components/ui/date-picker';
@@ -182,11 +182,10 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
           {appt.status === 'Completed by Therapist' && (
             <div style={{ padding: 14, borderRadius: 16, background: isDark ? 'rgba(217,119,6,0.15)' : '#fefce8', border: '1.5px solid rgba(217,119,6,0.35)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Sparkles size={16} style={{ color: '#d97706' }} />
                 <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>Therapist Concluded Treatment Session</p>
               </div>
               <p style={{ fontSize: 11, color: isDark ? '#fef3c7' : '#78350f', margin: 0, lineHeight: 1.6 }}>
-                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> marked this treatment as complete. Confirm below to settle cash and archive this booking into History.
+                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> marked this treatment as complete. Verify the service and payment below to confirm and archive this booking into History.
               </p>
             </div>
           )}
@@ -250,7 +249,7 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
             </>
           )}
 
-          {/* IN PROGRESS or COMPLETED BY THERAPIST: settle cash */}
+          {/* IN PROGRESS or COMPLETED BY THERAPIST: verify + confirm completion */}
           {(appt.status === 'In Progress' || appt.status === 'Completed by Therapist') && onComplete && (
             <HoverButton
               onClick={() => { onClose(); onComplete(appt); }}
@@ -263,7 +262,7 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
               hoverStyle={{ boxShadow: '0 6px 20px rgba(5,150,105,0.45)', transform: 'translateY(-1px)' }}
             >
               <Banknote size={15} style={{ color: '#fde68a' }} />
-              {appt.status === 'Completed by Therapist' ? 'Settle Cash & Confirm' : 'Settle Cash & Complete'}
+              {appt.status === 'Completed by Therapist' ? 'Verify & Complete' : 'Verify & Confirm'}
             </HoverButton>
           )}
         </div>
@@ -1055,22 +1054,22 @@ const TherapistDoneCard = ({ appt, isDark, C, onSettle, onDetail }) => {
         )}
       </div>
 
-      {/* Actions */}
+      {/* Actions — stacks full-width on small screens, never clips */}
       <div
-        className="booking-card-actions"
+        className="booking-card-actions therapist-done-actions"
         style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' }}
       >
         <HoverButton
           onClick={() => onDetail(appt)}
-          baseStyle={{ height: 36, padding: '0 14px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: C.textSecondary, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', border: `1px solid ${C.cardBorder}` }}
+          baseStyle={{ height: 40, padding: '0 16px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: C.textSecondary, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', border: `1px solid ${C.cardBorder}`, whiteSpace: 'nowrap' }}
           hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)' }}
         >Details</HoverButton>
         <HoverButton
           id={`settle-btn-${appt.id}`}
           onClick={() => onSettle(appt)}
           baseStyle={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            height: 40, padding: '0 18px', borderRadius: 14,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            minHeight: 40, padding: '10px 18px', borderRadius: 14,
             fontSize: 12, fontWeight: 900,
             color: '#ffffff',
             background: hovered
@@ -1081,11 +1080,12 @@ const TherapistDoneCard = ({ appt, isDark, C, onSettle, onDetail }) => {
               ? '0 4px 20px rgba(5,150,105,0.45)'
               : '0 2px 8px rgba(5,150,105,0.25)',
             letterSpacing: '0.01em',
+            whiteSpace: 'nowrap',
           }}
           hoverStyle={{ transform: 'translateY(-2px)', boxShadow: '0 6px 24px rgba(5,150,105,0.5)' }}
         >
-          <Banknote size={15} />
-          Confirm & Settle Cash
+          <Banknote size={15} style={{ flexShrink: 0 }} />
+          Verify &amp; Complete
         </HoverButton>
       </div>
     </motion.div>
@@ -1118,7 +1118,7 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
             Therapist Completed Sessions
           </h3>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '4px 0 0' }}>
-            Sessions marked done by therapist · Admin must confirm and settle payment to close.
+            Sessions marked done by therapist · Admin verifies service and payment to close.
           </p>
         </div>
         {doneItems.length > 0 && (
@@ -1143,7 +1143,7 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
       }}>
         <Shield size={16} style={{ color: '#059669', flexShrink: 0, marginTop: 1 }} />
         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: isDark ? '#6ee7b7' : '#064e3b', lineHeight: 1.6 }}>
-          The therapist has submitted their session as complete. As admin, you must <strong>verify the service, collect cash payment, and confirm</strong> to finalize the record. Cancelled bookings are archived in <strong>History</strong>.
+          The therapist has submitted their session as complete. As admin, please <strong>verify the service details and confirm the payment channel</strong> (Cash walk-in, GCash, Maya, or QR Ph) to finalize the record. Cancelled bookings are archived in <strong>History</strong>.
         </p>
       </div>
 
@@ -1698,13 +1698,25 @@ const AdminAppointments = () => {
 
   const handleSettleCash = async (apptId, payload) => {
     try {
-      const res = await API.post(`/admin/appointments/${apptId}/settle-payment`, payload);
-      showToast(res.data?.message || 'Cash settled — session completed and archived!');
+      const normalizedMethod = String(payload?.payment_method || 'cash').toLowerCase();
+      const res = await API.post(`/admin/appointments/${apptId}/settle-payment`, {
+        amount_paid: payload.amount_paid,
+        payment_method: normalizedMethod,
+        notes: payload.notes,
+      });
+      showToast(res.data?.message || 'Session verified — completed and archived!');
       setAppointments(prev => prev.map(a => a.id === apptId
-        ? { ...a, status: 'Completed', payment_status: 'paid', payment_method: 'cash', amount_paid: payload.amount_paid, paid_at: new Date().toISOString() }
+        ? {
+          ...a,
+          status: 'Completed',
+          payment_status: 'paid',
+          payment_method: res.data?.appointment?.payment_method || normalizedMethod,
+          amount_paid: res.data?.appointment?.amount_paid ?? payload.amount_paid,
+          paid_at: res.data?.appointment?.paid_at || new Date().toISOString(),
+        }
         : a));
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to settle cash payment.';
+      const msg = err?.response?.data?.message || 'Failed to confirm settlement.';
       showToast(msg, 'error');
       throw err;
     }
@@ -1791,12 +1803,30 @@ const AdminAppointments = () => {
           }
         }
 
-        /* ── Card Action Buttons ── */
+        /* ── Card Action Buttons (never clip, full-width stack on phones) ── */
+        .therapist-done-actions { min-width: 0; }
         @media (max-width: 768px) {
           .booking-card-actions {
             width: 100%;
-            justify-content: flex-end;
+            justify-content: stretch;
             margin-top: 8px;
+          }
+          .therapist-done-actions {
+            display: grid !important;
+            grid-template-columns: auto 1fr;
+            width: 100%;
+          }
+          .therapist-done-actions > * {
+            min-height: 44px !important;
+            justify-content: center;
+          }
+        }
+        @media (max-width: 420px) {
+          .therapist-done-actions {
+            grid-template-columns: 1fr;
+          }
+          .therapist-done-actions > * {
+            width: 100% !important;
           }
         }
 

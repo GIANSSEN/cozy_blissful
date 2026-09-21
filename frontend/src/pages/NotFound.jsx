@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Home, ArrowLeft, Sparkles } from 'lucide-react';
+import { Home, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const DASHBOARD_BY_ROLE = {
@@ -68,21 +68,19 @@ export default function NotFound() {
           </span>
         </motion.div>
 
-        {/* Sparkle icon */}
+        {/* Page label */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="flex items-center justify-center gap-2 mb-4"
         >
-          <Sparkles className="w-4 h-4 text-amber-400" />
           <p
             className="text-xs font-bold uppercase tracking-[0.2em]"
             style={{ color: '#bfa15f' }}
           >
             Page Not Found
           </p>
-          <Sparkles className="w-4 h-4 text-amber-400" />
         </motion.div>
 
         <motion.h1

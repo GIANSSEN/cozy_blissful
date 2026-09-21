@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StaffSidebar from '../../components/StaffSidebar';
-import { Menu, Search, LogOut, Home, X, Sun, Moon, Sparkles, User as UserIcon, Command } from 'lucide-react';
+import { Menu, Search, LogOut, Home, X, Sun, Moon, User as UserIcon, Command } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -132,7 +132,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
             >
               {PageIcon
                 ? <PageIcon className="w-4 h-4 text-amber-300" />
-                : <Sparkles className="w-4 h-4 text-amber-300" />}
+                : <Home className="w-4 h-4 text-amber-300" />}
             </div>
 
             <div className="min-w-0">
@@ -303,7 +303,6 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                 color: isDark ? '#34d399' : '#041e16',
               }}
             >
-              <Sparkles className="w-3 h-3 text-amber-400" />
               <span>Staff</span>
             </span>
 
@@ -378,7 +377,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                             color: isDark ? '#34d399' : '#041e16',
                           }}
                         >
-                          <Sparkles className="w-2.5 h-2.5 text-amber-400" /> Staff Member
+                          Staff Member
                         </span>
                       </div>
                     </div>

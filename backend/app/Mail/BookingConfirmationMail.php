@@ -40,7 +40,7 @@ class BookingConfirmationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '✅ Booking Confirmed – ' . $this->serviceName . ' on ' . $this->appointmentDate,
+            subject: 'Booking Received (#CB-' . str_pad($this->bookingId, 5, '0', STR_PAD_LEFT) . ') – ' . $this->serviceName . ' on ' . $this->appointmentDate,
         );
     }
 

@@ -17,7 +17,6 @@ import {
   Home,
   BadgeCheck,
   Loader2,
-  Sparkles,
 } from "lucide-react";
 import { useCart, peso } from "../../context/CartContext";
 import { DatePickerInput } from "../ui/date-picker";
@@ -326,7 +325,6 @@ export default function CartSidebar({ onLockChange }) {
           >
             {/* Header */}
             <div className="relative flex-shrink-0 overflow-hidden px-5 py-4 sm:px-6" style={{ background: "linear-gradient(135deg,#041e16,#073328)" }}>
-              <Sparkles className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 text-amber-300/10" />
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   {view === "checkout" && !submitting ? (

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Lock, Eye, EyeOff, CheckCircle, AlertCircle, Sparkles,
+  Lock, Eye, EyeOff, CheckCircle, AlertCircle,
   ArrowRight, KeyRound, ShieldCheck, Check, X
 } from 'lucide-react';
 import API from '../../api/axios';
@@ -164,7 +164,6 @@ const ResetPassword = () => {
 
           {/* Brand pill */}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(191,161,95,0.3)', marginBottom: 32, width: 'fit-content' }}>
-            <Sparkles style={{ width: 13, height: 13, color: B.goldLight }} />
             <span style={{ color: B.goldLight, fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Cozy Blissful Salon &amp; Spa</span>
           </div>
 

@@ -11,7 +11,7 @@ import {
   AlertCircle, FileText, Check, AlertTriangle,
   TrendingUp, RefreshCw, Clock, Hash, WifiOff,
   Download, LayoutGrid, List,
-  ArrowUpDown, User, Sparkles, Shield
+  ArrowUpDown, User
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -1281,7 +1281,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
         };
       case 'In Progress':
         return {
-          icon: Sparkles,
+          icon: RefreshCw,
           cls: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30',
         };
       case 'Cancelled':
@@ -1484,7 +1484,7 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
                       >
                         <div className="flex items-start gap-3 min-w-0 flex-1">
                           <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                            <Sparkles className="w-4 h-4" aria-hidden="true" />
+                            <Calendar className="w-4 h-4" aria-hidden="true" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">

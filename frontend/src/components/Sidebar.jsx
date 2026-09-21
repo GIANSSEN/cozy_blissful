@@ -135,6 +135,17 @@ const Sidebar = ({ isOpen, onClose }) => {
     setOpenTitle(found ? found.title : null);
   }, [location.pathname]);
 
+  /* Lock background scroll while the mobile drawer is open */
+  useEffect(() => {
+    if (!isOpen) return;
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 1023.98px)');
+    if (!mq.matches) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
   const handleToggle = (title) => setOpenTitle(prev => prev === title ? null : title);
 
   const handleLogout = async () => {
@@ -183,9 +194,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         role="navigation"
         aria-label="Admin Navigation"
         id="admin-sidebar"
-        className={`fixed lg:sticky top-0 h-screen flex flex-col z-[100] lg:z-30 antialiased transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed lg:sticky top-0 h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased transition-transform duration-300 w-[min(86vw,320px)] lg:w-60 xl:w-[272px] ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{
-          width: 272, minWidth: 272,
           background: t.sidebar,
           borderRight: `1px solid ${t.border}`,
           boxShadow: isDark ? '4px 0 40px rgba(0,0,0,0.45)' : '4px 0 24px rgba(0,0,0,0.06)',
@@ -262,8 +272,8 @@ const Sidebar = ({ isOpen, onClose }) => {
           </p>
         </div>
 
-        {/* ── Navigation ── */}
-        <nav className="flex-1 overflow-y-auto px-3 pb-2 space-y-0.5" style={{ scrollbarWidth: 'none' }} aria-label="Main Navigation">
+        {/* ── Navigation — grows/shrinks with menus & open submenus, scrolls internally ── */}
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pb-2 space-y-0.5" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} aria-label="Main Navigation">
           {filtered.map(cat => {
             const Icon = cat.icon;
 
@@ -277,7 +287,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   to={cat.path}
                   onClick={onClose}
                   aria-current={active ? 'page' : undefined}
-                  className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all w-full active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+                  className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all w-full min-h-[40px] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
                   style={{ background: active ? t.activeParent : 'transparent', textDecoration: 'none' }}
                   onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
                   onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeParent : 'transparent'; }}>
@@ -312,7 +322,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   onClick={() => handleToggle(cat.title)}
                   aria-expanded={isOpenNow}
                   aria-controls={subId}
-                  className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+                  className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all min-h-[40px] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
                   style={{ background: isActive ? t.activeParent : 'transparent' }}
                   onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = t.hover; }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? t.activeParent : 'transparent'; }}>
@@ -411,8 +421,8 @@ const Sidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* ── Footer ── */}
-        <div className="px-3 py-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}` }}>
+        {/* ── Footer — pinned, respects phone gesture bar ── */}
+        <div className="px-3 pt-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}`, paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <Link
             to="/"
             onClick={onClose}

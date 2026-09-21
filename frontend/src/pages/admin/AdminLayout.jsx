@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import {
   Menu, Search, LogOut, Home, X, Settings, Sun, Moon,
-  Sparkles, Command, Bell, ChevronRight, Clock, ArrowLeft,
+  Command, Bell, ChevronRight, Clock, ArrowLeft,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -406,7 +406,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                 >
                   {PageIcon
                     ? <PageIcon className="w-4 h-4 text-amber-300" />
-                    : <Sparkles className="w-4 h-4 text-amber-300" />}
+                    : <Home className="w-4 h-4 text-amber-300" />}
                 </div>
 
                 {/* Title + subtitle */}
@@ -831,7 +831,6 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                   color: isDark ? '#34d399' : '#041e16',
                 }}
               >
-                <Sparkles className="w-3 h-3 text-amber-400" aria-hidden="true" />
                 Admin
               </span>
 
@@ -907,7 +906,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                               color: isDark ? '#34d399' : '#041e16',
                             }}
                           >
-                            <Sparkles className="w-2.5 h-2.5 text-amber-400" /> Administrator
+                            Administrator
                           </span>
                         </div>
                       </div>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Appointment;
 use App\Models\Notification;
+use App\Models\AuditLog;
 use App\Models\TherapistAvailability;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -309,6 +310,7 @@ class StaffController extends Controller
     {
         $request->validate([
             'amount_paid' => 'required|numeric|min:0',
+            'payment_method' => 'sometimes|string|max:30',
             'cash_tendered' => 'nullable|numeric|min:0',
             'change' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:500',
@@ -325,9 +327,25 @@ class StaffController extends Controller
             ], 422);
         }
 
+        // ── Normalize payment channel (default: booking's own method) ──
+        $rawMethod = strtolower(trim((string) ($request->payment_method ?? $appt->payment_method ?? 'cash')));
+        $methodMap = [
+            'cash' => 'cash', 'counter' => 'cash', 'walkin' => 'cash', 'walk-in' => 'cash', 'cod' => 'cash',
+            'gcash' => 'gcash', 'g-cash' => 'gcash',
+            'maya' => 'maya', 'paymaya' => 'maya',
+            'qrph' => 'qrph', 'qr_ph' => 'qrph', 'qr' => 'qrph', 'qrcode' => 'qrph',
+            'online' => 'online', 'card' => 'online', 'paymongo' => 'online',
+        ];
+        $method = $methodMap[$rawMethod] ?? 'cash';
+        $methodLabels = [
+            'cash' => 'Cash (Walk-in / Counter)', 'gcash' => 'GCash', 'maya' => 'Maya',
+            'qrph' => 'QR Ph', 'online' => 'Online Payment',
+        ];
+        $methodLabel = $methodLabels[$method] ?? $method;
+
         $oldStatus = $appt->status;
         $appt->payment_status = 'paid';
-        $appt->payment_method = 'cash';
+        $appt->payment_method = $method;
         $appt->amount_paid = (float) $request->amount_paid;
         $appt->paid_at = now();
         $appt->status = 'Completed';
@@ -340,15 +358,12 @@ class StaffController extends Controller
 
         Notification::create([
             'type' => 'completed',
-            'title' => 'Cash Payment Received & Session Finalized',
-            'description' => 'Staff received cash payment of ₱' . number_format($request->amount_paid, 2) . ' for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
+            'title' => 'Payment Verified & Session Finalized',
+            'description' => 'Staff verified ' . $methodLabel . ' payment of ₱' . number_format($request->amount_paid, 2) . ' for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
             'appointment_id' => $appt->id,
         ]);
 
-        $tendered = $request->cash_tendered ? (float) $request->cash_tendered : (float) $request->amount_paid;
-        $change = $request->change ? (float) $request->change : max(0, $tendered - (float) $request->amount_paid);
-
-        \App\Models\AuditLog::log('update', 'Appointment', "Staff settled cash payment of ₱" . number_format($request->amount_paid, 2) . " (Tendered: ₱" . number_format($tendered, 2) . ", Change: ₱" . number_format($change, 2) . ") for booking #{$appt->id}", [
+        AuditLog::log('update', 'Appointment', "Staff verified {$methodLabel} payment of ₱" . number_format($request->amount_paid, 2) . " for booking #{$appt->id}", [
             'actor' => auth()->user()?->name ?? 'Staff Coordinator',
             'actor_role' => 'staff',
             'module' => 'Payments',
@@ -356,17 +371,15 @@ class StaffController extends Controller
             'metadata' => [
                 'appointment_id' => $appt->id,
                 'amount_paid' => (float) $appt->amount_paid,
-                'cash_tendered' => $tendered,
-                'change' => $change,
                 'old_status' => $oldStatus,
                 'new_status' => 'Completed',
                 'payment_status' => 'paid',
-                'payment_method' => 'cash',
+                'payment_method' => $method,
             ]
         ]);
 
         return response()->json([
-            'message' => 'Cash payment settled and appointment marked Completed!',
+            'message' => 'Session verified — payment recorded and appointment marked Completed!',
             'appointment' => [
                 'id' => $appt->id,
                 'client' => $appt->client?->name ?? 'Client',

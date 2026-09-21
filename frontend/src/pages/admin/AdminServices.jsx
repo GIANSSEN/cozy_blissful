@@ -8,9 +8,9 @@ import {
   Plus, Pencil, Trash2, X, Search, Clock, ShoppingBag,
   CheckCircle, AlertCircle, Tag, Gift, ToggleLeft, ToggleRight,
   Filter, ChevronDown, Save, Eye, Star, Percent,
-  Calendar, Package, Info, Layers, Sparkles, TrendingUp,
+  Calendar, Package, Info, Layers, TrendingUp,
   LayoutGrid, List, RefreshCw, Check, ArrowRight, ShieldCheck,
-  DollarSign, Sparkle, BarChart2, Zap, FileText, CheckSquare,
+  DollarSign, BarChart2, Zap, FileText, CheckSquare,
   ChevronRight, ExternalLink, HelpCircle
 } from 'lucide-react';
 
@@ -643,7 +643,6 @@ const ServicesTab = ({ t, isDark }) => {
 
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-3 rounded-xl flex items-center gap-2.5" style={{ background: t.inner, border: t.innerBorder }}>
-                  <Sparkles className="w-4 h-4" style={{ color: t.gold }} />
                   <div>
                     <p className="text-[9px] font-bold uppercase" style={{ color: t.txtMuted }}>Popularity</p>
                     <p className="font-extrabold" style={{ color: t.txt }}>High Demand</p>
@@ -976,7 +975,7 @@ const OffersTab = ({ t, isDark }) => {
         {[
           { label: 'Active Offers', value: stats.active, sub: `Out of ${stats.total} total bundles`, icon: Gift, color: accentColor },
           { label: 'Avg Discount Rate', value: `${stats.avgDiscount}% OFF`, sub: 'Customer savings', icon: Percent, color: t.gold },
-          { label: 'Bundles Online', value: `${stats.active} Deals`, sub: 'Ready for booking', icon: Sparkles, color: t.info },
+          { label: 'Bundles Online', value: `${stats.active} Deals`, sub: 'Ready for booking', icon: Package, color: t.info },
         ].map((kpi, idx) => (
           <div key={idx} className="p-3.5 sm:p-4 rounded-2xl flex items-center justify-between"
             style={{ background: t.card, border: t.cardBorder, boxShadow: t.cardShadow }}>

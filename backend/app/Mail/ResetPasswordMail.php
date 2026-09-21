@@ -30,7 +30,7 @@ class ResetPasswordMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '🔐 Reset Your Password – Cozy Blissful Salon & Spa',
+            subject: 'Reset Your Password – Cozy Blissful Spa',
         );
     }
 

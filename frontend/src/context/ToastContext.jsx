@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CheckCircle2, AlertTriangle, Info, XCircle, X, Sparkles,
+  CheckCircle2, AlertTriangle, Info, XCircle, X,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────── */
@@ -56,7 +56,7 @@ const TYPE_CONFIG = {
     label: 'Info',
   },
   sparkle: {
-    icon: Sparkles,
+    icon: Info,
     gradient: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%)',
     border: 'rgba(196,181,253,0.30)',
     iconColor: '#c4b5fd',

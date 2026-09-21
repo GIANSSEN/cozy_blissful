@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LogIn, UserPlus, User, Mail, Lock, Eye, EyeOff,
-  AlertCircle, Clock, ShieldCheck, Sparkles, Check, X,
+  AlertCircle, Clock, ShieldCheck, Check, X,
   ArrowLeft, CheckCircle2, Gift, Zap, Gem, Info,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,7 +34,7 @@ const SOCIALS = [
 const TRUST_POINTS_LOGIN = [
   { icon: ShieldCheck, title: 'Encrypted & Secure', note: 'Your credentials never leave our protected servers in plain text.' },
   { icon: Clock, title: 'Open 7 Days a Week', note: 'Book and manage your sessions anytime from 6 AM to 11 PM.' },
-  { icon: Sparkles, title: 'Certified Therapists', note: '30+ vetted professionals dedicated to your relaxation.' },
+  { icon: CheckCircle2, title: 'Certified Therapists', note: '30+ vetted professionals dedicated to your relaxation.' },
 ];
 
 const TRUST_POINTS_REGISTER = [
@@ -631,7 +631,6 @@ export default function AuthPortal({ initialTab = 'login' }) {
                   color: '#e8cc8a',
                 }}
               >
-                <Sparkles className="w-3 h-3 text-[#fde68a]" />
                 <span>PREMIUM SPA &amp; WELLNESS</span>
               </div>
 

@@ -23,14 +23,95 @@ class AdminController extends Controller
     {
         $today = Carbon::today()->toDateString();
 
-        // 1. Core metrics
+        // 1. Core metrics (counts, revenue, ticket size, headcount)
+        $core = $this->dashboardCoreMetrics();
+
+        // 2. Active treatments / therapist availability
+        $treatment = $this->dashboardTreatmentStatus($today, $core['active_therapists']);
+
+        // 3. Customer funnel (derived from real bookings)
+        $customerFunnel = $this->dashboardCustomerFunnel(
+            $core['total_bookings'],
+            $core['confirmed_count'],
+            $core['completed_count']
+        );
+
+        // 4. Operational KPIs
+        $operationalKpis = $this->dashboardOperationalKpis(
+            $core['avg_ticket'],
+            $core['active_therapists'],
+            $core['registered_clients'],
+            $treatment['break_count']
+        );
+
+        // 5. Booking breakdown
+        $bookingBreakdown = [
+            'confirmed' => $core['confirmed_count'],
+            'pending' => $core['pending_count'],
+            'cancelled' => $core['cancelled_count'],
+        ];
+
+        // 6. Revenue chart (7-day + category breakdown)
+        $revenueChart = $this->dashboardRevenueChart();
+
+        // 7. Live sessions (active appointments)
+        $liveSessions = $this->dashboardLiveSessions();
+
+        // 8. Real activity feed from AuditLog
+        $activityLogs = $this->dashboardActivityFeed();
+
+        // 9. Recent appointments (limit 50)
+        $recentAppointments = $this->dashboardRecentAppointments();
+
+        // 10. Services list
+        $services = Service::all();
+
+        // 11. Payments feed generated from appointments
+        $payments = $this->dashboardPaymentsFeed();
+
+        return response()->json([
+            'message' => 'Admin dashboard metrics retrieved successfully',
+            'stats' => [
+                'total_bookings' => $core['total_bookings'],
+                'total_revenue' => (float) $core['total_revenue'],
+                'active_therapists' => $core['active_therapists'],
+                'registered_clients' => $core['registered_clients'],
+                'live_treatments' => $treatment['in_treatment_count'],
+                'completed_bookings' => $core['completed_count'],
+                'confirmed_bookings' => $core['confirmed_count'],
+                'pending_bookings' => $core['pending_count'],
+                'cancelled_bookings' => $core['cancelled_count'],
+                'avg_ticket_size' => (int) round($core['avg_ticket']),
+            ],
+            'therapist_status' => $treatment['status'],
+            'customer_funnel' => $customerFunnel,
+            'operational_kpis' => $operationalKpis,
+            'booking_breakdown' => $bookingBreakdown,
+            'revenue_chart' => [
+                '7D' => $revenueChart['7D'],
+                'categories' => $revenueChart['categories'],
+            ],
+            'active_sessions' => $liveSessions,
+            'activity_feed' => $activityLogs,
+            'recent_appointments' => $recentAppointments,
+            'services' => $services,
+            'payments' => $payments
+        ]);
+    }
+
+    /**
+     * Core booking counts, revenue totals and headcount.
+     *
+     * @return array<string, mixed>
+     */
+    private function dashboardCoreMetrics(): array
+    {
         $totalBookings = Appointment::count();
         $completedCount = Appointment::where('status', 'Completed')->count();
         $confirmedCount = Appointment::whereIn('status', ['Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])->count();
         $pendingCount = Appointment::whereIn('status', ['Pending', 'Starting'])->count();
         $cancelledCount = Appointment::where('status', 'Cancelled')->count();
 
-        // Total revenue
         $totalRevenue = (float) Appointment::where('payment_status', 'paid')->sum('amount_paid');
         if ($totalRevenue == 0) {
             $totalRevenue = (float) Appointment::where('appointments.status', 'Completed')
@@ -42,16 +123,29 @@ class AdminController extends Controller
         $paidCount = Appointment::where('payment_status', 'paid')->count();
         $avgTicket = $paidCount > 0 ? ($totalRevenue / $paidCount) : ((float) (Service::avg('price') ?: 850.0));
 
-        $activeTherapists = User::role('therapist')->count();
-        $registeredClients = User::role('client')->count();
+        return [
+            'total_bookings' => $totalBookings,
+            'completed_count' => $completedCount,
+            'confirmed_count' => $confirmedCount,
+            'pending_count' => $pendingCount,
+            'cancelled_count' => $cancelledCount,
+            'total_revenue' => $totalRevenue,
+            'paid_count' => $paidCount,
+            'avg_ticket' => (float) $avgTicket,
+            'active_therapists' => User::role('therapist')->count(),
+            'registered_clients' => User::role('client')->count(),
+        ];
+    }
 
-        // 2. Active treatments / live sessions
-        $inTreatmentAppointments = Appointment::with(['client', 'therapist', 'service'])
-            ->whereIn('status', ['In Progress', 'Starting'])
-            ->get();
-        $inTreatmentCount = $inTreatmentAppointments->count();
+    /**
+     * Live treatment load and therapist availability for a given date.
+     *
+     * @return array<string, mixed>
+     */
+    private function dashboardTreatmentStatus(string $today, int $activeTherapists): array
+    {
+        $inTreatmentCount = Appointment::whereIn('status', ['In Progress', 'Starting'])->count();
 
-        // Therapists available today
         $availableTodayCount = TherapistAvailability::where('date', $today)->count();
         if ($availableTodayCount == 0) {
             $onDutyCount = max(0, $activeTherapists - $inTreatmentCount);
@@ -61,28 +155,40 @@ class AdminController extends Controller
             $breakCount = max(0, $activeTherapists - ($onDutyCount + $inTreatmentCount));
         }
 
-        $therapistStatus = [
-            [
-                'label' => 'On Duty & Available',
-                'count' => $onDutyCount,
-                'color' => '#10b981',
-                'pct' => $activeTherapists > 0 ? (int) round(($onDutyCount / $activeTherapists) * 100) : 100,
-            ],
-            [
-                'label' => 'In Active Treatment',
-                'count' => $inTreatmentCount,
-                'color' => '#f59e0b',
-                'pct' => $activeTherapists > 0 ? (int) round(($inTreatmentCount / $activeTherapists) * 100) : 0,
-            ],
-            [
-                'label' => 'Break / Offline',
-                'count' => $breakCount,
-                'color' => '#7e93a8',
-                'pct' => $activeTherapists > 0 ? (int) round(($breakCount / $activeTherapists) * 100) : 0,
+        return [
+            'in_treatment_count' => $inTreatmentCount,
+            'on_duty_count' => $onDutyCount,
+            'break_count' => $breakCount,
+            'status' => [
+                [
+                    'label' => 'On Duty & Available',
+                    'count' => $onDutyCount,
+                    'color' => '#10b981',
+                    'pct' => $activeTherapists > 0 ? (int) round(($onDutyCount / $activeTherapists) * 100) : 100,
+                ],
+                [
+                    'label' => 'In Active Treatment',
+                    'count' => $inTreatmentCount,
+                    'color' => '#f59e0b',
+                    'pct' => $activeTherapists > 0 ? (int) round(($inTreatmentCount / $activeTherapists) * 100) : 0,
+                ],
+                [
+                    'label' => 'Break / Offline',
+                    'count' => $breakCount,
+                    'color' => '#7e93a8',
+                    'pct' => $activeTherapists > 0 ? (int) round(($breakCount / $activeTherapists) * 100) : 0,
+                ],
             ],
         ];
+    }
 
-        // 3. Customer Funnel (calculated based on real DB appointments and activity)
+    /**
+     * Customer funnel derived from real booking counts.
+     *
+     * @return array<string, mixed>
+     */
+    private function dashboardCustomerFunnel(int $totalBookings, int $confirmedCount, int $completedCount): array
+    {
         $bookingReqCount = max(1, $totalBookings);
         $serviceClicks = max(45, (int) round($bookingReqCount * 3.9));
         $pageVisits = max(100, (int) round($serviceClicks * 2.15));
@@ -91,7 +197,7 @@ class AdminController extends Controller
         $bookingRequestRate = round(($totalBookings / max(1, $pageVisits)) * 100, 1);
         $treatmentFulfilment = round(($completedCount / max(1, $confirmedCount)) * 100, 1);
 
-        $customerFunnel = [
+        return [
             'steps' => [
                 ['step' => 'Page Visits', 'count' => number_format($pageVisits), 'pct' => 100],
                 ['step' => 'Service Clicks', 'count' => number_format($serviceClicks), 'pct' => (int) round(($serviceClicks / $pageVisits) * 100)],
@@ -105,8 +211,15 @@ class AdminController extends Controller
                 ['label' => 'Treatment Fulfilment', 'value' => "{$treatmentFulfilment}%", 'color' => '#6366f1'],
             ],
         ];
+    }
 
-        // 4. Operational KPIs
+    /**
+     * Operational KPI cards (ticket size, retention).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardOperationalKpis(float $avgTicket, int $activeTherapists, int $registeredClients, int $breakCount): array
+    {
         $repeatClientsCount = Appointment::select('client_id')
             ->groupBy('client_id')
             ->havingRaw('count(*) > 1')
@@ -115,24 +228,23 @@ class AdminController extends Controller
         $clientRetentionRate = $registeredClients > 0 ? round(($repeatClientsCount / $registeredClients) * 100, 1) : 88.4;
         $staffRetentionRate = $activeTherapists > 0 ? round((($activeTherapists - $breakCount) / $activeTherapists) * 100, 1) : 95.0;
 
-        $operationalKpis = [
+        return [
             ['label' => 'Avg Ticket Size', 'value' => '₱' . number_format($avgTicket), 'color' => '#f59e0b'],
             ['label' => 'Staff Retention', 'value' => "{$staffRetentionRate}%", 'color' => '#6366f1'],
             ['label' => 'Client Retention', 'value' => "{$clientRetentionRate}%", 'color' => '#10b981'],
         ];
+    }
 
-        // 5. Booking breakdown
-        $bookingBreakdown = [
-            'confirmed' => $confirmedCount,
-            'pending' => $pendingCount,
-            'cancelled' => $cancelledCount,
-        ];
-
-        // 6. Revenue Chart 7D / 14D / 30D
+    /**
+     * 7-day revenue series plus per-category breakdown.
+     *
+     * @return array<string, mixed>
+     */
+    private function dashboardRevenueChart(): array
+    {
         $days7 = [];
         for ($i = 6; $i >= 0; $i--) {
             $dayDate = Carbon::today()->subDays($i);
-            $dayName = $dayDate->format('D');
             $dayVal = (float) Appointment::whereDate('datetime', $dayDate->toDateString())
                 ->where('payment_status', 'paid')
                 ->sum('amount_paid');
@@ -142,51 +254,75 @@ class AdminController extends Controller
                     ->join('services', 'appointments.service_id', '=', 'services.id')
                     ->sum('services.price');
             }
-            $days7[] = ['day' => $dayName, 'val' => (int) $dayVal];
+            $days7[] = ['day' => $dayDate->format('D'), 'val' => (int) $dayVal];
         }
 
-        // Category breakdown
         $catBreakdownRaw = Appointment::join('services', 'appointments.service_id', '=', 'services.id')
             ->selectRaw("services.category, count(*) as count, sum(case when appointments.payment_status = 'paid' then coalesce(appointments.amount_paid, services.price) else services.price end) as rev")
             ->groupBy('services.category')
             ->get();
         $catTotal = (float) $catBreakdownRaw->sum('rev') ?: 1;
-        $categoriesBreakdown = $catBreakdownRaw->map(function ($c) use ($catTotal) {
-            return [
+
+        $categoriesBreakdown = [];
+        foreach ($catBreakdownRaw as $c) {
+            $categoriesBreakdown[] = [
                 'label' => $c->category ?: 'Signature Treatments',
                 'value' => '₱' . number_format($c->rev),
                 'count' => (int) $c->count,
                 'pct' => (int) round(($c->rev / $catTotal) * 100),
             ];
-        })->values()->toArray();
+        }
 
-        // 7. Live Sessions (active appointments)
-        $liveSessions = Appointment::with(['client', 'therapist', 'service'])
+        return ['7D' => $days7, 'categories' => $categoriesBreakdown];
+    }
+
+    /**
+     * Currently active / upcoming sessions for the live board.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardLiveSessions(): array
+    {
+        $rows = Appointment::with(['client', 'therapist', 'service'])
             ->whereIn('status', ['In Progress', 'Starting', 'Confirmed'])
             ->orderBy('datetime', 'desc')
             ->limit(10)
-            ->get()
-            ->map(function ($a, $idx) {
-                $dur = $a->service ? (int) $a->service->duration : 60;
-                $start = $a->datetime ? $a->datetime->format('h:i A') : '09:00 AM';
-                $end = $a->datetime ? $a->datetime->copy()->addMinutes($dur)->format('h:i A') : '10:00 AM';
-                $pct = $a->status === 'In Progress' ? min(95, max(15, 30 + ($idx * 15) % 65)) : ($a->status === 'Starting' ? 10 : 0);
-                return [
-                    'id' => $a->id,
-                    'client' => $a->client ? $a->client->name : 'Valued Client',
-                    'therapist' => $a->therapist ? $a->therapist->name : 'Unassigned',
-                    'service' => $a->service ? $a->service->name : 'Spa Treatment',
-                    'duration' => "{$dur} min",
-                    'start' => $start,
-                    'end' => $end,
-                    'pct' => $pct,
-                    'location' => 'Main Salon Suite',
-                    'status' => $a->status,
-                ];
-            })->values()->toArray();
+            ->get();
 
-        // 8. Real Activity Feed from AuditLog
-        $activityLogs = AuditLog::orderBy('created_at', 'desc')->limit(8)->get()->map(function ($log) {
+        $liveSessions = [];
+        foreach ($rows as $idx => $a) {
+            $dur = $a->service ? (int) $a->service->duration : 60;
+            $start = $a->datetime ? $a->datetime->format('h:i A') : '09:00 AM';
+            $end = $a->datetime ? $a->datetime->copy()->addMinutes($dur)->format('h:i A') : '10:00 AM';
+            $pct = $a->status === 'In Progress' ? min(95, max(15, 30 + ($idx * 15) % 65)) : ($a->status === 'Starting' ? 10 : 0);
+            $liveSessions[] = [
+                'id' => $a->id,
+                'client' => $a->client ? $a->client->name : 'Valued Client',
+                'therapist' => $a->therapist ? $a->therapist->name : 'Unassigned',
+                'service' => $a->service ? $a->service->name : 'Spa Treatment',
+                'duration' => "{$dur} min",
+                'start' => $start,
+                'end' => $end,
+                'pct' => $pct,
+                'location' => 'Main Salon Suite',
+                'status' => $a->status,
+            ];
+        }
+
+        return $liveSessions;
+    }
+
+    /**
+     * Latest audit-log entries mapped to feed cards.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardActivityFeed(): array
+    {
+        $logs = AuditLog::orderBy('created_at', 'desc')->limit(8)->get();
+
+        $feed = [];
+        foreach ($logs as $log) {
             $action = strtolower($log->action ?? '');
             $icon = 'activity';
             $color = '#6366f1';
@@ -204,45 +340,63 @@ class AdminController extends Controller
                 $color = '#d4b87a';
             }
 
-            return [
+            $feed[] = [
                 'icon' => $icon,
                 'color' => $color,
                 'text' => $log->detail ?: "{$log->action} on {$log->entity}",
                 'time' => $log->created_at ? $log->created_at->diffForHumans(null, true) . ' ago' : 'recently',
             ];
-        })->values()->toArray();
+        }
 
-        // 9. All recent appointments (limit 50)
-        $recentAppointments = Appointment::with(['client', 'therapist', 'service'])
+        return $feed;
+    }
+
+    /**
+     * Latest 50 appointments in table shape.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardRecentAppointments(): array
+    {
+        $rows = Appointment::with(['client', 'therapist', 'service'])
             ->orderBy('datetime', 'desc')
             ->limit(50)
-            ->get()
-            ->map(function ($appt) {
-                return [
-                    'id' => $appt->id,
-                    'client_name' => $appt->client ? $appt->client->name : 'Client',
-                    'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
-                    'service' => $appt->service ? $appt->service->name : 'Massage Service',
-                    'datetime' => $appt->datetime ? $appt->datetime->format('Y-m-d H:i:s') : null,
-                    'status' => $appt->status,
-                    'payment_status' => $appt->payment_status ?? 'unpaid',
-                    'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
-                    'notes' => $appt->notes ?? '',
-                ];
-            });
+            ->get();
 
-        // 10. Services list
-        $services = Service::all();
+        $recent = [];
+        foreach ($rows as $appt) {
+            $recent[] = [
+                'id' => $appt->id,
+                'client_name' => $appt->client ? $appt->client->name : 'Client',
+                'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
+                'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                'datetime' => $appt->datetime ? $appt->datetime->format('Y-m-d H:i:s') : null,
+                'status' => $appt->status,
+                'payment_status' => $appt->payment_status ?? 'unpaid',
+                'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
+                'notes' => $appt->notes ?? '',
+            ];
+        }
 
-        // 11. Payments list generated from appointments
-        $completedAppts = Appointment::with(['client', 'service'])
+        return $recent;
+    }
+
+    /**
+     * Payments feed derived from payable appointments.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardPaymentsFeed(): array
+    {
+        $rows = Appointment::with(['client', 'service'])
             ->whereIn('status', ['Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])
             ->orderBy('datetime', 'desc')
             ->get();
 
-        $payments = $completedAppts->map(function ($appt) {
+        $payments = [];
+        foreach ($rows as $appt) {
             $price = $appt->service ? (float) $appt->service->price : 0.00;
-            return [
+            $payments[] = [
                 'id' => 1000 + $appt->id,
                 'appointment_id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',
@@ -254,36 +408,9 @@ class AdminController extends Controller
                 'paid_at' => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
                 'date' => $appt->datetime ? $appt->datetime->format('Y-m-d') : null,
             ];
-        });
+        }
 
-        return response()->json([
-            'message' => 'Admin dashboard metrics retrieved successfully',
-            'stats' => [
-                'total_bookings' => $totalBookings,
-                'total_revenue' => (float) $totalRevenue,
-                'active_therapists' => $activeTherapists,
-                'registered_clients' => $registeredClients,
-                'live_treatments' => $inTreatmentCount,
-                'completed_bookings' => $completedCount,
-                'confirmed_bookings' => $confirmedCount,
-                'pending_bookings' => $pendingCount,
-                'cancelled_bookings' => $cancelledCount,
-                'avg_ticket_size' => (int) round($avgTicket),
-            ],
-            'therapist_status' => $therapistStatus,
-            'customer_funnel' => $customerFunnel,
-            'operational_kpis' => $operationalKpis,
-            'booking_breakdown' => $bookingBreakdown,
-            'revenue_chart' => [
-                '7D' => $days7,
-                'categories' => $categoriesBreakdown,
-            ],
-            'active_sessions' => $liveSessions,
-            'activity_feed' => $activityLogs,
-            'recent_appointments' => $recentAppointments,
-            'services' => $services,
-            'payments' => $payments
-        ]);
+        return $payments;
     }
 
     /**
@@ -530,12 +657,15 @@ class AdminController extends Controller
     }
 
     /**
-     * Settle cash payment after treatment session is completed.
+     * Verify + confirm settlement after treatment session is completed.
+     * No cash-tender/change math — admin confirms the service was rendered
+     * and records the actual payment channel (cash walk-in / GCash / Maya / QR Ph).
      */
     public function settleCashPayment(Request $request, $id)
     {
         $request->validate([
             'amount_paid' => 'required|numeric|min:0',
+            'payment_method' => 'sometimes|nullable|string|max:30',
             'cash_tendered' => 'nullable|numeric|min:0',
             'change' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:500',
@@ -553,9 +683,36 @@ class AdminController extends Controller
             ], 422);
         }
 
+        // ── Keep the channel the client chose at booking; never re-asked ──
+        // Falls back to the booking's own payment_method when omitted.
+        $rawMethod = strtolower(trim((string) ($request->payment_method ?? $appt->payment_method ?? 'cash')));
+        $methodMap = [
+            'cash' => 'cash', 'counter' => 'cash', 'walkin' => 'cash', 'walk-in' => 'cash', 'cod' => 'cash',
+            'gcash' => 'gcash', 'g-cash' => 'gcash',
+            'maya' => 'maya', 'paymaya' => 'maya',
+            'qrph' => 'qrph', 'qr_ph' => 'qrph', 'qr' => 'qrph', 'qrcode' => 'qrph',
+            'online' => 'online', 'card' => 'online', 'paymongo' => 'online',
+        ];
+        $method = $methodMap[$rawMethod] ?? null;
+        if (!$method) {
+            return response()->json([
+                'message' => 'Invalid payment method. Choose one of: cash, gcash, maya, qrph.',
+                'errors' => ['payment_method' => ['Invalid payment channel.']],
+            ], 422);
+        }
+
+        $methodLabels = [
+            'cash' => 'Cash (Walk-in / Counter)',
+            'gcash' => 'GCash',
+            'maya' => 'Maya',
+            'qrph' => 'QR Ph',
+            'online' => 'Online Payment',
+        ];
+        $methodLabel = $methodLabels[$method] ?? $method;
+
         $oldStatus = $appt->status;
         $appt->payment_status = 'paid';
-        $appt->payment_method = 'cash';
+        $appt->payment_method = $method;
         $appt->amount_paid = (float) $request->amount_paid;
         $appt->paid_at = now();
         $appt->status = 'Completed';
@@ -568,15 +725,12 @@ class AdminController extends Controller
 
         Notification::create([
             'type' => 'completed',
-            'title' => 'Cash Payment Received & Session Finalized',
-            'description' => 'Cash payment of ₱' . number_format($request->amount_paid, 2) . ' received for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
+            'title' => 'Payment Verified & Session Finalized',
+            'description' => $methodLabel . ' payment of ₱' . number_format($request->amount_paid, 2) . ' verified for ' . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ').',
             'appointment_id' => $appt->id,
         ]);
 
-        $tendered = $request->cash_tendered ? (float) $request->cash_tendered : (float) $request->amount_paid;
-        $change = $request->change ? (float) $request->change : max(0, $tendered - (float) $request->amount_paid);
-
-        AuditLog::log('update', 'Appointment', "Admin settled cash payment of ₱" . number_format($request->amount_paid, 2) . " (Tendered: ₱" . number_format($tendered, 2) . ", Change: ₱" . number_format($change, 2) . ") for booking #{$appt->id}", [
+        AuditLog::log('update', 'Appointment', "Admin verified {$methodLabel} payment of ₱" . number_format($request->amount_paid, 2) . " for booking #{$appt->id}", [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Payments',
@@ -584,17 +738,15 @@ class AdminController extends Controller
             'metadata' => [
                 'appointment_id' => $appt->id,
                 'amount_paid' => (float) $appt->amount_paid,
-                'cash_tendered' => $tendered,
-                'change' => $change,
                 'old_status' => $oldStatus,
                 'new_status' => 'Completed',
                 'payment_status' => 'paid',
-                'payment_method' => 'cash',
+                'payment_method' => $method,
             ]
         ]);
 
         return response()->json([
-            'message' => 'Cash payment settled and appointment marked Completed!',
+            'message' => 'Session verified — payment recorded and appointment marked Completed!',
             'appointment' => [
                 'id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',
