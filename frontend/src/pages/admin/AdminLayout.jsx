@@ -2,13 +2,17 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import {
   Menu, Search, LogOut, Home, X, Settings, Sun, Moon,
-  Command, Bell, ChevronRight, Clock, ArrowLeft,
+  Command, Bell, ChevronRight, Clock, ArrowLeft, User as UserIcon,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useToast } from '../../context/ToastContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
+import ProfileModal from '../../components/profile/ProfileModal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 const SEARCH_INDEX = [
   { label: 'Dashboard', desc: 'Overview & Analytics', path: '/admin/dashboard', category: 'Pages' },
@@ -96,11 +100,15 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, role, logout, avatarUrl, setAvatar, updateProfile } = useAuth();
+  const { toast } = useToast();
   const { notifs, unreadCount, markRead, markAllRead, refresh } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
@@ -161,7 +169,32 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
+  const handleLogout = () => {
+    setShowProfile(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      toast?.info?.('Signed out. See you soon.');
+      navigate('/login');
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutConfirm(false);
+    }
+  };
+
+  const handleSaveProfile = async (payload) => {
+    const res = await updateProfile(payload);
+    if (res?.ok === false) {
+      toast?.error?.(res.message || 'Could not save profile. Check the highlighted fields.');
+      return res;
+    }
+    toast?.success?.(res?.message || 'Profile updated.');
+    return { ok: true };
+  };
 
   const handleSelectSearchResult = (item) => {
     setSearchQuery('');
@@ -819,51 +852,16 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                 </AnimatePresence>
               </div>
 
-              {/* Admin Role Badge */}
-              <span
-                className="hidden md:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em]"
-                aria-label="User role: Administrator"
-                style={{
-                  background: isDark
-                    ? 'linear-gradient(135deg,rgba(52,211,153,0.1),rgba(52,211,153,0.06))'
-                    : 'linear-gradient(135deg,rgba(10,61,48,0.08),rgba(10,61,48,0.04))',
-                  border: `1px solid ${isDark ? 'rgba(52,211,153,0.25)' : 'rgba(10,61,48,0.15)'}`,
-                  color: isDark ? '#34d399' : '#041e16',
-                }}
-              >
-                Admin
-              </span>
-
-              {/* ── Profile Avatar + Dropdown ── */}
+              {/* ── Unified minimalist identity: role + avatar in ONE pill ── */}
               <div className="relative" ref={profileRef}>
-                <button
+                <RoleIdentityBadge
+                  user={user}
+                  role={role || 'admin'}
+                  avatarUrl={avatarUrl}
+                  isDark={isDark}
+                  open={showProfile}
                   onClick={() => setShowProfile(v => !v)}
-                  aria-label={`User profile for ${user?.name || 'Admin'}. ${showProfile ? 'Close' : 'Open'} profile menu`}
-                  aria-haspopup="dialog"
-                  aria-expanded={showProfile}
-                  className="relative group p-0.5 rounded-full transition-all active:scale-95"
-                  style={{
-                    background: 'linear-gradient(135deg, #bfa15f, #e8cc8a, #bfa15f)',
-                    boxShadow: showProfile
-                      ? '0 4px 18px rgba(191,161,95,0.5)'
-                      : '0 2px 10px rgba(191,161,95,0.25)',
-                  }}
-                  title={user?.name || 'Admin Profile'}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white"
-                    style={{ background: 'linear-gradient(135deg, #041e16, #0c4a36)' }}
-                  >
-                    {user?.name?.charAt(0)?.toUpperCase() || 'A'}
-                  </div>
-                  <span
-                    className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
-                    style={{
-                      background: '#10b981',
-                      borderColor: isDark ? '#0d111c' : '#ffffff',
-                    }}
-                  />
-                </button>
+                />
 
                 <AnimatePresence>
                   {showProfile && (
@@ -872,6 +870,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.96 }}
                       transition={{ duration: 0.18 }}
+                      role="dialog"
+                      aria-label="Admin profile menu"
                       className="absolute right-0 mt-2.5 w-64 rounded-2xl overflow-hidden z-50 shadow-2xl"
                       style={{
                         background: isDark ? '#1c2333' : '#ffffff',
@@ -884,13 +884,16 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                         style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}
                       >
                         <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0 overflow-hidden"
                           style={{
                             background: 'linear-gradient(135deg, #041e16, #0c4a36)',
                             boxShadow: '0 2px 8px rgba(4,30,22,0.4)',
+                            border: '2px solid #bfa15f',
                           }}
                         >
-                          {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+                          {avatarUrl
+                            ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
+                            : (user?.name?.charAt(0)?.toUpperCase() || 'A')}
                         </div>
                         <div className="min-w-0 flex-1 text-left">
                           <p className="text-xs font-black truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
@@ -913,6 +916,16 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
                       {/* Menu */}
                       <div className="p-2 space-y-0.5 text-left">
+                        <button
+                          onClick={() => { setShowProfile(false); setShowProfileModal(true); }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all group min-h-[40px]"
+                          style={{ color: isDark ? '#c9d1e0' : '#374151' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <UserIcon className="w-4 h-4 text-emerald-500" />
+                          <span>My Profile & Photo</span>
+                        </button>
                         {[
                           { label: 'System Settings', icon: Settings, onClick: () => { setShowProfile(false); navigate('/admin/settings'); }, iconClass: 'text-emerald-500 group-hover:rotate-45 transition-transform' },
                           { label: 'Public Website', icon: Home, onClick: () => { setShowProfile(false); navigate('/'); }, iconClass: 'text-amber-500' },
@@ -920,7 +933,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                           <button
                             key={item.label}
                             onClick={item.onClick}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all group"
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all group min-h-[40px]"
                             style={{ color: isDark ? '#c9d1e0' : '#374151' }}
                             onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}
                             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -932,7 +945,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
                         <button
                           onClick={toggleTheme}
-                          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[40px]"
                           style={{ color: isDark ? '#c9d1e0' : '#374151' }}
                           onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -956,7 +969,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all"
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[40px]"
                           style={{ color: '#ef4444' }}
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
                           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1007,6 +1020,29 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
           {children}
         </main>
       </div>
+
+      {/* ── Unified profile + logout confirm ── */}
+      <ProfileModal
+        open={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+        role={role || 'admin'}
+        avatarUrl={avatarUrl}
+        onAvatarChange={setAvatar}
+        onSave={handleSaveProfile}
+        isDark={isDark}
+      />
+      <ConfirmModal
+        open={showLogoutConfirm}
+        onClose={() => !loggingOut && setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+        title="Sign out?"
+        message={`${user?.name || 'Admin'} — you will be signed out of the admin console.`}
+        confirmLabel="Sign Out"
+        tone="logout"
+        busy={loggingOut}
+        busyLabel="Signing out…"
+      />
     </div>
   );
 };

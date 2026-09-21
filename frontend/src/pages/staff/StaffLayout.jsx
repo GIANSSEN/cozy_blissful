@@ -4,7 +4,11 @@ import StaffSidebar from '../../components/StaffSidebar';
 import { Menu, Search, LogOut, Home, X, Sun, Moon, User as UserIcon, Command } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
+import ProfileModal from '../../components/profile/ProfileModal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 /* ── Staff Search Index ──────────────────────────────────────────── */
 const STAFF_SEARCH_INDEX = [
@@ -20,11 +24,15 @@ const STAFF_SEARCH_INDEX = [
 const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIcon }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { theme, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, role, logout, avatarUrl, setAvatar, updateProfile } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const searchInputRef = useRef(null);
@@ -73,9 +81,31 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const handleLogout = () => {
+    setShowProfile(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      toast?.info?.('Signed out. See you soon.');
+      navigate('/login');
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutConfirm(false);
+    }
+  };
+
+  const handleSaveProfile = async (payload) => {
+    const res = await updateProfile(payload);
+    if (res?.ok === false) {
+      toast?.error?.(res.message || 'Could not save profile.');
+      return res;
+    }
+    toast?.success?.(res?.message || 'Profile updated.');
+    return { ok: true };
   };
 
   const handleSelectSearchResult = (path) => {
@@ -294,42 +324,16 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            {/* Staff Role Badge */}
-            <span
-              className="hidden md:inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em]"
-              style={{
-                background: isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.07)',
-                border: `1px solid ${isDark ? 'rgba(52,211,153,0.25)' : 'rgba(10,61,48,0.15)'}`,
-                color: isDark ? '#34d399' : '#041e16',
-              }}
-            >
-              <span>Staff</span>
-            </span>
-
-            {/* Enhanced Profile Avatar Button */}
+            {/* Unified minimalist identity: role + avatar in ONE pill */}
             <div className="relative" ref={profileRef}>
-              <button
+              <RoleIdentityBadge
+                user={user}
+                role={role || 'staff'}
+                avatarUrl={avatarUrl}
+                isDark={isDark}
+                open={showProfile}
                 onClick={() => setShowProfile((v) => !v)}
-                className="relative group p-0.5 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none cursor-pointer"
-                style={{
-                  background: 'linear-gradient(135deg, #bfa15f, #e8cc8a)',
-                  boxShadow: '0 3px 12px rgba(191,161,95,0.3)',
-                }}
-                title={user?.name || 'Staff Profile'}
-              >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black text-white relative z-10"
-                  style={{
-                    background: 'linear-gradient(135deg, #041e16, #0c4a36)',
-                  }}
-                >
-                  {user?.name?.charAt(0)?.toUpperCase() || 'S'}
-                </div>
-                <span
-                  className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 z-20"
-                  style={{ background: '#10b981', borderColor: isDark ? '#0f1420' : '#ffffff' }}
-                />
-              </button>
+              />
 
               {/* Profile Dropdown */}
               <AnimatePresence>
@@ -339,6 +343,8 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                     transition={{ duration: 0.18 }}
+                    role="dialog"
+                    aria-label="Staff profile menu"
                     className="absolute right-0 mt-2.5 w-64 rounded-2xl overflow-hidden z-50 shadow-2xl"
                     style={{
                       background: isDark ? '#1c2333' : '#ffffff',
@@ -352,10 +358,12 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                       }}
                     >
                       <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg, #041e16, #0c4a36)' }}
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0 overflow-hidden"
+                        style={{ background: 'linear-gradient(135deg, #041e16, #0c4a36)', border: '2px solid #bfa15f' }}
                       >
-                        {user?.name?.charAt(0)?.toUpperCase() || 'S'}
+                        {avatarUrl
+                          ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
+                          : (user?.name?.charAt(0)?.toUpperCase() || 'S')}
                       </div>
                       <div className="min-w-0 flex-1 text-left">
                         <p
@@ -384,11 +392,25 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
 
                     <div className="p-2 space-y-1 text-left">
                       <button
+                        onClick={() => { setShowProfile(false); setShowProfileModal(true); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[40px]"
+                        style={{ color: isDark ? '#c9d1e0' : '#374151' }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = isDark
+                            ? 'rgba(255,255,255,0.05)'
+                            : 'rgba(0,0,0,0.04)')
+                        }
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <UserIcon className="w-4 h-4 text-emerald-500" />
+                        <span>My Profile & Photo</span>
+                      </button>
+                      <button
                         onClick={() => {
                           setShowProfile(false);
                           navigate('/');
                         }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[40px]"
                         style={{ color: isDark ? '#c9d1e0' : '#374151' }}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.background = isDark
@@ -408,7 +430,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
 
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-red-500 hover:bg-red-500/10"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-red-500 hover:bg-red-500/10 min-h-[40px]"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Sign Out</span>
@@ -427,6 +449,28 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
           {children}
         </main>
       </div>
+
+      <ProfileModal
+        open={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+        role={role || 'staff'}
+        avatarUrl={avatarUrl}
+        onAvatarChange={setAvatar}
+        onSave={handleSaveProfile}
+        isDark={isDark}
+      />
+      <ConfirmModal
+        open={showLogoutConfirm}
+        onClose={() => !loggingOut && setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+        title="Sign out?"
+        message={`${user?.name || 'Staff'} — you will be signed out of the staff portal.`}
+        confirmLabel="Sign Out"
+        tone="logout"
+        busy={loggingOut}
+        busyLabel="Signing out…"
+      />
     </div>
   );
 };

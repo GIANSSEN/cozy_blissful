@@ -1,194 +1,538 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import AdminLayout from './AdminLayout';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  Sliders, Globe, Bell, Save, CheckCircle2, UserPlus,
-  Users, Shield, Clock, Phone,
-  Search, X, Edit3, Eye, EyeOff,
+  Sliders, Globe, Bell, Save, CheckCircle2, AlertCircle, UserPlus,
+  Shield, Search, X, Edit3, Eye, EyeOff, Percent,
+  CalendarClock, Wallet, Database, Download, Upload,
+  RotateCcw, Trash2, Phone, Lock, Info,
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────────────────────────── */
-/*  INITIAL MOCK DATA & CONFIG                                          */
-/* ─────────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Cozy Blissful · System Settings (Senior rebuild)
+   - Accessible tab system (roving tabindex + arrow-key nav)
+   - Per-section validation with inline errors + aria wiring
+   - Draft/dirty tracking, localStorage persistence, export/import
+   - Fully responsive: scroll-snap tabs, stacking grids, sheet modals
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── constants & defaults ─────────────────────────────────────────── */
+
+const SETTINGS_KEY = 'cozyblissful.settings.v1';
+const STAFF_KEY = 'cozyblissful.staff.v1';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PH_MOBILE_RE = /^(09|\+639)\d{9}$/;
+const URL_RE = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const BUSINESS_DEFAULTS = {
+  name: 'Cozy Blissful Spa Salon',
+  phone: '+63 999 543 5913',
+  openTime: '06:00',
+  closeTime: '23:00',
+  address: 'Metropolitan Manila, Philippines',
+  coverageRadiusKm: '25',
+  cancellationWindowHrs: '2',
+};
+
+const BOOKING_DEFAULTS = {
+  operatingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  slotIntervalMin: '30',
+  bufferMin: '10',
+  minLeadTimeHrs: '2',
+  maxAdvanceDays: '30',
+  autoCancelNoShowMin: '15',
+  maxPerTherapistPerDay: '8',
+  allowWalkIns: true,
+  allowConcurrentOverlap: true,
+  requireDownpayment: false,
+};
+
+const CMS_DEFAULTS = {
+  heroTitle: 'Spa & Salon Quality at Your Service.',
+  heroSubtitle: 'Premium Spa Salon & Wellness',
+  heroDescription: 'Professional massage therapy, hair and nail care — delivered to your sanctuary. Available 7 days a week, 6:00 AM – 11:00 PM.',
+  facebookUrl: 'https://facebook.com/cozyblissful',
+  instagramUrl: 'https://instagram.com/cozyblissful',
+  promoEnabled: true,
+  promoBannerText: 'Special Offer: Get 15% off on Weekend Combination Massages!',
+};
+
+const NOTIF_DEFAULTS = {
+  smsBookingCreated: true,
+  smsBookingApproved: true,
+  emailBookingCreated: true,
+  therapistDispatchAlert: true,
+  emailPromoUpdates: false,
+  reminderLeadTimeHrs: '24',
+  quietStart: '21:00',
+  quietEnd: '07:00',
+};
+
+const SYSTEM_DEFAULTS = {
+  currency: 'PHP',
+  vatPercent: '12',
+  serviceChargePercent: '5',
+  downpaymentPercent: '20',
+  payCash: true,
+  payGcash: true,
+  payMaya: false,
+  payCard: false,
+  gcashNumber: '+63 999 543 5913',
+  refundPolicy: 'Downpayments are refundable up to 24 hours before the session. No-shows forfeit the reservation fee.',
+  maintenanceMode: false,
+  sessionTimeoutMin: '30',
+  maxLoginAttempts: '5',
+  requireStrongPassword: true,
+};
 
 const INITIAL_STAFF = [
   { id: 1, name: 'Maria Santos', email: 'maria.santos@cozy.spa', phone: '+63 917 111 2222', role: 'staff', specialty: 'Front Desk & Scheduling', shift: 'Morning', commRate: 0, status: 'active', joined: '2025-01-15', emergency: 'Juan Santos (+63 917 000 1111)' },
   { id: 2, name: 'Anna Reyes', email: 'anna.reyes@cozy.spa', phone: '+63 919 555 6666', role: 'therapist', specialty: 'Swedish & Hot Stone Massage', shift: 'Afternoon', commRate: 35, status: 'active', joined: '2025-02-20', emergency: 'Pedro Reyes (+63 919 000 2222)' },
   { id: 3, name: 'Juan Dela Cruz', email: 'juan.delacruz@cozy.spa', phone: '+63 918 333 4444', role: 'manager', specialty: 'Operations & Inventory Lead', shift: 'Full Day', commRate: 0, status: 'active', joined: '2025-01-05', emergency: 'Elena Dela Cruz (+63 918 000 3333)' },
-  { id: 4, name: 'Grace Tan', email: 'grace.tan@cozy.spa', phone: '+63 921 999 0000', role: 'therapist', specialty: 'Hilot & Shiatsu Therapy', shift: 'Evening', commRate: 30, status: 'inactive', joined: '2025-03-01', emergency: 'Kevin Tan (+63 921 000 4444)' }
+  { id: 4, name: 'Grace Tan', email: 'grace.tan@cozy.spa', phone: '+63 921 999 0000', role: 'therapist', specialty: 'Hilot & Shiatsu Therapy', shift: 'Evening', commRate: 30, status: 'inactive', joined: '2025-03-01', emergency: 'Kevin Tan (+63 921 000 4444)' },
 ];
 
 const ROLE_DETAILS = {
-  manager: { label: 'Spa Manager', desc: 'Full operational override & financials access', color: '#0a3d30', bg: 'rgba(10,61,48,0.1)', grad: 'linear-gradient(135deg,#062c22,#0a3d30)' },
-  staff: { label: 'Staff Coordinator', desc: 'Appointment booking, customer queue & scheduling', color: '#3b55e6', bg: 'rgba(59,85,230,0.1)', grad: 'linear-gradient(135deg,#1e3a8a,#3b55e6)' },
-  therapist: { label: 'Therapist Practitioner', desc: 'Assigned home-service sessions & commission tracking', color: '#b45309', bg: 'rgba(180,83,9,0.1)', grad: 'linear-gradient(135deg,#78350f,#b45309)' },
-  receptionist: { label: 'Front Desk Reception', desc: 'Inquiries, walk-ins & customer registration', color: '#0891b2', bg: 'rgba(8,145,178,0.1)', grad: 'linear-gradient(135deg,#164e63,#0891b2)' }
+  manager: { label: 'Spa Manager', desc: 'Full operational override & financials access', color: '#34d399', bg: 'rgba(52,211,153,0.12)', grad: 'linear-gradient(135deg,#062c22,#0a3d30)' },
+  staff: { label: 'Staff Coordinator', desc: 'Appointment booking, customer queue & scheduling', color: '#93a4ff', bg: 'rgba(59,85,230,0.14)', grad: 'linear-gradient(135deg,#1e3a8a,#3b55e6)' },
+  therapist: { label: 'Therapist Practitioner', desc: 'Assigned home-service sessions & commission tracking', color: '#fbbf24', bg: 'rgba(180,83,9,0.16)', grad: 'linear-gradient(135deg,#78350f,#b45309)' },
+  receptionist: { label: 'Front Desk Reception', desc: 'Inquiries, walk-ins & customer registration', color: '#22d3ee', bg: 'rgba(8,145,178,0.14)', grad: 'linear-gradient(135deg,#164e63,#0891b2)' },
 };
 
 const SHIFTS = ['Morning (06:00 AM - 02:00 PM)', 'Afternoon (01:00 PM - 09:00 PM)', 'Evening (03:00 PM - 11:00 PM)', 'Full Day / Flexible'];
 
-/* ─────────────────────────────────────────────────────────────────── */
-/*  VALIDATION ENGINE FOR STAFF FORM                                    */
-/* ─────────────────────────────────────────────────────────────────── */
+/* ── tiny helpers ─────────────────────────────────────────────────── */
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') return { ...fallback, ...parsed };
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function to12h(hhmm) {
+  if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return hhmm || '—';
+  const [h, m] = hhmm.split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+function toMinutes(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function digitsOnly(v) {
+  return String(v ?? '').replace(/[\s-]/g, '');
+}
+
+/* ── validators (pure, testable) ──────────────────────────────────── */
+
+function validateBusiness(d) {
+  const e = {};
+  const name = d.name.trim();
+  if (!name) e.name = 'Brand name is required.';
+  else if (name.length < 3) e.name = 'Brand name must be at least 3 characters.';
+  else if (name.length > 80) e.name = 'Keep the brand name under 80 characters.';
+
+  if (!d.phone.trim()) e.phone = 'Hotline number is required.';
+  else if (!PH_MOBILE_RE.test(digitsOnly(d.phone))) e.phone = 'Enter a valid PH mobile (e.g. +63 917 123 4567 or 09171234567).';
+
+  if (!d.openTime) e.openTime = 'Opening time is required.';
+  if (!d.closeTime) e.closeTime = 'Closing time is required.';
+  if (d.openTime && d.closeTime && d.openTime === d.closeTime) {
+    e.closeTime = 'Closing time must differ from opening time (overnight allowed).';
+  }
+
+  if (!d.address.trim()) e.address = 'Coverage area is required.';
+  else if (d.address.trim().length < 5) e.address = 'Coverage area looks too short.';
+
+  const km = Number(d.coverageRadiusKm);
+  if (d.coverageRadiusKm === '' || Number.isNaN(km)) e.coverageRadiusKm = 'Enter the dispatch radius in km.';
+  else if (km < 1 || km > 200) e.coverageRadiusKm = 'Radius must be between 1 and 200 km.';
+
+  const cw = Number(d.cancellationWindowHrs);
+  if (d.cancellationWindowHrs === '' || Number.isNaN(cw)) e.cancellationWindowHrs = 'Enter the cancellation window in hours.';
+  else if (cw < 0.5 || cw > 72) e.cancellationWindowHrs = 'Window must be between 0.5 and 72 hours.';
+  return e;
+}
+
+function validateBooking(d) {
+  const e = {};
+  if (!d.operatingDays.length) e.operatingDays = 'Select at least one operating day.';
+  const num = (v, min, max, label) => {
+    if (v === '' || Number.isNaN(Number(v))) return `${label} is required.`;
+    const n = Number(v);
+    if (n < min || n > max) return `${label} must be between ${min} and ${max}.`;
+    return '';
+  };
+  const checks = [
+    ['slotIntervalMin', 5, 120, 'Slot interval'],
+    ['bufferMin', 0, 60, 'Buffer time'],
+    ['minLeadTimeHrs', 0.5, 72, 'Minimum lead time'],
+    ['maxAdvanceDays', 1, 180, 'Advance booking limit'],
+    ['autoCancelNoShowMin', 5, 180, 'Auto-cancel window'],
+    ['maxPerTherapistPerDay', 1, 30, 'Daily cap per therapist'],
+  ];
+  checks.forEach(([k, min, max, label]) => {
+    const msg = num(d[k], min, max, label);
+    if (msg) e[k] = msg;
+  });
+  if (!['15', '20', '30', '45', '60'].includes(String(d.slotIntervalMin))) {
+    e.slotIntervalMin = 'Use a standard interval (15, 20, 30, 45 or 60 min).';
+  }
+  return e;
+}
+
+function validateCMS(d) {
+  const e = {};
+  if (d.heroTitle.trim().length < 10) e.heroTitle = 'Headline needs at least 10 characters.';
+  else if (d.heroTitle.trim().length > 80) e.heroTitle = 'Headline must be under 80 characters.';
+  if (!d.heroSubtitle.trim()) e.heroSubtitle = 'Badge subtitle is required.';
+  else if (d.heroSubtitle.length > 60) e.heroSubtitle = 'Subtitle must be under 60 characters.';
+  if (d.heroDescription.trim().length < 20) e.heroDescription = 'Description needs at least 20 characters.';
+  else if (d.heroDescription.length > 300) e.heroDescription = 'Description must be under 300 characters.';
+  if (d.facebookUrl.trim() && !URL_RE.test(d.facebookUrl.trim())) e.facebookUrl = 'Enter a valid URL starting with https://';
+  if (d.instagramUrl.trim() && !URL_RE.test(d.instagramUrl.trim())) e.instagramUrl = 'Enter a valid URL starting with https://';
+  if (d.promoEnabled) {
+    if (!d.promoBannerText.trim()) e.promoBannerText = 'Promo text is required while the banner is enabled.';
+    else if (d.promoBannerText.length > 120) e.promoBannerText = 'Promo text must be under 120 characters.';
+  }
+  return e;
+}
+
+function validateAlerts(d) {
+  const e = {};
+  if (!d.smsBookingCreated && !d.smsBookingApproved && !d.emailBookingCreated && !d.therapistDispatchAlert) {
+    e._form = 'Keep at least one transactional notification enabled so bookings never go silent.';
+  }
+  if (!d.quietStart) e.quietStart = 'Quiet-hours start is required.';
+  if (!d.quietEnd) e.quietEnd = 'Quiet-hours end is required.';
+  return e;
+}
+
+function validateSystem(d) {
+  const e = {};
+  const pct = (v, max, label) => {
+    if (v === '' || Number.isNaN(Number(v))) return `${label} is required.`;
+    const n = Number(v);
+    if (n < 0 || n > max) return `${label} must be between 0 and ${max}%.`;
+    return '';
+  };
+  const v1 = pct(d.vatPercent, 28, 'VAT');
+  if (v1) e.vatPercent = v1;
+  const v2 = pct(d.serviceChargePercent, 20, 'Service charge');
+  if (v2) e.serviceChargePercent = v2;
+  const v3 = pct(d.downpaymentPercent, 100, 'Downpayment');
+  if (v3) e.downpaymentPercent = v3;
+  if (!d.payCash && !d.payGcash && !d.payMaya && !d.payCard) {
+    e._form = 'Enable at least one payment method.';
+  }
+  if (d.payGcash) {
+    if (!d.gcashNumber.trim()) e.gcashNumber = 'GCash number is required when GCash is enabled.';
+    else if (!PH_MOBILE_RE.test(digitsOnly(d.gcashNumber))) e.gcashNumber = 'Enter a valid PH mobile number.';
+  }
+  if (d.refundPolicy.trim() && d.refundPolicy.trim().length < 10) {
+    e.refundPolicy = 'Refund policy needs at least 10 characters (or leave it empty).';
+  }
+  const st = Number(d.sessionTimeoutMin);
+  if (d.sessionTimeoutMin === '' || Number.isNaN(st)) e.sessionTimeoutMin = 'Session timeout is required.';
+  else if (st < 5 || st > 180) e.sessionTimeoutMin = 'Timeout must be 5–180 minutes.';
+  const at = Number(d.maxLoginAttempts);
+  if (d.maxLoginAttempts === '' || Number.isNaN(at)) e.maxLoginAttempts = 'Max attempts is required.';
+  else if (at < 3 || at > 10) e.maxLoginAttempts = 'Attempts must be 3–10.';
+  return e;
+}
 
 function validateStaffForm(form, existingStaff = [], isEdit = false, currentId = null) {
   const errors = {};
+  if (!form.name.trim()) errors.name = 'Full name is required.';
+  else if (form.name.trim().length < 3) errors.name = 'Name must be at least 3 characters.';
 
-  // Name
-  if (!form.name.trim()) {
-    errors.name = 'Full name is required';
-  } else if (form.name.trim().length < 3) {
-    errors.name = 'Name must be at least 3 characters';
+  if (!form.email.trim()) errors.email = 'Work email is required.';
+  else if (!EMAIL_RE.test(form.email.trim())) errors.email = 'Enter a valid email (e.g. name@cozy.spa).';
+  else {
+    const dup = existingStaff.find(
+      (s) => s.email.toLowerCase() === form.email.trim().toLowerCase() && (!isEdit || s.id !== currentId),
+    );
+    if (dup) errors.email = 'This email is already assigned to another staff member.';
   }
 
-  // Email
-  if (!form.email.trim()) {
-    errors.email = 'Work email is required';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-    errors.email = 'Please enter a valid email address (e.g. name@cozy.spa)';
-  } else {
-    const duplicate = existingStaff.find(s => s.email.toLowerCase() === form.email.trim().toLowerCase() && (!isEdit || s.id !== currentId));
-    if (duplicate) {
-      errors.email = 'This email address is already assigned to another staff member';
-    }
-  }
+  if (!form.phone.trim()) errors.phone = 'Mobile number is required.';
+  else if (!PH_MOBILE_RE.test(digitsOnly(form.phone))) errors.phone = 'Enter a valid PH mobile (e.g. +63 917 123 4567).';
 
-  // Phone
-  if (!form.phone.trim()) {
-    errors.phone = 'Mobile contact number is required';
-  } else if (!/^(09|\+639)\d{9}$/.test(form.phone.replace(/[\s-]/g, ''))) {
-    errors.phone = 'Enter a valid PH mobile number (e.g. +63 917 123 4567 or 09171234567)';
-  }
+  if (!form.specialty.trim()) errors.specialty = 'Specialization / position title is required.';
 
-  // Specialty
-  if (!form.specialty.trim()) {
-    errors.specialty = 'Specialization / Role Position title is required';
-  }
-
-  // Commission Rate
   if (form.role === 'therapist') {
     const comm = Number(form.commRate);
-    if (isNaN(comm) || comm < 0 || comm > 100) {
-      errors.commRate = 'Commission rate must be between 0% and 100%';
-    }
+    if (Number.isNaN(comm) || comm < 0 || comm > 100) errors.commRate = 'Commission must be 0–100%.';
   }
 
-  // Password Validation for New Staff
   if (!isEdit) {
-    if (!form.password) {
-      errors.password = 'Initial password is required for account creation';
-    } else if (form.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
-    } else if (!/[A-Z]/.test(form.password)) {
-      errors.password = 'Password must contain at least one uppercase letter (A-Z)';
-    } else if (!/[0-9]/.test(form.password)) {
-      errors.password = 'Password must contain at least one number (0-9)';
-    }
-
-    if (form.password !== form.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
+    if (!form.password) errors.password = 'Initial password is required.';
+    else if (form.password.length < 8) errors.password = 'Password must be at least 8 characters.';
+    else if (!/[A-Z]/.test(form.password)) errors.password = 'Include at least one uppercase letter (A-Z).';
+    else if (!/[0-9]/.test(form.password)) errors.password = 'Include at least one number (0-9).';
+    if (form.password !== form.confirmPassword) errors.confirmPassword = 'Passwords do not match.';
   }
-
   return errors;
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
-/*  ADD STAFF MODAL (SENIOR DEV UX & VALIDATION)                        */
-/* ─────────────────────────────────────────────────────────────────── */
+/* ── reusable primitives ──────────────────────────────────────────── */
 
-function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff }) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+function Field({ id, label, hint, error, required, children, counter }) {
+  return (
+    <div className="space-y-1.5 min-w-0">
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={id} className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          {label} {required && <span aria-hidden="true" className="text-emerald-500">*</span>}
+        </label>
+        {counter && <span className="text-[10px] tabular-nums text-slate-500">{counter}</span>}
+      </div>
+      {children}
+      {hint && !error && <p id={`${id}-hint`} className="text-[11px] leading-relaxed text-slate-500">{hint}</p>}
+      {error && (
+        <p id={`${id}-error`} role="alert" className="flex items-start gap-1 text-[11px] font-medium text-red-500">
+          <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" /> {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
+function fieldClasses(isDark, error) {
+  return `w-full rounded-2xl border px-4 py-3 text-sm outline-none transition placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-offset-0 disabled:opacity-60 ${
+    error
+      ? 'border-red-500/70 bg-red-500/[0.06] focus:border-red-500 focus-visible:ring-red-500/30'
+      : isDark
+        ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500 focus-visible:ring-emerald-500/25'
+        : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600 focus-visible:ring-emerald-500/25'
+  }`;
+}
+
+function Toggle({ checked, onChange, label, desc, id }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <p id={`${id}-label`} className="text-xs font-bold">{label}</p>
+        {desc && <p className="mt-0.5 text-[11px] leading-relaxed text-slate-400">{desc}</p>}
+      </div>
+      <button
+        id={id}
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={`${id}-label`}
+        onClick={() => onChange(!checked)}
+        className={`relative h-7 w-12 shrink-0 rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ${
+          checked ? 'bg-emerald-500' : 'bg-slate-600 dark:bg-slate-700'
+        }`}
+      >
+        <motion.span
+          className="block h-5 w-5 rounded-full bg-white shadow-md"
+          animate={{ x: checked ? 20 : 0 }}
+          transition={{ type: 'spring', stiffness: 550, damping: 32 }}
+        />
+      </button>
+    </div>
+  );
+}
+
+function SectionCard({ isDark, eyebrow, title, desc, dirty, onSave, onReset, saving, children, saveLabel = 'Save changes' }) {
+  return (
+    <section
+      aria-label={title}
+      className={`rounded-3xl border p-5 shadow-sm sm:p-7 ${
+        isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'
+      }`}
+    >
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-500">
+            {eyebrow}
+            {dirty && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-500">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" /> Unsaved
+              </span>
+            )}
+          </p>
+          <h2 className="mt-1 text-base font-bold tracking-tight sm:text-lg">{title}</h2>
+          {desc && <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-slate-400">{desc}</p>}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={onReset}
+            disabled={!dirty || saving}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Reset
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/25 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:cursor-wait disabled:opacity-70"
+          >
+            {saving ? (
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+            ) : (
+              <Save className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+            {saving ? 'Saving…' : saveLabel}
+          </button>
+        </div>
+      </div>
+      <div className="space-y-5 pt-6">{children}</div>
+    </section>
+  );
+}
+
+function FormErrorSummary({ errors }) {
+  const keys = Object.keys(errors).filter((k) => k !== '_form');
+  if (!errors._form && keys.length === 0) return null;
+  return (
+    <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/[0.07] p-4 text-xs">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden="true" />
+      <div>
+        <p className="font-bold text-red-500">Please fix the following:</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-red-400">
+          {errors._form && <li>{errors._form}</li>}
+          {keys.slice(0, 4).map((k) => <li key={k}>{errors[k]}</li>)}
+          {keys.length > 4 && <li>…and {keys.length - 4} more field(s) below.</li>}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ── toast stack ──────────────────────────────────────────────────── */
+
+function Toasts({ toasts }) {
+  return (
+    <div aria-live="polite" aria-atomic="false" className="pointer-events-none fixed inset-x-4 bottom-4 z-[70] flex flex-col items-stretch gap-2 sm:left-auto sm:right-6 sm:bottom-6 sm:w-96">
+      <AnimatePresence>
+        {toasts.map((t) => (
+          <motion.div
+            key={t.id}
+            layout
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            role="status"
+            className={`pointer-events-auto flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-xs font-semibold shadow-2xl backdrop-blur ${
+              t.type === 'error'
+                ? 'border-red-500/30 bg-[#1c0f14]/95 text-red-200'
+                : t.type === 'info'
+                  ? 'border-sky-500/30 bg-[#0b1620]/95 text-sky-100'
+                  : 'border-emerald-500/30 bg-[#06231b]/95 text-emerald-100'
+            }`}
+          >
+            {t.type === 'error'
+              ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" aria-hidden="true" />
+              : t.type === 'info'
+                ? <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" aria-hidden="true" />
+                : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />}
+            <span className="leading-relaxed">{t.msg}</span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── staff modals ─────────────────────────────────────────────────── */
+
+function useModalBehavior(isOpen, onClose, initialFocusRef) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const t = setTimeout(() => initialFocusRef.current?.focus(), 60);
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+      clearTimeout(t);
+    };
+  }, [isOpen, onClose, initialFocusRef]);
+}
+
+function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff, isDark }) {
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'therapist',
-    specialty: '',
-    shift: 'Morning (06:00 AM - 02:00 PM)',
-    commRate: 35,
-    status: 'active',
-    emergency: '',
-    password: '',
-    confirmPassword: ''
+    name: '', email: '', phone: '', role: 'therapist', specialty: '',
+    shift: SHIFTS[0], commRate: 35, status: 'active', emergency: '',
+    password: '', confirmPassword: '',
   });
-
   const [errors, setErrors] = useState({});
+  const firstFieldRef = useRef(null);
+  useModalBehavior(isOpen, onClose, firstFieldRef);
 
   useEffect(() => {
     if (isOpen) {
       setStep(1);
       setErrors({});
+      setShowPassword(false);
       setForm({
-        name: '',
-        email: '',
-        phone: '',
-        role: 'therapist',
-        specialty: '',
-        shift: 'Morning (06:00 AM - 02:00 PM)',
-        commRate: 35,
-        status: 'active',
-        emergency: '',
-        password: '',
-        confirmPassword: ''
+        name: '', email: '', phone: '', role: 'therapist', specialty: '',
+        shift: SHIFTS[0], commRate: 35, status: 'active', emergency: '',
+        password: '', confirmPassword: '',
       });
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
+  const patch = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: '' } : prev));
   };
 
   const generateStrongPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
     let pwd = 'CB@';
-    for (let i = 0; i < 7; i++) {
-      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    for (let i = 0; i < 7; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
     pwd += Math.floor(Math.random() * 90 + 10);
-    handleChange('password', pwd);
-    handleChange('confirmPassword', pwd);
+    patch('password', pwd);
+    patch('confirmPassword', pwd);
   };
 
   const handleNext = () => {
-    const step1Errors = {};
-    if (!form.name.trim()) step1Errors.name = 'Full name is required';
-    if (!form.email.trim()) step1Errors.email = 'Work email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) step1Errors.email = 'Valid email is required';
-    else if (existingStaff.find(s => s.email.toLowerCase() === form.email.trim().toLowerCase())) step1Errors.email = 'Email already registered';
-    if (!form.phone.trim()) step1Errors.phone = 'Mobile contact is required';
-    if (!form.specialty.trim()) step1Errors.specialty = 'Specialization is required';
-
-    if (Object.keys(step1Errors).length > 0) {
-      setErrors(step1Errors);
-      return;
-    }
+    const s = {};
+    if (!form.name.trim()) s.name = 'Full name is required.';
+    if (!form.email.trim()) s.email = 'Work email is required.';
+    else if (!EMAIL_RE.test(form.email.trim())) s.email = 'Enter a valid email address.';
+    else if (existingStaff.some((x) => x.email.toLowerCase() === form.email.trim().toLowerCase())) s.email = 'Email already registered.';
+    if (!form.phone.trim()) s.phone = 'Mobile contact is required.';
+    else if (!PH_MOBILE_RE.test(digitsOnly(form.phone))) s.phone = 'Enter a valid PH mobile number.';
+    if (!form.specialty.trim()) s.specialty = 'Specialization is required.';
+    if (Object.keys(s).length) { setErrors(s); return; }
     setStep(2);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const validationErrors = validateStaffForm(form, existingStaff, false);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      if (validationErrors.name || validationErrors.email || validationErrors.phone || validationErrors.specialty) {
-        setStep(1);
-      }
+    const errs = validateStaffForm(form, existingStaff, false);
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      if (errs.name || errs.email || errs.phone || errs.specialty) setStep(1);
       return;
     }
-
-    const newStaffObj = {
+    onAddStaff({
       id: Date.now(),
       name: form.name.trim(),
       email: form.email.trim().toLowerCase(),
@@ -199,306 +543,158 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff }) {
       commRate: form.role === 'therapist' ? Number(form.commRate) : 0,
       status: form.status,
       joined: new Date().toISOString().split('T')[0],
-      emergency: form.emergency.trim() || 'N/A'
-    };
-
-    onAddStaff(newStaffObj);
+      emergency: form.emergency.trim() || 'N/A',
+    });
     onClose();
   };
 
   const selectedRole = ROLE_DETAILS[form.role] || ROLE_DETAILS.therapist;
+  const inputCls = (k) => `w-full rounded-2xl border px-3.5 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-emerald-500/30 ${
+    errors[k] ? 'border-red-500/70' : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
+  }`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/70 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className={`w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden my-8 ${
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-staff-title"
+        initial={{ opacity: 0, y: 32, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 24, scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className={`flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border shadow-2xl sm:max-w-2xl sm:rounded-3xl ${
           isDark ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
         }`}
       >
-        {/* Modal Header */}
-        <div className={`px-6 py-5 border-b flex items-center justify-between ${
-          isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-100 bg-slate-50/80'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white" style={{ background: selectedRole.grad }}>
-              <UserPlus className="w-5 h-5" />
+        <div className={`flex items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 ${isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-100 bg-slate-50/80'}`}>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white" style={{ background: selectedRole.grad }}>
+              <UserPlus className="h-5 w-5" aria-hidden="true" />
             </div>
-            <div>
-              <h3 className="text-base font-bold tracking-tight">Onboard New Staff Member</h3>
-              <p className="text-xs text-slate-400">Step {step} of 2 — {step === 1 ? 'Personal & Professional Details' : 'Account Access & Security'}</p>
+            <div className="min-w-0">
+              <h3 id="add-staff-title" className="truncate text-sm font-bold tracking-tight sm:text-base">Onboard new staff member</h3>
+              <p className="text-[11px] text-slate-400">Step {step} of 2 — {step === 1 ? 'Personal & professional details' : 'Account access & security'}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className={`w-8 h-8 rounded-xl flex items-center justify-center transition ${
-              isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-500'
-            }`}
-          >
-            <X className="w-4 h-4" />
+          <button type="button" onClick={onClose} aria-label="Close dialog" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition hover:bg-slate-500/15">
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5">
-          <motion.div
-            className="h-full bg-emerald-500"
-            animate={{ width: step === 1 ? '50%' : '100%' }}
-            transition={{ duration: 0.3 }}
-          />
+        <div className="h-1.5 w-full bg-slate-500/15" aria-hidden="true">
+          <motion.div className="h-full bg-emerald-500" animate={{ width: step === 1 ? '50%' : '100%' }} transition={{ duration: 0.3 }} />
         </div>
 
-        {/* Modal Form Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="max-h-[62dvh] space-y-5 overflow-y-auto p-5 sm:p-6" noValidate>
           {step === 1 ? (
-            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-              {/* Role Selection */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Select Staff System Role *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+              <fieldset>
+                <legend className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">System role *</legend>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Staff system role">
                   {Object.entries(ROLE_DETAILS).map(([rKey, rMeta]) => {
-                    const isSelected = form.role === rKey;
+                    const selected = form.role === rKey;
                     return (
                       <button
                         key={rKey}
                         type="button"
-                        onClick={() => handleChange('role', rKey)}
-                        className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition ${
-                          isSelected
-                            ? isDark
-                              ? 'border-emerald-500 bg-emerald-950/30 ring-1 ring-emerald-500'
-                              : 'border-emerald-600 bg-emerald-50/80 ring-1 ring-emerald-600'
-                            : isDark
-                              ? 'border-slate-800 bg-slate-950/40 hover:border-slate-700'
-                              : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => patch('role', rKey)}
+                        className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                          selected
+                            ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500'
+                            : isDark ? 'border-slate-800 bg-slate-950/40 hover:border-slate-600' : 'border-slate-200 bg-slate-50/50 hover:border-slate-300'
                         }`}
                       >
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: rMeta.grad }}>
-                          <Shield className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold">{rMeta.label}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-2">{rMeta.desc}</p>
-                        </div>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: rMeta.grad }}>
+                          <Shield className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <span>
+                          <span className="block text-xs font-bold">{rMeta.label}</span>
+                          <span className="mt-0.5 line-clamp-2 block text-[10px] text-slate-400">{rMeta.desc}</span>
+                        </span>
                       </button>
                     );
                   })}
                 </div>
-              </div>
+              </fieldset>
 
-              {/* Personal Info Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Full Name */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400">Full Name *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Teresa Mendoza"
-                    value={form.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition ${
-                      errors.name
-                        ? 'border-red-500 bg-red-50/20 text-red-500'
-                        : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
-                    }`}
-                  />
-                  {errors.name && <p className="text-[10px] text-red-500 font-medium">{errors.name}</p>}
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400">Work Email Address *</label>
-                  <input
-                    type="email"
-                    placeholder="teresa@cozy.spa"
-                    value={form.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition ${
-                      errors.email
-                        ? 'border-red-500 bg-red-50/20 text-red-500'
-                        : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
-                    }`}
-                  />
-                  {errors.email && <p className="text-[10px] text-red-500 font-medium">{errors.email}</p>}
-                </div>
-
-                {/* Phone */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400">Mobile Contact Number *</label>
-                  <input
-                    type="text"
-                    placeholder="+63 917 888 9999"
-                    value={form.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
-                    className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition ${
-                      errors.phone
-                        ? 'border-red-500 bg-red-50/20 text-red-500'
-                        : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
-                    }`}
-                  />
-                  {errors.phone && <p className="text-[10px] text-red-500 font-medium">{errors.phone}</p>}
-                </div>
-
-                {/* Specialization / Title */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400">Specialization / Position Title *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Deep Tissue & Reflexology"
-                    value={form.specialty}
-                    onChange={(e) => handleChange('specialty', e.target.value)}
-                    className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition ${
-                      errors.specialty
-                        ? 'border-red-500 bg-red-50/20 text-red-500'
-                        : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
-                    }`}
-                  />
-                  {errors.specialty && <p className="text-[10px] text-red-500 font-medium">{errors.specialty}</p>}
-                </div>
-
-                {/* Shift Preference */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400">Default Assigned Shift</label>
-                  <select
-                    value={form.shift}
-                    onChange={(e) => handleChange('shift', e.target.value)}
-                    className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition ${
-                      isDark ? 'border-slate-800 bg-slate-950 text-slate-100' : 'border-slate-200 bg-slate-50 text-slate-900'
-                    }`}
-                  >
-                    {SHIFTS.map(s => <option key={s} value={s}>{s}</option>)}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field id="ns-name" label="Full name" required error={errors.name}>
+                  <input id="ns-name" ref={firstFieldRef} type="text" autoComplete="name" placeholder="e.g. Teresa Mendoza" value={form.name} onChange={(e) => patch('name', e.target.value)} aria-invalid={!!errors.name} aria-describedby={errors.name ? 'ns-name-error' : undefined} className={inputCls('name')} />
+                </Field>
+                <Field id="ns-email" label="Work email" required error={errors.email}>
+                  <input id="ns-email" type="email" autoComplete="email" placeholder="teresa@cozy.spa" value={form.email} onChange={(e) => patch('email', e.target.value)} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'ns-email-error' : undefined} className={inputCls('email')} />
+                </Field>
+                <Field id="ns-phone" label="Mobile number" required error={errors.phone} hint="PH format: +63 9XX XXX XXXX">
+                  <input id="ns-phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="+63 917 888 9999" value={form.phone} onChange={(e) => patch('phone', e.target.value)} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'ns-phone-error' : 'ns-phone-hint'} className={inputCls('phone')} />
+                </Field>
+                <Field id="ns-specialty" label="Specialization / title" required error={errors.specialty}>
+                  <input id="ns-specialty" type="text" placeholder="e.g. Deep Tissue & Reflexology" value={form.specialty} onChange={(e) => patch('specialty', e.target.value)} aria-invalid={!!errors.specialty} aria-describedby={errors.specialty ? 'ns-specialty-error' : undefined} className={inputCls('specialty')} />
+                </Field>
+                <Field id="ns-shift" label="Default shift">
+                  <select id="ns-shift" value={form.shift} onChange={(e) => patch('shift', e.target.value)} className={inputCls('')}>
+                    {SHIFTS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
-                </div>
-
-                {/* Commission Rate (Therapist only) */}
+                </Field>
                 {form.role === 'therapist' && (
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-slate-400">Commission Share Rate (%) *</label>
+                  <Field id="ns-comm" label="Commission rate (%)" required error={errors.commRate}>
                     <div className="relative">
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        placeholder="35"
-                        value={form.commRate}
-                        onChange={(e) => handleChange('commRate', e.target.value)}
-                        className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition pr-8 ${
-                          errors.commRate
-                            ? 'border-red-500 bg-red-50/20 text-red-500'
-                            : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
-                        }`}
-                      />
-                      <Percent className="w-3.5 h-3.5 absolute right-3 top-3 text-slate-400" />
+                      <input id="ns-comm" type="number" min="0" max="100" value={form.commRate} onChange={(e) => patch('commRate', e.target.value)} aria-invalid={!!errors.commRate} aria-describedby={errors.commRate ? 'ns-comm-error' : undefined} className={`${inputCls('commRate')} pr-9`} />
+                      <Percent className="absolute right-3 top-3 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
                     </div>
-                    {errors.commRate && <p className="text-[10px] text-red-500 font-medium">{errors.commRate}</p>}
-                  </div>
+                  </Field>
                 )}
               </div>
 
-              {/* Emergency Contact */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-400">Emergency Contact Person & Contact No. (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Roberto Mendoza (+63 918 777 6666)"
-                  value={form.emergency}
-                  onChange={(e) => handleChange('emergency', e.target.value)}
-                  className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition ${
-                    isDark ? 'border-slate-800 bg-slate-950 text-slate-100' : 'border-slate-200 bg-slate-50 text-slate-900'
-                  }`}
-                />
-              </div>
+              <Field id="ns-emg" label="Emergency contact (optional)">
+                <input id="ns-emg" type="text" placeholder="e.g. Roberto Mendoza (+63 918 777 6666)" value={form.emergency} onChange={(e) => patch('emergency', e.target.value)} className={inputCls('')} />
+              </Field>
             </motion.div>
           ) : (
-            <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-              {/* Staff Summary Card Preview */}
-              <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-                isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-200 bg-slate-50'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold" style={{ background: selectedRole.grad }}>
+            <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+              <div className={`flex items-center justify-between gap-3 rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-200 bg-slate-50'}`}>
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl font-bold text-white" style={{ background: selectedRole.grad }} aria-hidden="true">
                     {form.name ? form.name.charAt(0).toUpperCase() : 'S'}
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold">{form.name || 'Unnamed Staff Member'}</h4>
-                    <p className="text-[11px] text-slate-400">{form.email || 'no-email'} • {form.specialty || selectedRole.label}</p>
+                  <div className="min-w-0">
+                    <h4 className="truncate text-xs font-bold">{form.name || 'Unnamed staff member'}</h4>
+                    <p className="truncate text-[11px] text-slate-400">{form.email || 'no email'} • {form.specialty || selectedRole.label}</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider" style={{ background: selectedRole.bg, color: selectedRole.color }}>
+                <span className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider" style={{ background: selectedRole.bg, color: selectedRole.color }}>
                   {selectedRole.label}
                 </span>
               </div>
 
-              {/* Password Setup */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-slate-400">Login Initial Password *</label>
-                  <button
-                    type="button"
-                    onClick={generateStrongPassword}
-                    className="text-[11px] font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 transition"
-                  >
-                    Auto-Generate Secure Pass
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label htmlFor="ns-pass" className="block text-xs font-semibold text-slate-400">Login initial password *</label>
+                  <button type="button" onClick={generateStrongPassword} className="min-h-[36px] rounded-lg px-2 text-[11px] font-bold text-emerald-500 transition hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                    Auto-generate secure password
                   </button>
                 </div>
-
-                {/* Password input */}
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Minimum 8 characters with Uppercase & Number"
-                    value={form.password}
-                    onChange={(e) => handleChange('password', e.target.value)}
-                    className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition pr-10 ${
-                      errors.password
-                        ? 'border-red-500 bg-red-50/20 text-red-500'
-                        : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.password && <p className="text-[10px] text-red-500 font-medium">{errors.password}</p>}
-
-                {/* Confirm Password */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-slate-400">Confirm Password *</label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Re-enter initial password"
-                    value={form.confirmPassword}
-                    onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                    className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none transition ${
-                      errors.confirmPassword
-                        ? 'border-red-500 bg-red-50/20 text-red-500'
-                        : isDark ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500' : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600'
-                    }`}
-                  />
-                  {errors.confirmPassword && <p className="text-[10px] text-red-500 font-medium">{errors.confirmPassword}</p>}
-                </div>
-
-                {/* Status Toggle */}
-                <div className="flex items-center justify-between pt-2">
-                  <div>
-                    <p className="text-xs font-semibold">Immediate Activation Status</p>
-                    <p className="text-[11px] text-slate-400">Active accounts can log into their respective staff/therapist portals immediately.</p>
+                <div>
+                  <div className="relative">
+                    <input id="ns-pass" type={showPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Min. 8 chars, uppercase & number" value={form.password} onChange={(e) => patch('password', e.target.value)} aria-invalid={!!errors.password} aria-describedby={errors.password ? 'ns-pass-error' : undefined} className={`${inputCls('password')} pr-11`} />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:text-slate-200">
+                      {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleChange('status', form.status === 'active' ? 'inactive' : 'active')}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                      form.status === 'active'
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500'
-                        : 'border-slate-600 bg-slate-800 text-slate-400'
-                    }`}
-                  >
+                  {errors.password && <p id="ns-pass-error" role="alert" className="mt-1 text-[11px] font-medium text-red-500">{errors.password}</p>}
+                </div>
+                <Field id="ns-pass2" label="Confirm password" required error={errors.confirmPassword}>
+                  <input id="ns-pass2" type={showPassword ? 'text' : 'password'} autoComplete="new-password" placeholder="Re-enter initial password" value={form.confirmPassword} onChange={(e) => patch('confirmPassword', e.target.value)} aria-invalid={!!errors.confirmPassword} aria-describedby={errors.confirmPassword ? 'ns-pass2-error' : undefined} className={inputCls('confirmPassword')} />
+                </Field>
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <div>
+                    <p className="text-xs font-semibold">Immediate activation</p>
+                    <p className="text-[11px] text-slate-400">Active accounts can log in right away.</p>
+                  </div>
+                  <button type="button" role="switch" aria-checked={form.status === 'active'} aria-label="Account active" onClick={() => patch('status', form.status === 'active' ? 'inactive' : 'active')} className={`min-h-[36px] rounded-full border px-4 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.status === 'active' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500' : 'border-slate-600 text-slate-400'}`}>
                     {form.status === 'active' ? '✓ Active' : 'Inactive'}
                   </button>
                 </div>
@@ -507,47 +703,23 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff }) {
           )}
         </form>
 
-        {/* Modal Footer */}
-        <div className={`px-6 py-4 border-t flex items-center justify-between ${
-          isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-100 bg-slate-50/80'
-        }`}>
+        <div className={`flex items-center justify-between gap-3 border-t px-5 py-4 sm:px-6 ${isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-100 bg-slate-50/80'}`}>
           {step === 2 ? (
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold border transition ${
-                isDark ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-slate-300 hover:bg-slate-200 text-slate-700'
-              }`}
-            >
-              ← Back to Details
+            <button type="button" onClick={() => setStep(1)} className="min-h-[44px] rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-300">
+              ← Back to details
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold border transition ${
-                isDark ? 'border-slate-700 hover:bg-slate-800 text-slate-300' : 'border-slate-300 hover:bg-slate-200 text-slate-700'
-              }`}
-            >
+            <button type="button" onClick={onClose} className="min-h-[44px] rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-300">
               Cancel
             </button>
           )}
-
           {step === 1 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/20"
-            >
-              Continue to Security →
+            <button type="button" onClick={handleNext} className="min-h-[44px] rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
+              Continue to security →
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-lg shadow-emerald-600/20 flex items-center gap-2"
-            >
-              <UserPlus className="w-4 h-4" /> Save & Create Staff Account
+            <button type="button" onClick={handleSubmit} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
+              <UserPlus className="h-4 w-4" aria-hidden="true" /> Create account
             </button>
           )}
         </div>
@@ -556,40 +728,19 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff }) {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
-/*  EDIT STAFF MODAL                                                    */
-/* ─────────────────────────────────────────────────────────────────── */
-
-function EditStaffModal({ isOpen, onClose, staffMember, onSaveStaff, existingStaff }) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'therapist',
-    specialty: '',
-    shift: 'Morning',
-    commRate: 35,
-    status: 'active',
-    emergency: ''
-  });
-
+function EditStaffModal({ isOpen, onClose, staffMember, onSaveStaff, existingStaff, isDark }) {
+  const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'therapist', specialty: '', shift: 'Morning', commRate: 35, status: 'active', emergency: '' });
   const [errors, setErrors] = useState({});
+  const firstFieldRef = useRef(null);
+  useModalBehavior(isOpen, onClose, firstFieldRef);
 
   useEffect(() => {
     if (staffMember) {
       setForm({
-        name: staffMember.name || '',
-        email: staffMember.email || '',
-        phone: staffMember.phone || '',
-        role: staffMember.role || 'therapist',
-        specialty: staffMember.specialty || '',
-        shift: staffMember.shift || 'Morning',
-        commRate: staffMember.commRate ?? 35,
-        status: staffMember.status || 'active',
-        emergency: staffMember.emergency || ''
+        name: staffMember.name || '', email: staffMember.email || '', phone: staffMember.phone || '',
+        role: staffMember.role || 'therapist', specialty: staffMember.specialty || '',
+        shift: staffMember.shift || 'Morning', commRate: staffMember.commRate ?? 35,
+        status: staffMember.status || 'active', emergency: staffMember.emergency || '',
       });
       setErrors({});
     }
@@ -597,159 +748,79 @@ function EditStaffModal({ isOpen, onClose, staffMember, onSaveStaff, existingSta
 
   if (!isOpen || !staffMember) return null;
 
-  const handleChange = (field, value) => {
-    setForm(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
+  const patch = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: '' } : prev));
   };
 
   const handleSave = (e) => {
     e.preventDefault();
-    const validationErrors = validateStaffForm(form, existingStaff, true, staffMember.id);
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    onSaveStaff({
-      ...staffMember,
-      ...form,
-      commRate: form.role === 'therapist' ? Number(form.commRate) : 0
-    });
+    const errs = validateStaffForm(form, existingStaff, true, staffMember.id);
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    onSaveStaff({ ...staffMember, ...form, commRate: form.role === 'therapist' ? Number(form.commRate) : 0 });
     onClose();
   };
 
+  const inputCls = (k) => `w-full rounded-2xl border px-3.5 py-2.5 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-emerald-500/30 ${
+    errors[k] ? 'border-red-500/70' : isDark ? 'border-slate-800 bg-slate-950 text-slate-100' : 'border-slate-200 bg-slate-50 text-slate-900'
+  }`;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/70 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className={`w-full max-w-xl rounded-3xl border shadow-2xl overflow-hidden ${
-          isDark ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
-        }`}
+        role="dialog" aria-modal="true" aria-labelledby="edit-staff-title"
+        initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+        onClick={(e) => e.stopPropagation()}
+        className={`flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border shadow-2xl sm:max-w-xl sm:rounded-3xl ${isDark ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}
       >
-        <div className={`px-6 py-4 border-b flex items-center justify-between ${
-          isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-100 bg-slate-50/80'
-        }`}>
+        <div className={`flex items-center justify-between border-b px-5 py-4 ${isDark ? 'border-slate-800 bg-slate-950/60' : 'border-slate-100 bg-slate-50/80'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-white font-bold bg-emerald-600">
-              <Edit3 className="w-4 h-4" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-600 font-bold text-white">
+              <Edit3 className="h-4 w-4" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="text-sm font-bold">Edit Staff Profile</h3>
+              <h3 id="edit-staff-title" className="text-sm font-bold">Edit staff profile</h3>
               <p className="text-[11px] text-slate-400">{staffMember.email}</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-200">
-            <X className="w-4 h-4" />
+          <button type="button" onClick={onClose} aria-label="Close dialog" className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-slate-500/15">
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-
-        <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-400">Full Name *</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none ${
-                  errors.name ? 'border-red-500' : isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
-                }`}
-              />
-              {errors.name && <p className="text-[10px] text-red-500">{errors.name}</p>}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-400">Email Address *</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none ${
-                  errors.email ? 'border-red-500' : isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
-                }`}
-              />
-              {errors.email && <p className="text-[10px] text-red-500">{errors.email}</p>}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-400">Phone Contact *</label>
-              <input
-                type="text"
-                value={form.phone}
-                onChange={(e) => handleChange('phone', e.target.value)}
-                className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none ${
-                  errors.phone ? 'border-red-500' : isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
-                }`}
-              />
-              {errors.phone && <p className="text-[10px] text-red-500">{errors.phone}</p>}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-400">Specialty / Title *</label>
-              <input
-                type="text"
-                value={form.specialty}
-                onChange={(e) => handleChange('specialty', e.target.value)}
-                className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none ${
-                  errors.specialty ? 'border-red-500' : isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
-                }`}
-              />
-              {errors.specialty && <p className="text-[10px] text-red-500">{errors.specialty}</p>}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-400">Assigned Role</label>
-              <select
-                value={form.role}
-                onChange={(e) => handleChange('role', e.target.value)}
-                className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none ${
-                  isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
-                }`}
-              >
-                {Object.entries(ROLE_DETAILS).map(([rk, rm]) => (
-                  <option key={rk} value={rk}>{rm.label}</option>
-                ))}
+        <form onSubmit={handleSave} className="space-y-4 overflow-y-auto p-5 sm:p-6" noValidate>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field id="es-name" label="Full name" required error={errors.name}>
+              <input id="es-name" ref={firstFieldRef} type="text" value={form.name} onChange={(e) => patch('name', e.target.value)} aria-invalid={!!errors.name} aria-describedby={errors.name ? 'es-name-error' : undefined} className={inputCls('name')} />
+            </Field>
+            <Field id="es-email" label="Email" required error={errors.email}>
+              <input id="es-email" type="email" value={form.email} onChange={(e) => patch('email', e.target.value)} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'es-email-error' : undefined} className={inputCls('email')} />
+            </Field>
+            <Field id="es-phone" label="Phone" required error={errors.phone}>
+              <input id="es-phone" type="tel" value={form.phone} onChange={(e) => patch('phone', e.target.value)} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'es-phone-error' : undefined} className={inputCls('phone')} />
+            </Field>
+            <Field id="es-spec" label="Specialty / title" required error={errors.specialty}>
+              <input id="es-spec" type="text" value={form.specialty} onChange={(e) => patch('specialty', e.target.value)} aria-invalid={!!errors.specialty} aria-describedby={errors.specialty ? 'es-spec-error' : undefined} className={inputCls('specialty')} />
+            </Field>
+            <Field id="es-role" label="Assigned role">
+              <select id="es-role" value={form.role} onChange={(e) => patch('role', e.target.value)} className={inputCls('')}>
+                {Object.entries(ROLE_DETAILS).map(([rk, rm]) => <option key={rk} value={rk}>{rm.label}</option>)}
               </select>
-            </div>
-
+            </Field>
             {form.role === 'therapist' && (
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-400">Commission Rate (%)</label>
-                <input
-                  type="number"
-                  value={form.commRate}
-                  onChange={(e) => handleChange('commRate', e.target.value)}
-                  className={`w-full rounded-2xl border px-3.5 py-2.5 text-xs outline-none ${
-                    errors.commRate ? 'border-red-500' : isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
-                  }`}
-                />
-                {errors.commRate && <p className="text-[10px] text-red-500">{errors.commRate}</p>}
-              </div>
+              <Field id="es-comm" label="Commission rate (%)" error={errors.commRate}>
+                <input id="es-comm" type="number" min="0" max="100" value={form.commRate} onChange={(e) => patch('commRate', e.target.value)} aria-invalid={!!errors.commRate} aria-describedby={errors.commRate ? 'es-comm-error' : undefined} className={inputCls('commRate')} />
+              </Field>
             )}
           </div>
-
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-semibold text-slate-400">Status</span>
-            <button
-              type="button"
-              onClick={() => handleChange('status', form.status === 'active' ? 'inactive' : 'active')}
-              className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                form.status === 'active' ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10' : 'border-slate-600 text-slate-400'
-              }`}
-            >
-              {form.status === 'active' ? 'Active' : 'Inactive'}
+            <button type="button" role="switch" aria-checked={form.status === 'active'} aria-label="Account active" onClick={() => patch('status', form.status === 'active' ? 'inactive' : 'active')} className={`min-h-[36px] rounded-full border px-4 py-1.5 text-xs font-bold ${form.status === 'active' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500' : 'border-slate-600 text-slate-400'}`}>
+              {form.status === 'active' ? '✓ Active' : 'Inactive'}
             </button>
           </div>
-
-          <div className="pt-4 flex justify-end gap-2 border-t border-slate-800">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-700">
-              Cancel
-            </button>
-            <button type="submit" className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl">
-              Save Changes
-            </button>
+          <div className="flex flex-col-reverse justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800 sm:flex-row">
+            <button type="button" onClick={onClose} className="min-h-[44px] rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold dark:border-slate-700">Cancel</button>
+            <button type="submit" className="min-h-[44px] rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-500">Save changes</button>
           </div>
         </form>
       </motion.div>
@@ -757,601 +828,819 @@ function EditStaffModal({ isOpen, onClose, staffMember, onSaveStaff, existingSta
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────── */
-/*  MAIN SYSTEM SETTINGS PAGE                                           */
-/* ─────────────────────────────────────────────────────────────────── */
+function ConfirmDialog({ isOpen, onClose, onConfirm, title, body, confirmLabel = 'Delete', isDark }) {
+  const confirmRef = useRef(null);
+  useModalBehavior(isOpen, onClose, confirmRef);
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+      <motion.div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-body"
+        initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.98 }}
+        onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-md rounded-t-3xl border p-6 shadow-2xl sm:rounded-3xl ${isDark ? 'border-slate-800 bg-slate-900 text-slate-100' : 'border-slate-200 bg-white text-slate-900'}`}
+      >
+        <h3 id="confirm-title" className="text-sm font-bold">{title}</h3>
+        <p id="confirm-body" className="mt-1 text-xs leading-relaxed text-slate-400">{body}</p>
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button type="button" onClick={onClose} className="min-h-[44px] rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold dark:border-slate-700">Cancel</button>
+          <button type="button" ref={confirmRef} onClick={onConfirm} className="min-h-[44px] rounded-xl bg-red-600 px-5 py-2 text-xs font-bold text-white hover:bg-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">{confirmLabel}</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ── main page ────────────────────────────────────────────────────── */
+
+const TABS = [
+  { id: 'config', label: 'Business', full: 'Spa & Business Config', icon: Sliders },
+  { id: 'booking', label: 'Booking Rules', full: 'Booking & Operations', icon: CalendarClock },
+  { id: 'staff', label: 'Staff', full: 'Staff Provisioning', icon: UserPlus },
+  { id: 'cms', label: 'Content', full: 'Content Management', icon: Globe },
+  { id: 'notifications', label: 'Alerts', full: 'Alert Triggers', icon: Bell },
+  { id: 'system', label: 'Payments & System', full: 'Payments, Security & Data', icon: Wallet },
+];
 
 const AdminSettings = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || 'config');
-  const [toastMessage, setToastMessage] = useState('');
+  const [activeTab, setActiveTab] = useState(TABS.some((t) => t.id === tabFromUrl) ? tabFromUrl : 'config');
+  const [toasts, setToasts] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(() => window.localStorage.getItem('cozyblissful.settings.savedAt') || '');
+  const tabRefs = useRef({});
 
-  // Staff State
-  const [staffList, setStaffList] = useState(INITIAL_STAFF);
+  /* persisted settings (draft + saved snapshot for dirty tracking) */
+  const [saved, setSaved] = useState(() => loadJSON(SETTINGS_KEY, {
+    business: BUSINESS_DEFAULTS, booking: BOOKING_DEFAULTS, cms: CMS_DEFAULTS,
+    notifs: NOTIF_DEFAULTS, system: SYSTEM_DEFAULTS,
+  }));
+  const [business, setBusiness] = useState(saved.business);
+  const [booking, setBooking] = useState(saved.booking);
+  const [cms, setCms] = useState(saved.cms);
+  const [notifs, setNotifs] = useState(saved.notifs);
+  const [system, setSystem] = useState(saved.system);
+
+  const [bizErrors, setBizErrors] = useState({});
+  const [bookErrors, setBookErrors] = useState({});
+  const [cmsErrors, setCmsErrors] = useState({});
+  const [notifErrors, setNotifErrors] = useState({});
+  const [sysErrors, setSysErrors] = useState({});
+
+  /* staff */
+  const [staffList, setStaffList] = useState(() => loadJSON(STAFF_KEY, { list: INITIAL_STAFF }).list || INITIAL_STAFF);
   const [searchStaff, setSearchStaff] = useState('');
   const [filterRole, setFilterRole] = useState('all');
-  const [isAddStaffOpen, setIsAddStaffOpen] = useState(false);
+  const [sortBy, setSortBy] = useState('recent');
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
-
-  // Spa Config State
-  const [spaConfig, setSpaConfig] = useState({
-    name: 'Cozy Blissful Spa Salon',
-    hoursOpen: '06:00 AM',
-    hoursClose: '11:00 PM',
-    address: 'Metropolitan Manila, Philippines',
-    phone: '+63 999 543 5913',
-    coverageRadius: '25 km radius (Metro Manila & Rizal)',
-    currency: 'PHP (₱)',
-    cancellationWindow: '2 hours before session'
-  });
-
-  // CMS Copy State
-  const [cmsConfig, setCmsConfig] = useState({
-    heroTitle: 'Spa & Salon Quality at Your Service.',
-    heroSubtitle: 'Premium Spa Salon & Wellness',
-    heroDescription: 'Professional massage therapy, hair and nail care — delivered to your sanctuary. Available 7 days a week, 6:00 AM – 11:00 PM.',
-    facebookUrl: 'https://facebook.com/cozyblissful',
-    instagramUrl: 'https://instagram.com/cozyblissful',
-    promoBannerText: '✨ Special Offer: Get 15% off on Weekend Combination Massages!'
-  });
-
-  // Notification Triggers
-  const [notifications, setNotifications] = useState({
-    smsBookingCreated: true,
-    smsBookingApproved: true,
-    emailBookingCreated: true,
-    emailPromoUpdates: false,
-    therapistDispatchAlert: true
-  });
+  const [deletingStaff, setDeletingStaff] = useState(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl, activeTab]);
+    try { window.localStorage.setItem(STAFF_KEY, JSON.stringify({ list: staffList })); } catch { /* storage full — non-fatal */ }
+  }, [staffList]);
+
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab && TABS.some((t) => t.id === tabFromUrl)) setActiveTab(tabFromUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabFromUrl]);
+
+  const pushToast = useCallback((msg, type = 'success') => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev.slice(-2), { id, msg, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3800);
+  }, []);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
-    setSearchParams({ tab: tabId });
+    setSearchParams({ tab: tabId }, { replace: true });
   };
 
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
+  const onTabKeyDown = (e) => {
+    const idx = TABS.findIndex((t) => t.id === activeTab);
+    let next = null;
+    if (e.key === 'ArrowRight') next = TABS[(idx + 1) % TABS.length].id;
+    else if (e.key === 'ArrowLeft') next = TABS[(idx - 1 + TABS.length) % TABS.length].id;
+    else if (e.key === 'Home') next = TABS[0].id;
+    else if (e.key === 'End') next = TABS[TABS.length - 1].id;
+    if (next) { e.preventDefault(); handleTabChange(next); requestAnimationFrame(() => tabRefs.current[next]?.focus()); }
   };
 
-  const handleSaveGeneral = (e) => {
-    e.preventDefault();
-    triggerToast('System configurations updated successfully!');
+  const persistAll = (next) => {
+    try {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+      const stamp = new Date().toISOString();
+      window.localStorage.setItem('cozyblissful.settings.savedAt', stamp);
+      setLastSavedAt(stamp);
+    } catch {
+      pushToast('Storage is full — changes kept for this session only.', 'error');
+    }
   };
 
-  const handleAddStaff = (newStaff) => {
-    setStaffList(prev => [newStaff, ...prev]);
-    triggerToast(`Added ${newStaff.name} as ${ROLE_DETAILS[newStaff.role]?.label || newStaff.role}`);
+  const fakeLatency = () => new Promise((r) => setTimeout(r, 550));
+
+  const saveSection = async (section) => {
+    const map = {
+      business: [business, validateBusiness, setBizErrors],
+      booking: [booking, validateBooking, setBookErrors],
+      cms: [cms, validateCMS, setCmsErrors],
+      notifs: [notifs, validateAlerts, setNotifErrors],
+      system: [system, validateSystem, setSysErrors],
+    };
+    const [draft, validator, setErr] = map[section];
+    const errs = validator(draft);
+    setErr(errs);
+    if (Object.keys(errs).length) {
+      pushToast('Please fix the highlighted fields before saving.', 'error');
+      return;
+    }
+    setSaving(true);
+    await fakeLatency();
+    setSaving(false);
+    const next = { ...saved, [section]: draft };
+    setSaved(next);
+    persistAll(next);
+    pushToast('Settings saved successfully.');
   };
 
-  const handleSaveStaff = (updatedStaff) => {
-    setStaffList(prev => prev.map(s => s.id === updatedStaff.id ? updatedStaff : s));
-    triggerToast(`Profile for ${updatedStaff.name} updated!`);
+  const resetSection = (section) => {
+    const restore = { business: setBusiness, booking: setBooking, cms: setCms, notifs: setNotifs, system: setSystem };
+    const clearErr = { business: setBizErrors, booking: setBookErrors, cms: setCmsErrors, notifs: setNotifErrors, system: setSysErrors };
+    restore[section](saved[section]);
+    clearErr[section]({});
   };
 
+  const isDirty = (section, draft) => JSON.stringify(draft) !== JSON.stringify(saved[section]);
+
+  /* staff actions */
+  const handleAddStaff = (s) => {
+    setStaffList((prev) => [s, ...prev]);
+    pushToast(`Added ${s.name} as ${ROLE_DETAILS[s.role]?.label || s.role}.`);
+  };
+  const handleSaveStaff = (u) => {
+    setStaffList((prev) => prev.map((s) => (s.id === u.id ? u : s)));
+    pushToast(`Profile for ${u.name} updated.`);
+  };
   const toggleStaffStatus = (id) => {
-    setStaffList(prev => prev.map(s => {
-      if (s.id === id) {
-        const nextStatus = s.status === 'active' ? 'inactive' : 'active';
-        triggerToast(`${s.name} is now ${nextStatus}`);
-        return { ...s, status: nextStatus };
-      }
-      return s;
+    setStaffList((prev) => prev.map((s) => {
+      if (s.id !== id) return s;
+      const nextStatus = s.status === 'active' ? 'inactive' : 'active';
+      pushToast(`${s.name} is now ${nextStatus}.`, 'info');
+      return { ...s, status: nextStatus };
     }));
   };
+  const confirmDeleteStaff = () => {
+    if (!deletingStaff) return;
+    setStaffList((prev) => prev.filter((s) => s.id !== deletingStaff.id));
+    pushToast(`Removed ${deletingStaff.name} from the directory.`, 'info');
+    setDeletingStaff(null);
+  };
 
-  // Filtered staff list
+  const exportStaffCSV = () => {
+    const rows = [['Name', 'Email', 'Phone', 'Role', 'Specialty', 'Shift', 'Commission %', 'Status', 'Joined']];
+    staffList.forEach((s) => rows.push([s.name, s.email, s.phone, ROLE_DETAILS[s.role]?.label || s.role, s.specialty, s.shift, s.commRate, s.status, s.joined]));
+    const csv = rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cozy-blissful-staff.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    pushToast('Staff directory exported as CSV.');
+  };
+
+  const exportSettingsJSON = () => {
+    const blob = new Blob([JSON.stringify({ app: 'cozy-blissful', version: 1, exportedAt: new Date().toISOString(), settings: saved }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cozy-blissful-settings.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    pushToast('Settings bundle downloaded.');
+  };
+
+  const importSettingsJSON = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        const incoming = parsed.settings || parsed;
+        const next = {
+          business: { ...BUSINESS_DEFAULTS, ...(incoming.business || {}) },
+          booking: { ...BOOKING_DEFAULTS, ...(incoming.booking || {}) },
+          cms: { ...CMS_DEFAULTS, ...(incoming.cms || {}) },
+          notifs: { ...NOTIF_DEFAULTS, ...(incoming.notifs || {}) },
+          system: { ...SYSTEM_DEFAULTS, ...(incoming.system || {}) },
+        };
+        setSaved(next);
+        setBusiness(next.business); setBooking(next.booking); setCms(next.cms);
+        setNotifs(next.notifs); setSystem(next.system);
+        persistAll(next);
+        pushToast('Settings imported and applied.');
+      } catch {
+        pushToast('Import failed — not a valid settings JSON file.', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const factoryReset = () => {
+    const fresh = { business: BUSINESS_DEFAULTS, booking: BOOKING_DEFAULTS, cms: CMS_DEFAULTS, notifs: NOTIF_DEFAULTS, system: SYSTEM_DEFAULTS };
+    setSaved(fresh);
+    setBusiness(fresh.business); setBooking(fresh.booking); setCms(fresh.cms);
+    setNotifs(fresh.notifs); setSystem(fresh.system);
+    setBizErrors({}); setBookErrors({}); setCmsErrors({}); setNotifErrors({}); setSysErrors({});
+    persistAll(fresh);
+    setShowResetConfirm(false);
+    pushToast('Settings restored to factory defaults.', 'info');
+  };
+
   const filteredStaff = useMemo(() => {
-    return staffList.filter(s => {
-      const matchSearch = s.name.toLowerCase().includes(searchStaff.toLowerCase()) ||
-                          s.email.toLowerCase().includes(searchStaff.toLowerCase()) ||
-                          s.specialty.toLowerCase().includes(searchStaff.toLowerCase());
+    const q = searchStaff.trim().toLowerCase();
+    const list = staffList.filter((s) => {
+      const matchSearch = !q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q) || s.specialty.toLowerCase().includes(q);
       const matchRole = filterRole === 'all' || s.role === filterRole;
       return matchSearch && matchRole;
     });
-  }, [staffList, searchStaff, filterRole]);
+    const sorted = [...list];
+    if (sortBy === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sortBy === 'role') sorted.sort((a, b) => a.role.localeCompare(b.role));
+    return sorted;
+  }, [staffList, searchStaff, filterRole, sortBy]);
 
-  const tabItems = [
-    { id: 'config', label: 'Spa & Business Config', icon: Sliders },
-    { id: 'staff', label: 'Staff Provisioning', icon: UserPlus, badge: staffList.length },
-    { id: 'cms', label: 'Content Management', icon: Globe },
-    { id: 'notifications', label: 'Alert Triggers', icon: Bell }
-  ];
+  const activeCount = staffList.filter((s) => s.status === 'active').length;
+  const storageBytes = useMemo(() => {
+    try {
+      return (JSON.stringify(saved) || '').length + (JSON.stringify(staffList) || '').length;
+    } catch { return 0; }
+  }, [saved, staffList]);
 
-  const fieldStyles = `w-full rounded-2xl border px-4 py-3 text-xs outline-none transition shadow-sm ${
-    isDark
-      ? 'border-slate-800 bg-slate-950 text-slate-100 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-      : 'border-slate-200 bg-slate-50 text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-200/80'
-  }`;
+  const fieldCls = (err) => fieldClasses(isDark, err);
+  const activeTabMeta = TABS.find((t) => t.id === activeTab);
 
   return (
-    <AdminLayout title="System Settings" subtitle="Configure operating profile, staff access control, landing page copy & notification triggers" icon={Sliders}>
-      <div className="space-y-6">
-        {/* Toast Alert */}
-        <AnimatePresence>
-          {toastMessage && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-950 text-emerald-100 px-5 py-3.5 text-xs font-bold shadow-2xl shadow-emerald-950/40"
-            >
-              <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-              <span>{toastMessage}</span>
-            </motion.div>
+    <AdminLayout title="System Settings" subtitle="Operating profile, booking rules, staff access, landing content, alerts, payments & security" icon={Sliders}>
+      <MotionConfig reducedMotion="user">
+        <div className="space-y-5 pb-10">
+          <Toasts toasts={toasts} />
+
+          {/* last-saved strip */}
+          {lastSavedAt && (
+            <p className="flex items-center gap-1.5 text-[11px] text-slate-500" role="status">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+              Last saved {new Date(lastSavedAt).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              <span aria-hidden="true">•</span> stored locally on this device
+            </p>
           )}
-        </AnimatePresence>
 
-        {/* Tab Navigation Pill Bar */}
-        <div className={`rounded-3xl border p-1.5 shadow-sm ${
-          isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-slate-50/90'
-        }`}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
-            {tabItems.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center justify-center gap-2 rounded-2xl py-3 px-3 text-xs font-bold transition-all relative ${
-                    active
-                      ? isDark
-                        ? 'border border-emerald-500/40 bg-slate-900 text-emerald-400 shadow-md'
-                        : 'border border-emerald-500/30 bg-emerald-100/90 text-emerald-950 shadow-sm'
-                      : isDark
-                        ? 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                        : 'text-slate-600 hover:bg-white hover:text-slate-900'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="truncate">{tab.label}</span>
-                  {tab.badge !== undefined && (
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${
-                      active
-                        ? 'bg-emerald-500 text-white'
-                        : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600'
-                    }`}>
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* TAB 1: SPA CONFIGURATION */}
-        {activeTab === 'config' && (
-          <form onSubmit={handleSaveGeneral} className={`rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6 ${
-            isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'
-          }`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5 border-slate-200 dark:border-slate-800">
-              <div>
-                <p className="text-xs uppercase tracking-widest font-bold text-emerald-500">Business Profile</p>
-                <h2 className="text-lg font-bold mt-1">Spa Details & Operational Hours</h2>
-              </div>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white transition shadow-lg shadow-emerald-600/20"
-              >
-                <Save className="h-3.5 w-3.5" /> Save Changes
-              </button>
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Official Spa Brand Name</label>
-                <input
-                  type="text"
-                  value={spaConfig.name}
-                  onChange={(e) => setSpaConfig({ ...spaConfig, name: e.target.value })}
-                  className={fieldStyles}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Hotline Contact Number</label>
-                <input
-                  type="text"
-                  value={spaConfig.phone}
-                  onChange={(e) => setSpaConfig({ ...spaConfig, phone: e.target.value })}
-                  className={fieldStyles}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Daily Opening Schedule Time</label>
-                <input
-                  type="text"
-                  value={spaConfig.hoursOpen}
-                  onChange={(e) => setSpaConfig({ ...spaConfig, hoursOpen: e.target.value })}
-                  className={fieldStyles}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Daily Closing Cut-off Time</label>
-                <input
-                  type="text"
-                  value={spaConfig.hoursClose}
-                  onChange={(e) => setSpaConfig({ ...spaConfig, hoursClose: e.target.value })}
-                  className={fieldStyles}
-                />
-              </div>
-
-              <div className="space-y-1.5 sm:col-span-2">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Primary Service Coverage Area</label>
-                <input
-                  type="text"
-                  value={spaConfig.address}
-                  onChange={(e) => setSpaConfig({ ...spaConfig, address: e.target.value })}
-                  className={fieldStyles}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Therapist Dispatch Radius Limit</label>
-                <input
-                  type="text"
-                  value={spaConfig.coverageRadius}
-                  onChange={(e) => setSpaConfig({ ...spaConfig, coverageRadius: e.target.value })}
-                  className={fieldStyles}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Auto-Cancellation Buffer Window</label>
-                <input
-                  type="text"
-                  value={spaConfig.cancellationWindow}
-                  onChange={(e) => setSpaConfig({ ...spaConfig, cancellationWindow: e.target.value })}
-                  className={fieldStyles}
-                />
-              </div>
-            </div>
-          </form>
-        )}
-
-        {/* TAB 2: STAFF PROVISIONING & QUICK MANAGEMENT */}
-        {activeTab === 'staff' && (
-          <div className="space-y-5">
-            {/* Header & Add Staff Button */}
-            <div className={`p-6 sm:p-8 rounded-3xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-              isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'
-            }`}>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs uppercase tracking-widest font-bold text-emerald-500">Access Control & Staffing</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                    {staffList.filter(s => s.status === 'active').length} Active Accounts
-                  </span>
-                </div>
-                <h2 className="text-lg font-bold mt-1">Staff Provisioning & System Access</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Onboard therapists and administrative staff with direct role permissions & credentials.</p>
-              </div>
-
-              {/* Add New Staff Button */}
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setIsAddStaffOpen(true)}
-                className="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-600/25 transition flex-shrink-0"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>+ Add New Staff Member</span>
-              </motion.button>
-            </div>
-
-            {/* Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Search */}
-              <div className={`flex-1 flex items-center gap-2.5 px-4 py-3 rounded-2xl border ${
-                isDark ? 'border-slate-800 bg-slate-950 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
-              }`}>
-                <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search staff by name, work email, or specialty..."
-                  value={searchStaff}
-                  onChange={(e) => setSearchStaff(e.target.value)}
-                  className="w-full bg-transparent text-xs outline-none"
-                />
-                {searchStaff && (
-                  <button onClick={() => setSearchStaff('')} className="text-slate-400 hover:text-slate-200">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Role Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                {['all', 'manager', 'staff', 'therapist'].map(roleKey => {
-                  const isActive = filterRole === roleKey;
-                  const label = roleKey === 'all' ? 'All Roles' : (ROLE_DETAILS[roleKey]?.label || roleKey);
-                  return (
-                    <button
-                      key={roleKey}
-                      onClick={() => setFilterRole(roleKey)}
-                      className={`px-3.5 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap border ${
-                        isActive
-                          ? 'border-emerald-500 bg-emerald-600 text-white shadow-md'
-                          : isDark ? 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Staff List Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredStaff.map((staff) => {
-                const roleMeta = ROLE_DETAILS[staff.role] || ROLE_DETAILS.therapist;
-                const isActive = staff.status === 'active';
-
+          {/* ── accessible tab bar: scroll-snap on mobile, grid on desktop ── */}
+          <div className={`rounded-3xl border p-1.5 shadow-sm ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-slate-50/90'}`}>
+            <div
+              role="tablist"
+              aria-label="Settings sections"
+              onKeyDown={onTabKeyDown}
+              className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:grid lg:grid-cols-6 lg:overflow-visible"
+            >
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                const selected = activeTab === tab.id;
+                const dirtyDot = (tab.id === 'config' && isDirty('business', business))
+                  || (tab.id === 'booking' && isDirty('booking', booking))
+                  || (tab.id === 'cms' && isDirty('cms', cms))
+                  || (tab.id === 'notifications' && isDirty('notifs', notifs))
+                  || (tab.id === 'system' && isDirty('system', system));
                 return (
-                  <motion.div
-                    key={staff.id}
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className={`p-5 rounded-3xl border flex flex-col justify-between gap-4 transition shadow-sm ${
-                      isDark ? 'border-slate-800 bg-slate-950/80 hover:border-slate-700' : 'border-slate-200 bg-white hover:border-slate-300'
+                  <button
+                    key={tab.id}
+                    ref={(el) => { tabRefs.current[tab.id] = el; }}
+                    type="button"
+                    role="tab"
+                    id={`tab-${tab.id}`}
+                    aria-selected={selected}
+                    aria-controls={`panel-${tab.id}`}
+                    tabIndex={selected ? 0 : -1}
+                    title={tab.full}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`flex min-h-[44px] min-w-[132px] snap-start items-center justify-center gap-2 rounded-2xl px-3 py-3 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 lg:min-w-0 ${
+                      selected
+                        ? isDark
+                          ? 'border border-emerald-500/40 bg-slate-900 text-emerald-400 shadow-md'
+                          : 'border border-emerald-500/30 bg-emerald-100/90 text-emerald-950 shadow-sm'
+                        : isDark
+                          ? 'border border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                          : 'border border-transparent text-slate-600 hover:bg-white hover:text-slate-900'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-md" style={{ background: roleMeta.grad }}>
-                          {staff.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">{staff.name}</h3>
-                            <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                          </div>
-                          <p className="text-[11px] text-slate-400 mt-0.5">{staff.email}</p>
-                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">{staff.specialty}</p>
-                        </div>
-                      </div>
-
-                      <span className="text-[9px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex-shrink-0" style={{ background: roleMeta.bg, color: roleMeta.color }}>
-                        {roleMeta.label}
+                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{tab.label}</span>
+                    {tab.id === 'staff' && (
+                      <span aria-label={`${staffList.length} staff members`} className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${selected ? 'bg-emerald-500 text-white' : isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600'}`}>
+                        {staffList.length}
                       </span>
-                    </div>
-
-                    <div className={`p-3 rounded-2xl text-[11px] space-y-1.5 ${
-                      isDark ? 'bg-slate-900/60 text-slate-400' : 'bg-slate-50 text-slate-600'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-slate-400">
-                          <Phone className="w-3 h-3 text-slate-400" /> {staff.phone}
-                        </span>
-                        <span className="font-semibold">{staff.shift} Shift</span>
-                      </div>
-                      {staff.role === 'therapist' && (
-                        <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-1.5 mt-1.5">
-                          <span>Commission Share:</span>
-                          <span className="font-bold text-amber-500">{staff.commRate}%</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[10px] text-slate-400 font-medium">Joined: {staff.joined}</span>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleStaffStatus(staff.id)}
-                          className={`px-3 py-1 rounded-xl text-[10px] font-bold border transition ${
-                            isActive
-                              ? 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20'
-                              : 'border-slate-700 text-slate-400 bg-slate-800 hover:bg-slate-700'
-                          }`}
-                        >
-                          {isActive ? '✓ Active' : 'Activate'}
-                        </button>
-                        <button
-                          onClick={() => setEditingStaff(staff)}
-                          className="p-1.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition"
-                          title="Edit Profile"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
+                    )}
+                    {dirtyDot && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Unsaved changes" aria-label="Unsaved changes" />}
+                  </button>
                 );
               })}
+            </div>
+          </div>
 
-              {filteredStaff.length === 0 && (
-                <div className={`col-span-full p-12 text-center rounded-3xl border border-dashed ${
-                  isDark ? 'border-slate-800 bg-slate-950/40 text-slate-400' : 'border-slate-300 bg-slate-50 text-slate-600'
-                }`}>
-                  <UserPlus className="w-10 h-10 mx-auto text-slate-400 mb-3 opacity-40" />
-                  <p className="text-sm font-bold">No staff accounts match your search filters</p>
-                  <p className="text-xs text-slate-400 mt-1">Try clearing your search query or onboard a new staff member.</p>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              role="tabpanel"
+              id={`panel-${activeTab}`}
+              aria-labelledby={`tab-${activeTab}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22 }}
+            >
+              {/* ═══ TAB 1 · BUSINESS ═══ */}
+              {activeTab === 'config' && (
+                <SectionCard isDark={isDark} eyebrow="Business profile" title="Spa details & operational hours"
+                  desc="This drives booking availability, receipts and the client-facing footer. Times are checked against booking rules on save."
+                  dirty={isDirty('business', business)} saving={saving}
+                  onSave={() => saveSection('business')} onReset={() => resetSection('business')}>
+                  <FormErrorSummary errors={bizErrors} />
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <Field id="biz-name" label="Official spa brand name" required error={bizErrors.name} counter={`${business.name.length}/80`}>
+                      <input id="biz-name" type="text" maxLength={80} value={business.name} onChange={(e) => setBusiness({ ...business, name: e.target.value })} aria-invalid={!!bizErrors.name} aria-describedby={bizErrors.name ? 'biz-name-error' : undefined} className={fieldCls(bizErrors.name)} autoComplete="organization" />
+                    </Field>
+                    <Field id="biz-phone" label="Hotline contact number" required error={bizErrors.phone} hint="PH mobile — used for SMS sender display.">
+                      <input id="biz-phone" type="tel" inputMode="tel" value={business.phone} onChange={(e) => setBusiness({ ...business, phone: e.target.value })} aria-invalid={!!bizErrors.phone} aria-describedby={bizErrors.phone ? 'biz-phone-error' : 'biz-phone-hint'} className={fieldCls(bizErrors.phone)} autoComplete="tel" />
+                    </Field>
+                    <Field id="biz-open" label="Daily opening time" required error={bizErrors.openTime} hint={`Opens ${to12h(business.openTime)}`}>
+                      <input id="biz-open" type="time" value={business.openTime} onChange={(e) => setBusiness({ ...business, openTime: e.target.value })} aria-invalid={!!bizErrors.openTime} aria-describedby={bizErrors.openTime ? 'biz-open-error' : 'biz-open-hint'} className={fieldCls(bizErrors.openTime)} />
+                    </Field>
+                    <Field id="biz-close" label="Daily closing time" required error={bizErrors.closeTime} hint={`Last session must end by ${to12h(business.closeTime)}`}>
+                      <input id="biz-close" type="time" value={business.closeTime} onChange={(e) => setBusiness({ ...business, closeTime: e.target.value })} aria-invalid={!!bizErrors.closeTime} aria-describedby={bizErrors.closeTime ? 'biz-close-error' : 'biz-close-hint'} className={fieldCls(bizErrors.closeTime)} />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field id="biz-addr" label="Primary service coverage area" required error={bizErrors.address}>
+                        <input id="biz-addr" type="text" value={business.address} onChange={(e) => setBusiness({ ...business, address: e.target.value })} aria-invalid={!!bizErrors.address} aria-describedby={bizErrors.address ? 'biz-addr-error' : undefined} className={fieldCls(bizErrors.address)} autoComplete="address-level2" />
+                      </Field>
+                    </div>
+                    <Field id="biz-radius" label="Dispatch radius (km)" required error={bizErrors.coverageRadiusKm} hint="Home-service limit from the branch.">
+                      <input id="biz-radius" type="number" min="1" max="200" value={business.coverageRadiusKm} onChange={(e) => setBusiness({ ...business, coverageRadiusKm: e.target.value })} aria-invalid={!!bizErrors.coverageRadiusKm} aria-describedby={bizErrors.coverageRadiusKm ? 'biz-radius-error' : 'biz-radius-hint'} className={fieldCls(bizErrors.coverageRadiusKm)} />
+                    </Field>
+                    <Field id="biz-cancel" label="Auto-cancellation window (hrs)" required error={bizErrors.cancellationWindowHrs} hint="Free cancellation allowed before this cutoff.">
+                      <input id="biz-cancel" type="number" min="0.5" max="72" step="0.5" value={business.cancellationWindowHrs} onChange={(e) => setBusiness({ ...business, cancellationWindowHrs: e.target.value })} aria-invalid={!!bizErrors.cancellationWindowHrs} aria-describedby={bizErrors.cancellationWindowHrs ? 'biz-cancel-error' : 'biz-cancel-hint'} className={fieldCls(bizErrors.cancellationWindowHrs)} />
+                    </Field>
+                  </div>
+                  {/* live summary */}
+                  <div className={`flex flex-col gap-2 rounded-2xl border p-4 text-xs sm:flex-row sm:items-center ${isDark ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-emerald-600/20 bg-emerald-50'}`}>
+                    <Phone className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
+                    <p className="leading-relaxed text-slate-400">
+                      <strong className="text-slate-200 dark:text-slate-100">{business.name || 'Your spa'}</strong>
+                      {' '}· {to12h(business.openTime)} – {to12h(business.closeTime)} · {business.phone || 'no hotline'} · within {business.coverageRadiusKm || '—'} km of {business.address || '—'}
+                    </p>
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* ═══ TAB 2 · BOOKING RULES (NEW) ═══ */}
+              {activeTab === 'booking' && (
+                <SectionCard isDark={isDark} eyebrow="Operations" title="Booking rules & capacity"
+                  desc="Slot math, lead times and concurrency. These guard the client slot picker against overbooking."
+                  dirty={isDirty('booking', booking)} saving={saving}
+                  onSave={() => saveSection('booking')} onReset={() => resetSection('booking')}>
+                  <FormErrorSummary errors={bookErrors} />
+                  <fieldset>
+                    <legend className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Operating days *</legend>
+                    <div className="flex flex-wrap gap-2" role="group" aria-describedby={bookErrors.operatingDays ? 'op-days-error' : 'op-days-hint'}>
+                      {WEEKDAYS.map((d) => {
+                        const on = booking.operatingDays.includes(d);
+                        return (
+                          <button key={d} type="button" aria-pressed={on}
+                            onClick={() => setBooking({ ...booking, operatingDays: on ? booking.operatingDays.filter((x) => x !== d) : [...booking.operatingDays, d] })}
+                            className={`min-h-[44px] min-w-[56px] rounded-2xl border px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${on ? 'border-emerald-500 bg-emerald-600 text-white shadow-md' : isDark ? 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-600'}`}>
+                            {d}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p id="op-days-hint" className="mt-1.5 text-[11px] text-slate-500">
+                      {booking.operatingDays.length} day(s) open
+                      {business.openTime && business.closeTime ? ` · ${to12h(business.openTime)} – ${to12h(business.closeTime)}` : ''}
+                      {business.openTime && business.closeTime ? ` · ~${Math.max(0, Math.floor((toMinutes(business.closeTime) - toMinutes(business.openTime) + (toMinutes(business.closeTime) <= toMinutes(business.openTime) ? 1440 : 0)) / Number(booking.slotIntervalMin || 30)))} slots/day` : ''}.
+                    </p>
+                    {bookErrors.operatingDays && <p id="op-days-error" role="alert" className="mt-1 text-[11px] font-medium text-red-500">{bookErrors.operatingDays}</p>}
+                  </fieldset>
+
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <Field id="bk-slot" label="Slot interval (min)" required error={bookErrors.slotIntervalMin}>
+                      <select id="bk-slot" value={booking.slotIntervalMin} onChange={(e) => setBooking({ ...booking, slotIntervalMin: e.target.value })} className={fieldCls(bookErrors.slotIntervalMin)} aria-invalid={!!bookErrors.slotIntervalMin} aria-describedby={bookErrors.slotIntervalMin ? 'bk-slot-error' : undefined}>
+                        {['15', '20', '30', '45', '60'].map((v) => <option key={v} value={v}>Every {v} minutes</option>)}
+                      </select>
+                    </Field>
+                    <Field id="bk-buffer" label="Buffer between sessions (min)" required error={bookErrors.bufferMin} hint="Room reset + travel padding.">
+                      <input id="bk-buffer" type="number" min="0" max="60" value={booking.bufferMin} onChange={(e) => setBooking({ ...booking, bufferMin: e.target.value })} className={fieldCls(bookErrors.bufferMin)} aria-invalid={!!bookErrors.bufferMin} aria-describedby={bookErrors.bufferMin ? 'bk-buffer-error' : 'bk-buffer-hint'} />
+                    </Field>
+                    <Field id="bk-lead" label="Min. lead time (hrs)" required error={bookErrors.minLeadTimeHrs} hint="Blocks same-hour rush bookings.">
+                      <input id="bk-lead" type="number" min="0.5" max="72" step="0.5" value={booking.minLeadTimeHrs} onChange={(e) => setBooking({ ...booking, minLeadTimeHrs: e.target.value })} className={fieldCls(bookErrors.minLeadTimeHrs)} aria-invalid={!!bookErrors.minLeadTimeHrs} aria-describedby={bookErrors.minLeadTimeHrs ? 'bk-lead-error' : 'bk-lead-hint'} />
+                    </Field>
+                    <Field id="bk-adv" label="Max advance booking (days)" required error={bookErrors.maxAdvanceDays}>
+                      <input id="bk-adv" type="number" min="1" max="180" value={booking.maxAdvanceDays} onChange={(e) => setBooking({ ...booking, maxAdvanceDays: e.target.value })} className={fieldCls(bookErrors.maxAdvanceDays)} aria-invalid={!!bookErrors.maxAdvanceDays} aria-describedby={bookErrors.maxAdvanceDays ? 'bk-adv-error' : undefined} />
+                    </Field>
+                    <Field id="bk-noshow" label="No-show auto-cancel (min)" required error={bookErrors.autoCancelNoShowMin} hint="Frees the therapist slot.">
+                      <input id="bk-noshow" type="number" min="5" max="180" value={booking.autoCancelNoShowMin} onChange={(e) => setBooking({ ...booking, autoCancelNoShowMin: e.target.value })} className={fieldCls(bookErrors.autoCancelNoShowMin)} aria-invalid={!!bookErrors.autoCancelNoShowMin} aria-describedby={bookErrors.autoCancelNoShowMin ? 'bk-noshow-error' : 'bk-noshow-hint'} />
+                    </Field>
+                    <Field id="bk-cap" label="Max bookings / therapist / day" required error={bookErrors.maxPerTherapistPerDay}>
+                      <input id="bk-cap" type="number" min="1" max="30" value={booking.maxPerTherapistPerDay} onChange={(e) => setBooking({ ...booking, maxPerTherapistPerDay: e.target.value })} className={fieldCls(bookErrors.maxPerTherapistPerDay)} aria-invalid={!!bookErrors.maxPerTherapistPerDay} aria-describedby={bookErrors.maxPerTherapistPerDay ? 'bk-cap-error' : undefined} />
+                    </Field>
+                  </div>
+
+                  <div className={`grid grid-cols-1 gap-4 rounded-2xl border p-4 sm:grid-cols-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50/70'}`}>
+                    <Toggle id="bk-walk" checked={booking.allowWalkIns} onChange={(v) => setBooking({ ...booking, allowWalkIns: v })} label="Allow walk-ins" desc="Front desk can create same-day sessions." />
+                    <Toggle id="bk-conc" checked={booking.allowConcurrentOverlap} onChange={(v) => setBooking({ ...booking, allowConcurrentOverlap: v })} label="Multi-therapist concurrency" desc="Overlapping slots allowed across therapists." />
+                    <Toggle id="bk-dep" checked={booking.requireDownpayment} onChange={(v) => setBooking({ ...booking, requireDownpayment: v })} label="Require downpayment" desc="Uses the % set in Payments & System." />
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* ═══ TAB 3 · STAFF ═══ */}
+              {activeTab === 'staff' && (
+                <div className="space-y-5">
+                  <section aria-label="Staff provisioning" className={`rounded-3xl border p-5 sm:p-7 ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'}`}>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-500">
+                          Access control & staffing
+                          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">{activeCount} active</span>
+                        </p>
+                        <h2 className="mt-1 text-base font-bold tracking-tight sm:text-lg">Staff provisioning & system access</h2>
+                        <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-slate-400">Onboard therapists and coordinators with role permissions. Directory persists on this device.</p>
+                      </div>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <button type="button" onClick={exportStaffCSV} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2.5 text-xs font-bold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-300">
+                          <Download className="h-4 w-4" aria-hidden="true" /> Export CSV
+                        </button>
+                        <motion.button type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={() => setIsAddOpen(true)}
+                          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-bold text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
+                          <UserPlus className="h-4 w-4" aria-hidden="true" /> Add new staff member
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-col gap-3 lg:flex-row">
+                      <div className={`flex flex-1 items-center gap-2.5 rounded-2xl border px-4 py-1 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'}`}>
+                        <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                        <label htmlFor="staff-search" className="sr-only">Search staff</label>
+                        <input id="staff-search" type="search" placeholder="Search name, email, or specialty…" value={searchStaff} onChange={(e) => setSearchStaff(e.target.value)}
+                          className="min-h-[44px] w-full bg-transparent text-sm outline-none placeholder:text-slate-500" />
+                        {searchStaff && (
+                          <button type="button" onClick={() => setSearchStaff('')} aria-label="Clear search" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-slate-200">
+                            <X className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter by role">
+                        {['all', 'manager', 'staff', 'therapist', 'receptionist'].map((rk) => {
+                          const on = filterRole === rk;
+                          return (
+                            <button key={rk} type="button" aria-pressed={on} onClick={() => setFilterRole(rk)}
+                              className={`min-h-[44px] whitespace-nowrap rounded-2xl border px-3.5 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${on ? 'border-emerald-500 bg-emerald-600 text-white shadow-md' : isDark ? 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-600'}`}>
+                              {rk === 'all' ? 'All roles' : ROLE_DETAILS[rk]?.label || rk}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <label className="flex min-h-[44px] items-center gap-2 text-xs text-slate-400">
+                        <span className="sr-only">Sort staff</span>
+                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort staff"
+                          className={`min-h-[44px] rounded-2xl border px-3 text-xs font-semibold outline-none ${isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-white'}`}>
+                          <option value="recent">Recently added</option>
+                          <option value="name">Name A–Z</option>
+                          <option value="role">By role</option>
+                        </select>
+                      </label>
+                    </div>
+                    <p className="mt-3 text-[11px] text-slate-500" role="status">
+                      Showing {filteredStaff.length} of {staffList.length} account(s){searchStaff && <> for “{searchStaff}”</>}.
+                    </p>
+                  </section>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="list" aria-label="Staff directory">
+                    {filteredStaff.map((staff) => {
+                      const meta = ROLE_DETAILS[staff.role] || ROLE_DETAILS.therapist;
+                      const on = staff.status === 'active';
+                      return (
+                        <motion.article key={staff.id} role="listitem" layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                          className={`flex flex-col justify-between gap-4 rounded-3xl border p-5 shadow-sm transition ${isDark ? 'border-slate-800 bg-slate-950/80 hover:border-slate-700' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-md" style={{ background: meta.grad }} aria-hidden="true">
+                                {staff.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="flex items-center gap-2 truncate text-xs font-bold">
+                                  {staff.name}
+                                  <span className={`h-2 w-2 shrink-0 rounded-full ${on ? 'bg-emerald-500' : 'bg-slate-400'}`} title={on ? 'Active' : 'Inactive'} aria-label={on ? 'Active account' : 'Inactive account'} />
+                                </h3>
+                                <p className="truncate text-[11px] text-slate-400">{staff.email}</p>
+                                <p className="mt-0.5 truncate text-[11px] font-medium text-slate-500">{staff.specialty}</p>
+                              </div>
+                            </div>
+                            <span className="shrink-0 rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider" style={{ background: meta.bg, color: meta.color }}>{meta.label}</span>
+                          </div>
+                          <dl className={`space-y-1.5 rounded-2xl p-3 text-[11px] ${isDark ? 'bg-slate-900/60 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <dt className="sr-only">Phone</dt>
+                              <dd className="flex min-w-0 items-center gap-1.5"><Phone className="h-3 w-3 shrink-0" aria-hidden="true" /><span className="truncate">{staff.phone}</span></dd>
+                              <dd className="shrink-0 font-semibold">{staff.shift} shift</dd>
+                            </div>
+                            {staff.role === 'therapist' && (
+                              <div className="mt-1.5 flex items-center justify-between border-t border-slate-500/15 pt-1.5">
+                                <dt>Commission share</dt>
+                                <dd className="font-bold text-amber-500">{staff.commRate}%</dd>
+                              </div>
+                            )}
+                          </dl>
+                          <div className="flex items-center justify-between gap-2 pt-1">
+                            <span className="text-[10px] font-medium text-slate-400">Joined {staff.joined}</span>
+                            <div className="flex items-center gap-2">
+                              <button type="button" onClick={() => toggleStaffStatus(staff.id)} aria-pressed={on} aria-label={`${on ? 'Deactivate' : 'Activate'} ${staff.name}`}
+                                className={`min-h-[36px] rounded-xl border px-3 py-1 text-[10px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${on ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20' : 'border-slate-600 text-slate-400 hover:bg-slate-500/10'}`}>
+                                {on ? '✓ Active' : 'Activate'}
+                              </button>
+                              <button type="button" onClick={() => setEditingStaff(staff)} aria-label={`Edit ${staff.name}`} title="Edit profile"
+                                className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-600 text-slate-400 transition hover:bg-slate-500/10 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                                <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                              </button>
+                              <button type="button" onClick={() => setDeletingStaff(staff)} aria-label={`Remove ${staff.name}`} title="Remove"
+                                className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-500/30 text-red-400 transition hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">
+                                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              </button>
+                            </div>
+                          </div>
+                        </motion.article>
+                      );
+                    })}
+                    {filteredStaff.length === 0 && (
+                      <div className={`col-span-full rounded-3xl border border-dashed p-12 text-center ${isDark ? 'border-slate-800 bg-slate-950/40 text-slate-400' : 'border-slate-300 bg-slate-50 text-slate-600'}`}>
+                        <UserPlus className="mx-auto mb-3 h-10 w-10 opacity-40" aria-hidden="true" />
+                        <p className="text-sm font-bold">No staff match your filters</p>
+                        <p className="mt-1 text-xs text-slate-400">Clear the search or onboard a new member.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
 
-        {/* TAB 3: CONTENT MANAGEMENT (CMS) */}
-        {activeTab === 'cms' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <form onSubmit={handleSaveGeneral} className={`lg:col-span-7 rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6 ${
-              isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'
-            }`}>
-              <div className="flex items-center justify-between border-b pb-5 border-slate-200 dark:border-slate-800">
-                <div>
-                  <p className="text-xs uppercase tracking-widest font-bold text-emerald-500">Landing Page Copy</p>
-                  <h2 className="text-lg font-bold mt-1">Hero Banner Messaging</h2>
-                </div>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white transition shadow-lg shadow-emerald-600/20"
-                >
-                  <Save className="h-3.5 w-3.5" /> Save Copy
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Main Heading Title</label>
-                  <input
-                    type="text"
-                    value={cmsConfig.heroTitle}
-                    onChange={(e) => setCmsConfig({ ...cmsConfig, heroTitle: e.target.value })}
-                    className={fieldStyles}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Pill Badge Subtitle Copy</label>
-                  <input
-                    type="text"
-                    value={cmsConfig.heroSubtitle}
-                    onChange={(e) => setCmsConfig({ ...cmsConfig, heroSubtitle: e.target.value })}
-                    className={fieldStyles}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Hero Subdescription Copy</label>
-                  <textarea
-                    rows="4"
-                    value={cmsConfig.heroDescription}
-                    onChange={(e) => setCmsConfig({ ...cmsConfig, heroDescription: e.target.value })}
-                    className={`${fieldStyles} resize-none min-h-[100px]`}
-                  />
-                </div>
-
-                <div className="space-y-1.5 pt-2">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400">Announcement Ticker Banner Copy</label>
-                  <input
-                    type="text"
-                    value={cmsConfig.promoBannerText}
-                    onChange={(e) => setCmsConfig({ ...cmsConfig, promoBannerText: e.target.value })}
-                    className={fieldStyles}
-                  />
-                </div>
-              </div>
-            </form>
-
-            {/* Live Card Preview */}
-            <div className="lg:col-span-5 space-y-4">
-              <div className={`p-6 rounded-3xl border ${
-                isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'
-              }`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Client Preview Card</h3>
-                </div>
-
-                {/* Hero Banner Mock Card */}
-                <div className="rounded-2xl p-6 bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white space-y-4 border border-emerald-500/30 shadow-2xl">
-                  <span className="inline-block px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                    {cmsConfig.heroSubtitle || 'Pill Subtitle'}
-                  </span>
-                  <h2 className="text-xl font-black leading-tight text-emerald-100">
-                    {cmsConfig.heroTitle || 'Main Hero Title'}
-                  </h2>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {cmsConfig.heroDescription || 'Hero Description copy goes here...'}
-                  </p>
-                  <div className="pt-2 flex items-center justify-between border-t border-emerald-500/20 text-[10px] text-emerald-400 font-semibold">
-                    <span>⚡ Available 7 Days a Week</span>
-                    <button type="button" className="px-3 py-1 rounded-xl bg-emerald-500 text-white font-bold">Book Now</button>
+              {/* ═══ TAB 4 · CMS ═══ */}
+              {activeTab === 'cms' && (
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+                  <div className="lg:col-span-7">
+                    <SectionCard isDark={isDark} eyebrow="Landing page copy" title="Hero banner messaging"
+                      desc="Client-facing headline, badge and announcement ticker. Counters keep copy mobile-safe."
+                      dirty={isDirty('cms', cms)} saving={saving}
+                      onSave={() => saveSection('cms')} onReset={() => resetSection('cms')} saveLabel="Save copy">
+                      <FormErrorSummary errors={cmsErrors} />
+                      <Field id="cms-title" label="Main heading title" required error={cmsErrors.heroTitle} counter={`${cms.heroTitle.length}/80`}>
+                        <input id="cms-title" type="text" maxLength={90} value={cms.heroTitle} onChange={(e) => setCms({ ...cms, heroTitle: e.target.value })} aria-invalid={!!cmsErrors.heroTitle} aria-describedby={cmsErrors.heroTitle ? 'cms-title-error' : undefined} className={fieldCls(cmsErrors.heroTitle)} />
+                      </Field>
+                      <Field id="cms-sub" label="Pill badge subtitle" required error={cmsErrors.heroSubtitle} counter={`${cms.heroSubtitle.length}/60`}>
+                        <input id="cms-sub" type="text" maxLength={70} value={cms.heroSubtitle} onChange={(e) => setCms({ ...cms, heroSubtitle: e.target.value })} aria-invalid={!!cmsErrors.heroSubtitle} aria-describedby={cmsErrors.heroSubtitle ? 'cms-sub-error' : undefined} className={fieldCls(cmsErrors.heroSubtitle)} />
+                      </Field>
+                      <Field id="cms-desc" label="Hero sub-description" required error={cmsErrors.heroDescription} counter={`${cms.heroDescription.length}/300`}>
+                        <textarea id="cms-desc" rows={4} maxLength={320} value={cms.heroDescription} onChange={(e) => setCms({ ...cms, heroDescription: e.target.value })} aria-invalid={!!cmsErrors.heroDescription} aria-describedby={cmsErrors.heroDescription ? 'cms-desc-error' : undefined} className={`${fieldCls(cmsErrors.heroDescription)} min-h-[100px] resize-y`} />
+                      </Field>
+                      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <Field id="cms-fb" label="Facebook URL" error={cmsErrors.facebookUrl}>
+                          <input id="cms-fb" type="url" inputMode="url" placeholder="https://facebook.com/…" value={cms.facebookUrl} onChange={(e) => setCms({ ...cms, facebookUrl: e.target.value })} aria-invalid={!!cmsErrors.facebookUrl} aria-describedby={cmsErrors.facebookUrl ? 'cms-fb-error' : undefined} className={fieldCls(cmsErrors.facebookUrl)} />
+                        </Field>
+                        <Field id="cms-ig" label="Instagram URL" error={cmsErrors.instagramUrl}>
+                          <input id="cms-ig" type="url" inputMode="url" placeholder="https://instagram.com/…" value={cms.instagramUrl} onChange={(e) => setCms({ ...cms, instagramUrl: e.target.value })} aria-invalid={!!cmsErrors.instagramUrl} aria-describedby={cmsErrors.instagramUrl ? 'cms-ig-error' : undefined} className={fieldCls(cmsErrors.instagramUrl)} />
+                        </Field>
+                      </div>
+                      <div className={`space-y-4 rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50/70'}`}>
+                        <Toggle id="cms-promo" checked={cms.promoEnabled} onChange={(v) => setCms({ ...cms, promoEnabled: v })} label="Announcement ticker banner" desc="Shows a promo strip above the booking page." />
+                        {cms.promoEnabled && (
+                          <Field id="cms-promo-text" label="Promo banner text" required error={cmsErrors.promoBannerText} counter={`${cms.promoBannerText.length}/120`}>
+                            <input id="cms-promo-text" type="text" maxLength={140} value={cms.promoBannerText} onChange={(e) => setCms({ ...cms, promoBannerText: e.target.value })} aria-invalid={!!cmsErrors.promoBannerText} aria-describedby={cmsErrors.promoBannerText ? 'cms-promo-text-error' : undefined} className={fieldCls(cmsErrors.promoBannerText)} />
+                          </Field>
+                        )}
+                      </div>
+                    </SectionCard>
+                  </div>
+                  <div className="lg:col-span-5">
+                    <div className={`rounded-3xl border p-5 sm:p-6 lg:sticky lg:top-4 ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'}`}>
+                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Live client preview</h3>
+                      <p className="mt-0.5 text-[11px] text-slate-500">Updates as you type — what guests see.</p>
+                      {cms.promoEnabled && cms.promoBannerText.trim() && (
+                        <p className="mt-3 truncate rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-500" role="status">
+                          ✨ {cms.promoBannerText}
+                        </p>
+                      )}
+                      <div className="mt-3 space-y-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 p-6 text-white shadow-2xl">
+                        <span className="inline-block max-w-full truncate rounded-full border border-emerald-400/30 bg-emerald-500/20 px-3 py-1 text-[10px] font-bold text-emerald-300">
+                          {cms.heroSubtitle || 'Pill subtitle'}
+                        </span>
+                        <h2 className="text-xl font-black leading-tight text-emerald-100">{cms.heroTitle || 'Main hero title'}</h2>
+                        <p className="text-xs leading-relaxed text-slate-300">{cms.heroDescription || 'Hero description…'}</p>
+                        <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-3 text-[10px] font-semibold text-emerald-400">
+                          <span>⚡ {booking.operatingDays.length}/7 days · {to12h(business.openTime)} – {to12h(business.closeTime)}</span>
+                          <span className="rounded-xl bg-emerald-500 px-3 py-1.5 font-bold text-white">Book now</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              )}
 
-        {/* TAB 4: ALERT NOTIFICATION RULES */}
-        {activeTab === 'notifications' && (
-          <form onSubmit={handleSaveGeneral} className={`rounded-3xl border p-6 sm:p-8 shadow-sm space-y-6 ${
-            isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'
-          }`}>
-            <div className="flex items-center justify-between border-b pb-5 border-slate-200 dark:border-slate-800">
-              <div>
-                <p className="text-xs uppercase tracking-widest font-bold text-emerald-500">Automated Messaging</p>
-                <h2 className="text-lg font-bold mt-1">SMS & Email Notification Triggers</h2>
-              </div>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white transition shadow-lg shadow-emerald-600/20"
-              >
-                <Save className="h-3.5 w-3.5" /> Save Rules
-              </button>
-            </div>
-
-            <div className="grid gap-4">
-              {[
-                { key: 'smsBookingCreated', title: 'Send Instant SMS on Booking Creation', desc: 'Alert customer and staff immediately when a new home-service booking is requested.' },
-                { key: 'smsBookingApproved', title: 'Send SMS Notification on Confirmation', desc: 'Notify customer when their requested time slot is officially approved by admin.' },
-                { key: 'emailBookingCreated', title: 'Send Digital Email Receipt & Instructions', desc: 'Email session confirmation, therapist assignment and prep guidelines to customer.' },
-                { key: 'therapistDispatchAlert', title: 'Dispatch Alert to Assigned Therapist', desc: 'Push instant notification to assigned therapist with client location details.' },
-                { key: 'emailPromoUpdates', title: 'Enable Promotional Marketing Campaigns', desc: 'Include opt-in customer emails in monthly discount & voucher announcements.' }
-              ].map((item) => (
-                <div key={item.key} className={`p-4 sm:p-5 rounded-2xl border flex items-center justify-between gap-4 transition ${
-                  isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50/70'
-                }`}>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold">{item.title}</p>
-                    <p className="text-[11px] text-slate-400">{item.desc}</p>
+              {/* ═══ TAB 5 · ALERTS ═══ */}
+              {activeTab === 'notifications' && (
+                <SectionCard isDark={isDark} eyebrow="Automated messaging" title="SMS & email notification triggers"
+                  desc="Transactional messages always bypass quiet hours. Marketing respects them."
+                  dirty={isDirty('notifs', notifs)} saving={saving}
+                  onSave={() => saveSection('notifs')} onReset={() => resetSection('notifs')} saveLabel="Save rules">
+                  <FormErrorSummary errors={notifErrors} />
+                  <div className="grid grid-cols-1 gap-4">
+                    {[
+                      { key: 'smsBookingCreated', title: 'Instant SMS on booking creation', desc: 'Alert customer and staff the moment a request lands.' },
+                      { key: 'smsBookingApproved', title: 'SMS on confirmation', desc: 'Notify the customer when their slot is approved.' },
+                      { key: 'emailBookingCreated', title: 'Email receipt & prep guide', desc: 'Session confirmation, therapist and preparation notes.' },
+                      { key: 'therapistDispatchAlert', title: 'Dispatch alert to therapist', desc: 'Push assignment with client location details.' },
+                      { key: 'emailPromoUpdates', title: 'Promotional campaigns', desc: 'Include opt-in emails in monthly offers. Marketing only.' },
+                    ].map((item) => (
+                      <div key={item.key} className={`rounded-2xl border p-4 transition sm:p-5 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50/70'}`}>
+                        <Toggle id={`ntf-${item.key}`} checked={!!notifs[item.key]} onChange={(v) => setNotifs({ ...notifs, [item.key]: v })} label={item.title} desc={item.desc} />
+                      </div>
+                    ))}
                   </div>
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+                    <Field id="ntf-remind" label="Reminder lead time">
+                      <select id="ntf-remind" value={notifs.reminderLeadTimeHrs} onChange={(e) => setNotifs({ ...notifs, reminderLeadTimeHrs: e.target.value })} className={fieldCls('')}>
+                        <option value="2">2 hours before</option>
+                        <option value="12">12 hours before</option>
+                        <option value="24">24 hours before</option>
+                        <option value="48">48 hours before</option>
+                      </select>
+                    </Field>
+                    <Field id="ntf-qs" label="Quiet hours start" error={notifErrors.quietStart} hint="No marketing after this.">
+                      <input id="ntf-qs" type="time" value={notifs.quietStart} onChange={(e) => setNotifs({ ...notifs, quietStart: e.target.value })} className={fieldCls(notifErrors.quietStart)} aria-invalid={!!notifErrors.quietStart} aria-describedby={notifErrors.quietStart ? 'ntf-qs-error' : 'ntf-qs-hint'} />
+                    </Field>
+                    <Field id="ntf-qe" label="Quiet hours end" error={notifErrors.quietEnd} hint="Marketing resumes here.">
+                      <input id="ntf-qe" type="time" value={notifs.quietEnd} onChange={(e) => setNotifs({ ...notifs, quietEnd: e.target.value })} className={fieldCls(notifErrors.quietEnd)} aria-invalid={!!notifErrors.quietEnd} aria-describedby={notifErrors.quietEnd ? 'ntf-qe-error' : 'ntf-qe-hint'} />
+                    </Field>
+                  </div>
+                </SectionCard>
+              )}
 
-                  <button
-                    type="button"
-                    onClick={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key] })}
-                    className={`w-12 h-6 rounded-full transition-colors relative flex-shrink-0 p-1 ${
-                      notifications[item.key] ? 'bg-emerald-500' : 'bg-slate-700'
-                    }`}
-                  >
-                    <motion.div
-                      className="w-4 h-4 rounded-full bg-white shadow-md"
-                      animate={{ x: notifications[item.key] ? 24 : 0 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                  </button>
+              {/* ═══ TAB 6 · PAYMENTS + SECURITY + DATA (NEW) ═══ */}
+              {activeTab === 'system' && (
+                <div className="space-y-5">
+                  <SectionCard isDark={isDark} eyebrow="Money in" title="Payments & pricing policy"
+                    desc="Currency, surcharges and accepted channels. Downpayment enforcement is toggled under Booking Rules."
+                    dirty={isDirty('system', system)} saving={saving}
+                    onSave={() => saveSection('system')} onReset={() => resetSection('system')}>
+                    <FormErrorSummary errors={sysErrors} />
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                      <Field id="sys-cur" label="Currency">
+                        <select id="sys-cur" value={system.currency} onChange={(e) => setSystem({ ...system, currency: e.target.value })} className={fieldCls('')}>
+                          <option value="PHP">PHP (₱) — Philippine Peso</option>
+                          <option value="USD">USD ($) — US Dollar</option>
+                        </select>
+                      </Field>
+                      <Field id="sys-vat" label="VAT (%)" required error={sysErrors.vatPercent}>
+                        <input id="sys-vat" type="number" min="0" max="28" step="0.5" value={system.vatPercent} onChange={(e) => setSystem({ ...system, vatPercent: e.target.value })} className={fieldCls(sysErrors.vatPercent)} aria-invalid={!!sysErrors.vatPercent} aria-describedby={sysErrors.vatPercent ? 'sys-vat-error' : undefined} />
+                      </Field>
+                      <Field id="sys-sc" label="Service charge (%)" required error={sysErrors.serviceChargePercent}>
+                        <input id="sys-sc" type="number" min="0" max="20" step="0.5" value={system.serviceChargePercent} onChange={(e) => setSystem({ ...system, serviceChargePercent: e.target.value })} className={fieldCls(sysErrors.serviceChargePercent)} aria-invalid={!!sysErrors.serviceChargePercent} aria-describedby={sysErrors.serviceChargePercent ? 'sys-sc-error' : undefined} />
+                      </Field>
+                      <Field id="sys-dp" label="Downpayment (%)" required error={sysErrors.downpaymentPercent} hint={booking.requireDownpayment ? 'Enforced at checkout.' : 'Collected only if enforcement is on.'}>
+                        <input id="sys-dp" type="number" min="0" max="100" value={system.downpaymentPercent} onChange={(e) => setSystem({ ...system, downpaymentPercent: e.target.value })} className={fieldCls(sysErrors.downpaymentPercent)} aria-invalid={!!sysErrors.downpaymentPercent} aria-describedby={sysErrors.downpaymentPercent ? 'sys-dp-error' : 'sys-dp-hint'} />
+                      </Field>
+                    </div>
+                    <fieldset>
+                      <legend className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Accepted payment methods *</legend>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Payment methods">
+                        {[
+                          ['payCash', 'Cash'],
+                          ['payGcash', 'GCash'],
+                          ['payMaya', 'Maya'],
+                          ['payCard', 'Card'],
+                        ].map(([k, label]) => {
+                          const on = !!system[k];
+                          return (
+                            <button key={k} type="button" aria-pressed={on} onClick={() => setSystem({ ...system, [k]: !on })}
+                              className={`min-h-[44px] rounded-2xl border px-3 py-2.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${on ? 'border-emerald-500 bg-emerald-600 text-white' : isDark ? 'border-slate-800 bg-slate-950 text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
+                              {on ? '✓ ' : ''}{label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                    {system.payGcash && (
+                      <div className="max-w-sm">
+                        <Field id="sys-gcash" label="GCash merchant number" required error={sysErrors.gcashNumber}>
+                          <input id="sys-gcash" type="tel" inputMode="tel" value={system.gcashNumber} onChange={(e) => setSystem({ ...system, gcashNumber: e.target.value })} className={fieldCls(sysErrors.gcashNumber)} aria-invalid={!!sysErrors.gcashNumber} aria-describedby={sysErrors.gcashNumber ? 'sys-gcash-error' : undefined} />
+                        </Field>
+                      </div>
+                    )}
+                    <Field id="sys-refund" label="Refund & cancellation policy" error={sysErrors.refundPolicy} counter={`${system.refundPolicy.length} chars`} hint="Shown at checkout and in confirmation emails.">
+                      <textarea id="sys-refund" rows={3} value={system.refundPolicy} onChange={(e) => setSystem({ ...system, refundPolicy: e.target.value })} className={`${fieldCls(sysErrors.refundPolicy)} resize-y`} aria-invalid={!!sysErrors.refundPolicy} aria-describedby={sysErrors.refundPolicy ? 'sys-refund-error' : 'sys-refund-hint'} />
+                    </Field>
+                    <div className={`rounded-2xl border p-4 text-xs ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50/70'}`}>
+                      <p className="flex items-center gap-2 font-bold"><Wallet className="h-4 w-4 text-emerald-500" aria-hidden="true" /> Checkout preview</p>
+                      <p className="mt-1 leading-relaxed text-slate-400">
+                        ₱1,000 service → VAT {system.vatPercent || 0}% + charge {system.serviceChargePercent || 0}% = <strong className="text-slate-200 dark:text-slate-100">₱{(1000 * (1 + Number(system.vatPercent || 0) / 100 + Number(system.serviceChargePercent || 0) / 100)).toLocaleString('en-PH', { maximumFractionDigits: 0 })}</strong>
+                        {booking.requireDownpayment && <> · downpayment <strong className="text-emerald-400">₱{(1000 * (1 + Number(system.vatPercent || 0) / 100 + Number(system.serviceChargePercent || 0) / 100) * Number(system.downpaymentPercent || 0) / 100).toLocaleString('en-PH', { maximumFractionDigits: 0 })}</strong> due now</>}.
+                      </p>
+                    </div>
+                  </SectionCard>
+
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    <section aria-label="Security" className={`rounded-3xl border p-5 sm:p-7 ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'}`}>
+                      <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-500"><Lock className="h-3.5 w-3.5" aria-hidden="true" /> Access security</p>
+                      <h2 className="mt-1 text-base font-bold">Sessions & login guard</h2>
+                      <div className="mt-5 space-y-5">
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                          <Field id="sec-timeout" label="Session timeout (min)" required error={sysErrors.sessionTimeoutMin}>
+                            <input id="sec-timeout" type="number" min="5" max="180" value={system.sessionTimeoutMin} onChange={(e) => setSystem({ ...system, sessionTimeoutMin: e.target.value })} className={fieldCls(sysErrors.sessionTimeoutMin)} aria-invalid={!!sysErrors.sessionTimeoutMin} aria-describedby={sysErrors.sessionTimeoutMin ? 'sec-timeout-error' : undefined} />
+                          </Field>
+                          <Field id="sec-attempts" label="Max login attempts" required error={sysErrors.maxLoginAttempts}>
+                            <input id="sec-attempts" type="number" min="3" max="10" value={system.maxLoginAttempts} onChange={(e) => setSystem({ ...system, maxLoginAttempts: e.target.value })} className={fieldCls(sysErrors.maxLoginAttempts)} aria-invalid={!!sysErrors.maxLoginAttempts} aria-describedby={sysErrors.maxLoginAttempts ? 'sec-attempts-error' : undefined} />
+                          </Field>
+                        </div>
+                        <div className={`space-y-4 rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50/70'}`}>
+                          <Toggle id="sec-strong" checked={system.requireStrongPassword} onChange={(v) => setSystem({ ...system, requireStrongPassword: v })} label="Enforce strong passwords" desc="8+ chars, uppercase + number for new staff accounts." />
+                          <Toggle id="sec-maint" checked={system.maintenanceMode} onChange={(v) => setSystem({ ...system, maintenanceMode: v })} label="Maintenance mode" desc="Pauses client booking; staff panel stays online." />
+                        </div>
+                        {system.maintenanceMode && (
+                          <p role="alert" className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] font-semibold text-amber-500">
+                            ⚠ Maintenance is ON — clients see a “temporarily paused” notice. Remember to save.
+                          </p>
+                        )}
+                      </div>
+                    </section>
+
+                    <section aria-label="Data and danger zone" className={`rounded-3xl border p-5 sm:p-7 ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'}`}>
+                      <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-500"><Database className="h-3.5 w-3.5" aria-hidden="true" /> Data & portability</p>
+                      <h2 className="mt-1 text-base font-bold">Backup, transfer & reset</h2>
+                      <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+                        {[
+                          ['Staff', String(staffList.length)],
+                          ['Local KB', `${(storageBytes / 1024).toFixed(1)}`],
+                          ['Sections', '5'],
+                        ].map(([k, v]) => (
+                          <div key={k} className={`rounded-2xl border p-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'}`}>
+                            <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{k}</dt>
+                            <dd className="mt-0.5 text-lg font-black tabular-nums">{v}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <button type="button" onClick={exportSettingsJSON} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2.5 text-xs font-bold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-200">
+                          <Download className="h-4 w-4" aria-hidden="true" /> Export JSON
+                        </button>
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2.5 text-xs font-bold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-200">
+                          <Upload className="h-4 w-4" aria-hidden="true" /> Import JSON
+                        </button>
+                        <input ref={fileInputRef} type="file" accept="application/json,.json" className="sr-only" aria-label="Import settings JSON file"
+                          onChange={(e) => { importSettingsJSON(e.target.files?.[0]); e.target.value = ''; }} />
+                      </div>
+                      <div className="mt-4 rounded-2xl border border-red-500/25 bg-red-500/[0.05] p-4">
+                        <p className="text-xs font-bold text-red-400">Danger zone</p>
+                        <p className="mt-0.5 text-[11px] text-slate-400">Restores all five sections to factory defaults. Staff directory is kept.</p>
+                        <button type="button" onClick={() => setShowResetConfirm(true)} className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-2xl border border-red-500/40 px-4 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">
+                          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Restore defaults…
+                        </button>
+                      </div>
+                    </section>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </form>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          <p className="sr-only" aria-live="polite">Current section: {activeTabMeta?.full}</p>
+        </div>
+      </MotionConfig>
+
+      {/* modals */}
+      <AnimatePresence>
+        {isAddOpen && (
+          <AddStaffModal key="add" isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onAddStaff={handleAddStaff} existingStaff={staffList} isDark={isDark} />
         )}
-
-        {/* Modals */}
-        <AddStaffModal
-          isOpen={isAddStaffOpen}
-          onClose={() => setIsAddStaffOpen(false)}
-          onAddStaff={handleAddStaff}
-          existingStaff={staffList}
-        />
-
-        <EditStaffModal
-          isOpen={!!editingStaff}
-          onClose={() => setEditingStaff(null)}
-          staffMember={editingStaff}
-          onSaveStaff={handleSaveStaff}
-          existingStaff={staffList}
-        />
-      </div>
+        {!!editingStaff && (
+          <EditStaffModal key="edit" isOpen={!!editingStaff} onClose={() => setEditingStaff(null)} staffMember={editingStaff} onSaveStaff={handleSaveStaff} existingStaff={staffList} isDark={isDark} />
+        )}
+        {!!deletingStaff && (
+          <ConfirmDialog key="del" isOpen={!!deletingStaff} onClose={() => setDeletingStaff(null)} onConfirm={confirmDeleteStaff}
+            title={`Remove ${deletingStaff.name}?`} body="They lose portal access immediately. Past audit history is preserved. This cannot be undone." confirmLabel="Remove account" isDark={isDark} />
+        )}
+        {showResetConfirm && (
+          <ConfirmDialog key="reset" isOpen={showResetConfirm} onClose={() => setShowResetConfirm(false)} onConfirm={factoryReset}
+            title="Restore factory defaults?" body="All five settings sections return to out-of-the-box values. Staff accounts are untouched." confirmLabel="Restore defaults" isDark={isDark} />
+        )}
+      </AnimatePresence>
     </AdminLayout>
   );
 };

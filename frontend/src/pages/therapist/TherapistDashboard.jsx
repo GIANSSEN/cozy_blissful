@@ -9,10 +9,13 @@ import {
   Briefcase, Star, Clock, MapPin, Calendar,
   CheckCircle, LogOut, TrendingUp,
   UserCheck, AlertCircle, RefreshCw,
-  Search, X, Edit3, Key, CheckCircle2,
-  ChevronDown, Copy, Eye, EyeOff, CheckCheck,
+  Search, X, CheckCircle2,
+  Copy, CheckCheck,
   User, Phone, Handshake, Zap, Check,
 } from 'lucide-react';
+import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
+import ProfileModal from '../../components/profile/ProfileModal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 // ─── Brand & Theme Tokens ──────────────────────────────────────────────────
 const B = {
@@ -57,7 +60,7 @@ const formatDateString = (dateObj) => {
 };
 
 const TherapistDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, avatarUrl, setAvatar, updateProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -71,38 +74,19 @@ const TherapistDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'today' | 'confirmed' | 'in_progress' | 'completed'
 
-  // Modal controls
-  const [modal, setModal] = useState({ type: null, data: null }); // 'start_session' | 'complete_session' | 'claim_job' | 'profile' | 'logout'
+  // Modal controls — session jobs only; profile/logout use shared modals below
+  const [modal, setModal] = useState({ type: null, data: null }); // 'start_session' | 'complete_session' | 'claim_job'
   const [submittingAction, setSubmittingAction] = useState(false);
 
-  // Profile editing form state
-  const [profileForm, setProfileForm] = useState({
-    phone: '',
-    specialty: '',
-    notes: '',
-    current_password: '',
-    new_password: '',
-    new_password_confirmation: '',
-  });
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [showCurrentPw, setShowCurrentPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
-  const [profileErrors, setProfileErrors] = useState({});
+  // Unified identity menu + modals
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   // Close modal helper that resets transient modal state
   const closeModal = useCallback(() => {
     if (submittingAction) return;
     setModal({ type: null, data: null });
-    setShowPasswordSection(false);
-    setProfileErrors({});
-    setShowCurrentPw(false);
-    setShowNewPw(false);
-    setProfileForm(p => ({
-      ...p,
-      current_password: '',
-      new_password: '',
-      new_password_confirmation: '',
-    }));
   }, [submittingAction]);
 
   // Fetch all dashboard and availability data
@@ -115,15 +99,6 @@ const TherapistDashboard = () => {
       ]);
       setData(dashRes.data);
       setAvailabilities(availRes.data.availabilities || []);
-
-      if (dashRes.data.therapist_profile) {
-        setProfileForm((prev) => ({
-          ...prev,
-          phone: dashRes.data.therapist_profile.phone || '',
-          specialty: dashRes.data.therapist_profile.specialty || '',
-          notes: dashRes.data.therapist_profile.notes || '',
-        }));
-      }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
       toast.error('Could not sync therapist data. Please refresh.');
@@ -136,6 +111,20 @@ const TherapistDashboard = () => {
   useEffect(() => {
     fetchDashboardData(true);
   }, [fetchDashboardData]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setProfileMenuOpen(false); };
+    const onClick = () => setProfileMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    // Close on next outside click without swallowing the toggle click
+    const t = setTimeout(() => document.addEventListener('mousedown', onClick), 0);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      clearTimeout(t);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [profileMenuOpen]);
 
   // Today's date string
   const todayStr = useMemo(() => formatDateString(new Date()), []);
@@ -234,55 +223,20 @@ const TherapistDashboard = () => {
     }
   };
 
-  // Update profile details & password
-  const handleSaveProfile = async (e) => {
-    e.preventDefault();
-    setProfileErrors({});
-
-    // Basic password confirmation check if changing password
-    if (showPasswordSection && profileForm.new_password) {
-      if (profileForm.new_password.length < 8) {
-        setProfileErrors({ new_password: 'New password must be at least 8 characters.' });
-        return;
-      }
-      if (profileForm.new_password !== profileForm.new_password_confirmation) {
-        setProfileErrors({ new_password_confirmation: 'Password confirmation does not match.' });
-        return;
-      }
+  // Unified profile save — delegates to AuthContext (syncs /therapist/profile)
+  const handleSaveProfile = async (payload) => {
+    const res = await updateProfile(payload);
+    if (res?.ok === false) {
+      toast.error(res.message || 'Failed to update profile settings.');
+      return res;
     }
-
-    setSubmittingAction(true);
-    try {
-      const payload = {
-        phone: profileForm.phone,
-        specialty: profileForm.specialty,
-        notes: profileForm.notes,
-      };
-      if (showPasswordSection && profileForm.new_password) {
-        payload.current_password = profileForm.current_password;
-        payload.new_password = profileForm.new_password;
-        payload.new_password_confirmation = profileForm.new_password_confirmation;
-      }
-
-      const res = await API.post('/therapist/profile', payload);
-      toast.success(res.data?.message || 'Profile updated successfully!');
-      closeModal();
-      fetchDashboardData(true);
-    } catch (err) {
-      if (err.response?.data?.errors) {
-        const errs = {};
-        Object.keys(err.response.data.errors).forEach(k => {
-          errs[k] = err.response.data.errors[k][0];
-        });
-        setProfileErrors(errs);
-      }
-      toast.error(err.response?.data?.message || 'Failed to update profile settings.');
-    } finally {
-      setSubmittingAction(false);
-    }
+    toast.success(res?.message || 'Profile updated successfully!');
+    setProfileOpen(false);
+    fetchDashboardData(true);
+    return { ok: true };
   };
 
-  // Logout handler
+  // Logout handler (shared ConfirmModal)
   const confirmLogout = async () => {
     setSubmittingAction(true);
     try {
@@ -291,7 +245,17 @@ const TherapistDashboard = () => {
       navigate('/login');
     } catch {
       navigate('/login');
+    } finally {
+      setSubmittingAction(false);
     }
+  };
+
+  // Merge backend therapist_profile into the identity user for the modal
+  const profileUser = {
+    ...(user || {}),
+    phone: data?.therapist_profile?.phone ?? user?.phone ?? '',
+    specialty: data?.therapist_profile?.specialty ?? user?.specialty ?? '',
+    notes: data?.therapist_profile?.notes ?? user?.notes ?? '',
   };
 
   // Copy phone helper
@@ -391,30 +355,66 @@ const TherapistDashboard = () => {
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-emerald-800' : ''}`} />
           </button>
 
-          {/* Profile & Settings Button */}
-          <button
-            onClick={() => setModal({ type: 'profile', data: null })}
-            title="Therapist Profile & Password"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-emerald-800 transition-colors border border-slate-200 bg-white shadow-xs cursor-pointer min-h-[36px]"
-          >
-            <div
-              className="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black text-white"
-              style={{ background: `linear-gradient(135deg, ${B.mid}, ${B.deep})` }}
-            >
-              {user?.name?.charAt(0)?.toUpperCase() || 'T'}
-            </div>
-            <span className="hidden sm:inline font-semibold">{user?.name?.split(' ')[0] || 'Profile'}</span>
-            <Edit3 className="w-3 h-3 text-slate-400" />
-          </button>
-
-          {/* Logout Button */}
-          <button
-            onClick={() => setModal({ type: 'logout', data: null })}
-            title="Sign Out"
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-600 transition-colors border border-slate-200 bg-white shadow-xs cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {/* Unified minimalist identity: role + avatar in ONE pill */}
+          <div className="relative">
+            <RoleIdentityBadge
+              user={user}
+              role="therapist"
+              avatarUrl={avatarUrl}
+              isDark={false}
+              open={profileMenuOpen}
+              onClick={() => setProfileMenuOpen((v) => !v)}
+            />
+            <AnimatePresence>
+              {profileMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.16 }}
+                  role="dialog"
+                  aria-label="Therapist profile menu"
+                  className="absolute right-0 mt-2.5 w-60 rounded-2xl overflow-hidden z-50 shadow-2xl bg-white border border-slate-200"
+                >
+                  <div className="px-4 py-3.5 flex items-center gap-3 border-b border-slate-100">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0 overflow-hidden"
+                      style={{ background: 'linear-gradient(135deg,#041e16,#0c4a36)', border: '2px solid #bfa15f' }}
+                    >
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
+                        : (user?.name?.charAt(0)?.toUpperCase() || 'T')}
+                    </div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="text-xs font-black truncate text-slate-900">{user?.name || 'Therapist'}</p>
+                      <p className="text-[10px] truncate mt-0.5 text-slate-400">{user?.email || ''}</p>
+                      <span className="inline-flex items-center mt-1.5 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                        Therapist
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2 space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={() => { setProfileMenuOpen(false); setProfileOpen(true); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition min-h-[40px]"
+                    >
+                      <User className="w-4 h-4 text-emerald-700" />
+                      <span>My Profile & Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setProfileMenuOpen(false); setLogoutOpen(true); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition min-h-[40px]"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -1228,193 +1228,33 @@ const TherapistDashboard = () => {
                 </div>
               )}
 
-              {/* ── MODAL: LOGOUT CONFIRMATION ── */}
-              {modal.type === 'logout' && (
-                <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 mx-auto">
-                    <LogOut className="w-6 h-6" />
-                  </div>
-                  <div className="text-center space-y-1">
-                    <h3 className="text-lg font-black text-slate-900">Sign Out of Portal?</h3>
-                    <p className="text-xs text-slate-500">
-                      Are you sure you want to end your current therapist workstation session?
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-end gap-2 pt-2">
-                    <button
-                      onClick={closeModal}
-                      disabled={submittingAction}
-                      className="px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={confirmLogout}
-                      disabled={submittingAction}
-                      className="px-5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition cursor-pointer shadow-md"
-                    >
-                      {submittingAction ? 'Signing out...' : 'Yes, Sign Out'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ── MODAL: PROFILE & SETTINGS ── */}
-              {modal.type === 'profile' && (
-                <form onSubmit={handleSaveProfile} className="space-y-4 flex flex-col overflow-hidden">
-                  <div className="flex items-center gap-3 pb-3 border-b border-slate-100 shrink-0">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-900 text-white flex items-center justify-center font-bold text-sm">
-                      <User className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-black text-slate-900">Therapist Profile &amp; Security</h3>
-                      <p className="text-[11px] text-slate-400">Update contact info or account credentials</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3.5 text-xs overflow-y-auto pr-1 flex-1">
-                    {/* Phone input */}
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Contact Phone</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 0917-123-4567"
-                        value={profileForm.phone}
-                        onChange={(e) => setProfileForm(p => ({ ...p, phone: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 text-xs"
-                      />
-                      {profileErrors.phone && <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.phone}</p>}
-                    </div>
-
-                    {/* Specialty */}
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Specialties &amp; Expertise</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Swedish, Deep Tissue, Shiatsu, Ventosa"
-                        value={profileForm.specialty}
-                        onChange={(e) => setProfileForm(p => ({ ...p, specialty: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 text-xs"
-                      />
-                      {profileErrors.specialty && <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.specialty}</p>}
-                    </div>
-
-                    {/* Bio / Notes */}
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Bio / Notes to Reception</label>
-                      <textarea
-                        rows={2}
-                        placeholder="Any personal certifications, preferences, or shift notes..."
-                        value={profileForm.notes}
-                        onChange={(e) => setProfileForm(p => ({ ...p, notes: e.target.value }))}
-                        className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 focus:ring-1 focus:ring-emerald-700 text-xs"
-                      />
-                    </div>
-
-                    {/* Collapsible Password Section */}
-                    <div className="pt-2 border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswordSection(v => !v)}
-                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50/70 text-xs font-bold text-slate-700 transition cursor-pointer"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Key className="w-3.5 h-3.5 text-amber-600" />
-                          <span>{showPasswordSection ? 'Hide Password Change' : 'Change Password (Optional)'}</span>
-                        </span>
-                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showPasswordSection ? 'rotate-180' : ''}`} />
-                      </button>
-
-                      {showPasswordSection && (
-                        <div className="space-y-2.5 mt-3 pt-1">
-                          <div>
-                            <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Current Password</label>
-                            <div className="relative">
-                              <input
-                                type={showCurrentPw ? 'text' : 'password'}
-                                placeholder="Enter current password"
-                                value={profileForm.current_password}
-                                onChange={(e) => setProfileForm(p => ({ ...p, current_password: e.target.value }))}
-                                className="w-full px-3.5 py-2 pr-9 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 text-xs"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowCurrentPw(v => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                              >
-                                {showCurrentPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
-                            </div>
-                            {profileErrors.current_password && (
-                              <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.current_password}</p>
-                            )}
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-medium text-slate-500 mb-0.5">New Password</label>
-                            <div className="relative">
-                              <input
-                                type={showNewPw ? 'text' : 'password'}
-                                placeholder="At least 8 characters"
-                                value={profileForm.new_password}
-                                onChange={(e) => setProfileForm(p => ({ ...p, new_password: e.target.value }))}
-                                className="w-full px-3.5 py-2 pr-9 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 text-xs"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowNewPw(v => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                              >
-                                {showNewPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
-                            </div>
-                            {profileErrors.new_password && (
-                              <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.new_password}</p>
-                            )}
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-medium text-slate-500 mb-0.5">Confirm New Password</label>
-                            <input
-                              type="password"
-                              placeholder="Re-enter new password"
-                              value={profileForm.new_password_confirmation}
-                              onChange={(e) => setProfileForm(p => ({ ...p, new_password_confirmation: e.target.value }))}
-                              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-700 text-xs"
-                            />
-                            {profileErrors.new_password_confirmation && (
-                              <p className="text-[11px] text-red-600 mt-0.5">{profileErrors.new_password_confirmation}</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 shrink-0">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      disabled={submittingAction}
-                      className="px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submittingAction}
-                      className="px-5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold text-white bg-emerald-900 hover:bg-emerald-950 transition cursor-pointer shadow-md"
-                    >
-                      {submittingAction ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                </form>
-              )}
-
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Unified profile + logout (shared, validated, minimalist) ── */}
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        user={profileUser}
+        role="therapist"
+        avatarUrl={avatarUrl}
+        onAvatarChange={setAvatar}
+        onSave={handleSaveProfile}
+        isDark={false}
+      />
+      <ConfirmModal
+        open={logoutOpen}
+        onClose={() => !submittingAction && setLogoutOpen(false)}
+        onConfirm={confirmLogout}
+        title="Sign out?"
+        message={`${user?.name || 'Therapist'} — end your workstation session?`}
+        confirmLabel="Sign Out"
+        tone="logout"
+        busy={submittingAction}
+        busyLabel="Signing out…"
+      />
 
       {/* ═══ LUXURY FOOTER ══════════════════════════════════════════════════ */}
       <footer className="py-6 px-4 text-center border-t border-slate-200/60 text-xs text-slate-400">

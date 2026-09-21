@@ -5,6 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import PaymentModal from '../../components/payment/PaymentModal';
+import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
+import ProfileModal from '../../components/profile/ProfileModal';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import API from '../../api/axios';
 import {
   Calendar, Clock, CheckCircle, AlertCircle,
@@ -1513,7 +1516,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
 // MAIN CLIENT DASHBOARD PORTAL
 // ══════════════════════════════════════════════════════════════════════════════
 const ClientDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, avatarUrl, setAvatar, updateProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -1523,6 +1526,10 @@ const ClientDashboard = () => {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [bookingFilter, setBookingFilter] = useState('all'); // 'all' | 'active' | 'completed' | 'cancelled'
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const showToast = (msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg);
 
@@ -1543,7 +1550,43 @@ const ClientDashboard = () => {
 
   useEffect(() => { fetchDashboardData(); }, []);
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setProfileMenuOpen(false); };
+    const onClick = () => setProfileMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    const t = setTimeout(() => document.addEventListener('mousedown', onClick), 0);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      clearTimeout(t);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [profileMenuOpen]);
+
+  const handleLogout = () => setLogoutOpen(true);
+
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+      toast.info('Signed out. See you soon.');
+      navigate('/login');
+    } finally {
+      setLoggingOut(false);
+      setLogoutOpen(false);
+    }
+  };
+
+  const handleSaveProfile = async (payload) => {
+    const res = await updateProfile(payload);
+    if (res?.ok === false) {
+      toast.error(res.message || 'Could not save profile.');
+      return res;
+    }
+    toast.success(res?.message || 'Profile updated.');
+    setProfileOpen(false);
+    return { ok: true };
+  };
 
   const sendChatMessage = (e) => {
     e.preventDefault();
@@ -1627,14 +1670,6 @@ const ClientDashboard = () => {
             <Plus className="w-3.5 h-3.5" /> Book Session
           </button>
 
-          {/* User Profile Pill */}
-          <div className="text-right hidden md:block">
-            <p className="text-xs font-bold text-slate-800">{user?.name || 'Valued Guest'}</p>
-            <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-200">
-              ✦ CB Club Member
-            </span>
-          </div>
-
           <Link
             to="/"
             title="Return to Home Landing"
@@ -1644,13 +1679,66 @@ const ClientDashboard = () => {
             <span>Home</span>
           </Link>
 
-          <button
-            onClick={handleLogout}
-            title="Sign Out"
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition duration-200 cursor-pointer border border-slate-200/80 bg-white"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {/* Unified minimalist identity: role + avatar in ONE pill */}
+          <div className="relative">
+            <RoleIdentityBadge
+              user={user}
+              role="client"
+              avatarUrl={avatarUrl}
+              isDark={false}
+              open={profileMenuOpen}
+              onClick={() => setProfileMenuOpen((v) => !v)}
+            />
+            <AnimatePresence>
+              {profileMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ duration: 0.16 }}
+                  role="dialog"
+                  aria-label="Client profile menu"
+                  className="absolute right-0 mt-2.5 w-60 rounded-2xl overflow-hidden z-50 shadow-2xl bg-white border border-slate-200"
+                >
+                  <div className="px-4 py-3.5 flex items-center gap-3 border-b border-slate-100">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0 overflow-hidden"
+                      style={{ background: 'linear-gradient(135deg,#041e16,#0c4a36)', border: '2px solid #bfa15f' }}
+                    >
+                      {avatarUrl
+                        ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
+                        : (user?.name?.charAt(0)?.toUpperCase() || 'C')}
+                    </div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="text-xs font-black truncate text-slate-900">{user?.name || 'Valued Guest'}</p>
+                      <p className="text-[10px] truncate mt-0.5 text-slate-400">{user?.email || ''}</p>
+                      <span className="inline-flex items-center mt-1.5 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        ✦ CB Club Member
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2 space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={() => { setProfileMenuOpen(false); setProfileOpen(true); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition min-h-[40px]"
+                    >
+                      <User className="w-4 h-4 text-emerald-700" />
+                      <span>My Profile & Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setProfileMenuOpen(false); handleLogout(); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition min-h-[40px]"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -2409,6 +2497,29 @@ const ClientDashboard = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* ═══ UNIFIED PROFILE + LOGOUT ══════════════════════════════════════ */}
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        user={user}
+        role="client"
+        avatarUrl={avatarUrl}
+        onAvatarChange={setAvatar}
+        onSave={handleSaveProfile}
+        isDark={false}
+      />
+      <ConfirmModal
+        open={logoutOpen}
+        onClose={() => !loggingOut && setLogoutOpen(false)}
+        onConfirm={confirmLogout}
+        title="Sign out?"
+        message={`${user?.name || 'Guest'} — you will be signed out of the client portal.`}
+        confirmLabel="Sign Out"
+        tone="logout"
+        busy={loggingOut}
+        busyLabel="Signing out…"
+      />
 
       {/* ═══ FOOTER ═════════════════════════════════════════════════════════ */}
       <footer className="mt-8 py-4 px-4 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white">

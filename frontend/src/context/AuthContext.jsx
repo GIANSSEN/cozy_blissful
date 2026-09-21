@@ -134,12 +134,8 @@ export const AuthProvider = ({ children }) => {
       const { access_token, role: userRole, user: userData } = res.data;
 
       setToken(access_token);
-      setRole(userRole);
-      setUser(userData);
-
       localStorage.setItem('token', access_token);
-      localStorage.setItem('role', userRole);
-      localStorage.setItem('user', JSON.stringify(userData));
+      persistUser(userData, userRole);
 
       return { success: true, role: userRole };
     } catch (err) {
