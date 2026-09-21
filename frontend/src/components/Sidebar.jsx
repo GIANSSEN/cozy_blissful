@@ -176,6 +176,16 @@ const Sidebar = ({ isOpen, onClose }) => {
   /* ─────────────────────────────────────────────────────────────── */
   return (
     <>
+      {/* Hover/active visuals are CSS-only, gated behind
+          (hover:hover) so touch devices never get sticky "auto touch"
+          highlights from emulated mouseenter events. */}
+      <style>{`
+        #admin-sidebar { --sb-hover: ${t.hover}; --sb-danger: ${isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'}; -webkit-tap-highlight-color: transparent; }
+        @media (hover: hover) and (pointer: fine) {
+          #admin-sidebar .sb-item:not(.sb-active):hover { background: var(--sb-hover) !important; }
+          #admin-sidebar .sb-danger:not(.sb-active):hover { background: var(--sb-danger) !important; }
+        }
+      `}</style>
       {/* Mobile backdrop */}
       <AnimatePresence>
         {isOpen && (
@@ -194,11 +204,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         role="navigation"
         aria-label="Admin Navigation"
         id="admin-sidebar"
-        className={`fixed lg:sticky top-0 h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased transition-transform duration-300 w-[min(86vw,320px)] lg:w-60 xl:w-[272px] ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        className={`fixed lg:sticky top-0 h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased transition-transform duration-300 ease-out w-[min(86vw,320px)] lg:w-60 xl:w-[272px] select-none ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         style={{
           background: t.sidebar,
           borderRight: `1px solid ${t.border}`,
           boxShadow: isDark ? '4px 0 40px rgba(0,0,0,0.45)' : '4px 0 24px rgba(0,0,0,0.06)',
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
         }}
       >
         {/* ── Brand ── */}
@@ -287,10 +299,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                   to={cat.path}
                   onClick={onClose}
                   aria-current={active ? 'page' : undefined}
-                  className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all w-full min-h-[40px] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-                  style={{ background: active ? t.activeParent : 'transparent', textDecoration: 'none' }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeParent : 'transparent'; }}>
+                  className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors w-full min-h-[40px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${active ? 'sb-active' : ''}`}
+                  style={{ background: active ? t.activeParent : 'transparent', textDecoration: 'none' }}>
                   <Icon className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform"
                     style={{ color: active ? t.accent : t.txtMuted }} aria-hidden="true" />
                   <span className="text-[12.5px] font-semibold leading-tight flex-1"
@@ -322,10 +332,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                   onClick={() => handleToggle(cat.title)}
                   aria-expanded={isOpenNow}
                   aria-controls={subId}
-                  className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all min-h-[40px] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-                  style={{ background: isActive ? t.activeParent : 'transparent' }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = t.hover; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? t.activeParent : 'transparent'; }}>
+                  className={`group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${isActive ? 'sb-active' : ''}`}
+                  style={{ background: isActive ? t.activeParent : 'transparent' }}>
                   <Icon className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform"
                     style={{ color: isActive ? t.accent : t.txtMuted }} aria-hidden="true" />
                   <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight truncate"
@@ -369,13 +377,11 @@ const Sidebar = ({ isOpen, onClose }) => {
                                 to={`${sub.path}?tab=${sub.tab}`}
                                 onClick={onClose}
                                 aria-current={active ? 'page' : undefined}
-                                className="group flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+                                className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors min-h-[36px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${active ? 'sb-active' : ''}`}
                                 style={{
                                   background: active ? `${subAccent}12` : 'transparent',
                                   textDecoration: 'none',
-                                }}
-                                onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
-                                onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? `${subAccent}12` : 'transparent'; }}>
+                                }}>
                                 {/* Icon chip */}
                                 <span
                                   className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
@@ -427,10 +433,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             to="/"
             onClick={onClose}
             aria-label="Back to Customer Website Homepage"
-            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-            style={{ background: 'transparent', textDecoration: 'none' }}
-            onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item"
+            style={{ background: 'transparent', textDecoration: 'none' }}>
             <Home className="w-4 h-4 flex-shrink-0 group-hover:-translate-x-0.5 transition-transform"
               style={{ color: t.txtMuted }} aria-hidden="true" />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
@@ -445,10 +449,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             type="button"
             onClick={handleLogout}
             aria-label="Sign out of Admin Account"
-            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
-            style={{ background: 'transparent' }}
-            onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none sb-danger"
+            style={{ background: 'transparent' }}>
             <LogOut className="w-4 h-4 flex-shrink-0 group-hover:translate-x-0.5 transition-transform"
               style={{ color: '#ef4444' }} aria-hidden="true" />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"

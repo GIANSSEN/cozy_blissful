@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
+import ProfileMenu from '../../components/profile/ProfileMenu';
 import ProfileModal from '../../components/profile/ProfileModal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 
@@ -23,6 +24,7 @@ const STAFF_SEARCH_INDEX = [
  */
 const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIcon }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -36,6 +38,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
   const navigate = useNavigate();
 
   const searchInputRef = useRef(null);
+  const mobileSearchInputRef = useRef(null);
   const searchContainerRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -75,6 +78,8 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
       if (e.key === 'Escape') {
         setIsSearchFocused(false);
         setShowProfile(false);
+        setMobileSearchOpen(false);
+        setMobileSidebarOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -112,6 +117,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
     navigate(path);
     setSearchQuery('');
     setIsSearchFocused(false);
+    setMobileSearchOpen(false);
   };
 
   return (
@@ -124,6 +130,11 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
       }}
     >
       {/* ── Sidebar ── */}
+      <style>{`
+        @media (hover: hover) and (pointer: fine) {
+          .staff-search-hit:hover { background: ${isDark ? 'rgba(52,211,153,0.1)' : 'rgba(10,61,48,0.05)'} !important; }
+        }
+      `}</style>
       <StaffSidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* ── Right canvas ── */}
@@ -131,18 +142,121 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
 
         {/* ── Top Header Bar ── */}
         <header
-          className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 backdrop-blur-xl"
+          className="sticky top-0 z-30 px-3 sm:px-6 lg:px-8 backdrop-blur-xl"
           style={{
             background: isDark ? 'rgba(15,20,32,0.95)' : 'rgba(255,255,255,0.95)',
             borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
             boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 16px rgba(0,0,0,0.03)',
           }}
         >
+          {mobileSearchOpen ? (
+            /* ── Mobile search active row (sm:hidden) ── */
+            <div className="flex items-center h-14 gap-2 w-full sm:hidden">
+              <button
+                type="button"
+                onClick={() => { setMobileSearchOpen(false); setSearchQuery(''); }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all active:scale-95 touch-manipulation cursor-pointer"
+                style={{
+                  background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+                  color: isDark ? '#a0aec0' : '#64748b',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
+                }}
+                aria-label="Back to navigation"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div
+                className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl transition-all min-w-0"
+                style={{
+                  background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  border: `1px solid ${isDark ? '#34d399' : '#0a3d30'}`,
+                  boxShadow: `0 0 0 3px ${isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)'}`,
+                }}
+              >
+                <Search className="w-4 h-4 shrink-0" style={{ color: isDark ? '#34d399' : '#0a3d30' }} />
+                <input
+                  ref={mobileSearchInputRef}
+                  type="search"
+                  autoFocus
+                  placeholder="Search staff portal…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsSearchFocused(true)}
+                  className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400 min-w-0"
+                  style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
+                  aria-label="Search staff portal"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={() => setSearchQuery('')} className="p-1 rounded-md text-slate-400 shrink-0" aria-label="Clear search">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {/* Mobile search results */}
+              {searchQuery.trim() !== '' && (
+                <div
+                  className="fixed left-3 right-3 top-16 max-h-[60vh] overflow-y-auto rounded-2xl z-50 shadow-2xl p-1.5 overscroll-contain sm:hidden"
+                  style={{
+                    background: isDark ? '#1c2333' : '#ffffff',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+                    WebkitOverflowScrolling: 'touch',
+                  }}
+                >
+                  <div
+                    className="px-3 py-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider"
+                    style={{
+                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                      color: isDark ? '#8a9ab0' : '#64748b',
+                    }}
+                  >
+                    <span>Results ({filteredSearch.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => { setMobileSearchOpen(false); setSearchQuery(''); }}
+                      className="text-[10px] lowercase opacity-70 underline"
+                    >
+                      close
+                    </button>
+                  </div>
+                  <div className="space-y-0.5 mt-1">
+                    {filteredSearch.length > 0 ? filteredSearch.map((item) => (
+                      <button
+                        key={item.path}
+                        type="button"
+                        onClick={() => handleSelectSearchResult(item.path)}
+                        className="staff-search-hit w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between gap-2 touch-manipulation min-h-[44px]"
+                        style={{ background: 'transparent' }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>{item.label}</p>
+                          <p className="text-[10px] mt-0.5 truncate" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>{item.desc}</p>
+                        </div>
+                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider ml-2 shrink-0" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: isDark ? '#a0aec0' : '#475569' }}>{item.category}</span>
+                      </button>
+                    )) : (
+                      <div className="py-6 text-center text-xs" style={{ color: isDark ? '#5c6a7e' : '#64748b' }}>
+                        No results for &quot;{searchQuery}&quot;
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+          <div className="flex items-center justify-between h-14 gap-2 sm:gap-3" role="toolbar" aria-label="Header Controls">
           {/* Left: Hamburger + Page Icon + Page Title */}
-          <div className="flex items-center gap-3 min-w-0 flex-1 mr-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1 sm:mr-2">
             <button
-              onClick={() => setMobileSidebarOpen(true)}
-              className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+              onClick={() => {
+                setIsSearchFocused(false);
+                setMobileSearchOpen(false);
+                setShowProfile(false);
+                setMobileSidebarOpen(true);
+              }}
+              aria-label="Open navigation sidebar"
+              aria-expanded={mobileSidebarOpen}
+              aria-controls="staff-sidebar"
+              className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 shrink-0 touch-manipulation cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               style={{
                 background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
                 color: isDark ? '#a0aec0' : '#64748b',
@@ -165,16 +279,16 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                 : <Home className="w-4 h-4 text-amber-300" />}
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1
                 className="text-sm sm:text-base lg:text-lg font-black tracking-tight leading-tight truncate"
                 style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
               >
                 {title}
               </h1>
-              {subtitle && (
+              {subtitle && !mobileSearchOpen && (
                 <p
-                  className="text-[10px] mt-0.5 font-medium leading-none"
+                  className="hidden sm:block text-[10px] mt-0.5 font-medium leading-none truncate"
                   style={{ color: isDark ? '#5c6a7e' : '#8a9099' }}
                 >
                   {subtitle}
@@ -183,13 +297,30 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
             </div>
           </div>
 
-          {/* Right: Functional Search + Theme Toggle + Role Badge + Avatar */}
-          <div className="flex items-center gap-3">
-            
-            {/* Functional Search Input */}
-            <div className="relative" ref={searchContainerRef}>
+          {/* Right controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0" role="toolbar" aria-label="Right header controls">
+            {/* Mobile search trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileSearchOpen(true);
+                setTimeout(() => mobileSearchInputRef.current?.focus(), 50);
+              }}
+              className="sm:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 touch-manipulation cursor-pointer shrink-0"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
+                color: isDark ? '#a0aec0' : '#64748b',
+              }}
+              aria-label="Open search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
+            {/* Desktop search (sm+) — fluid width, never crushes the header */}
+            <div className="relative hidden sm:block" ref={searchContainerRef} role="search" aria-label="Staff search">
               <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs transition-all duration-200"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 sm:w-44 md:w-52 lg:w-60 focus-within:w-48 sm:focus-within:w-64"
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                   border: isSearchFocused
@@ -198,30 +329,33 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                   boxShadow: isSearchFocused
                     ? `0 0 0 3px ${isDark ? 'rgba(52,211,153,0.15)' : 'rgba(10,61,48,0.1)'}`
                     : 'none',
-                  width: isSearchFocused ? '260px' : '200px',
                 }}
               >
-                <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: isDark ? '#5c6a7e' : '#8a9099' }} />
+                <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: isDark ? '#5c6a7e' : '#8a9099' }} aria-hidden="true" />
                 <input
                   ref={searchInputRef}
-                  type="text"
-                  placeholder="Search staff portal…"
+                  type="search"
+                  role="searchbox"
+                  aria-label="Search staff portal (Ctrl+K)"
+                  placeholder="Search…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
-                  className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400"
+                  className="bg-transparent border-none outline-none w-full text-xs font-medium placeholder:text-slate-400 min-w-0"
                   style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
                 />
                 {searchQuery ? (
                   <button
+                    type="button"
                     onClick={() => setSearchQuery('')}
-                    className="p-0.5 rounded-md hover:opacity-75 transition-opacity"
+                    className="p-0.5 rounded-md hover:opacity-75 transition-opacity shrink-0"
+                    aria-label="Clear search"
                   >
                     <X className="w-3 h-3 text-slate-400" />
                   </button>
                 ) : (
                   <kbd
-                    className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded"
+                    className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded shrink-0"
                     style={{
                       background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                       color: isDark ? '#8a9ab0' : '#8a9099',
@@ -232,7 +366,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                 )}
               </div>
 
-              {/* Search Results Dropdown */}
+              {/* Search Results Dropdown — responsive: full-width sheet on phones */}
               <AnimatePresence>
                 {isSearchFocused && searchQuery.trim() !== '' && (
                   <motion.div
@@ -240,8 +374,9 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 6, scale: 0.98 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 rounded-2xl overflow-hidden z-50 shadow-2xl"
+                    className="fixed left-3 right-3 top-[64px] sm:inset-auto sm:absolute sm:right-0 sm:top-full sm:mt-2.5 sm:w-80 rounded-2xl overflow-hidden z-50 shadow-2xl"
                     style={{
+                      maxWidth: 'calc(100vw - 1.5rem)',
                       background: isDark ? '#1c2333' : '#ffffff',
                       border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
                     }}
@@ -257,22 +392,15 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                       <span className="text-[9px] lowercase opacity-70">esc to close</span>
                     </div>
 
-                    <div className="max-h-72 overflow-y-auto p-1.5 space-y-1">
+                    <div className="max-h-[50vh] sm:max-h-72 overflow-y-auto p-1.5 space-y-1 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
                       {filteredSearch.length > 0 ? (
                         filteredSearch.map((item) => (
                           <button
                             key={item.path}
+                            type="button"
                             onClick={() => handleSelectSearchResult(item.path)}
-                            className="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between transition-all group"
+                            className="staff-search-hit w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between gap-2 transition-colors group touch-manipulation min-h-[44px]"
                             style={{ background: 'transparent' }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.background = isDark
-                                ? 'rgba(52,211,153,0.1)'
-                                : 'rgba(10,61,48,0.05)')
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.background = 'transparent')
-                            }
                           >
                             <div>
                               <p
@@ -312,9 +440,11 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
 
             {/* Theme Toggle Button */}
             <button
+              type="button"
               title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               onClick={toggleTheme}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+              aria-label={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
+              className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               style={{
                 background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                 border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
@@ -335,113 +465,28 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
                 onClick={() => setShowProfile((v) => !v)}
               />
 
-              {/* Profile Dropdown */}
-              <AnimatePresence>
-                {showProfile && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                    transition={{ duration: 0.18 }}
-                    role="dialog"
-                    aria-label="Staff profile menu"
-                    className="absolute right-0 mt-2.5 w-64 rounded-2xl overflow-hidden z-50 shadow-2xl"
-                    style={{
-                      background: isDark ? '#1c2333' : '#ffffff',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
-                    }}
-                  >
-                    <div
-                      className="px-4 py-4 flex items-center gap-3"
-                      style={{
-                        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                      }}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0 overflow-hidden"
-                        style={{ background: 'linear-gradient(135deg, #041e16, #0c4a36)', border: '2px solid #bfa15f' }}
-                      >
-                        {avatarUrl
-                          ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
-                          : (user?.name?.charAt(0)?.toUpperCase() || 'S')}
-                      </div>
-                      <div className="min-w-0 flex-1 text-left">
-                        <p
-                          className="text-xs font-black truncate"
-                          style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}
-                        >
-                          {user?.name || 'Staff Coordinator'}
-                        </p>
-                        <p
-                          className="text-[10px] truncate mt-0.5"
-                          style={{ color: isDark ? '#5c6a7e' : '#8a9099' }}
-                        >
-                          {user?.email || 'staff@cozyblissful.com'}
-                        </p>
-                        <span
-                          className="inline-flex items-center gap-1 mt-1.5 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
-                          style={{
-                            background: isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.07)',
-                            color: isDark ? '#34d399' : '#041e16',
-                          }}
-                        >
-                          Staff Member
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-2 space-y-1 text-left">
-                      <button
-                        onClick={() => { setShowProfile(false); setShowProfileModal(true); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[40px]"
-                        style={{ color: isDark ? '#c9d1e0' : '#374151' }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = isDark
-                            ? 'rgba(255,255,255,0.05)'
-                            : 'rgba(0,0,0,0.04)')
-                        }
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        <UserIcon className="w-4 h-4 text-emerald-500" />
-                        <span>My Profile & Photo</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowProfile(false);
-                          navigate('/');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[40px]"
-                        style={{ color: isDark ? '#c9d1e0' : '#374151' }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = isDark
-                            ? 'rgba(255,255,255,0.05)'
-                            : 'rgba(0,0,0,0.04)')
-                        }
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        <Home className="w-4 h-4 text-amber-500" />
-                        <span>Public Website</span>
-                      </button>
-
-                      <div
-                        className="my-1 h-px"
-                        style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
-                      />
-
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-red-500 hover:bg-red-500/10 min-h-[40px]"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <ProfileMenu
+                open={showProfile}
+                onClose={() => setShowProfile(false)}
+                user={user}
+                role={role || 'staff'}
+                avatarUrl={avatarUrl}
+                isDark={isDark}
+                triggerRef={profileRef}
+                ariaLabel="Staff profile menu"
+                fallbackName="Staff Coordinator"
+                items={[
+                  { id: 'profile', label: 'My Profile & Photo', icon: UserIcon, iconClass: 'text-emerald-500', onSelect: () => setShowProfileModal(true) },
+                  { id: 'home', label: 'Public Website', icon: Home, iconClass: 'text-amber-500', onSelect: () => navigate('/') },
+                  { id: 'logout', label: 'Sign Out', icon: LogOut, danger: true, dividerBefore: true, onSelect: handleLogout },
+                ]}
+              />
             </div>
 
+            {/* End right controls + main row */}
           </div>
+        </div>
+        )}
         </header>
 
         {/* ── Page Content ── */}

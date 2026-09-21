@@ -11,6 +11,7 @@ import { useToast } from '../../context/ToastContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
+import ProfileMenu from '../../components/profile/ProfileMenu';
 import ProfileModal from '../../components/profile/ProfileModal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 
@@ -863,124 +864,38 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
                   onClick={() => setShowProfile(v => !v)}
                 />
 
-                <AnimatePresence>
-                  {showProfile && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      transition={{ duration: 0.18 }}
-                      role="dialog"
-                      aria-label="Admin profile menu"
-                      className="absolute right-0 mt-2.5 w-64 rounded-2xl overflow-hidden z-50 shadow-2xl"
-                      style={{
-                        background: isDark ? '#1c2333' : '#ffffff',
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)'}`,
-                      }}
-                    >
-                      {/* Header */}
-                      <div
-                        className="px-4 py-4 flex items-center gap-3"
-                        style={{ borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}
-                      >
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0 overflow-hidden"
+                <ProfileMenu
+                  open={showProfile}
+                  onClose={() => setShowProfile(false)}
+                  user={user}
+                  role={role || 'admin'}
+                  avatarUrl={avatarUrl}
+                  isDark={isDark}
+                  triggerRef={profileRef}
+                  ariaLabel="Admin profile menu"
+                  fallbackName="System Administrator"
+                  items={[
+                    { id: 'profile', label: 'My Profile & Photo', icon: UserIcon, iconClass: 'text-emerald-500', onSelect: () => setShowProfileModal(true) },
+                    { id: 'settings', label: 'System Settings', icon: Settings, iconClass: 'text-emerald-500', onSelect: () => navigate('/admin/settings') },
+                    { id: 'home', label: 'Public Website', icon: Home, iconClass: 'text-amber-500', onSelect: () => navigate('/') },
+                    {
+                      id: 'theme', label: 'Theme Mode', icon: isDark ? Sun : Moon, iconClass: isDark ? 'text-amber-400' : 'text-sky-500',
+                      keepOpen: true, onSelect: toggleTheme,
+                      trailing: (
+                        <span
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase"
                           style={{
-                            background: 'linear-gradient(135deg, #041e16, #0c4a36)',
-                            boxShadow: '0 2px 8px rgba(4,30,22,0.4)',
-                            border: '2px solid #bfa15f',
+                            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                            color: isDark ? '#34d399' : '#041e16',
                           }}
                         >
-                          {avatarUrl
-                            ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
-                            : (user?.name?.charAt(0)?.toUpperCase() || 'A')}
-                        </div>
-                        <div className="min-w-0 flex-1 text-left">
-                          <p className="text-xs font-black truncate" style={{ color: isDark ? '#e8ecf3' : '#1a1d23' }}>
-                            {user?.name || 'System Administrator'}
-                          </p>
-                          <p className="text-[10px] truncate mt-0.5" style={{ color: isDark ? '#5c6a7e' : '#8a9099' }}>
-                            {user?.email || 'admin@cozyblissful.com'}
-                          </p>
-                          <span
-                            className="inline-flex items-center gap-1 mt-1.5 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
-                            style={{
-                              background: isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.07)',
-                              color: isDark ? '#34d399' : '#041e16',
-                            }}
-                          >
-                            Administrator
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Menu */}
-                      <div className="p-2 space-y-0.5 text-left">
-                        <button
-                          onClick={() => { setShowProfile(false); setShowProfileModal(true); }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all group min-h-[40px]"
-                          style={{ color: isDark ? '#c9d1e0' : '#374151' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                        >
-                          <UserIcon className="w-4 h-4 text-emerald-500" />
-                          <span>My Profile & Photo</span>
-                        </button>
-                        {[
-                          { label: 'System Settings', icon: Settings, onClick: () => { setShowProfile(false); navigate('/admin/settings'); }, iconClass: 'text-emerald-500 group-hover:rotate-45 transition-transform' },
-                          { label: 'Public Website', icon: Home, onClick: () => { setShowProfile(false); navigate('/'); }, iconClass: 'text-amber-500' },
-                        ].map(item => (
-                          <button
-                            key={item.label}
-                            onClick={item.onClick}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all group min-h-[40px]"
-                            style={{ color: isDark ? '#c9d1e0' : '#374151' }}
-                            onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                          >
-                            <item.icon className={`w-4 h-4 ${item.iconClass}`} />
-                            <span>{item.label}</span>
-                          </button>
-                        ))}
-
-                        <button
-                          onClick={toggleTheme}
-                          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all min-h-[40px]"
-                          style={{ color: isDark ? '#c9d1e0' : '#374151' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-sky-500" />}
-                            <span>Theme Mode</span>
-                          </div>
-                          <span
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase"
-                            style={{
-                              background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                              color: isDark ? '#34d399' : '#041e16',
-                            }}
-                          >
-                            {isDark ? 'Dark' : 'Light'}
-                          </span>
-                        </button>
-
-                        <div className="my-1 h-px" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
-
-                        <button
-                          onClick={handleLogout}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[40px]"
-                          style={{ color: '#ef4444' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.08)')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span>Sign Out</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                          {isDark ? 'Dark' : 'Light'}
+                        </span>
+                      ),
+                    },
+                    { id: 'logout', label: 'Sign Out', icon: LogOut, danger: true, dividerBefore: true, onSelect: handleLogout },
+                  ]}
+                />
               </div>
             </div>
           </div>

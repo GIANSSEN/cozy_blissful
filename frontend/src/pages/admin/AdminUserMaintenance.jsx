@@ -2060,16 +2060,12 @@ function TabSchedules({ users, focusedMemberId }) {
             Work Schedules &amp; Shift Rosters
           </h2>
           <p className="text-xs mt-0.5" style={{ color: C.txtMuted }}>
-            Assign weekly shift duties. Tap a shift to toggle it — changes stay unsaved until you press Save.
+            Assign weekly shift duties. Tap a shift to toggle it — each shift is 4 hours, and changes stay unsaved until you press Save.
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: C.pillBg, color: C.txtSec }}>
               <CalendarDays className="w-3 h-3" aria-hidden="true" />
               Week of {weekLabel}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: C.pillBg, color: C.txtSec }}>
-              <Clock className="w-3 h-3" aria-hidden="true" />
-              4h per shift
             </span>
             {person && (
               <span
@@ -2261,7 +2257,6 @@ function TabSchedules({ users, focusedMemberId }) {
             </span>
           );
         })}
-        <span className="text-[10px] self-center shrink-0 hidden lg:inline" style={{ color: C.txtMuted }}>Regular week ≤ {REGULAR_CAP}h · Overtime over {OVERTIME_AT}h · Cap {HARD_CAP}h</span>
       </div>
 
       {/* MAIN GRID */}
@@ -2394,31 +2389,6 @@ function TabSchedules({ users, focusedMemberId }) {
               searchable
               isDark={C.isDark}
             />
-            {/* Quick-switch chips: faster than opening the dropdown repeatedly */}
-            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5" role="group" aria-label="Quick switch team member">
-              {teamUsers.map(u => {
-                const isSel = selected === u.id;
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => requestSelect(u.id)}
-                    aria-pressed={isSel}
-                    aria-label={`Switch to ${u.name}`}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-full text-[11px] font-bold border cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
-                    style={{
-                      background: isSel ? `${C.accent}20` : C.inner,
-                      borderColor: isSel ? `${C.accent}60` : 'transparent',
-                      color: isSel ? C.txt : C.txtSec,
-                    }}
-                  >
-                    {(u.name || '?').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                    <span className="max-w-[90px] truncate">{u.name.split(' ')[0]}</span>
-                    {dirtyIds.has(u.id) && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" aria-hidden="true" />}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {!person ? (
@@ -2443,7 +2413,7 @@ function TabSchedules({ users, focusedMemberId }) {
                     <span className="mt-1 inline-block"><RolePill role={person.role} /></span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 sm:gap-5" role="status" aria-label={`${person.name}: ${totalShifts} shifts, ${totalHours} hours per week, ${validation.daysOff} days off`}>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-5" role="status" aria-label={`${person.name}: ${totalShifts} shifts, ${totalHours} hours per week, ${validation.daysOff} days off`}>
                   {isDirty && (
                     <span className="text-[10px] font-bold text-amber-500 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 motion-safe:animate-pulse" aria-hidden="true" />
@@ -2465,31 +2435,8 @@ function TabSchedules({ users, focusedMemberId }) {
                 </div>
               </div>
 
-              {/* Column headers (desktop): mirrors the toggle grid below */}
-              <div
-                className="hidden sm:grid px-4 py-2 gap-2 text-center flex-shrink-0"
-                style={{ gridTemplateColumns: '4.5rem 1fr 1fr 1fr', borderBottom: `1px solid ${C.divider}` }}
-                aria-hidden="true"
-              >
-                <div />
-                {SHIFTS.map(sh => {
-                  const Icon = SHIFT_ICON[sh.id] || Clock;
-                  return (
-                    <div key={sh.id} className="py-1">
-                      <p className="text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1" style={{ color: sh.color }}>
-                        <Icon className="w-3 h-3" /> {sh.label}
-                      </p>
-                      <p className="text-[9px] font-medium mt-0.5" style={{ color: C.txtMuted }}>{sh.time}</p>
-                    </div>
-                  );
-                })}
-              </div>
-
               {/* Day rows */}
               <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-2">
-                <p id="day-grid-hint" className="text-[10px] px-1" style={{ color: C.txtMuted }}>
-                  Toggle shifts per day. Each shift is 4 hours. Weekdays default to Morning + Afternoon.
-                </p>
                 {DAYS.map((day, di) => {
                   const dayShifts = sched[day] || [];
                   const isWE      = di >= 5;
@@ -2519,7 +2466,7 @@ function TabSchedules({ users, focusedMemberId }) {
                             {dayHours > 0 ? `${dayHours}h` : 'Day off'}
                           </span>
                         </div>
-                        <div className="grid grid-cols-3 gap-1.5" role="group" aria-labelledby={labelIdM} aria-describedby="day-grid-hint">
+                        <div className="grid grid-cols-3 gap-1.5" role="group" aria-labelledby={labelIdM}>
                           {SHIFTS.map(sh => {
                             const active = dayShifts.includes(sh.id);
                             const Icon = SHIFT_ICON[sh.id] || Clock;
@@ -2550,7 +2497,7 @@ function TabSchedules({ users, focusedMemberId }) {
                             );
                           })}
                         </div>
-                        {dayHours > 0 && (
+                        {dayHours > 0 ? (
                           <button
                             type="button"
                             onClick={() => clearDay(day)}
@@ -2559,6 +2506,16 @@ function TabSchedules({ users, focusedMemberId }) {
                             style={{ color: C.txtMuted }}
                           >
                             Clear {day} — mark day off
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => fillDay(day)}
+                            aria-label={`Set ${day} to Morning plus Afternoon`}
+                            className="w-full text-[10px] font-bold py-2 min-h-[36px] rounded-lg cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+                            style={{ color: C.accent }}
+                          >
+                            Fill {day} — Morning + Afternoon
                           </button>
                         )}
                       </div>
@@ -2678,23 +2635,6 @@ function TabSchedules({ users, focusedMemberId }) {
                     <span className="text-[9px] font-bold" style={{ color: C.txtMuted }}>0h</span>
                     <span className="text-[9px] font-bold" style={{ color: C.txtMuted }}>Regular ≤ {REGULAR_CAP}h · Overtime line {OVERTIME_AT}h · Cap {HARD_CAP}h</span>
                   </div>
-                </div>
-                <div className="flex items-end gap-0.5 h-5" aria-hidden="true">
-                  {DAYS.map(d => {
-                    const cnt = (sched[d] || []).length;
-                    const pct = cnt === 0 ? 4 : cnt === 1 ? 40 : cnt === 2 ? 70 : 100;
-                    const col = cnt === 0 ? C.divider : cnt === 1 ? '#f59e0b' : cnt === 2 ? '#059669' : '#0ea5e9';
-                    return (
-                      <div key={d} className="flex-1 flex flex-col justify-end" title={`${d}: ${cnt * HOURS_PER_SHIFT}h`}>
-                        <div className="rounded-t-sm transition-all duration-300" style={{ height: `${pct}%`, background: col, opacity: 0.85 }} />
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-0.5" aria-hidden="true">
-                  {DAYS.map(d => (
-                    <p key={d} className="flex-1 text-center" style={{ fontSize: 8, color: C.txtMuted, fontWeight: 700 }}>{d}</p>
-                  ))}
                 </div>
                 {teamUsers.length > 1 && (
                   <button

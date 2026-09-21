@@ -14,6 +14,7 @@ import {
   User, Phone, Handshake, Zap, Check,
 } from 'lucide-react';
 import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
+import ProfileMenu from '../../components/profile/ProfileMenu';
 import ProfileModal from '../../components/profile/ProfileModal';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 
@@ -365,55 +366,21 @@ const TherapistDashboard = () => {
               open={profileMenuOpen}
               onClick={() => setProfileMenuOpen((v) => !v)}
             />
-            <AnimatePresence>
-              {profileMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                  transition={{ duration: 0.16 }}
-                  role="dialog"
-                  aria-label="Therapist profile menu"
-                  className="absolute right-0 mt-2.5 w-60 rounded-2xl overflow-hidden z-50 shadow-2xl bg-white border border-slate-200"
-                >
-                  <div className="px-4 py-3.5 flex items-center gap-3 border-b border-slate-100">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0 overflow-hidden"
-                      style={{ background: 'linear-gradient(135deg,#041e16,#0c4a36)', border: '2px solid #bfa15f' }}
-                    >
-                      {avatarUrl
-                        ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
-                        : (user?.name?.charAt(0)?.toUpperCase() || 'T')}
-                    </div>
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="text-xs font-black truncate text-slate-900">{user?.name || 'Therapist'}</p>
-                      <p className="text-[10px] truncate mt-0.5 text-slate-400">{user?.email || ''}</p>
-                      <span className="inline-flex items-center mt-1.5 text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
-                        Therapist
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-2 space-y-0.5">
-                    <button
-                      type="button"
-                      onClick={() => { setProfileMenuOpen(false); setProfileOpen(true); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition min-h-[40px]"
-                    >
-                      <User className="w-4 h-4 text-emerald-700" />
-                      <span>My Profile & Photo</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setProfileMenuOpen(false); setLogoutOpen(true); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition min-h-[40px]"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <ProfileMenu
+              open={profileMenuOpen}
+              onClose={() => setProfileMenuOpen(false)}
+              user={user}
+              role="therapist"
+              avatarUrl={avatarUrl}
+              isDark={false}
+              ariaLabel="Therapist profile menu"
+              fallbackName="Therapist"
+              badgeText="Therapist"
+              items={[
+                { id: 'profile', label: 'My Profile & Photo', icon: User, iconClass: 'text-emerald-700', onSelect: () => setProfileOpen(true) },
+                { id: 'logout', label: 'Sign Out', icon: LogOut, danger: true, onSelect: () => setLogoutOpen(true) },
+              ]}
+            />
           </div>
         </div>
       </header>

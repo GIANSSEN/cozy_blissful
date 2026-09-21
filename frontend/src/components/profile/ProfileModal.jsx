@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { User as UserIcon, Camera, Trash2, Eye, EyeOff, KeyRound, Save, Phone, MapPin, Sparkles } from 'lucide-react';
 import ModalShell from '../ui/ModalShell';
 import ProfileField, { profileInputClass } from '../ui/ProfileField';
+import { SpringElement } from '../ui/spring-element';
 import { getRoleMeta, initialOf } from '../../lib/roleMeta';
 import {
   validateProfileForm,
@@ -166,16 +167,29 @@ const ProfileModal = ({
           onDragLeave={() => setDragOver(false)}
           onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]); }}
         >
-          <div
-            className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a,#bfa15f)', padding: '2.5px' }}
+          {/* Spring-draggable preview: pull the photo, gold tether
+              stretches, snap-back on release. overlayClassName lifts the
+              tether above the modal backdrop (z-120). */}
+          <SpringElement
+            className="relative block w-16 h-16 flex-shrink-0"
+            springClassName="[stroke-width:1.5] stroke-[#bfa15f]"
+            overlayClassName="z-[130]"
           >
-            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#041e16,#0c4a36)' }}>
-              {avatarUrl
-                ? <img src={avatarUrl} alt="Profile preview" className="w-full h-full object-cover" draggable={false} />
-                : <span className="text-xl font-black text-white">{initialOf(form.name || user?.name, meta.label.charAt(0))}</span>}
-            </div>
-          </div>
+            <span
+              className="relative block w-16 h-16 rounded-full flex-shrink-0"
+              aria-hidden="true"
+            >
+              <span
+                className="absolute inset-0 rounded-full"
+                style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a,#bfa15f)' }}
+              />
+              <span className="absolute flex items-center justify-center overflow-hidden rounded-full" style={{ inset: '2.5px', background: 'linear-gradient(135deg,#041e16,#0c4a36)' }}>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="Profile preview" className="w-full h-full object-cover" draggable={false} />
+                  : <span className="text-xl font-black text-white">{initialOf(form.name || user?.name, meta.label.charAt(0))}</span>}
+              </span>
+            </span>
+          </SpringElement>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black text-slate-800 dark:text-slate-100">Profile photo</p>
             <p className="text-[11px] text-slate-400 mt-0.5">JPG, PNG or WebP • max 2 MB • drag &amp; drop or browse</p>
@@ -183,7 +197,7 @@ const ProfileModal = ({
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-[#041e16] transition hover:brightness-110 active:scale-95 cursor-pointer min-h-[34px]"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold text-[#041e16] transition hover:brightness-110 active:scale-95 cursor-pointer min-h-[40px]"
                 style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)' }}
               >
                 <Camera className="w-3.5 h-3.5" /> {avatarUrl ? 'Change photo' : 'Attach photo'}
@@ -192,7 +206,7 @@ const ProfileModal = ({
                 <button
                   type="button"
                   onClick={() => { onAvatarChange?.(null); setAvatarErr(''); }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/30 transition cursor-pointer min-h-[34px]"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/30 transition cursor-pointer min-h-[40px]"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Remove
                 </button>
@@ -237,6 +251,7 @@ const ProfileModal = ({
               <input
                 id="pf-phone"
                 type="tel"
+                inputMode="tel"
                 value={form.phone}
                 onChange={(e) => set('phone', e.target.value)}
                 placeholder="0917 123 4567"
@@ -327,7 +342,7 @@ const ProfileModal = ({
                     aria-invalid={!!errors.current_password}
                     className={`${inputCls('current_password')} pr-11`}
                   />
-                  <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide passwords' : 'Show passwords'} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
+                  <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? 'Hide passwords' : 'Show passwords'} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition">
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>

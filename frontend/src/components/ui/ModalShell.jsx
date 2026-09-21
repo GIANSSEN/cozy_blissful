@@ -9,9 +9,11 @@ import { X } from 'lucide-react';
  * Guarantees senior-grade UX:
  *  - ESC to close (unless busy)
  *  - backdrop click to close (unless busy / persistent)
- *  - body scroll lock while open
- *  - initial focus on dialog + aria roles
- *  - bottom-sheet on mobile, centered card on desktop
+ *  - body scroll lock + overscroll containment while open
+ *  - initial focus on dialog, full Tab focus-trap, aria roles
+ *  - bottom-sheet on mobile (with grab-handle affordance),
+ *    centered card on desktop
+ *  - 44px close target, safe-area-aware footer
  */
 const ModalShell = ({
   open,
@@ -29,6 +31,29 @@ const ModalShell = ({
 }) => {
   const panelRef = useRef(null);
   const titleId = labelledBy || 'modal-shell-title';
+  const descId = `${titleId}-desc`;
+
+  /* Cycle Tab focus inside the dialog so keyboard users can't
+     slip behind the modal. Cheap, dependency-free focus trap. */
+  const trapTab = (e) => {
+    if (e.key !== 'Tab' || !panelRef.current) return;
+    const nodes = panelRef.current.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (nodes.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -37,6 +62,7 @@ const ModalShell = ({
     const t = setTimeout(() => panelRef.current?.focus(), 60);
     const onKey = (e) => {
       if (e.key === 'Escape' && !busy && !persistent) onClose?.();
+      else trapTab(e);
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -54,7 +80,7 @@ const ModalShell = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.16 }}
-          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto"
+          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto overscroll-contain"
           style={{ background: 'rgba(4,20,15,0.62)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }}
           onClick={(e) => {
             if (e.target === e.currentTarget && !busy && !persistent) onClose?.();
@@ -65,14 +91,20 @@ const ModalShell = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
+            aria-describedby={subtitle ? descId : undefined}
             tabIndex={-1}
             initial={{ scale: 0.96, opacity: 0, y: 22 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: 22 }}
             transition={{ type: 'spring', stiffness: 320, damping: 28 }}
             onClick={(e) => e.stopPropagation()}
-            className={`w-full ${maxWidth} my-auto max-h-[94dvh] sm:max-h-[90vh] flex flex-col rounded-t-[1.75rem] sm:rounded-[1.75rem] overflow-hidden shadow-2xl bg-white dark:bg-[#161b26] border border-[rgba(191,161,95,0.28)] outline-none`}
+            className={`w-full ${maxWidth} my-auto max-h-[94dvh] sm:max-h-[90vh] flex flex-col rounded-t-[1.75rem] sm:rounded-[1.75rem] overflow-hidden shadow-2xl bg-white dark:bg-[#161b26] border border-[rgba(191,161,95,0.28)] outline-none relative`}
           >
+            {/* Mobile bottom-sheet grab handle */}
+            <div
+              aria-hidden="true"
+              className="sm:hidden absolute top-1.5 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/40 z-10"
+            />
             {/* Header */}
             <div className="px-5 sm:px-6 py-5 flex-shrink-0 text-white" style={{ background: headerGradient }}>
               <div className="flex items-center justify-between gap-3 mb-1.5">
@@ -87,15 +119,15 @@ const ModalShell = ({
                   onClick={() => !busy && onClose?.()}
                   disabled={busy}
                   aria-label="Close dialog"
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-50 min-w-[36px] min-h-[36px]"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 active:scale-95 transition cursor-pointer disabled:opacity-50 flex-shrink-0"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
               <h2 id={titleId} className="font-black text-base sm:text-lg tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                 {title}
               </h2>
-              {subtitle && <p className="text-white/70 text-xs mt-0.5 leading-relaxed">{subtitle}</p>}
+              {subtitle && <p id={descId} className="text-white/70 text-xs mt-0.5 leading-relaxed">{subtitle}</p>}
             </div>
 
             {/* Body */}

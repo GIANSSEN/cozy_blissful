@@ -82,6 +82,17 @@ const StaffSidebar = ({ isOpen, onClose }) => {
     setOpenTitle(found ? found.title : null);
   }, [location.pathname]);
 
+  /* Lock background scroll while the mobile drawer is open (mobile only) */
+  useEffect(() => {
+    if (!isOpen) return;
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 1023.98px)');
+    if (!mq.matches) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
+
   const handleToggle = (title) => {
     setOpenTitle(prev => (prev === title ? null : title));
   };
@@ -107,36 +118,51 @@ const StaffSidebar = ({ isOpen, onClose }) => {
 
   return (
     <>
+      {/* Hover/active visuals are CSS-only, gated behind
+          (hover:hover) so touch devices never get sticky "auto touch"
+          highlights from emulated mouseenter events. */}
+      <style>{`
+        #staff-sidebar { --sb-hover: ${t.hover}; --sb-danger: ${isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'}; -webkit-tap-highlight-color: transparent; }
+        @media (hover: hover) and (pointer: fine) {
+          #staff-sidebar .sb-item:not(.sb-active):hover { background: var(--sb-hover) !important; }
+          #staff-sidebar .sb-danger:not(.sb-active):hover { background: var(--sb-danger) !important; }
+        }
+      `}</style>
       {/* Mobile backdrop */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             key="bd"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[90] lg:hidden"
             onClick={onClose}
           />
         )}
       </AnimatePresence>
 
       <aside
+        role="navigation"
+        aria-label="Staff Navigation"
+        id="staff-sidebar"
         className={`
-          fixed lg:sticky top-0 h-screen flex flex-col z-40 antialiased
-          transition-transform duration-300 lg:translate-x-0
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          fixed lg:sticky top-0 h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased select-none
+          transition-transform duration-300 ease-out w-[min(86vw,320px)] lg:w-60 xl:w-[272px]
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
         style={{
-          width: 272, minWidth: 272,
           background: t.sidebar,
           borderRight: `1px solid ${t.border}`,
           boxShadow: isDark ? '4px 0 40px rgba(0,0,0,0.45)' : '4px 0 24px rgba(0,0,0,0.06)',
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
         }}
       >
         {/* ── Brand ── */}
         <div className="flex items-center justify-between px-4 py-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${t.border}` }}>
-          <button onClick={() => { navigate('/staff/dashboard'); onClose?.(); }}
-            className="flex items-center gap-2.5 min-w-0 flex-1 text-left">
+          <button type="button" onClick={() => { navigate('/staff/dashboard'); onClose?.(); }}
+            aria-label="Go to Staff Dashboard"
+            className="flex items-center gap-2.5 min-w-0 flex-1 text-left rounded-xl p-1 -m-1 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none">
             <div className="w-9 h-9 rounded-2xl overflow-hidden flex-shrink-0"
               style={{ boxShadow: '0 4px 14px rgba(10,61,48,0.35)' }}>
               <img src="/cb-logo.jpg" alt="CB" className="w-full h-full object-cover" />
@@ -152,31 +178,40 @@ const StaffSidebar = ({ isOpen, onClose }) => {
             </div>
           </button>
 
-          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-            <button onClick={toggleTheme}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+            <button type="button" onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               style={{ background: t.hover, color: t.txtMuted }}
               title={isDark ? 'Switch to Light' : 'Switch to Dark'}>
               {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
-            <button className="lg:hidden w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: t.hover, color: t.txtMuted }} onClick={onClose}>
-              <X className="w-3.5 h-3.5" />
+            <button type="button"
+              aria-label="Close sidebar navigation"
+              className="lg:hidden w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 touch-manipulation cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                color: isDark ? '#e8ecf3' : '#1a1d23',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              }}
+              onClick={onClose}>
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* ── Search ── */}
-        <div className="px-4 pt-3 pb-1 flex-shrink-0">
+        <div className="px-4 pt-3 pb-1 flex-shrink-0" role="search">
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
             style={{ background: t.hover, border: `1px solid ${t.border}` }}>
-            <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: t.txtMuted }} />
+            <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: t.txtMuted }} aria-hidden="true" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search menus…"
+              aria-label="Filter navigation menu"
               className="flex-1 bg-transparent text-[12px] outline-none min-w-0"
               style={{ color: t.txt }} />
             {search && (
-              <button onClick={() => setSearch('')} style={{ color: t.txtMuted }}>
+              <button type="button" onClick={() => setSearch('')} aria-label="Clear search input" style={{ color: t.txtMuted }}>
                 <X className="w-3 h-3" />
               </button>
             )}
@@ -191,7 +226,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
         </div>
 
         {/* ── Navigation ── */}
-        <nav className="flex-1 overflow-y-auto px-3 pb-2 space-y-0.5" style={{ scrollbarWidth: 'none' }}>
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pb-2 space-y-0.5" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} aria-label="Main Navigation">
           {filtered.map(cat => {
             const Icon = cat.icon;
 
@@ -200,13 +235,12 @@ const StaffSidebar = ({ isOpen, onClose }) => {
               const active = location.pathname === cat.path;
               return (
                 <Link key={cat.title} to={cat.path} onClick={onClose}
-                  className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 w-full active:scale-[0.98]"
+                  aria-current={active ? 'page' : undefined}
+                  className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors w-full min-h-[40px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${active ? 'sb-active' : ''}`}
                   style={{
                     background: active ? t.activeParent : 'transparent',
                     textDecoration: 'none',
-                  }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeParent : 'transparent'; }}>
+                  }}>
                   <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
                     style={{ color: active ? t.accent : t.txtMuted }} />
                   <span className="text-[12.5px] font-semibold leading-tight flex-1"
@@ -227,15 +261,17 @@ const StaffSidebar = ({ isOpen, onClose }) => {
             const basePath = cat.basePath || '';
             const isActive = location.pathname.startsWith(basePath);
             const isOpenNow = (openTitle === cat.title) || (search.length > 0 && cat.forceOpen);
+            const subId = `staff-subnav-${cat.title.replace(/\s+/g, '-').toLowerCase()}`;
 
             return (
               <div key={cat.title}>
                 <button
+                  type="button"
                   onClick={() => handleToggle(cat.title)}
-                  className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98]"
-                  style={{ background: isActive ? t.activeParent : 'transparent' }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = t.hover; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = isActive ? t.activeParent : 'transparent'; }}>
+                  aria-expanded={isOpenNow}
+                  aria-controls={subId}
+                  className={`group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${isActive ? 'sb-active' : ''}`}
+                  style={{ background: isActive ? t.activeParent : 'transparent' }}>
                   <Icon className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
                     style={{ color: isActive ? t.accent : t.txtMuted }} />
                   <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight truncate"
@@ -252,6 +288,7 @@ const StaffSidebar = ({ isOpen, onClose }) => {
                 <AnimatePresence initial={false}>
                   {isOpenNow && (
                     <motion.div key="sub"
+                      id={subId}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -268,13 +305,12 @@ const StaffSidebar = ({ isOpen, onClose }) => {
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.18, delay: idx * 0.04, ease: 'easeOut' }}>
                               <Link to={`${sub.path}?tab=${sub.tab}`} onClick={onClose}
-                                className="group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-all duration-150 active:scale-[0.98]"
+                                aria-current={active ? 'page' : undefined}
+                                className={`group flex items-center gap-2 px-2.5 py-2 rounded-lg transition-colors min-h-[36px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${active ? 'sb-active' : ''}`}
                                 style={{
                                   background: active ? t.activeSub : 'transparent',
                                   textDecoration: 'none',
-                                }}
-                                onMouseEnter={e => { if (!active) e.currentTarget.style.background = t.hover; }}
-                                onMouseLeave={e => { if (!active) e.currentTarget.style.background = active ? t.activeSub : 'transparent'; }}>
+                                }}>
                                 <SubIcon className="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-150 group-hover:scale-110"
                                   style={{ color: active ? t.activeSubTxt : t.txtMuted }} />
                                 <span className="text-[11.5px] font-medium leading-tight truncate transition-transform duration-150 group-hover:translate-x-0.5"
@@ -294,13 +330,12 @@ const StaffSidebar = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* ── Footer actions ── */}
-        <div className="px-3 py-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}` }}>
+        {/* ── Footer actions — pinned, respects phone gesture bar ── */}
+        <div className="px-3 pt-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}`, paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <Link to="/" onClick={onClose}
-            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
-            style={{ background: 'transparent', textDecoration: 'none' }}
-            onMouseEnter={e => { e.currentTarget.style.background = t.hover; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            aria-label="Back to Customer Website Homepage"
+            className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item"
+            style={{ background: 'transparent', textDecoration: 'none' }}>
             <Home className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:-translate-x-0.5"
               style={{ color: t.txtMuted }} />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
@@ -312,10 +347,9 @@ const StaffSidebar = ({ isOpen, onClose }) => {
           </Link>
 
           <button type="button" onClick={handleLogout}
-            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all duration-150"
-            style={{ background: 'transparent' }}
-            onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
+            aria-label="Sign out of Staff Account"
+            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none sb-danger"
+            style={{ background: 'transparent' }}>
             <LogOut className="w-4 h-4 flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
               style={{ color: '#ef4444' }} />
             <span className="flex-1 text-left text-[12.5px] font-semibold leading-tight"
