@@ -172,7 +172,7 @@ const ProfileModal = ({
               tether above the modal backdrop (z-120). */}
           <SpringElement
             className="relative block w-16 h-16 flex-shrink-0"
-            springClassName="[stroke-width:1.5] stroke-[#bfa15f]"
+            springClassName="stroke-[1.5] stroke-[#bfa15f] dark:stroke-[#e8cc8a]"
             overlayClassName="z-[130]"
           >
             <span

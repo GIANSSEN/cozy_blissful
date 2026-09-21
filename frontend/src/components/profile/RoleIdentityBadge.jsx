@@ -8,24 +8,27 @@ import { SpringElement } from '../ui/spring-element';
 const DRAG_CLICK_THRESHOLD = 6;
 
 /**
- * RoleIdentityBadge — compact avatar-only identity button.
+ * RoleIdentityBadge — role + avatar identity pill.
  *
- *  ┌────────────┐
- *  │  ( S )  ⌄  │  ← 44px touch target, no text indicator
- *  └────────────┘
+ *  ┌───────────────────────┐
+ *  │  ( S )  │  ● ADMIN  ⌄ │  ← 44px pill, fixed geometry
+ *  └───────────────────────┘
  *
  * Senior-grade details:
- *  - No role text indicator by design: the role lives in the
- *    ProfileMenu header chip, keeping the header calm on every
- *    screen size (320px phones up to desktop).
- *  - 44px minimum touch target (WCAG), 36px avatar + padding.
- *  - GPU-only motion (transform/opacity): hover lift, press
- *    spring, gold sheen sweep, status pulse — all cheap.
- *  - Respects prefers-reduced-motion (pulse + sheen off).
- *  - Avatar photo is spring-draggable (elastic gold tether,
- *    snap-back on release). A genuine drag NEVER toggles the
- *    menu — pointer travel beyond DRAG_CLICK_THRESHOLD eats
- *    the follow-up click.
+ *  - Role indicator restored by design: colored status dot +
+ *    letterspaced role label, so the active portal is always
+ *    legible at a glance (role also lives in the menu header).
+ *  - Fixed h-11 geometry: 36px avatar + 4px padding = exact fit,
+ *    avatar NEVER protrudes above/below the pill.
+ *  - 44px minimum touch target (WCAG); label gracefully hides
+ *    under 420px so 320px phones never overflow.
+ *  - GPU-only motion (transform/opacity/border-color): hover lift,
+ *    press spring, gold sheen sweep, status pulse — all cheap,
+ *    all disabled under prefers-reduced-motion.
+ *  - Avatar photo is spring-draggable (elastic gold tether painted
+ *    at document.body, snap-back on release). A genuine drag NEVER
+ *    toggles the menu — pointer travel beyond DRAG_CLICK_THRESHOLD
+ *    eats the follow-up click.
  *
  * Props: user {name,email}, role string, avatarUrl, online bool,
  * isDark bool, open bool (dropdown state), onClick.
@@ -64,6 +67,16 @@ const RoleIdentityBadge = ({
     if (Math.hypot(x, y) > DRAG_CLICK_THRESHOLD) suppressClick.current = true;
   };
 
+  const pillBg = isDark ? 'rgba(255,255,255,0.06)' : '#0a2e23';
+  const pillBorder = open
+    ? meta.accent
+    : isDark
+      ? 'rgba(255,255,255,0.12)'
+      : 'rgba(191,161,95,0.38)';
+  const labelColor = isDark ? meta.accent : '#8df0c2';
+  const dividerColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(232,204,138,0.22)';
+  const chevronColor = isDark ? '#8a9ab0' : 'rgba(232,204,138,0.75)';
+
   return (
     <button
       type="button"
@@ -71,19 +84,19 @@ const RoleIdentityBadge = ({
       onPointerDown={handlePointerDown}
       aria-haspopup="dialog"
       aria-expanded={open}
-      aria-label={`${meta.fullLabel} profile for ${user?.name || meta.fullLabel}. ${open ? 'Close' : 'Open'} profile menu.`}
-      title={`${user?.name || meta.fullLabel} — ${meta.fullLabel}`}
-      className="group relative flex items-center rounded-full select-none cursor-pointer outline-none transition-all duration-200 ease-out hover:-translate-y-px active:translate-y-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+      aria-label={`${meta.fullLabel} profile for ${user?.name || meta.label}. ${open ? 'Close' : 'Open'} profile menu.`}
+      title={`${user?.name || meta.fullLabel} — ${meta.fullLabel} (drag the photo, click for menu)`}
+      className="group relative flex items-center h-11 rounded-full select-none cursor-pointer outline-none transition-[transform,box-shadow,border-color,opacity] duration-200 ease-out hover:-translate-y-px active:translate-y-0 active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
       style={{
-        background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(4,30,22,0.05)',
-        border: `1px solid ${open ? meta.accent : isDark ? 'rgba(255,255,255,0.12)' : 'rgba(191,161,95,0.35)'}`,
+        background: pillBg,
+        border: `1px solid ${pillBorder}`,
         boxShadow: open
-          ? `0 0 0 3px ${meta.accentSoft}, 0 8px 24px rgba(0,0,0,0.25)`
-          : '0 2px 10px rgba(0,0,0,0.18)',
-        padding: 3,
+          ? `0 0 0 3px ${meta.accentSoft}, 0 8px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)`
+          : '0 3px 12px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08)',
+        padding: 4,
+        paddingRight: 8,
         minHeight: 44,
-        minWidth: 44,
-        gap: 2,
+        gap: 0,
       }}
     >
       {/* Gold sheen sweep on hover — pointer-transparent, purely decorative */}
@@ -98,10 +111,10 @@ const RoleIdentityBadge = ({
           A real drag never toggles the menu (see suppressClick). */}
       <SpringElement
         className="relative block w-9 h-9 flex-shrink-0"
-        springClassName="[stroke-width:1.5] stroke-[#bfa15f]"
+        springClassName="stroke-[1.5] stroke-[#bfa15f] dark:stroke-[#e8cc8a]"
         onDragOffsetChange={handleDragOffset}
       >
-        <span className="relative block w-9 h-9 flex-shrink-0 transition-transform duration-200 ease-out group-hover:scale-[1.05]" aria-hidden="true">
+        <span className="relative block w-9 h-9 flex-shrink-0 transition-transform duration-200 ease-out group-hover:scale-[1.04]" aria-hidden="true">
           {/* Gold ring */}
           <span
             className="absolute inset-0 rounded-full"
@@ -134,7 +147,7 @@ const RoleIdentityBadge = ({
               style={{
                 background: online ? '#10b981' : '#64748b',
                 border: '2px solid',
-                borderColor: isDark ? '#171d2b' : '#ffffff',
+                borderColor: isDark ? '#171d2b' : '#0a2e23',
                 boxShadow: online ? '0 0 6px rgba(16,185,129,0.8)' : '0 1px 3px rgba(0,0,0,0.4)',
               }}
             />
@@ -142,12 +155,32 @@ const RoleIdentityBadge = ({
         </span>
       </SpringElement>
 
+      {/* Divider */}
+      <span
+        aria-hidden="true"
+        className="hidden min-[420px]:block w-px h-5 flex-shrink-0"
+        style={{ background: dividerColor, marginLeft: 8, marginRight: 10 }}
+      />
+
+      {/* Role indicator — dot + letterspaced label */}
+      <span
+        className="hidden min-[420px]:inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase whitespace-nowrap leading-none"
+        style={{ color: labelColor, letterSpacing: '0.14em' }}
+      >
+        <span
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          style={{ background: meta.dot, boxShadow: `0 0 5px ${meta.dot}` }}
+          aria-hidden="true"
+        />
+        {meta.label}
+      </span>
+
       {/* Chevron */}
       <ChevronDown
         className="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ease-out"
         style={{
-          color: isDark ? '#8a9ab0' : '#64748b',
-          marginRight: 4,
+          color: chevronColor,
+          marginLeft: 6,
           transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
         }}
         aria-hidden="true"
