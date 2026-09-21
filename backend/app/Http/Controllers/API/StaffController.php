@@ -221,11 +221,14 @@ class StaffController extends Controller
         $newStatus = $request->status;
 
         // ── State-machine guard: enforce valid transitions ────────────────
+        // NOTE: In Progress sessions belong to the therapist — staff cannot
+        // cancel or force-complete them. Only the therapist marks the session
+        // done, then staff/admin verifies in Therapist Done.
         $allowedTransitions = [
             'Pending' => ['Confirmed', 'Cancelled'],
             'Confirmed' => ['In Progress', 'Cancelled', 'Pending'],
-            'In Progress' => ['Completed by Therapist', 'Completed', 'Cancelled'],
-            'Completed by Therapist' => ['Completed', 'Cancelled'],
+            'In Progress' => ['Completed by Therapist'],
+            'Completed by Therapist' => ['Completed'],
             'Completed' => [],
             'Cancelled' => [],
         ];
@@ -318,8 +321,10 @@ class StaffController extends Controller
 
         $appt = Appointment::with(['client', 'service', 'therapist'])->findOrFail($id);
 
-        // ── Guard: only settle active sessions ─────────────────────────
-        $settleableStatuses = ['Confirmed', 'In Progress', 'Completed by Therapist'];
+        // ── Guard: settlement only after the therapist concludes treatment ──
+        // In Progress sessions cannot be settled — only the therapist marks
+        // them done, then staff verifies in Therapist Done.
+        $settleableStatuses = ['Completed by Therapist'];
         if (!in_array($appt->status, $settleableStatuses)) {
             return response()->json([
                 'message' => "Cannot settle a booking with status '{$appt->status}'. Allowed: " . implode(', ', $settleableStatuses) . '.',

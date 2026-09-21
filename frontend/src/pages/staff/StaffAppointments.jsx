@@ -618,22 +618,20 @@ const AppointmentCard = ({ appt, onOpenAccept, onOpenReject, onStatus, onOpenSet
                         </>
                       )}
 
-                      {(appt.status === 'In Progress' || appt.status === 'Completed by Therapist') && (
-                        <>
-                          <button
-                            onClick={() => onOpenSettleCash(appt)}
-                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105 cursor-pointer"
-                            style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
-                          >
-                            <Banknote className="w-3.5 h-3.5 text-amber-300" /> Verify &amp; Complete Treatment
-                          </button>
-                          <button
-                            onClick={() => onStatus(appt.id, 'Cancelled')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 transition hover:scale-105 cursor-pointer"
-                          >
-                            <X className="w-3 h-3" /> Cancel
-                          </button>
-                        </>
+                      {appt.status === 'In Progress' && (
+                        <span className="text-[11px] font-bold text-sky-700 bg-sky-50 px-3 py-1.5 rounded-xl border border-sky-200 flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5" /> Ongoing with therapist — waiting for therapist to mark done
+                        </span>
+                      )}
+
+                      {appt.status === 'Completed by Therapist' && (
+                        <button
+                          onClick={() => onOpenSettleCash(appt)}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold text-white transition hover:scale-105 cursor-pointer"
+                          style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)', boxShadow: '0 2px 8px rgba(6,44,34,0.2)' }}
+                        >
+                          <Banknote className="w-3.5 h-3.5 text-amber-300" /> Verify &amp; Complete Treatment
+                        </button>
                       )}
 
                       {appt.status === 'Completed' && (

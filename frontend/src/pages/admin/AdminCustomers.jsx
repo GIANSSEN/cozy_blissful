@@ -24,11 +24,19 @@ const validateEmail = (email) => {
 
 const cleanPhoneNumber = (p) => (p || '').replace(/[\s\-()]/g, '');
 
+const normalizePhoneDigits = (p) => (p || '').replace(/\D/g, '');
+
 const validatePhone = (p) => {
   if (!p || p.trim() === '') return true; // Phone is optional
   const cleaned = cleanPhoneNumber(p);
-  // Valid PH mobile: 09XXXXXXXXX (11 digits) or +639XXXXXXXXX or 639XXXXXXXXX (12-13 digits)
-  return /^(09|\+?639)\d{9}$/.test(cleaned);
+  const digits = normalizePhoneDigits(cleaned);
+  // Valid PH mobile variants (after stripping non-digits, optional leading + removed):
+  // 09XXXXXXXXX (11 digits), 639XXXXXXXXX (12 digits), +639XXXXXXXXX
+  if (/^09\d{9}$/.test(cleaned)) return true;
+  if (/^\+?639\d{9}$/.test(cleaned)) return true;
+  if (/^09\d{9}$/.test(digits)) return true;
+  if (/^639\d{9}$/.test(digits)) return true;
+  return false;
 };
 
 const formatPhoneDisplay = (p) => {
@@ -85,10 +93,14 @@ const MODAL_SIZES = {
 const ModalBackdrop = ({ onClose, children, labelId, descId, size = 'md', isAlert = false }) => {
   const containerRef = useRef(null);
   const modalContentRef = useRef(null);
+  const previouslyFocusedRef = useRef(null);
 
   useEffect(() => {
+    previouslyFocusedRef.current = document.activeElement;
+
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
+        e.stopPropagation();
         onClose();
         return;
       }
@@ -96,9 +108,15 @@ const ModalBackdrop = ({ onClose, children, labelId, descId, size = 'md', isAler
         const focusable = modalContentRef.current.querySelectorAll(
           'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
         );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
+        const visible = Array.from(focusable).filter(
+          (el) => el.offsetParent !== null || el === document.activeElement
+        );
+        if (visible.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = visible[0];
+        const last = visible[visible.length - 1];
         if (e.shiftKey && document.activeElement === first) {
           last.focus();
           e.preventDefault();
@@ -108,39 +126,59 @@ const ModalBackdrop = ({ onClose, children, labelId, descId, size = 'md', isAler
         }
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
 
-    // Prevent background page from scrolling
+    // Lock background scroll (with scrollbar compensation, restored on unmount)
     const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) document.body.style.paddingRight = `${scrollbarWidth}px`;
+
+    // Move focus into the dialog for screen readers / keyboard users
+    const t = window.setTimeout(() => {
+      const target =
+        modalContentRef.current?.querySelector('[data-autofocus]') ||
+        modalContentRef.current?.querySelector('input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])');
+      if (target) target.focus({ preventScroll: true });
+    }, 40);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.clearTimeout(t);
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+      if (previouslyFocusedRef.current && previouslyFocusedRef.current.focus) {
+        previouslyFocusedRef.current.focus({ preventScroll: true });
+      }
     };
   }, [onClose]);
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 bg-slate-950/80 backdrop-blur-md overflow-y-auto"
+      className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-slate-950/80 backdrop-blur-md p-3 min-[420px]:p-4 sm:p-6 md:p-8 [padding-bottom:env(safe-area-inset-bottom)]"
       onClick={(e) => { if (e.target === containerRef.current) onClose(); }}
       role={isAlert ? 'alertdialog' : 'dialog'}
       aria-modal="true"
       aria-labelledby={labelId}
       aria-describedby={descId}
     >
-      <motion.div
-        ref={modalContentRef}
-        initial={{ opacity: 0, scale: 0.95, y: 14 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 14 }}
-        transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-        className={`w-full ${MODAL_SIZES[size] || MODAL_SIZES.md} rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] my-auto bg-white dark:bg-[#0d131f] min-h-0`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </motion.div>
+      {/* Vertical centering wrapper that also allows tall dialogs to scroll on small screens */}
+      <div className="min-h-[100dvh] sm:min-h-0 sm:h-full flex items-start sm:items-center justify-center py-2 sm:py-4">
+        <motion.div
+          ref={modalContentRef}
+          tabIndex={-1}
+          initial={{ opacity: 0, scale: 0.96, y: 14 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 14 }}
+          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+          className={`w-full mx-auto ${MODAL_SIZES[size] || MODAL_SIZES.md} rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col min-h-0 max-h-[92dvh] sm:max-h-[86dvh] bg-white dark:bg-[#0d131f] outline-none`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {children}
+        </motion.div>
+      </div>
     </div>
   );
 };
@@ -184,9 +222,9 @@ const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, C, idx }) 
             </div>
           </div>
 
-          {/* Activity Badge */}
+          {/* Activity Badge — never wraps or squeezes on narrow cards */}
           <span
-            className={`text-[9px] sm:text-[10px] font-extrabold px-2.5 py-1 rounded-full border shrink-0 select-none ${
+            className={`text-[9px] sm:text-[10px] font-extrabold px-2.5 py-1 rounded-full border shrink-0 select-none whitespace-nowrap ${
               isActiveClient
                 ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
@@ -268,21 +306,21 @@ const CustomerCard = ({ customer: c, onViewProfile, onDeleteCustomer, C, idx }) 
           </span>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+        {/* Right Actions — 44px touch targets for WCAG 2.5.8 */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <button
             type="button"
             onClick={() => onDeleteCustomer(c)}
-            className="p-1.5 sm:p-2 rounded-xl text-xs font-bold text-red-500 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition cursor-pointer"
+            className="w-10 h-10 rounded-xl text-xs font-bold text-red-500 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 focus-visible:ring-2 focus-visible:ring-red-500 active:scale-95 transition cursor-pointer flex items-center justify-center"
             aria-label={`Delete customer ${c.name}`}
             title={`Delete ${c.name}`}
           >
-            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={onViewProfile}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black text-emerald-950 dark:text-emerald-100 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 border border-emerald-600/20 active:scale-95 transition flex items-center gap-1 shadow-xs cursor-pointer select-none"
+            className="min-h-[40px] px-3 py-2 rounded-xl text-xs font-black text-emerald-950 dark:text-emerald-100 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 focus-visible:ring-2 focus-visible:ring-emerald-500 border border-emerald-600/20 active:scale-95 transition flex items-center gap-1 shadow-xs cursor-pointer select-none"
             aria-label={`View profile and treatment logs for ${c.name}`}
           >
             <span>Profile &amp; Logs</span>
@@ -369,20 +407,20 @@ const CustomerTableRow = ({ customer: c, onViewProfile, onDeleteCustomer, format
 
       {/* Actions */}
       <td className="py-3 px-3 sm:px-4 text-right">
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={() => onDeleteCustomer(c)}
-            className="p-1.5 rounded-lg text-xs font-bold text-red-500 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 transition cursor-pointer"
+            className="w-10 h-10 rounded-lg text-xs font-bold text-red-500 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 focus-visible:ring-2 focus-visible:ring-red-500 transition cursor-pointer flex items-center justify-center"
             aria-label={`Delete customer ${c.name}`}
             title={`Delete ${c.name}`}
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={onViewProfile}
-            className="px-2.5 py-1 rounded-xl text-xs font-extrabold text-emerald-950 dark:text-emerald-100 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 border border-emerald-600/20 transition shadow-xs cursor-pointer select-none"
+            className="min-h-[40px] px-3 py-2 rounded-xl text-xs font-extrabold text-emerald-950 dark:text-emerald-100 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 focus-visible:ring-2 focus-visible:ring-emerald-500 border border-emerald-600/20 transition shadow-xs cursor-pointer select-none"
             aria-label={`View logs for ${c.name}`}
           >
             Logs
@@ -452,47 +490,52 @@ const AdminCustomers = () => {
     totalSessions: customers.reduce((a, c) => a + (Number(c.bookings) || 0), 0),
   }), [customers]);
 
-  /* Filter & Sort list */
+  /* Filter & Sort list (normalized phone search, non-mutating sort) */
   const filteredCustomers = useMemo(() => {
-    let list = customers.filter(c => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchSearch =
-        !q ||
+    const q = searchQuery.toLowerCase().trim();
+    const qDigits = q.replace(/\D/g, '');
+    const list = customers.filter(c => {
+      if (!q) return true;
+      const phoneDigits = normalizePhoneDigits(c.phone);
+      return (
         (c.name || '').toLowerCase().includes(q) ||
         (c.email || '').toLowerCase().includes(q) ||
-        (c.phone || '').includes(searchQuery) ||
-        (c.notes || '').toLowerCase().includes(q);
-
-      return matchSearch;
+        (c.phone || '').toLowerCase().includes(q.toLowerCase()) ||
+        (qDigits !== '' && phoneDigits.includes(qDigits)) ||
+        (c.notes || '').toLowerCase().includes(q)
+      );
     });
 
-    // Sorting
-    list.sort((a, b) => {
+    // Sorting (copy first — never mutate memoized source)
+    const sorted = [...list].sort((a, b) => {
       if (sortBy === 'spent') return (Number(b.totalSpent) || 0) - (Number(a.totalSpent) || 0);
       if (sortBy === 'bookings') return (Number(b.bookings) || 0) - (Number(a.bookings) || 0);
       if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '');
-      // default: recent
-      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      // default: most recent first, stable fallback to id
+      const dateDiff = new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      if (dateDiff !== 0) return dateDiff;
+      return (b.id || 0) - (a.id || 0);
     });
 
-    return list;
+    return sorted;
   }, [customers, searchQuery, sortBy]);
 
-  /* Add customer */
+  /* Add customer — errors propagate to the modal for 422 field mapping */
   const handleAddCustomerSubmit = async (data) => {
     const res = await API.post('/admin/customers', data);
     const newCustomer = res.data.customer;
+    if (!newCustomer?.id) throw new Error('Invalid server response.');
     setCustomers(prev => [newCustomer, ...prev]);
     setShowAddModal(false);
     toast.success(`Client "${formatDisplayName(newCustomer.name)}" registered successfully`);
   };
 
-  /* Update profile (name, phone, notes) */
+  /* Update profile (name, phone, notes) — errors propagate to the detail modal */
   const handleUpdateProfile = async (customerId, payload) => {
     await API.put(`/admin/customers/${customerId}`, payload);
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, ...payload } : c));
     if (selectedCustomer?.id === customerId) {
-      setSelectedCustomer(prev => ({ ...prev, ...payload }));
+      setSelectedCustomer(prev => (prev ? { ...prev, ...payload } : prev));
     }
     toast.success('Customer details updated successfully!');
   };
@@ -511,33 +554,39 @@ const AdminCustomers = () => {
     }
   };
 
-  /* CSV Export */
+  /* CSV Export (Blob-based: safe for ₱, commas, quotes, newlines) */
   const handleExportCsv = () => {
-    if (!customers.length) {
+    if (!filteredCustomers.length) {
       toast.error('No customer records to export.');
       return;
     }
+    const escapeCell = (v) => {
+      const s = String(v ?? '');
+      return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
     const headers = ['ID', 'Name', 'Email', 'Phone', 'Total Bookings', 'Lifetime Spend (PHP)', 'Joined Date', 'Treatment Notes'];
     const rows = filteredCustomers.map(c => [
       c.id,
-      `"${(c.name || '').replace(/"/g, '""')}"`,
-      `"${(c.email || '').replace(/"/g, '""')}"`,
-      `"${(c.phone || '').replace(/"/g, '""')}"`,
+      escapeCell(c.name),
+      escapeCell(c.email),
+      escapeCell(c.phone),
       c.bookings || 0,
       (Number(c.totalSpent) || 0).toFixed(2),
       c.created_at || '',
-      `"${(c.notes || '').replace(/"/g, '""')}"`,
+      escapeCell(c.notes),
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Cozy_Blissful_Customers_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.download = `Cozy_Blissful_Customers_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Customer registry CSV exported!');
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success(`Exported ${filteredCustomers.length} customer record${filteredCustomers.length === 1 ? '' : 's'} to CSV!`);
   };
 
   const KPI = [
@@ -555,94 +604,97 @@ const AdminCustomers = () => {
     >
       <div className="space-y-4 sm:space-y-5 pb-8">
 
-        {/* ── KPI METRICS STRIP ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* ── KPI METRICS STRIP — 1-col on ≤419px phones, 2-col on larger phones, 4-col on desktop ── */}
+        <dl className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" aria-label="Customer registry summary">
           {KPI.map((m, i) => (
             <motion.div
               key={m.label}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all duration-200 hover:shadow-md flex flex-col justify-between"
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all duration-200 hover:shadow-md flex flex-col justify-between gap-2 min-w-0"
               style={{ background: C.cardBg, borderColor: C.cardBorder }}
             >
-              <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
-                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight truncate">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight min-w-0">
                   {m.label}
-                </span>
-                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl ${m.iconBg} flex items-center justify-center shrink-0`}>
-                  <m.Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
+                </dt>
+                <div className={`w-8 h-8 rounded-xl ${m.iconBg} flex items-center justify-center shrink-0`} aria-hidden="true">
+                  <m.Icon className="w-4 h-4" />
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-1 sm:gap-2">
-                <span className="text-base sm:text-lg lg:text-xl xl:text-2xl font-black leading-none text-slate-900 dark:text-white truncate">
+              <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1.5">
+                <dd className="text-xl sm:text-lg lg:text-xl xl:text-2xl font-black leading-none text-slate-900 dark:text-white break-words tabular-nums min-w-0">
                   {m.value}
-                </span>
-                <span className={`text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap self-start sm:self-auto ${m.badgeClass}`}>
+                </dd>
+                <span className={`text-[10px] font-extrabold px-2 py-1 rounded-full whitespace-nowrap shrink-0 ${m.badgeClass}`}>
                   {m.badge}
                 </span>
               </div>
             </motion.div>
           ))}
-        </div>
+        </dl>
 
         {/* ── CONTROL & FILTER TOOLBAR (Unified with other modules) ── */}
         <div
           className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl border space-y-3.5 shadow-xs"
           style={{ background: C.cardBg, borderColor: C.cardBorder }}
         >
-          {/* Header row with actions */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Header row with actions — stacks cleanly on phones */}
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
                 <Users className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
                 <span className="truncate">Client Directory &amp; Logs</span>
               </h2>
-              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-                {loading ? 'Refreshing directory…' : `Showing ${filteredCustomers.length} of ${customers.length} client accounts`}
+              <p className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5" aria-live="polite" role="status">
+                {loading ? 'Refreshing directory…' : `Showing ${filteredCustomers.length} of ${customers.length} client account${customers.length === 1 ? '' : 's'}`}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Wrap-safe on 320px: items flow to the next line instead of overflowing */}
+            <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Customer directory actions">
               {/* CSV Export */}
               <button
                 type="button"
                 onClick={handleExportCsv}
-                className="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-95"
+                className="min-h-[44px] min-w-0 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-emerald-500 transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700 active:scale-95 flex-1 min-[480px]:flex-none"
                 title="Export filtered records to CSV"
               >
-                <Download className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Export CSV</span>
+                <Download className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span className="whitespace-nowrap">Export CSV</span>
               </button>
 
               {/* View Switcher (Grid vs Table) */}
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700" role="group" aria-label="View format">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0" role="group" aria-label="Change directory view format">
                 <button
                   type="button"
                   onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-lg transition cursor-pointer ${
+                  aria-pressed={viewMode === 'grid'}
+                  className={`min-w-[44px] min-h-[36px] p-2 rounded-lg transition cursor-pointer flex items-center justify-center ${
                     viewMode === 'grid'
                       ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                       : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
-                  aria-label="Grid View"
+                  aria-label="Card grid view"
                   title="Card Grid View"
                 >
-                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <LayoutGrid className="w-4 h-4" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('table')}
-                  className={`p-1.5 rounded-lg transition cursor-pointer ${
+                  aria-pressed={viewMode === 'table'}
+                  className={`min-w-[44px] min-h-[36px] p-2 rounded-lg transition cursor-pointer flex items-center justify-center ${
                     viewMode === 'table'
                       ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                       : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                   }`}
-                  aria-label="Table View"
+                  aria-label="Table list view"
                   title="Table List View"
                 >
-                  <List className="w-3.5 h-3.5" />
+                  <List className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
 
@@ -651,47 +703,48 @@ const AdminCustomers = () => {
                 type="button"
                 onClick={() => fetchCustomers(true)}
                 disabled={isRefreshing || loading}
-                aria-label="Refresh Registry"
+                aria-label={isRefreshing ? 'Refreshing customer list' : 'Refresh customer list'}
                 title="Refresh customer list"
-                className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-40 cursor-pointer active:scale-95"
+                className="w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500 transition disabled:opacity-40 cursor-pointer active:scale-95 shrink-0"
               >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} aria-hidden="true" />
               </button>
 
-              {/* Add Customer CTA (Consistent with AdminUserMaintenance / AdminAppointments) */}
+              {/* Add Customer CTA — full row on phones, pushed right on sm+ */}
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-black text-white shadow-md hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                className="w-full min-[480px]:w-auto min-[480px]:ms-auto min-h-[44px] px-4 py-2.5 rounded-xl text-sm min-[480px]:text-xs font-black text-white shadow-md hover:opacity-90 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:scale-95 transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)' }}
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <Plus className="w-4 h-4 stroke-[2.5] shrink-0" aria-hidden="true" />
                 <span>Add Customer</span>
               </button>
             </div>
           </div>
 
-          {/* Search and Sort controls */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+          {/* Search and Sort controls — stacked on phones, side-by-side on md+ */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800/80">
             <div className="md:col-span-8 relative w-full">
-              <label htmlFor="customer-search-input" className="sr-only">Search client directory</label>
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden="true" />
+              <label htmlFor="customer-search-input" className="sr-only">Search client directory by name, email, phone, or notes</label>
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" aria-hidden="true" />
               <input
                 id="customer-search-input"
-                type="text"
+                type="search"
+                autoComplete="off"
                 placeholder="Search by client name, email, phone, or treatment notes…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-medium transition focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
+                className="w-full min-h-[44px] pl-10 pr-11 py-2.5 text-base md:text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-medium transition focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search query"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold cursor-pointer rounded-md"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer rounded-lg focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -703,7 +756,7 @@ const AdminCustomers = () => {
                 id="customer-sort-select"
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="w-full pl-8 pr-4 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-bold cursor-pointer bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 transition focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full min-h-[44px] pl-9 pr-9 py-2.5 text-base md:text-xs rounded-xl border border-slate-200 dark:border-slate-700 outline-none font-bold cursor-pointer bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 transition focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 truncate"
               >
                 <option value="recent">Sort: Most Recent</option>
                 <option value="spent">Sort: Highest Total Spend (₱)</option>
@@ -717,8 +770,8 @@ const AdminCustomers = () => {
         {/* ── REGISTRY CONTENT (Cards or Table) ── */}
         <AnimatePresence mode="wait">
           {loading && (
-            <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="status" aria-label="Loading customer directory"
+              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
               {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} className="p-5 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse space-y-4">
                   <div className="flex items-center gap-3">
@@ -792,14 +845,16 @@ const AdminCustomers = () => {
             </motion.div>
           )}
 
-          {/* Grid View */}
+          {/* Grid View — 1-col phones, 2-col sm tablets, 3-col xl desktops */}
           {!loading && !fetchError && filteredCustomers.length > 0 && viewMode === 'grid' && (
             <motion.div
               key="grid-view"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+              aria-busy={isRefreshing}
+              aria-live="polite"
+              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4"
             >
               {filteredCustomers.map((cust, idx) => (
                 <CustomerCard
@@ -814,7 +869,7 @@ const AdminCustomers = () => {
             </motion.div>
           )}
 
-          {/* Table View */}
+          {/* Table View — keyboard-scrollable region with accessible table semantics */}
           {!loading && !fetchError && filteredCustomers.length > 0 && viewMode === 'table' && (
             <motion.div
               key="table-view"
@@ -823,17 +878,18 @@ const AdminCustomers = () => {
               exit={{ opacity: 0 }}
               className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs"
             >
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[700px]">
+              <div className="overflow-x-auto" role="region" aria-label="Customer registry table, scroll horizontally on small screens" tabIndex={0}>
+                <table className="w-full text-left border-collapse min-w-[760px]">
+                  <caption className="sr-only">Registered clients with sessions and lifetime spend</caption>
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      <th className="py-3 px-3 sm:px-4">Client Name</th>
-                      <th className="py-3 px-3 sm:px-4">Email</th>
-                      <th className="py-3 px-3 sm:px-4">Phone / WhatsApp</th>
-                      <th className="py-3 px-3 sm:px-4">Joined Date</th>
-                      <th className="py-3 px-3 sm:px-4">Sessions</th>
-                      <th className="py-3 px-3 sm:px-4">Lifetime Spend</th>
-                      <th className="py-3 px-3 sm:px-4 text-right">Actions</th>
+                      <th scope="col" className="py-3 px-3 sm:px-4">Client Name</th>
+                      <th scope="col" className="py-3 px-3 sm:px-4">Email</th>
+                      <th scope="col" className="py-3 px-3 sm:px-4">Phone / WhatsApp</th>
+                      <th scope="col" className="py-3 px-3 sm:px-4">Joined Date</th>
+                      <th scope="col" className="py-3 px-3 sm:px-4">Sessions</th>
+                      <th scope="col" className="py-3 px-3 sm:px-4">Lifetime Spend</th>
+                      <th scope="col" className="py-3 px-3 sm:px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -899,59 +955,48 @@ const AdminCustomers = () => {
 /*  ADD CUSTOMER MODAL (FUNCTIONAL, VALIDATED, ACCESSIBLE & RESPONSIVE)*/
 /* ------------------------------------------------------------------ */
 const AddCustomerModal = ({ onClose, onSubmit }) => {
-  const firstRef = useRef(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
-
-  useEffect(() => {
-    firstRef.current?.focus();
-  }, []);
+  const errorSummaryRef = useRef(null);
 
   const validateField = (field, value) => {
-    let error = null;
     const v = (value || '').trim();
 
     if (field === 'name') {
-      if (!v) {
-        error = 'Full name is required.';
-      } else if (v.length < 2) {
-        error = 'Full name must be at least 2 characters.';
-      } else if (v.length > 100) {
-        error = 'Full name cannot exceed 100 characters.';
-      }
+      if (!v) return 'Full name is required.';
+      if (v.length < 2) return 'Full name must be at least 2 characters.';
+      if (v.length > 100) return 'Full name cannot exceed 100 characters.';
+      if (!/^[A-Za-zÀ-ÿ.'\- ]+$/.test(v)) return 'Name may only contain letters, spaces, hyphens, apostrophes, and periods.';
     }
 
     if (field === 'email') {
-      if (!v) {
-        error = 'Email address is required.';
-      } else if (!validateEmail(v)) {
-        error = 'Please enter a valid email address (e.g. client@example.com).';
-      }
+      if (!v) return 'Email address is required.';
+      if (v.length > 255) return 'Email cannot exceed 255 characters.';
+      if (!validateEmail(v)) return 'Please enter a valid email address (e.g. client@example.com).';
     }
 
     if (field === 'phone') {
       if (v !== '' && !validatePhone(v)) {
-        error = 'Please enter a valid PH mobile (e.g. 0917 123 4567 or +63 917 123 4567).';
+        return 'Please enter a valid PH mobile (e.g. 0917 123 4567 or +63 917 123 4567).';
       }
     }
 
     if (field === 'notes') {
-      if (v.length > 1000) {
-        error = 'Notes cannot exceed 1,000 characters.';
-      }
+      if (v.length > 1000) return 'Notes cannot exceed 1,000 characters.';
     }
 
-    return error;
+    return null;
   };
 
   const handleChange = (field, value) => {
-    setForm(p => ({ ...p, [field]: value }));
+    const next = field === 'notes' ? value.slice(0, 1000) : value;
+    setForm(p => ({ ...p, [field]: next }));
     setApiError(null);
     if (touched[field]) {
-      const err = validateField(field, value);
+      const err = validateField(field, next);
       setErrors(p => ({ ...p, [field]: err }));
     }
   };
@@ -970,17 +1015,22 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
     });
     setErrors(newErrors);
     setTouched({ name: true, email: true, phone: true, notes: true });
-    return Object.keys(newErrors).length === 0;
+    return { valid: Object.keys(newErrors).length === 0, newErrors };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateAll()) return;
+    const { valid, newErrors } = validateAll();
+    if (!valid) {
+      window.setTimeout(() => errorSummaryRef.current?.focus({ preventScroll: false }), 30);
+      return;
+    }
+    void newErrors;
     setSubmitting(true);
     setApiError(null);
     try {
       await onSubmit({
-        name: form.name.trim(),
+        name: form.name.trim().replace(/\s+/g, ' '),
         email: form.email.trim().toLowerCase(),
         phone: cleanPhoneNumber(form.phone.trim()) || null,
         tier: 'Regular',
@@ -991,30 +1041,40 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
       if (serverErrors && typeof serverErrors === 'object') {
         const mapped = {};
         Object.keys(serverErrors).forEach(field => {
-          mapped[field] = serverErrors[field][0];
+          const val = serverErrors[field];
+          mapped[field] = Array.isArray(val) ? val[0] : String(val);
         });
         setErrors(prev => ({ ...prev, ...mapped }));
       }
-      setApiError(err.response?.data?.message || 'Registration failed. Please review inputs and try again.');
+      const msg = err.response?.data?.message || 'Registration failed. Please review inputs and try again.';
+      setApiError(msg);
+      window.setTimeout(() => errorSummaryRef.current?.focus({ preventScroll: false }), 30);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const errorCount = Object.values(errors).filter(Boolean).length;
+  const inputCls = (hasError) => `w-full px-3.5 py-3 sm:py-2.5 rounded-xl border text-base sm:text-sm font-semibold outline-none transition-all min-h-[44px] ${
+    hasError
+      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
+      : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+  }`;
+
   return (
     <ModalBackdrop onClose={onClose} labelId="add-title" descId="add-desc" size="md">
-      <div className="flex flex-col h-full max-h-[90vh] sm:max-h-[85vh] bg-white dark:bg-[#0d131f] overflow-hidden">
-        {/* Sticky Pinned Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-[#041e16] via-[#062c22] to-[#0a3d30] text-white flex items-center justify-between shrink-0 border-b border-emerald-500/20 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600/30 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shadow-sm shrink-0">
-              <UserCheck className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />
+      <div className="flex flex-col min-h-0 max-h-[92dvh] sm:max-h-[86dvh] bg-white dark:bg-[#0d131f] overflow-hidden">
+        {/* Header — wraps gracefully on 320px screens */}
+        <div className="px-4 sm:px-5 py-4 bg-gradient-to-r from-[#041e16] via-[#062c22] to-[#0a3d30] text-white flex items-start sm:items-center justify-between gap-3 shrink-0 border-b border-emerald-500/20">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600/30 border border-emerald-500/40 hidden min-[380px]:flex items-center justify-center text-emerald-300 shrink-0" aria-hidden="true">
+              <UserCheck className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <div>
-              <h2 id="add-title" className="font-black text-sm sm:text-base text-white flex items-center gap-1.5" style={{ fontFamily: "'Playfair Display', serif" }}>
-                <span>New Customer Registration</span>
+            <div className="min-w-0">
+              <h2 id="add-title" className="font-black text-base sm:text-lg text-white leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                New Customer Registration
               </h2>
-              <p id="add-desc" className="text-[11px] text-emerald-200/80 mt-0.5">
+              <p id="add-desc" className="text-[11px] sm:text-xs text-emerald-200/80 mt-0.5">
                 Register a verified client profile in Cozy Blissful
               </p>
             </div>
@@ -1023,147 +1083,165 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
             type="button"
             onClick={onClose}
             aria-label="Close registration dialog"
-            className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="w-11 h-11 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-white/10 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 text-white/90 hover:text-white flex items-center justify-center transition cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Form Body - Scrollable */}
-        <form id="add-customer-form" onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4" noValidate>
+        {/* Form Body — independently scrollable so footer is never cut off */}
+        <form id="add-customer-form" onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4" noValidate aria-busy={submitting}>
+          {(apiError || errorCount > 0) && touched.name && errorCount > 0 && (
+            <div
+              ref={errorSummaryRef}
+              tabIndex={-1}
+              role="alert"
+              aria-live="assertive"
+              className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-xs font-bold text-red-600 dark:text-red-400 outline-none focus:ring-2 focus:ring-red-500/40"
+            >
+              Please fix {errorCount} field{errorCount === 1 ? '' : 's'} below before registering.
+            </div>
+          )}
           {apiError && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400" role="alert">
-              <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <div ref={errorSummaryRef} tabIndex={-1} className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 flex items-start gap-2 text-xs font-bold text-red-600 dark:text-red-400 outline-none focus:ring-2 focus:ring-red-500/40" role="alert" aria-live="assertive">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
               <span>{apiError}</span>
             </div>
           )}
 
           {/* Full Name */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="f-name" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <User className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Full Name <span className="text-red-500">*</span></span>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label htmlFor="f-name" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <span>Full Name <span className="text-red-500" aria-hidden="true">*</span><span className="sr-only">(required)</span></span>
               </label>
-              {form.name && (
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+              {form.name.trim() && !errors.name && (
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[45%]" aria-live="polite">
                   {formatDisplayName(form.name)}
                 </span>
               )}
             </div>
-            <div className="relative">
+            <input
+              data-autofocus
+              id="f-name"
+              name="name"
+              type="text"
+              autoComplete="name"
+              maxLength={100}
+              required
+              aria-required="true"
+              placeholder="e.g. Sarah Martinez"
+              value={form.name}
+              onChange={e => handleChange('name', e.target.value)}
+              onBlur={() => handleBlur('name')}
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? 'err-name' : 'hint-name'}
+              className={inputCls(!!errors.name)}
+            />
+            {errors.name ? (
+              <p id="err-name" className="text-[11px] font-bold text-red-500 mt-1.5 flex items-start gap-1" role="alert">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" /> {errors.name}
+              </p>
+            ) : (
+              <p id="hint-name" className="text-[10px] text-slate-400 mt-1">Letters, spaces, hyphens and apostrophes · 2–100 chars</p>
+            )}
+          </div>
+
+          {/* Email + Phone: stacked on phones, 2-col on sm+ */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="min-w-0">
+              <label htmlFor="f-email" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
+                <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <span>Email <span className="text-red-500" aria-hidden="true">*</span><span className="sr-only">(required)</span></span>
+              </label>
               <input
-                ref={firstRef}
-                id="f-name"
-                type="text"
-                placeholder="e.g. Sarah Martinez"
-                value={form.name}
-                onChange={e => handleChange('name', e.target.value)}
-                onBlur={() => handleBlur('name')}
-                aria-invalid={!!errors.name}
-                aria-describedby={errors.name ? 'err-name' : undefined}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold outline-none transition-all ${
-                  errors.name
-                    ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
-                    : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                }`}
+                id="f-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                maxLength={255}
+                required
+                aria-required="true"
+                placeholder="sarah@example.com"
+                value={form.email}
+                onChange={e => handleChange('email', e.target.value)}
+                onBlur={() => handleBlur('email')}
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'err-email' : 'hint-email'}
+                className={inputCls(!!errors.email)}
               />
+              {errors.email ? (
+                <p id="err-email" className="text-[11px] font-bold text-red-500 mt-1.5 flex items-start gap-1" role="alert">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" /> {errors.email}
+                </p>
+              ) : (
+                <p id="hint-email" className="text-[10px] text-slate-400 mt-1">Receipts and reminders go here</p>
+              )}
             </div>
-            {errors.name && (
-              <p id="err-name" className="text-[11px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.name}
-              </p>
-            )}
-          </div>
 
-          {/* Email Address */}
-          <div>
-            <label htmlFor="f-email" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-              <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Email Address <span className="text-red-500">*</span></span>
-            </label>
-            <input
-              id="f-email"
-              type="email"
-              placeholder="sarah@example.com"
-              value={form.email}
-              onChange={e => handleChange('email', e.target.value)}
-              onBlur={() => handleBlur('email')}
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? 'err-email' : undefined}
-              className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold outline-none transition-all ${
-                errors.email
-                  ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
-                  : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-              }`}
-            />
-            {errors.email ? (
-              <p id="err-email" className="text-[11px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.email}
-              </p>
-            ) : (
-              <p className="text-[10px] text-slate-400 mt-1">Used for booking receipts, reminders, and verification</p>
-            )}
-          </div>
-
-          {/* Phone Number */}
-          <div>
-            <label htmlFor="f-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-              <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Phone Number <span className="text-slate-400 font-normal">(Optional)</span></span>
-            </label>
-            <input
-              id="f-phone"
-              type="tel"
-              placeholder="0917 123 4567"
-              value={form.phone}
-              onChange={e => handleChange('phone', e.target.value)}
-              onBlur={() => handleBlur('phone')}
-              aria-invalid={!!errors.phone}
-              aria-describedby={errors.phone ? 'err-phone' : undefined}
-              className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold outline-none transition-all ${
-                errors.phone
-                  ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
-                  : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-              }`}
-            />
-            {errors.phone ? (
-              <p id="err-phone" className="text-[11px] font-bold text-red-500 mt-1 flex items-center gap-1" role="alert">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {errors.phone}
-              </p>
-            ) : (
-              <p className="text-[10px] text-slate-400 mt-1">Philippine mobile format: 09XX XXX XXXX or +63 9XX XXX XXXX</p>
-            )}
+            <div className="min-w-0">
+              <label htmlFor="f-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mb-1.5">
+                <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <span>Phone <span className="text-slate-400 font-semibold normal-case tracking-normal">(optional)</span></span>
+              </label>
+              <input
+                id="f-phone"
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                maxLength={20}
+                placeholder="0917 123 4567"
+                value={form.phone}
+                onChange={e => handleChange('phone', e.target.value)}
+                onBlur={() => handleBlur('phone')}
+                aria-invalid={!!errors.phone}
+                aria-describedby={errors.phone ? 'err-phone' : 'hint-phone'}
+                className={inputCls(!!errors.phone)}
+              />
+              {errors.phone ? (
+                <p id="err-phone" className="text-[11px] font-bold text-red-500 mt-1.5 flex items-start gap-1" role="alert">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" aria-hidden="true" /> {errors.phone}
+                </p>
+              ) : (
+                <p id="hint-phone" className="text-[10px] text-slate-400 mt-1">09XX XXX XXXX or +63 9XX XXX XXXX</p>
+              )}
+            </div>
           </div>
 
           {/* Preferences & Treatment Notes */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="f-notes" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Treatment Preferences &amp; Care Notes <span className="text-slate-400 font-normal">(Optional)</span></span>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label htmlFor="f-notes" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 min-w-0">
+                <FileText className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <span className="truncate">Care Notes <span className="text-slate-400 font-semibold normal-case tracking-normal">(optional)</span></span>
               </label>
-              <span className="text-[10px] text-slate-400 font-bold">{form.notes.length} / 1000</span>
+              <span className="text-[10px] text-slate-400 font-bold tabular-nums shrink-0" aria-live="polite">{form.notes.length} / 1000</span>
             </div>
             <textarea
               id="f-notes"
+              name="notes"
               rows={3}
-              placeholder="e.g. Prefers medium to firm pressure, allergic to eucalyptus oil, likes lavender aromatherapy…"
+              placeholder="e.g. Prefers firm pressure, allergic to eucalyptus oil…"
               value={form.notes}
               onChange={e => handleChange('notes', e.target.value)}
               maxLength={1000}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white text-xs sm:text-sm font-medium outline-none resize-none leading-relaxed focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              aria-describedby="hint-notes"
+              className="w-full px-3.5 py-3 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white text-base sm:text-sm font-medium outline-none resize-y min-h-[88px] leading-relaxed focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
             />
+            <p id="hint-notes" className="text-[10px] text-slate-400 mt-1">Allergies, pressure preference, favorite oils</p>
           </div>
         </form>
 
-        {/* Sticky Pinned Footer - Never Cut Off on Any Device */}
-        <div className="px-5 py-3.5 sm:py-4 shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-[#0a0f18]/95 backdrop-blur-sm">
+        {/* Footer — stacks on 320px, row on sm+; always visible */}
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-[#0a0f18]/95 backdrop-blur-sm [padding-bottom:env(safe-area-inset-bottom)]">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 rounded-xl text-sm sm:text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500 transition cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -1171,10 +1249,11 @@ const AddCustomerModal = ({ onClose, onSubmit }) => {
             type="submit"
             form="add-customer-form"
             disabled={submitting}
-            className="px-5 py-2.5 rounded-xl text-xs font-black text-white transition-all hover:opacity-90 active:scale-95 shadow-md flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+            aria-live="polite"
+            className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 rounded-xl text-sm sm:text-xs font-black text-white transition-all hover:opacity-90 active:scale-95 shadow-md flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             style={{ background: 'linear-gradient(135deg, #059669 0%, #0a5f3c 100%)' }}
           >
-            {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {submitting ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Check className="w-4 h-4" aria-hidden="true" />}
             <span>{submitting ? 'Registering…' : 'Register Customer'}</span>
           </button>
         </div>
@@ -1227,19 +1306,25 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
 
   const validateEditForm = () => {
     const e = {};
-    const trimmedName = editName.trim();
+    const trimmedName = editName.trim().replace(/\s+/g, ' ');
     if (!trimmedName) {
       e.name = 'Customer name cannot be blank.';
     } else if (trimmedName.length < 2) {
       e.name = 'Customer name must be at least 2 characters.';
     } else if (trimmedName.length > 100) {
       e.name = 'Customer name cannot exceed 100 characters.';
+    } else if (!/^[A-Za-zÀ-ÿ.'\- ]+$/.test(trimmedName)) {
+      e.name = 'Name may only contain letters, spaces, hyphens, apostrophes, and periods.';
     }
 
     if (editPhone && editPhone.trim() !== '') {
       if (!validatePhone(editPhone)) {
         e.phone = 'Valid PH mobile required (e.g. 0917 123 4567 or +63 917 123 4567).';
       }
+    }
+
+    if (editNotes.trim().length > 1000) {
+      e.notes = 'Notes cannot exceed 1,000 characters.';
     }
 
     setFieldErrors(e);
@@ -1297,21 +1382,34 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
     }
   };
 
+  const handleTabKeyDown = (e, tabId, tabs) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return;
+    e.preventDefault();
+    const ids = tabs.map(t => t.id);
+    let idx = ids.indexOf(tabId);
+    if (e.key === 'ArrowRight') idx = (idx + 1) % ids.length;
+    if (e.key === 'ArrowLeft') idx = (idx - 1 + ids.length) % ids.length;
+    if (e.key === 'Home') idx = 0;
+    if (e.key === 'End') idx = ids.length - 1;
+    setActiveTab(ids[idx]);
+    window.setTimeout(() => document.getElementById(`detail-tab-${ids[idx]}`)?.focus({ preventScroll: true }), 30);
+  };
+
   return (
     <ModalBackdrop onClose={onClose} labelId="detail-title" descId="detail-desc" size="lg">
-      <div className="flex flex-col h-full max-h-[90vh] sm:max-h-[85vh] bg-white dark:bg-[#0d131f] overflow-hidden">
+      <div className="flex flex-col min-h-0 max-h-[92dvh] sm:max-h-[86dvh] bg-white dark:bg-[#0d131f] overflow-hidden">
         {/* Header with Luxury Emerald Styling */}
         <div className="p-4 sm:p-5 bg-gradient-to-r from-[#041e16] via-[#062c22] to-[#0a3d30] text-white relative shrink-0 border-b border-emerald-500/20">
           <button
             type="button"
             onClick={onClose}
             aria-label="Close client profile modal"
-            className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white/90 hover:text-white flex items-center justify-center transition cursor-pointer"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 w-11 h-11 sm:w-9 sm:h-9 rounded-xl bg-white/10 hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 text-white/90 hover:text-white flex items-center justify-center transition cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
           </button>
 
-          <div className="flex items-center gap-3.5 pr-8">
+          <div className="flex items-center gap-3 pr-14 sm:pr-12">
             <div
               className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow-md border-2 border-white/20 shrink-0 select-none"
               style={{ background: getAvatarBg(customer.name) }}
@@ -1321,22 +1419,22 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 id="detail-title" className="text-base sm:text-lg font-black text-white truncate" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <h2 id="detail-title" className="text-base sm:text-lg font-black text-white truncate min-w-0 max-w-full" style={{ fontFamily: "'Playfair Display', serif" }}>
                   {formatDisplayName(customer.name)}
                 </h2>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 border border-white/20">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 border border-white/20 whitespace-nowrap shrink-0">
                   Registered Client
                 </span>
               </div>
 
-              <div id="detail-desc" className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-emerald-100/85">
-                <span className="flex items-center gap-1 truncate">
+              <div id="detail-desc" className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-emerald-100/85 min-w-0">
+                <span className="flex items-center gap-1 truncate min-w-0 max-w-full">
                   <Mail className="w-3 h-3 shrink-0 text-emerald-300" aria-hidden="true" />
                   <span className="truncate">{customer.email}</span>
                 </span>
                 {customer.phone && (
-                  <span className="flex items-center gap-1 shrink-0">
+                  <span className="flex items-center gap-1 shrink-0 whitespace-nowrap">
                     <Phone className="w-3 h-3 shrink-0 text-emerald-300" aria-hidden="true" />
                     <span>{formatPhoneDisplay(customer.phone)}</span>
                   </span>
@@ -1384,32 +1482,37 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
           </div>
         </div>
 
-        {/* Modal Interior Tab Switcher */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#111827] px-4 sm:px-5 pt-2 shrink-0" role="tablist">
+        {/* Modal Interior Tab Switcher — scrollable on 320px, full keyboard support */}
+        <div className="flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#111827] px-3 sm:px-5 pt-2 shrink-0" role="tablist" aria-label="Client profile sections">
           {[
-            { id: 'history', label: 'Appointment Logs', icon: Clock, count: customer.history?.length || 0 },
-            { id: 'notes',   label: 'Preferences & Notes', icon: FileText },
-            { id: 'edit',    label: 'Edit Profile', icon: Edit3 },
+            { id: 'history', label: 'Logs', fullLabel: 'Appointment Logs', icon: Clock, count: customer.history?.length || 0 },
+            { id: 'notes',   label: 'Notes', fullLabel: 'Preferences & Notes', icon: FileText },
+            { id: 'edit',    label: 'Edit', fullLabel: 'Edit Profile', icon: Edit3 },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
+                id={`detail-tab-${tab.id}`}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
+                aria-controls={`detail-panel-${tab.id}`}
+                tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
-                className={`pb-2.5 px-3 text-xs font-extrabold flex items-center gap-1.5 transition-all border-b-2 cursor-pointer select-none ${
+                onKeyDown={(e) => handleTabKeyDown(e, tab.id, [{ id: 'history' }, { id: 'notes' }, { id: 'edit' }])}
+                className={`pb-2.5 px-3 min-h-[44px] text-xs font-extrabold flex items-center gap-1.5 transition-all border-b-2 cursor-pointer select-none whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset ${
                   isActive
                     ? 'border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300'
                     : 'border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>{tab.label}</span>
+                <Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span className="hidden min-[420px]:inline">{tab.fullLabel}</span>
+                <span className="min-[420px]:hidden">{tab.label}</span>
                 {typeof tab.count === 'number' && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black tabular-nums ${
                     isActive
                       ? 'bg-emerald-600 text-white dark:bg-emerald-500/20 dark:text-emerald-300'
                       : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -1423,13 +1526,13 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
         </div>
 
         {/* Tab Content Body (Scrolls Independently) */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4" role="tabpanel" id={`detail-panel-${activeTab}`} aria-labelledby={`detail-tab-${activeTab}`}>
 
           {/* ── TAB 1: APPOINTMENT HISTORY LOGS ── */}
           {activeTab === 'history' && (
             <div className="space-y-3.5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700" role="group" aria-label="History status filter">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 max-w-full" role="group" aria-label="History status filter">
                   {[
                     { id: 'all', label: 'All' },
                     { id: 'completed', label: 'Completed' },
@@ -1440,7 +1543,8 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
                       key={f.id}
                       type="button"
                       onClick={() => setHistoryStatusFilter(f.id)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                      aria-pressed={historyStatusFilter === f.id}
+                      className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-500 ${
                         historyStatusFilter === f.id
                           ? 'bg-white dark:bg-[#1f293d] text-slate-900 dark:text-white shadow-xs'
                           : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -1452,13 +1556,15 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
                 </div>
 
                 <div className="relative w-full sm:w-56">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                  <label htmlFor="history-search" className="sr-only">Search appointment logs by service or therapist</label>
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
                   <input
-                    type="text"
+                    id="history-search"
+                    type="search"
                     value={historySearch}
                     onChange={(e) => setHistorySearch(e.target.value)}
                     placeholder="Search logs by service or therapist…"
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#141d2e] text-slate-800 dark:text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+                    className="w-full min-h-[40px] pl-8 pr-3 py-1.5 text-sm sm:text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#141d2e] text-slate-800 dark:text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
                   />
                 </div>
               </div>
@@ -1582,54 +1688,67 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
               )}
 
               <div>
-                <label htmlFor="edit-name" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                  <User className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  <span>Full Name <span className="text-red-500">*</span></span>
+                <label htmlFor="edit-name" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1.5">
+                  <User className="w-3 h-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <span>Full Name <span className="text-red-500" aria-hidden="true">*</span><span className="sr-only">(required)</span></span>
                 </label>
                 <input
                   id="edit-name"
+                  name="name"
                   type="text"
+                  autoComplete="name"
+                  maxLength={100}
+                  required
+                  aria-required="true"
+                  aria-invalid={!!fieldErrors.name}
+                  aria-describedby={fieldErrors.name ? 'err-edit-name' : undefined}
                   value={editName}
                   onChange={(e) => {
                     setEditName(e.target.value);
                     setFieldErrors(p => ({ ...p, name: null }));
                   }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
+                  className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border text-base sm:text-xs font-semibold outline-none transition-all ${
                     fieldErrors.name
-                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20'
+                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
                       : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                   }`}
                 />
                 {fieldErrors.name && (
-                  <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {fieldErrors.name}
+                  <p id="err-edit-name" className="text-[11px] font-bold text-red-500 mt-1 flex items-start gap-1" role="alert">
+                    <AlertCircle className="w-3 h-3 mt-px shrink-0" aria-hidden="true" /> {fieldErrors.name}
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="edit-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1">
-                  <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <label htmlFor="edit-phone" className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1.5">
+                  <Phone className="w-3 h-3 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
                   <span>Phone Number</span>
                 </label>
                 <input
                   id="edit-phone"
+                  name="phone"
                   type="tel"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  maxLength={20}
                   value={editPhone}
                   onChange={(e) => {
                     setEditPhone(e.target.value);
                     setFieldErrors(p => ({ ...p, phone: null }));
                   }}
                   placeholder="0917 123 4567"
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold outline-none transition-all ${
+                  aria-invalid={!!fieldErrors.phone}
+                  aria-describedby={fieldErrors.phone ? 'err-edit-phone' : undefined}
+                  className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border text-base sm:text-xs font-semibold outline-none transition-all ${
                     fieldErrors.phone
-                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20'
+                      ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/50 dark:bg-red-950/20 text-slate-900 dark:text-white'
                       : 'border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-[#141d2e] text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                   }`}
                 />
                 {fieldErrors.phone && (
-                  <p className="text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" /> {fieldErrors.phone}
+                  <p id="err-edit-phone" className="text-[11px] font-bold text-red-500 mt-1 flex items-start gap-1" role="alert">
+                    <AlertCircle className="w-3 h-3 mt-px shrink-0" aria-hidden="true" /> {fieldErrors.phone}
                   </p>
                 )}
               </div>
@@ -1674,21 +1793,21 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
 
         </div>
 
-        {/* Sticky Pinned Modal Footer (Never cut off on any device) */}
-        <div className="px-5 py-3.5 shrink-0 flex items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/95 dark:bg-[#111827]/95 backdrop-blur-sm">
+        {/* Sticky Footer — stacks on 320px so nothing is cut off */}
+        <div className="px-4 sm:px-5 py-3.5 shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/95 dark:bg-[#111827]/95 backdrop-blur-sm [padding-bottom:env(safe-area-inset-bottom)]">
           <button
             type="button"
             onClick={() => onDeleteCustomer(customer)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-500/10 hover:bg-red-500/20 transition cursor-pointer active:scale-95"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-500/10 hover:bg-red-500/20 focus-visible:ring-2 focus-visible:ring-red-500 transition cursor-pointer active:scale-95 w-full sm:w-auto"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Delete Client Account</span>
           </button>
 
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500 transition cursor-pointer w-full sm:w-auto"
           >
             Close
           </button>
@@ -1703,16 +1822,25 @@ const CustomerDetailModal = ({ customer, onClose, onSaveProfile, onDeleteCustome
 /* ------------------------------------------------------------------ */
 const DeleteCustomerModal = ({ customer, onClose, onConfirm }) => {
   const [deleting, setDeleting] = useState(false);
+  const cancelRef = useRef(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const handleDelete = async () => {
     setDeleting(true);
-    await onConfirm(customer.id);
-    setDeleting(false);
+    try {
+      await onConfirm(customer.id);
+    } finally {
+      // Parent unmounts this modal on success — guard against setState on unmounted component
+      window.setTimeout(() => setDeleting(false), 300);
+    }
   };
 
   return (
-    <ModalBackdrop onClose={onClose} labelId="delete-customer-title" descId="delete-customer-desc" size="sm" isAlert={true}>
-      <div className="p-5 sm:p-6 space-y-4 text-center bg-white dark:bg-[#0d131f] min-h-0">
+    <ModalBackdrop onClose={deleting ? () => {} : onClose} labelId="delete-customer-title" descId="delete-customer-desc" size="sm" isAlert={true}>
+      <div className="p-5 sm:p-6 space-y-4 text-center bg-white dark:bg-[#0d131f] min-h-0 overflow-y-auto">
         <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center mx-auto shrink-0 shadow-xs">
           <AlertTriangle className="w-7 h-7" aria-hidden="true" />
         </div>
@@ -1733,12 +1861,13 @@ const DeleteCustomerModal = ({ customer, onClose, onConfirm }) => {
           This will permanently purge this client account, saved observations, and session logs from Cozy Blissful.
         </div>
 
-        <div className="flex items-center gap-2.5 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onClose}
             disabled={deleting}
-            className="flex-1 py-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="flex-1 min-h-[44px] py-2.5 rounded-xl text-sm sm:text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-slate-400 transition cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -1746,9 +1875,10 @@ const DeleteCustomerModal = ({ customer, onClose, onConfirm }) => {
             type="button"
             onClick={handleDelete}
             disabled={deleting}
-            className="flex-1 py-2.5 rounded-xl text-xs font-black text-white bg-red-600 hover:bg-red-700 active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer"
+            aria-live="polite"
+            className="flex-1 min-h-[44px] py-2.5 rounded-xl text-sm sm:text-xs font-black text-white bg-red-600 hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 active:scale-95 transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
           >
-            {deleting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            {deleting ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Trash2 className="w-4 h-4" aria-hidden="true" />}
             <span>{deleting ? 'Deleting…' : 'Delete Account'}</span>
           </button>
         </div>

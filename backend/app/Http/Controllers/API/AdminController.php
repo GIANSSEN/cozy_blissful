@@ -9,6 +9,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Models\TherapistAvailability;
 use App\Models\AuditLog;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -19,7 +20,7 @@ class AdminController extends Controller
     /**
      * Display the Admin Dashboard metrics and stats.
      */
-    public function index()
+    public function index(): JsonResponse
     {
         $today = Carbon::today()->toDateString();
 
@@ -534,11 +535,14 @@ class AdminController extends Controller
 
         // ── State-machine guard: enforce valid transitions ──────────────────
         // Admin-allowed transitions map: fromStatus => [allowedToStatuses]
+        // NOTE: In Progress sessions belong to the therapist — admin cannot
+        // cancel or force-complete them. Only the therapist marks the session
+        // done (In Progress → Completed by Therapist), then admin verifies.
         $allowedTransitions = [
             'Pending' => ['Confirmed', 'Cancelled'],
             'Confirmed' => ['In Progress', 'Cancelled', 'Pending'],
-            'In Progress' => ['Completed by Therapist', 'Completed', 'Cancelled'],
-            'Completed by Therapist' => ['Completed', 'Cancelled'],
+            'In Progress' => ['Completed by Therapist'],
+            'Completed by Therapist' => ['Completed'],
             'Completed' => [],  // terminal state
             'Cancelled' => [],  // terminal state
         ];
@@ -673,8 +677,10 @@ class AdminController extends Controller
 
         $appt = Appointment::with(['client', 'service', 'therapist'])->findOrFail($id);
 
-        // ── Guard: only allow settlement on active sessions ─────────────────
-        $settleableStatuses = ['Confirmed', 'In Progress', 'Completed by Therapist'];
+        // ── Guard: settlement only after the therapist concludes treatment ──
+        // Admin Verify & Complete lives in the Therapist Done tab. In Progress
+        // sessions cannot be settled — only the therapist marks them done.
+        $settleableStatuses = ['Completed by Therapist'];
         if (!in_array($appt->status, $settleableStatuses)) {
             return response()->json([
                 'message' => "Cannot settle payment for a booking with status '{$appt->status}'. " .
@@ -970,11 +976,14 @@ class AdminController extends Controller
     public function storeCustomer(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|min:2|max:100',
-            'email' => 'required|email|unique:users,email',
-            'phone' => 'nullable|string|max:20',
+            'name' => ['required', 'string', 'min:2', 'max:100', 'regex:/^[A-Za-zÀ-ÿ.\'\- ]+$/u'],
+            'email' => 'required|email|max:255|unique:users,email',
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^(\+?639\d{9}|09\d{9}|639\d{9})$/'],
             'tier' => 'nullable|in:Regular,VIP',
             'notes' => 'nullable|string|max:1000',
+        ], [
+            'name.regex' => 'The name may only contain letters, spaces, hyphens, apostrophes, and periods.',
+            'phone.regex' => 'The phone must be a valid PH mobile (e.g. 09171234567 or +639171234567).',
         ]);
 
         $user = User::create([
@@ -1013,10 +1022,13 @@ class AdminController extends Controller
         $user = User::role('client')->findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'nullable|string|min:2|max:100',
+            'name' => ['nullable', 'string', 'min:2', 'max:100', 'regex:/^[A-Za-zÀ-ÿ.\'\- ]+$/u'],
             'notes' => 'nullable|string|max:1000',
             'tier' => 'nullable|in:Regular,VIP',
-            'phone' => 'nullable|string|max:20',
+            'phone' => ['nullable', 'string', 'max:20', 'regex:/^(\+?639\d{9}|09\d{9}|639\d{9})$/'],
+        ], [
+            'name.regex' => 'The name may only contain letters, spaces, hyphens, apostrophes, and periods.',
+            'phone.regex' => 'The phone must be a valid PH mobile (e.g. 09171234567 or +639171234567).',
         ]);
 
         $user->update($validated);

@@ -1237,10 +1237,10 @@ function TabProfiles({ users, onUsersChange, onSelectTab }) {
   };
 
   const KPI_CARDS = [
-    { label: 'Total Users', count: users.length,                               color: '#3b82f6', bg: 'linear-gradient(135deg,rgba(59,130,246,0.12),rgba(59,130,246,0.04))', icon: Users        },
-    { label: 'Active',      count: users.filter(u=>u.status==='active').length, color: '#10b981', bg: 'linear-gradient(135deg,rgba(16,185,129,0.12),rgba(16,185,129,0.04))', icon: CheckCircle2  },
-    { label: 'Therapists',  count: users.filter(u=>u.role==='therapist').length,color: '#f59e0b', bg: 'linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.04))', icon: Stethoscope  },
-    { label: 'Staff',       count: users.filter(u=>u.role==='staff').length,    color: '#8b5cf6', bg: 'linear-gradient(135deg,rgba(139,92,246,0.12),rgba(139,92,246,0.04))', icon: UserCog      },
+    { label: 'Total Users', value: users.length,                                badge: 'Registered', badgeClass: 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/15', iconBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', Icon: Users },
+    { label: 'Active',      value: users.filter(u => u.status === 'active').length, badge: 'On Duty', badgeClass: 'text-teal-700 dark:text-teal-300 bg-teal-500/15', iconBg: 'bg-teal-500/10 text-teal-600 dark:text-teal-400', Icon: UserCheck },
+    { label: 'Therapists',  value: users.filter(u => u.role === 'therapist').length, badge: 'Providers', badgeClass: 'text-sky-700 dark:text-sky-300 bg-sky-500/15', iconBg: 'bg-sky-500/10 text-sky-600 dark:text-sky-400', Icon: Stethoscope },
+    { label: 'Staff',       value: users.filter(u => u.role === 'staff').length,     badge: 'Front Desk', badgeClass: 'text-purple-700 dark:text-purple-300 bg-purple-500/15', iconBg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', Icon: UserCog },
   ];
 
   // Dropdown options
@@ -1339,24 +1339,37 @@ function TabProfiles({ users, onUsersChange, onSelectTab }) {
         />
       )}
 
-      {/* KPI Cards — semantic list, tabular numbers, responsive 2→4 col */}
-      <div role="list" aria-label="Team directory summary" className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3">
+      {/* ── SUMMARY STRIP — gaya ng Customer Registry: 1-col sa ≤419px phones, 2-col sa larger phones, 4-col sa desktop ── */}
+      <dl className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" aria-label="Team directory summary">
         {KPI_CARDS.map((s, i) => (
-          <motion.div key={s.label} role="listitem" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.06 }}
-            className="p-3.5 sm:p-5 rounded-2xl flex items-center justify-between gap-2 overflow-hidden relative min-h-[84px]"
-            style={{ background: C.card, boxShadow: C.shadow }}>
-            <div aria-hidden className="absolute inset-0 pointer-events-none rounded-2xl" style={{ background: s.bg }} />
-            <div className="relative z-10 min-w-0">
-              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 truncate" style={{ color: C.txtMuted }}>{s.label}</p>
-              <p className="text-2xl sm:text-3xl font-black leading-none tabular-nums" style={{ color: C.txt }} aria-label={`${s.label}: ${s.count}`}>{s.count}</p>
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+            className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all duration-200 hover:shadow-md flex flex-col justify-between gap-2 min-w-0"
+            style={{ background: C.card, border: C.cardBorder }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-tight min-w-0">
+                {s.label}
+              </dt>
+              <div className={`w-8 h-8 rounded-xl ${s.iconBg} flex items-center justify-center shrink-0`} aria-hidden="true">
+                <s.Icon className="w-4 h-4" />
+              </div>
             </div>
-            <div aria-hidden className="relative z-10 w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0"
-              style={{ background: `${s.color}20` }}>
-              <s.icon className="w-5 h-5" style={{ color: s.color }} />
+
+            <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-1.5">
+              <dd className="text-xl sm:text-lg lg:text-xl xl:text-2xl font-black leading-none text-slate-900 dark:text-white break-words tabular-nums min-w-0">
+                {s.value}
+              </dd>
+              <span className={`text-[10px] font-extrabold px-2 py-1 rounded-full whitespace-nowrap shrink-0 ${s.badgeClass}`}>
+                {s.badge}
+              </span>
             </div>
           </motion.div>
         ))}
-      </div>
+      </dl>
 
       {/* Toolbar — search + view toggle + export + add */}
       <div className="p-3 sm:p-3.5 rounded-2xl space-y-3" style={{ background: C.card, boxShadow: C.shadow }}>

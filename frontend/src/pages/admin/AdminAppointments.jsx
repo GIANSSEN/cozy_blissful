@@ -189,6 +189,15 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
               </p>
             </div>
           )}
+
+          {appt.status === 'In Progress' && (
+            <div style={{ padding: 14, borderRadius: 16, background: isDark ? 'rgba(14,165,233,0.12)' : '#f0f9ff', border: '1.5px solid rgba(14,165,233,0.3)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#38bdf8' : '#0369a1', margin: 0 }}>Session Ongoing with Therapist</p>
+              <p style={{ fontSize: 11, color: isDark ? '#e0f2fe' : '#0c4a6e', margin: 0, lineHeight: 1.6 }}>
+                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> is currently with the client. Only the therapist can mark this session as done from their panel — it will then move to Therapist Done for your verification.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer — contextual actions by status */}
@@ -249,20 +258,22 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
             </>
           )}
 
-          {/* IN PROGRESS or COMPLETED BY THERAPIST: verify + confirm completion */}
-          {(appt.status === 'In Progress' || appt.status === 'Completed by Therapist') && onComplete && (
+          {/* COMPLETED BY THERAPIST ONLY: verify + confirm completion.
+              In Progress sessions are concluded by the therapist from their own
+              panel — admin must wait and verify in the Therapist Done tab. */}
+          {appt.status === 'Completed by Therapist' && onComplete && (
             <HoverButton
               onClick={() => { onClose(); onComplete(appt); }}
               baseStyle={{
                 flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none',
-                background: appt.status === 'Completed by Therapist' ? 'linear-gradient(135deg,#059669,#047857)' : 'linear-gradient(135deg,#062c22,#0f5040)',
+                background: 'linear-gradient(135deg,#059669,#047857)',
                 color: '#ffffff', fontSize: 12, fontWeight: 900,
                 boxShadow: '0 4px 14px rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
               hoverStyle={{ boxShadow: '0 6px 20px rgba(5,150,105,0.45)', transform: 'translateY(-1px)' }}
             >
               <Banknote size={15} style={{ color: '#fde68a' }} />
-              {appt.status === 'Completed by Therapist' ? 'Verify & Complete' : 'Verify & Confirm'}
+              Verify & Complete
             </HoverButton>
           )}
         </div>
@@ -1366,7 +1377,9 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                     </>
                   )}
 
-                  {/* In Progress: Session undergoing with therapist — live badge, details, cancel */}
+                  {/* In Progress: Session undergoing with therapist — no cancel/verify here.
+                      Only the assigned therapist marks this done from their own panel.
+                      Admin verifies later in Therapist Done tab. */}
                   {isInProgress && (
                     <>
                       <div
@@ -1394,14 +1407,6 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                         hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)' }}
                       >
                         Details
-                      </HoverButton>
-                      <HoverButton
-                        onClick={() => onOpenCancel(appt)}
-                        title="Cancel Appointment"
-                        baseStyle={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}` }}
-                        hoverStyle={{ background: isDark ? 'rgba(239,68,68,0.22)' : '#fee2e2', borderColor: '#f87171' }}
-                      >
-                        <X size={15} />
                       </HoverButton>
                     </>
                   )}
