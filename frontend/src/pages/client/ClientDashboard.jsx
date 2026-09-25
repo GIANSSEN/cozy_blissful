@@ -352,57 +352,95 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
 };
 
 // ─── STEP 2: DATE & TIME PICKER ──────────────────────────────────────────────
-const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots }) => {
-  const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i + 1);
-    return d;
-  });
+const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect, slots, loadingSlots, slotsError = '', onRetry }) => {
+  const days = useMemo(() => {
+    const out = [];
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    for (let i = 1; i <= 14; i += 1) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      out.push(d);
+    }
+    return out;
+  }, []);
 
-  const dayKey = (d) => d.toISOString().split('T')[0];
+  // Local YYYY-MM-DD key (avoids toISOString UTC day-shift in PH timezone)
+  const dayKey = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const formatSlotLabel = (slot) => {
+    if (typeof slot !== 'string' || !slot.includes(':')) return slot;
+    const [h, m] = slot.split(':');
+    const hour = parseInt(h, 10);
+    if (Number.isNaN(hour)) return slot;
+    const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+    return `${h12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+  };
 
   const categorizeSlot = (slot) => {
-    const [h] = slot.split(':');
+    const [h] = String(slot).split(':');
     const hr = parseInt(h, 10);
+    if (Number.isNaN(hr)) return 'morning';
     if (hr < 12) return 'morning';
     if (hr < 17) return 'afternoon';
     return 'evening';
   };
 
-  const morningSlots = (slots.all_slots || []).filter((s) => categorizeSlot(s) === 'morning');
-  const afternoonSlots = (slots.all_slots || []).filter((s) => categorizeSlot(s) === 'afternoon');
-  const eveningSlots = (slots.all_slots || []).filter((s) => categorizeSlot(s) === 'evening');
+  const allSlots = Array.isArray(slots?.all_slots) ? slots.all_slots : [];
+  const availableList = Array.isArray(slots?.available_slots) && slots.available_slots.length > 0
+    ? slots.available_slots
+    : allSlots.filter((s) => !(slots?.booked_slots || []).includes(s));
+  const availableSet = useMemo(() => new Set(availableList), [slots?.available_slots, slots?.all_slots, slots?.booked_slots]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bookedSet = useMemo(() => new Set(slots?.booked_slots || []), [slots?.booked_slots]);
 
-  const renderSlotGroup = (title, icon, groupSlots) => {
+  const morningSlots = allSlots.filter((s) => categorizeSlot(s) === 'morning');
+  const afternoonSlots = allSlots.filter((s) => categorizeSlot(s) === 'afternoon');
+  const eveningSlots = allSlots.filter((s) => categorizeSlot(s) === 'evening');
+
+  const selectedDateLabel = selectedDate
+    ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+    : '';
+
+  const renderSlotGroup = (title, icon, groupSlots, countLabel) => {
     if (!groupSlots || groupSlots.length === 0) return null;
+    const openCount = groupSlots.filter((s) => availableSet.has(s)).length;
     return (
       <div className="space-y-2">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-          {icon} {title}
-        </p>
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            {icon} {title}
+          </p>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${openCount > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+            {openCount}/{groupSlots.length} open{countLabel ? ` • ${countLabel}` : ''}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2" role="group" aria-label={title}>
           {groupSlots.map((slot) => {
-            const isBooked = slots.booked_slots?.includes(slot);
+            const isBooked = !availableSet.has(slot) || bookedSet.has(slot);
             const isSelected = selectedTime === slot;
-            const [h, m] = slot.split(':');
-            const hour = parseInt(h, 10);
-            const label = `${hour > 12 ? hour - 12 : hour === 0 ? 12 : hour}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
             return (
               <button
                 key={slot}
                 type="button"
                 disabled={isBooked}
-                onClick={() => !isBooked && onTimeSelect(slot)}
-                className={`py-2.5 px-2 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 cursor-pointer ${
+                aria-pressed={isSelected}
+                aria-label={`${formatSlotLabel(slot)}${isBooked ? ' (fully booked)' : isSelected ? ' (selected)' : ''}`}
+                onClick={() => { if (!isBooked) onTimeSelect(slot); }}
+                className={`min-h-[44px] py-2.5 px-2 rounded-xl text-xs font-bold transition-all text-center flex items-center justify-center gap-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
                   isBooked
                     ? 'bg-slate-100 text-slate-300 line-through cursor-not-allowed border border-slate-200/50'
                     : isSelected
-                    ? 'bg-[#062c22] text-[#e8cc8a] shadow-md ring-1 ring-[#bfa15f]/50'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:border-[#bfa15f] hover:bg-amber-50/20 shadow-xs'
+                    ? 'bg-[#062c22] text-[#e8cc8a] shadow-md ring-2 ring-[#bfa15f]/60 cursor-pointer scale-[1.02]'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:border-[#bfa15f] hover:bg-amber-50/30 active:scale-[0.98] shadow-xs cursor-pointer'
                 }`}
               >
-                {label}
-                {isBooked && <span className="text-[8px] opacity-40 ml-0.5">●</span>}
+                {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
+                <span className="truncate">{formatSlotLabel(slot)}</span>
               </button>
             );
           })}
@@ -417,19 +455,15 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
         <h3 className="text-base sm:text-lg font-black text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
           Select Date &amp; Appointment Time
         </h3>
-        <p className="text-xs text-slate-400 mt-0.5">Salon Hours: 9:00 AM – 9:00 PM Daily</p>
+        <p className="text-xs text-slate-500 mt-0.5">Salon Hours: 9:00 AM – 9:00 PM Daily • Slots every 30 mins</p>
       </div>
 
       {/* Concierge Matching Notice */}
-      <div
-        className="p-3.5 rounded-2xl flex items-start gap-3 bg-emerald-50/60 border border-emerald-200/70"
-      >
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-[#e8cc8a] bg-[#062c22]"
-        >
+      <div className="p-3.5 rounded-2xl flex items-start gap-3 bg-emerald-50/60 border border-emerald-200/70">
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-[#e8cc8a] bg-[#062c22]">
           <UserCheck className="w-4 h-4" />
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-black text-emerald-950">Concierge Specialist Matching</p>
           <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">
             Our front desk assigns an experienced, certified specialist tailored to your chosen treatment window upon booking verification.
@@ -439,11 +473,11 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
 
       {/* Date chips */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. Choose Date</p>
-          <span className="text-[10px] font-bold text-emerald-800">Next 14 Days Available</span>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">1. Choose Date</p>
+          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full whitespace-nowrap">Next 14 Days Available</span>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory" role="group" aria-label="Available dates">
           {days.map((d) => {
             const key = dayKey(d);
             const isSelected = selectedDate === key;
@@ -456,10 +490,12 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
                 key={key}
                 type="button"
                 onClick={() => onDateSelect(key)}
-                className={`flex-shrink-0 w-16 py-3 rounded-2xl flex flex-col items-center gap-0.5 transition-all duration-200 cursor-pointer border ${
+                aria-pressed={isSelected}
+                aria-label={`${weekday} ${month} ${dayNum}${isSelected ? ' (selected)' : ''}`}
+                className={`snap-start flex-shrink-0 w-16 sm:w-[4.5rem] min-h-[76px] py-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 cursor-pointer border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
                   isSelected
-                    ? 'border-[#bfa15f] text-white shadow-md shadow-emerald-950/20 ring-1 ring-[#bfa15f]'
-                    : 'border-slate-200/80 bg-white hover:bg-slate-50 text-slate-700 hover:border-slate-300'
+                    ? 'border-[#bfa15f] text-white shadow-md shadow-emerald-950/20 ring-2 ring-[#bfa15f]/60'
+                    : 'border-slate-200/80 bg-white hover:bg-slate-50 text-slate-700 hover:border-[#bfa15f]/60 active:scale-[0.97]'
                 }`}
                 style={{
                   background: isSelected
@@ -480,31 +516,82 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
             );
           })}
         </div>
+        {!selectedDate && (
+          <p className="mt-2 text-[11px] text-slate-400 flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 flex-shrink-0" /> Tap a date above to load real-time availability.
+          </p>
+        )}
       </div>
 
       {/* Time slots */}
-      {selectedDate && (
+      {selectedDate ? (
         <div className="space-y-4 pt-1">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Choose Available Time Slot</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">2. Choose Available Time Slot</p>
+            {selectedDateLabel && (
+              <span className="text-[11px] font-bold text-emerald-900 bg-emerald-50 border border-emerald-200/70 px-2.5 py-1 rounded-full">
+                {selectedDateLabel}{selectedTime ? ` • ${formatSlotLabel(selectedTime)}` : ''}
+              </span>
+            )}
+          </div>
 
           {loadingSlots ? (
-            <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-emerald-200 border-t-emerald-700 rounded-full animate-spin" />
-              Checking real-time slot availability…
+            <div className="py-8 text-center" role="status" aria-live="polite">
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                <span className="w-4 h-4 border-2 border-emerald-200 border-t-emerald-700 rounded-full animate-spin" />
+                Checking real-time slot availability…
+              </div>
+              <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2" aria-hidden="true">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-11 rounded-xl bg-slate-100 animate-pulse" />
+                ))}
+              </div>
             </div>
-          ) : slots.all_slots.length === 0 ? (
-            <div className="py-6 rounded-2xl text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200">
-              No slots configured for this date. Please select another day.
+          ) : slotsError ? (
+            <div className="py-5 px-4 rounded-2xl text-center bg-red-50 border border-red-200 space-y-2" role="alert">
+              <p className="text-xs font-bold text-red-800 flex items-center justify-center gap-1.5">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" /> Couldn&apos;t load time slots
+              </p>
+              <p className="text-[11px] text-red-600 leading-relaxed">{slotsError}</p>
+              {onRetry && (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#062c22] hover:bg-[#0a3d30] transition cursor-pointer min-h-[40px]"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Try Again
+                </button>
+              )}
+            </div>
+          ) : allSlots.length === 0 ? (
+            <div className="py-6 px-4 rounded-2xl text-center bg-slate-50 border border-dashed border-slate-200 space-y-1.5" role="status">
+              <CalendarX className="w-6 h-6 text-slate-300 mx-auto" />
+              <p className="text-xs font-bold text-slate-600">No slots available for this date</p>
+              <p className="text-[11px] text-slate-400">The salon may be fully booked or closed. Please select another day.</p>
+            </div>
+          ) : availableList.length === 0 ? (
+            <div className="py-6 px-4 rounded-2xl text-center bg-amber-50/60 border border-dashed border-amber-300 space-y-1.5" role="status">
+              <Clock className="w-6 h-6 text-amber-500 mx-auto" />
+              <p className="text-xs font-bold text-amber-900">Fully booked for {selectedDateLabel}</p>
+              <p className="text-[11px] text-amber-700">All {allSlots.length} slots are taken. Please try another day or an adjacent time.</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-5" aria-live="polite">
+              <p className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/60 rounded-xl px-3 py-2 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" /> {availableList.length} of {allSlots.length} slots open — all times shown in PH time.
+              </p>
               {renderSlotGroup('Morning Calm (9:00 AM – 12:00 PM)', <Clock className="w-3.5 h-3.5 text-amber-500" />, morningSlots)}
               {renderSlotGroup('Afternoon Refresh (12:00 PM – 5:00 PM)', <Star className="w-3.5 h-3.5 text-emerald-600" />, afternoonSlots)}
               {renderSlotGroup('Evening Glow (5:00 PM – 9:00 PM)', <Heart className="w-3.5 h-3.5 text-indigo-500" />, eveningSlots)}
+              {selectedTime && (
+                <p className="text-[11px] font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> Selected: {selectedDateLabel} at {formatSlotLabel(selectedTime)} — tap Next Step to continue.
+                </p>
+              )}
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
@@ -1005,7 +1092,7 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
             }}
           >
             <CheckCircle2 className="w-4 h-4 text-[#e8cc8a] flex-shrink-0" />
-            <span className="text-center leading-snug">Done — I&apos;ll Pay {formattedPrice || ''} at the Counter</span>
+            <span className="text-center leading-snug">Done — I&apos;ll Pay {formattedTotalPrice || ''} at the Counter</span>
           </motion.button>
 
           <button
@@ -1030,7 +1117,7 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
             }}
           >
             <Wallet className="w-4 h-4 text-[#041e16] flex-shrink-0" />
-            <span className="text-center leading-snug">Pay {formattedPrice || ''} Online with {methodName} Now</span>
+            <span className="text-center leading-snug">Pay {formattedTotalPrice || ''} Online with {methodName} Now</span>
             <ChevronRight className="w-4 h-4 text-[#041e16]/80 flex-shrink-0" />
           </motion.button>
 
@@ -1354,9 +1441,22 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
 
   const [slots, setSlots] = useState({ all_slots: [], booked_slots: [], available_slots: [] });
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState('');
+  const [slotsFetchKey, setSlotsFetchKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [error, setError] = useState('');
+
+  // Derived totals — MUST be declared before any effect that depends on them
+  const totalDuration = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + (Number(s.duration) || 0), 0),
+    [selectedServices]
+  );
+  const totalPrice = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0),
+    [selectedServices]
+  );
+  const primaryServiceId = selectedServices[0]?.id ?? null;
 
   useEffect(() => {
     if (user) {
@@ -1371,28 +1471,64 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     }
   }, [user, data]);
 
+  // Lock body scroll while the wizard is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Escape to close (steps 0-2 only)
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && step < 3 && !submitting) onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [step, submitting, onClose]);
+
   // Fetch slots based on primary service (first selected) and combined duration
   useEffect(() => {
-    const primaryService = selectedServices[0];
-    if (selectedDate && primaryService) {
+    if (!selectedDate || !primaryServiceId) return;
+    let cancelled = false;
+    const fetchSlots = async () => {
       setLoadingSlots(true);
+      setSlotsError('');
       setSelectedTime('');
-      // Use primary service ID for slot fetching; pass total_duration for accurate slot generation
-      API.get('/booking/available-slots', {
-        params: {
-          date: selectedDate,
-          service_id: primaryService.id,
-          total_duration: totalDuration,
-        },
-      })
-        .then((r) => setSlots(r.data))
-        .catch(() => setSlots({ all_slots: [], booked_slots: [], available_slots: [] }))
-        .finally(() => setLoadingSlots(false));
-    }
-  }, [selectedDate, selectedServices, totalDuration]);
-
-  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
-  const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
+      try {
+        const params = { date: selectedDate, service_id: primaryServiceId };
+        if (Number.isFinite(totalDuration) && totalDuration >= 15) {
+          params.total_duration = Math.min(totalDuration, 480);
+        }
+        const r = await API.get('/booking/available-slots', { params });
+        if (cancelled) return;
+        const payload = r?.data ?? {};
+        setSlots({
+          all_slots: Array.isArray(payload.all_slots) ? payload.all_slots : [],
+          booked_slots: Array.isArray(payload.booked_slots) ? payload.booked_slots : [],
+          available_slots: Array.isArray(payload.available_slots) ? payload.available_slots : [],
+        });
+        if (!Array.isArray(payload.all_slots) || payload.all_slots.length === 0) {
+          setSlotsError('');
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const status = err?.response?.status;
+        const serverMsg = err?.response?.data?.message;
+        const fieldMsg = err?.response?.data?.errors
+          ? Object.values(err.response.data.errors).flat().join(' ')
+          : '';
+        setSlots({ all_slots: [], booked_slots: [], available_slots: [] });
+        setSlotsError(
+          serverMsg && status !== 500
+            ? `${serverMsg}${fieldMsg ? ` ${fieldMsg}` : ''}`
+            : 'Unable to reach the booking server. Check your connection and tap Try Again.'
+        );
+      } finally {
+        if (!cancelled) setLoadingSlots(false);
+      }
+    };
+    fetchSlots();
+    return () => { cancelled = true; };
+  }, [selectedDate, primaryServiceId, totalDuration, slotsFetchKey]);
 
   const canNext = () => {
     if (step === 0) return selectedServices.length > 0;
