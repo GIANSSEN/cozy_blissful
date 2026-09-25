@@ -134,8 +134,8 @@ const StepIndicator = ({ step }) => (
   </div>
 );
 
-// ─── STEP 1: SERVICE SELECTOR ────────────────────────────────────────────────
-const ServiceCards = ({ services, selectedId, onSelect }) => {
+// ─── STEP 1: SERVICE SELECTOR (Multi-Select) ────────────────────────────────────
+const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
 
@@ -160,36 +160,61 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
     return matchCat && matchSearch;
   });
 
+  const totalDuration = selectedIds.reduce((sum, id) => {
+    const svc = services.find((s) => s.id === id);
+    return sum + (svc?.duration || 0);
+  }, 0);
+  const totalPrice = selectedIds.reduce((sum, id) => {
+    const svc = services.find((s) => s.id === id);
+    return sum + Number(svc?.price || 0);
+  }, 0);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Select Your Wellness Therapy
+            Select Your Wellness Therapies
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Explore our signature salon treatments and holistic therapies</p>
+          <p className="text-xs text-slate-500 mt-0.5">Choose one or more treatments — combined duration & price shown below</p>
         </div>
 
-        {/* Quick Search */}
-        <div className="relative w-full sm:w-60">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search therapies, nails..."
-            className="w-full pl-8 pr-7 py-2 rounded-xl text-xs bg-white border border-slate-200 focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/20 focus:outline-none transition shadow-xs"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-            >
-              ×
-            </button>
-          )}
-        </div>
+        {/* Selected badge */}
+        {selectedIds.length > 0 && (
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 min-w-[200px]">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{selectedIds.length} selected</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-700">
+              <Clock className="w-3 h-3" /> {totalDuration} mins
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-900">
+              <span>₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Search */}
+      <div className="relative w-full sm:w-64">
+        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search therapies, nails..."
+          className="w-full pl-8 pr-7 py-2 rounded-xl text-xs bg-white border border-slate-200 focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/20 focus:outline-none transition shadow-xs"
+        />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Category Pills */}
@@ -219,7 +244,7 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
       {/* Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
         {filtered.map((s) => {
-          const isSelected = s.id === selectedId;
+          const isSelected = selectedIds.includes(s.id);
           const price = Number(s.price ?? 0);
           const formattedPrice = `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
@@ -227,7 +252,7 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
             <button
               key={s.id}
               type="button"
-              onClick={() => onSelect(s)}
+              onClick={() => onToggle(s.id)}
               className={`text-left rounded-2xl p-4 transition-all duration-200 hover:scale-[1.015] active:scale-[0.99] cursor-pointer flex flex-col justify-between border relative ${
                 isSelected
                   ? 'border-[#bfa15f] text-white shadow-lg ring-2 ring-[#bfa15f]/40'
@@ -242,9 +267,21 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
               <div>
                 <div className="flex items-start justify-between gap-2.5">
                   <div className="flex-1 min-w-0">
-                    <p className={`font-black text-sm leading-snug ${isSelected ? 'text-white' : 'text-slate-800'}`}>
-                      {s.name}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      {/* Checkbox indicator */}
+                      <div
+                        className={`w-5 h-5 rounded-lg flex items-center justify-center flex-shrink-0 border-2 transition-all ${
+                          isSelected
+                            ? 'bg-[#bfa15f] border-[#bfa15f]'
+                            : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                      </div>
+                      <p className={`font-black text-sm leading-snug ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                        {s.name}
+                      </p>
+                    </div>
                     {s.category && (
                       <span
                         className={`inline-block text-[9px] mt-1 font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
@@ -285,7 +322,7 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
                   isSelected ? 'border-white/10 text-[#e8cc8a]' : 'border-slate-100 text-slate-400'
                 }`}
               >
-                <span>{isSelected ? '✓ Selected Treatment' : 'Click to select'}</span>
+                <span>{isSelected ? '✓ Added to your session' : 'Click to add'}</span>
                 {isSelected && <CheckCircle className="w-4 h-4 text-[#e8cc8a]" />}
               </div>
             </button>
@@ -298,6 +335,18 @@ const ServiceCards = ({ services, selectedId, onSelect }) => {
           </div>
         )}
       </div>
+
+      {/* Bottom summary bar when services selected */}
+      {selectedIds.length > 0 && (
+        <div className="rounded-2xl p-3 bg-amber-50 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold text-emerald-800">
+            <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> {selectedIds.length} Treatments</span>
+            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-600" /> {totalDuration} mins total</span>
+            <span className="flex items-center gap-1.5">₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+          </div>
+          <p className="text-[10px] text-emerald-700 font-medium">Proceed to choose date & time →</p>
+        </div>
+      )}
     </div>
   );
 };
@@ -532,7 +581,7 @@ const fmtApptDateTime = (dt) => {
 };
 
 const ReviewStep = ({
-  service,
+  services,
   date,
   time,
   notes,
@@ -553,8 +602,11 @@ const ReviewStep = ({
   const dateLabel = date
     ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
     : 'Date not selected';
-  const price = Number(service?.price ?? 0);
-  const formattedPrice = `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
+  const totalDuration = services.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const totalPrice = services.reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const formattedTotalPrice = `₱${totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+  const primaryCategory = services[0]?.category || 'Treatment';
 
   return (
     <div className="space-y-6">
@@ -562,10 +614,10 @@ const ReviewStep = ({
         <div>
           <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
             <Receipt className="w-5 h-5 text-emerald-800" />
-            Billing Details &amp; Summary
+            Billing Details & Summary
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Review contact information, salon treatment details, and payment preference
+            Review contact information, {services.length} treatment{services.length > 1 ? 's' : ''}, and payment preference
           </p>
         </div>
         <span className="self-start sm:self-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 flex items-center gap-1 shadow-xs">
@@ -585,7 +637,7 @@ const ReviewStep = ({
                 </div>
                 <div>
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Client Contact Info</h4>
-                  <p className="text-[10px] text-slate-400">For SMS reminders &amp; appointment confirmation</p>
+                  <p className="text-[10px] text-slate-400">For SMS reminders & appointment confirmation</p>
                 </div>
               </div>
               <span className="text-[9px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
@@ -653,8 +705,8 @@ const ReviewStep = ({
                 <MapPin className="w-3.5 h-3.5" />
               </div>
               <div>
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Address &amp; Location Details</h4>
-                <p className="text-[10px] text-slate-400">Used for client profile verification &amp; salon records</p>
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Address & Location Details</h4>
+                <p className="text-[10px] text-slate-400">Used for client profile verification & salon records</p>
               </div>
             </div>
 
@@ -685,7 +737,7 @@ const ReviewStep = ({
                 </div>
               </div>
               <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                Safe &amp; Flexible
+                Safe & Flexible
               </span>
             </div>
 
@@ -736,7 +788,7 @@ const ReviewStep = ({
           {/* Treatment Preferences */}
           <div className="rounded-2xl p-4 sm:p-5 space-y-2 bg-white border border-slate-200/80 shadow-xs">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              Treatment Preferences &amp; Special Requests (Optional)
+              Treatment Preferences & Special Requests (Optional)
             </label>
             <textarea
               value={notes}
@@ -762,15 +814,21 @@ const ReviewStep = ({
                 <Receipt className="w-3.5 h-3.5" /> Order Summary
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-200 border border-white/15">
-                {service.category || 'Treatment'}
+                {primaryCategory}
               </span>
             </div>
 
             <div>
-              <p className="text-white font-black text-lg leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
-                {service.name}
-              </p>
-              <p className="text-emerald-200/80 text-xs mt-0.5">{service.duration} minutes dedicated session</p>
+              {services.map((svc, idx) => (
+                <div key={svc.id} className="mb-3 pb-3 last:mb-0 last:pb-0 border-b border-white/10">
+                  <p className="text-white font-black text-lg leading-snug" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    {svc.name}
+                  </p>
+                  <p className="text-emerald-200/80 text-xs mt-0.5 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" /> {svc.duration} mins &bull; ₱{Number(svc.price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              ))}
             </div>
 
             {/* Schedule Info Box */}
@@ -789,13 +847,17 @@ const ReviewStep = ({
                   Specialist: <strong className="text-amber-200">Concierge Matching</strong>
                 </span>
               </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Zap className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
+                <span className="text-emerald-100 text-[11px] font-medium">Total Duration: {totalDuration} mins</span>
+              </div>
             </div>
 
             {/* Itemized Price Breakdown */}
             <div className="space-y-2 pt-1 text-xs border-t border-white/10">
               <div className="flex items-center justify-between text-emerald-100/80">
-                <span>Treatment Subtotal</span>
-                <span className="font-semibold text-white">{formattedPrice}</span>
+                <span>Treatment Subtotal ({services.length} items)</span>
+                <span className="font-semibold text-white">{formattedTotalPrice}</span>
               </div>
               <div className="flex items-center justify-between text-emerald-100/80">
                 <span>Salon Reservation Fee</span>
@@ -812,7 +874,7 @@ const ReviewStep = ({
                   <p className="text-[10px] text-emerald-300/70 font-medium">{paymentMethod === 'cash' ? 'To settle in cash upon visit' : 'To settle online or upon visit'}</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-2xl font-black text-[#e8cc8a] tracking-tight">{formattedPrice}</span>
+                  <span className="text-2xl font-black text-[#e8cc8a] tracking-tight">{formattedTotalPrice}</span>
                 </div>
               </div>
             </div>
@@ -847,8 +909,10 @@ const ReviewStep = ({
 //  • Cash on Visit  → primary CTA is "done / pay at counter", NO online push.
 //  • Online channel → primary CTA is "pay online now", counter as fallback.
 const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
-  const price = Number(booking?.service_price ?? 0);
-  const formattedPrice = price > 0 ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null;
+  // Handle both single service (backward compat) and multiple services
+  const services = booking?.services || (booking?.service ? [{ name: booking.service, duration: booking.service_duration, price: booking.service_price }] : []);
+  const totalPrice = services.reduce((sum, s) => sum + Number(s.price || 0), 0);
+  const formattedTotalPrice = totalPrice > 0 ? `₱${totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : null;
   const method = normalizeClientMethod(booking?.payment_method);
   const methodName = clientMethodLabel(booking?.payment_method);
   const isCash = method === 'cash';
@@ -870,9 +934,9 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
         </h3>
         <p className="text-xs text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed px-2">
           {isCash ? (
-            <>Your appointment is registered. <strong className="text-emerald-900">No online payment needed</strong> — simply pay {formattedPrice || 'in cash'} at the salon counter after your session.</>
+            <>Your {services.length === 1 ? 'appointment' : `${services.length} appointments`} are registered. <strong className="text-emerald-900">No online payment needed</strong> — simply pay {formattedTotalPrice || 'in cash'} at the salon counter after your session.</>
           ) : (
-            <>Your appointment is registered with <strong className="text-emerald-900">{methodName}</strong>. Complete your online payment below to secure your slot — or pay at the counter on arrival.</>
+            <>Your {services.length === 1 ? 'appointment' : `${services.length} appointments`} are registered with <strong className="text-emerald-900">{methodName}</strong>. Complete your online payment below to secure your slot — or pay at the counter on arrival.</>
           )}
         </p>
       </div>
@@ -886,14 +950,21 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
         </div>
 
         <div className="min-w-0">
-          <p className="text-sm font-black text-slate-800 break-words">{booking?.service}</p>
+          {services.map((svc, idx) => (
+            <div key={svc.id || idx} className="mb-2 pb-2 border-b border-slate-100 last:border-0 last:pb-0">
+              <p className="text-sm font-black text-slate-800 break-words">{svc.name}</p>
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                <Clock className="w-3 h-3" /> {svc.duration || booking?.service_duration} mins &bull; ₱{Number(svc.price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          ))}
           <p className="text-xs text-slate-500 mt-0.5 break-words">{booking?.datetime}</p>
         </div>
 
-        {formattedPrice && (
+        {formattedTotalPrice && (
           <div className="flex items-center justify-between gap-2 text-xs pt-1">
-            <span className="text-slate-500 font-semibold">Total Amount:</span>
-            <span className="font-black text-emerald-900 text-sm whitespace-nowrap">{formattedPrice}</span>
+            <span className="text-slate-500 font-semibold">Total Amount ({services.length} items):</span>
+            <span className="font-black text-emerald-900 text-sm whitespace-nowrap">{formattedTotalPrice}</span>
           </div>
         )}
 
@@ -907,7 +978,7 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
         {isCash && (
           <div className="pt-2 border-t border-slate-100 flex items-start gap-1.5 text-[10px] font-semibold text-slate-600 leading-relaxed">
             <Banknote className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0 mt-px" />
-            <span>Cash on Visit — settle {formattedPrice || 'your balance'} at the counter. Please arrive 10 minutes early.</span>
+            <span>Cash on Visit — settle {formattedTotalPrice || 'your balance'} at the counter. Please arrive 10 minutes early.</span>
           </div>
         )}
 
@@ -1269,7 +1340,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
 const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedServices, setSelectedServices] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -1300,24 +1371,31 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     }
   }, [user, data]);
 
+  // Fetch slots based on primary service (first selected) and combined duration
   useEffect(() => {
-    if (selectedDate && selectedService) {
+    const primaryService = selectedServices[0];
+    if (selectedDate && primaryService) {
       setLoadingSlots(true);
       setSelectedTime('');
+      // Use primary service ID for slot fetching; pass total_duration for accurate slot generation
       API.get('/booking/available-slots', {
         params: {
           date: selectedDate,
-          service_id: selectedService.id,
+          service_id: primaryService.id,
+          total_duration: totalDuration,
         },
       })
         .then((r) => setSlots(r.data))
         .catch(() => setSlots({ all_slots: [], booked_slots: [], available_slots: [] }))
         .finally(() => setLoadingSlots(false));
     }
-  }, [selectedDate, selectedService]);
+  }, [selectedDate, selectedServices, totalDuration]);
+
+  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration || 0), 0);
+  const totalPrice = selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
 
   const canNext = () => {
-    if (step === 0) return !!selectedService;
+    if (step === 0) return selectedServices.length > 0;
     if (step === 1) return !!selectedDate && !!selectedTime;
     if (step === 2) return !!clientName.trim() && !!clientPhone.trim();
     return false;
@@ -1334,7 +1412,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     const localDigits = digits.startsWith('63') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits;
     if (!/^9\d{9}$/.test(localDigits)) { setError('Please enter a valid PH mobile number (e.g. 0917 123 4567).'); return; }
     if (!['cash', 'gcash'].includes(paymentMethod)) { setError('Please choose a valid payment method.'); return; }
-    if (!selectedService?.id) { setError('Please select a treatment first.'); return; }
+    if (selectedServices.length === 0) { setError('Please select at least one treatment.'); return; }
     if (!selectedDate || !selectedTime) { setError('Please select a date and time slot.'); return; }
 
     setSubmitting(true);
@@ -1342,8 +1420,10 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     try {
       const datetime = `${selectedDate}T${selectedTime}:00`;
       const res = await API.post('/booking/store', {
-        service_id: selectedService.id,
+        service_ids: selectedServices.map(s => s.id),
+        primary_service_id: selectedServices[0].id,
         datetime,
+        total_duration: totalDuration,
         notes,
         client_name: clientName.trim(),
         client_phone: clientPhone.trim(),
@@ -1420,8 +1500,15 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
               {step === 0 && (
                 <ServiceCards
                   services={data?.available_services || []}
-                  selectedId={selectedService?.id}
-                  onSelect={(s) => setSelectedService(s)}
+                  selectedIds={selectedServices.map(s => s.id)}
+                  onToggle={(id) => {
+                    setSelectedServices(prev => {
+                      const exists = prev.find(s => s.id === id);
+                      if (exists) return prev.filter(s => s.id !== id);
+                      const svc = data?.available_services?.find(s => s.id === id);
+                      return svc ? [...prev, svc] : prev;
+                    });
+                  }}
                 />
               )}
               {step === 1 && (
@@ -1436,7 +1523,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
               )}
               {step === 2 && (
                 <ReviewStep
-                  service={selectedService}
+                  services={selectedServices}
                   date={selectedDate}
                   time={selectedTime}
                   notes={notes}
@@ -1500,7 +1587,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-[#041e16]" />
-                      Confirm &amp; Book Appointment • ₱{Number(selectedService?.price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      Confirm & Book {selectedServices.length === 1 ? 'Appointment' : `${selectedServices.length} Appointments`} • ₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                     </>
                   )}
                 </LuxuryBtn>

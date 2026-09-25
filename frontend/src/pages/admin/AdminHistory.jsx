@@ -5,7 +5,7 @@ import { SkeletonStatsRow, SkeletonSessionFeed } from '../../components/Skeleton
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import API from '../../api/axios';
-import * as XLSX from 'xlsx';
+// xlsx loaded dynamically on export/import click (saves ~900KB on startup)
 import {
   Archive, Calendar, Clock, CheckCircle, XCircle,
   Mail, FileText, Eye, Search, X, Download, Upload,
@@ -349,12 +349,13 @@ const AdminHistory = () => {
     .filter((a) => a.status === 'Completed')
     .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
 
-  /* ── EXPORT TO EXCEL ── */
-  const handleExport = () => {
+  /* ── EXPORT TO EXCEL (xlsx loaded on demand) ── */
+  const handleExport = async () => {
     if (filtered.length === 0) {
       toast.error?.('No records to export');
       return;
     }
+    const XLSX = await import('xlsx');
     const rows = filtered.map((a) => ({
       'Booking ID': String(a.id).padStart(4, '0'),
       'Client': a.client_name || a.client || '',
@@ -387,8 +388,9 @@ const AdminHistory = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx');
         const wb = XLSX.read(evt.target.result, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });

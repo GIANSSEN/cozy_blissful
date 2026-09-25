@@ -71,6 +71,7 @@ function AnimatedRoutes() {
   const location = useLocation();
   return (
     <AnimatePresence mode="wait">
+      <Suspense fallback={<RouteFallback />}>
       <Routes location={location} key={location.pathname}>
         {/* ── Public ─────────────────────────────────────────────────────── */}
         <Route path="/" element={<PageTransition><LandingPage /></PageTransition>} />
@@ -116,6 +117,7 @@ function AnimatedRoutes() {
         {/* 404 — proper Not Found page instead of silent redirect (HIGH-4) */}
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
+      </Suspense>
     </AnimatePresence>
   );
 }

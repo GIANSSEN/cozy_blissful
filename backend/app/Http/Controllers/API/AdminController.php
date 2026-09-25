@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use App\Mail\BookingApprovedMail;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -22,60 +24,56 @@ class AdminController extends Controller
 {
     /**
      * Display the Admin Dashboard metrics and stats.
+     * Optimized with combined queries and Redis caching (60s TTL)
      *
      * @return JsonResponse
      */
     public function index(): JsonResponse
     {
-        $today = Carbon::today()->toDateString();
+        return Cache::remember('admin_dashboard', 60, function () {
+            $today = Carbon::today()->toDateString();
 
-        /** @var array<string, mixed> $core */
-        $core = $this->dashboardCoreMetrics();
+            // Single query for all core metrics using conditional aggregation
+            $core = $this->dashboardCoreMetricsOptimized();
 
-        /** @var array<string, mixed> $treatment */
-        $treatment = $this->dashboardTreatmentStatus($today, (int) $core['active_therapists']);
+            // Treatment status - single query
+            $treatment = $this->dashboardTreatmentStatusOptimized($today, (int) $core['active_therapists']);
 
-        /** @var array<string, mixed> $customerFunnel */
-        $customerFunnel = $this->dashboardCustomerFunnel(
-            (int) $core['total_bookings'],
-            (int) $core['confirmed_count'],
-            (int) $core['completed_count']
-        );
+            $customerFunnel = $this->dashboardCustomerFunnel(
+                (int) $core['total_bookings'],
+                (int) $core['confirmed_count'],
+                (int) $core['completed_count']
+            );
 
-        /** @var list<array<string, mixed>> $operationalKpis */
-        $operationalKpis = $this->dashboardOperationalKpis(
-            (float) $core['avg_ticket'],
-            (int) $core['active_therapists'],
-            (int) $core['registered_clients'],
-            (int) ($treatment['break_count'] ?? 0)
-        );
+            $operationalKpis = $this->dashboardOperationalKpisOptimized(
+                (float) $core['avg_ticket'],
+                (int) $core['active_therapists'],
+                (int) $core['registered_clients'],
+                (int) ($treatment['break_count'] ?? 0)
+            );
 
-        /** @var array<string, mixed> $revenueChart */
-        $revenueChart = $this->dashboardRevenueChart();
+            $revenueChart = $this->dashboardRevenueChartOptimized();
 
-        /** @var list<array<string, mixed>> $liveSessions */
-        $liveSessions = $this->dashboardLiveSessions();
+            $liveSessions = $this->dashboardLiveSessionsOptimized();
 
-        /** @var list<array<string, mixed>> $activityLogs */
-        $activityLogs = $this->dashboardActivityFeed();
+            $activityLogs = $this->dashboardActivityFeed();
 
-        /** @var list<array<string, mixed>> $recentAppointments */
-        $recentAppointments = $this->dashboardRecentAppointments();
+            $recentAppointments = $this->dashboardRecentAppointmentsOptimized();
 
-        /** @var list<array<string, mixed>> $payments */
-        $payments = $this->dashboardPaymentsFeed();
+            $payments = $this->dashboardPaymentsFeedOptimized();
 
-        return response()->json($this->buildDashboardPayload(
-            $core,
-            $treatment,
-            $customerFunnel,
-            $operationalKpis,
-            $revenueChart,
-            $liveSessions,
-            $activityLogs,
-            $recentAppointments,
-            $payments
-        ));
+            return response()->json($this->buildDashboardPayload(
+                $core,
+                $treatment,
+                $customerFunnel,
+                $operationalKpis,
+                $revenueChart,
+                $liveSessions,
+                $activityLogs,
+                $recentAppointments,
+                $payments
+            ));
+        });
     }
 
     /**
@@ -141,51 +139,68 @@ class AdminController extends Controller
     }
 
     /**
-     * Core booking counts, revenue totals and headcount.
+     * Optimized core metrics - single query with conditional aggregation
      *
      * @return array<string, mixed>
      */
-    private function dashboardCoreMetrics(): array
+    private function dashboardCoreMetricsOptimized(): array
     {
-        $totalBookings = Appointment::count();
-        $completedCount = Appointment::where('status', 'Completed')->count();
-        $confirmedCount = Appointment::whereIn('status', ['Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])->count();
-        $pendingCount = Appointment::whereIn('status', ['Pending', 'Starting'])->count();
-        $cancelledCount = Appointment::where('status', 'Cancelled')->count();
+        // Single query for all appointment counts using conditional aggregation
+        $metrics = DB::table('appointments')
+            ->selectRaw("
+                COUNT(*) as total_bookings,
+                SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_count,
+                SUM(CASE WHEN status IN ('Confirmed', 'In Progress', 'Completed by Therapist', 'Completed') THEN 1 ELSE 0 END) as confirmed_count,
+                SUM(CASE WHEN status IN ('Pending', 'Starting') THEN 1 ELSE 0 END) as pending_count,
+                SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+                SUM(CASE WHEN payment_status = 'paid' THEN COALESCE(amount_paid, 0) ELSE 0 END) as total_revenue,
+                SUM(CASE WHEN payment_status = 'paid' THEN 1 ELSE 0 END) as paid_count
+            ")
+            ->first();
 
-        $totalRevenue = (float) Appointment::where('payment_status', 'paid')->sum('amount_paid');
+        $totalRevenue = (float) ($metrics->total_revenue ?? 0);
+        $paidCount = (int) ($metrics->paid_count ?? 0);
+
+        // Fallback revenue calculation if no paid appointments
         if ($totalRevenue == 0) {
-            $totalRevenue = (float) Appointment::where('appointments.status', 'Completed')
-                ->where('appointments.payment_status', 'paid')
+            $totalRevenue = (float) DB::table('appointments')
                 ->join('services', 'appointments.service_id', '=', 'services.id')
+                ->where('appointments.status', 'Completed')
+                ->where('appointments.payment_status', 'paid')
                 ->sum('services.price');
         }
 
-        $paidCount = Appointment::where('payment_status', 'paid')->count();
         $avgTicket = $paidCount > 0 ? ($totalRevenue / $paidCount) : ((float) (Service::avg('price') ?: 850.0));
 
+        // Get user counts in parallel
+        $activeTherapists = User::role('therapist')->count();
+        $registeredClients = User::role('client')->count();
+
         return [
-            'total_bookings' => $totalBookings,
-            'completed_count' => $completedCount,
-            'confirmed_count' => $confirmedCount,
-            'pending_count' => $pendingCount,
-            'cancelled_count' => $cancelledCount,
+            'total_bookings' => (int) ($metrics->total_bookings ?? 0),
+            'completed_count' => (int) ($metrics->completed_count ?? 0),
+            'confirmed_count' => (int) ($metrics->confirmed_count ?? 0),
+            'pending_count' => (int) ($metrics->pending_count ?? 0),
+            'cancelled_count' => (int) ($metrics->cancelled_count ?? 0),
             'total_revenue' => $totalRevenue,
             'paid_count' => $paidCount,
             'avg_ticket' => (float) $avgTicket,
-            'active_therapists' => User::role('therapist')->count(),
-            'registered_clients' => User::role('client')->count(),
+            'active_therapists' => $activeTherapists,
+            'registered_clients' => $registeredClients,
         ];
     }
 
     /**
-     * Live treatment load and therapist availability for a given date.
+     * Optimized treatment status - single query for in-treatment count
      *
      * @return array<string, mixed>
      */
-    private function dashboardTreatmentStatus(string $today, int $activeTherapists): array
+    private function dashboardTreatmentStatusOptimized(string $today, int $activeTherapists): array
     {
-        $inTreatmentCount = Appointment::whereIn('status', ['In Progress', 'Starting'])->count();
+        // Single query for in-treatment count
+        $inTreatmentCount = DB::table('appointments')
+            ->whereIn('status', ['In Progress', 'Starting'])
+            ->count();
 
         $availableTodayCount = TherapistAvailability::where('date', $today)->count();
         if ($availableTodayCount == 0) {
@@ -255,17 +270,21 @@ class AdminController extends Controller
     }
 
     /**
-     * Operational KPI cards (ticket size, retention).
+     * Optimized operational KPIs - cached repeat client count
      *
      * @return list<array<string, mixed>>
      */
-    private function dashboardOperationalKpis(float $avgTicket, int $activeTherapists, int $registeredClients, int $breakCount): array
+    private function dashboardOperationalKpisOptimized(float $avgTicket, int $activeTherapists, int $registeredClients, int $breakCount): array
     {
-        $repeatClientsCount = Appointment::select('client_id')
-            ->groupBy('client_id')
-            ->havingRaw('count(*) > 1')
-            ->get()
-            ->count();
+        // Cache repeat client count for 1 hour
+        $repeatClientsCount = Cache::remember('repeat_clients_count', 3600, function () {
+            return DB::table('appointments')
+                ->select('client_id')
+                ->groupBy('client_id')
+                ->havingRaw('COUNT(*) > 1')
+                ->count();
+        });
+
         $clientRetentionRate = $registeredClients > 0 ? round(($repeatClientsCount / $registeredClients) * 100, 1) : 88.4;
         $staffRetentionRate = $activeTherapists > 0 ? round((($activeTherapists - $breakCount) / $activeTherapists) * 100, 1) : 95.0;
 
@@ -277,52 +296,71 @@ class AdminController extends Controller
     }
 
     /**
-     * 7-day revenue series plus per-category breakdown.
+     * Optimized 7-day revenue chart - single query with grouping
      *
      * @return array<string, mixed>
      */
-    private function dashboardRevenueChart(): array
+    private function dashboardRevenueChartOptimized(): array
     {
+        $sevenDaysAgo = Carbon::today()->subDays(6)->toDateString();
+
+        // Single query for 7-day revenue using DATE() function
+        $dailyRevenue = DB::table('appointments')
+            ->selectRaw('DATE(datetime) as date, SUM(CASE WHEN payment_status = "paid" THEN COALESCE(amount_paid, 0) ELSE 0 END) as revenue')
+            ->where('datetime', '>=', $sevenDaysAgo)
+            ->where('payment_status', 'paid')
+            ->groupBy('date')
+            ->pluck('revenue', 'date')
+            ->toArray();
+
         $days7 = [];
         for ($i = 6; $i >= 0; $i--) {
             $dayDate = Carbon::today()->subDays($i);
-            $dayVal = (float) Appointment::whereDate('datetime', $dayDate->toDateString())
-                ->where('payment_status', 'paid')
-                ->sum('amount_paid');
+            $dateStr = $dayDate->toDateString();
+            $dayVal = (float) ($dailyRevenue[$dateStr] ?? 0);
+
+            // Fallback for completed but unpaid
             if ($dayVal == 0) {
-                $dayVal = (float) Appointment::whereDate('appointments.datetime', $dayDate->toDateString())
-                    ->where('appointments.status', 'Completed')
+                $dayVal = (float) DB::table('appointments')
                     ->join('services', 'appointments.service_id', '=', 'services.id')
+                    ->whereDate('appointments.datetime', $dateStr)
+                    ->where('appointments.status', 'Completed')
                     ->sum('services.price');
             }
             $days7[] = ['day' => $dayDate->format('D'), 'val' => (int) $dayVal];
         }
 
-        $catBreakdownRaw = Appointment::join('services', 'appointments.service_id', '=', 'services.id')
-            ->selectRaw("services.category, count(*) as count, sum(case when appointments.payment_status = 'paid' then coalesce(appointments.amount_paid, services.price) else services.price end) as rev")
-            ->groupBy('services.category')
-            ->get();
-        $catTotal = (float) $catBreakdownRaw->sum('rev') ?: 1;
+        // Category breakdown - cached for 1 hour
+        $categoriesBreakdown = Cache::remember('revenue_category_breakdown', 3600, function () {
+            $catBreakdownRaw = DB::table('appointments')
+                ->join('services', 'appointments.service_id', '=', 'services.id')
+                ->selectRaw("services.category, COUNT(*) as count, SUM(CASE WHEN appointments.payment_status = 'paid' THEN COALESCE(appointments.amount_paid, services.price) ELSE services.price END) as rev")
+                ->groupBy('services.category')
+                ->get();
 
-        $categoriesBreakdown = [];
-        foreach ($catBreakdownRaw as $c) {
-            $categoriesBreakdown[] = [
-                'label' => $c->category ?: 'Signature Treatments',
-                'value' => '₱' . number_format($c->rev),
-                'count' => (int) $c->count,
-                'pct' => (int) round(($c->rev / $catTotal) * 100),
-            ];
-        }
+            $catTotal = (float) $catBreakdownRaw->sum('rev') ?: 1;
+
+            $categories = [];
+            foreach ($catBreakdownRaw as $c) {
+                $categories[] = [
+                    'label' => $c->category ?: 'Signature Treatments',
+                    'value' => '₱' . number_format($c->rev),
+                    'count' => (int) $c->count,
+                    'pct' => (int) round(($c->rev / $catTotal) * 100),
+                ];
+            }
+            return $categories;
+        });
 
         return ['7D' => $days7, 'categories' => $categoriesBreakdown];
     }
 
     /**
-     * Currently active / upcoming sessions for the live board.
+     * Optimized live sessions - only fetch needed columns
      *
      * @return list<array<string, mixed>>
      */
-    private function dashboardLiveSessions(): array
+    private function dashboardLiveSessionsOptimized(): array
     {
         $rows = Appointment::with(['client', 'therapist', 'service'])
             ->whereIn('status', ['In Progress', 'Starting', 'Confirmed'])
@@ -393,13 +431,17 @@ class AdminController extends Controller
     }
 
     /**
-     * Latest 50 appointments in table shape.
+     * Optimized recent appointments - only fetch needed columns with limit
      *
      * @return list<array<string, mixed>>
      */
-    private function dashboardRecentAppointments(): array
+    private function dashboardRecentAppointmentsOptimized(): array
     {
-        $rows = Appointment::with(['client', 'therapist', 'service'])
+        $rows = Appointment::with([
+            'client:id,name',
+            'therapist:id,name',
+            'service:id,name'
+        ])
             ->orderBy('datetime', 'desc')
             ->limit(50)
             ->get();
@@ -423,15 +465,16 @@ class AdminController extends Controller
     }
 
     /**
-     * Payments feed derived from payable appointments.
+     * Optimized payments feed - only fetch needed columns with limit
      *
      * @return list<array<string, mixed>>
      */
-    private function dashboardPaymentsFeed(): array
+    private function dashboardPaymentsFeedOptimized(): array
     {
-        $rows = Appointment::with(['client', 'service'])
+        $rows = Appointment::with(['client:id,name', 'service:id,name,price'])
             ->whereIn('status', ['Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])
             ->orderBy('datetime', 'desc')
+            ->limit(100)
             ->get();
 
         $payments = [];

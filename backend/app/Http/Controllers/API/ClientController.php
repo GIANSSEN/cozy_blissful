@@ -9,6 +9,7 @@ use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\BookingConfirmationMail;
@@ -82,7 +83,9 @@ class ClientController extends Controller
 
     /**
      * Return available time slots for a given date and service.
-     * GET /booking/available-slots?date=YYYY-MM-DD&service_id=X&therapist_id=Y
+     * GET /booking/available-slots?date=YYYY-MM-DD&service_id=X&therapist_id=Y&total_duration=Z
+     * 
+     * Optimized with database-level filtering and Redis caching
      */
     public function getAvailableSlots(Request $request)
     {
@@ -90,109 +93,177 @@ class ClientController extends Controller
             'date' => 'required|date|after_or_equal:today',
             'service_id' => 'required|exists:services,id',
             'therapist_id' => 'nullable|exists:users,id',
+            'total_duration' => 'sometimes|integer|min:15|max:480', // for multi-service bookings
         ]);
 
         $service = Service::findOrFail($request->service_id);
-        $duration = (int) $service->duration; // minutes
+        $duration = (int) $service->duration;
+        // Use total_duration if provided (for multi-service), otherwise use single service duration
+        $effectiveDuration = $request->filled('total_duration') ? (int) $request->total_duration : $duration;
         $date = Carbon::parse($request->date);
-
-        // Salon operating hours: 9:00 AM – 9:00 PM
-        $openTime = $date->copy()->setTime(9, 0);
-        $closeTime = $date->copy()->setTime(21, 0);
-
-        // Generate candidate slots every 30 minutes
-        $slots = [];
-        $cursor = $openTime->copy();
-        while ($cursor->copy()->addMinutes($duration)->lte($closeTime)) {
-            $slots[] = $cursor->format('H:i');
-            $cursor->addMinutes(30);
-        }
-
-        // Determine working therapists for this date
-        $workingTherapists = User::role('therapist')
-            ->whereHas('availabilities', fn($q) => $q->where('date', $date->toDateString()))
-            ->pluck('id')
-            ->toArray();
-
-        // If no therapists explicitly marked calendar, fallback to all active therapists
-        if (empty($workingTherapists)) {
-            $workingTherapists = User::role('therapist')->pluck('id')->toArray();
-        }
-
-        $salonCapacity = max(1, count($workingTherapists));
+        $dateString = $date->toDateString();
         $requestedTherapistId = $request->therapist_id;
 
-        // Fetch existing confirmed/pending appointments on that date
-        $existingAppointments = Appointment::with('service')
-            ->whereIn('status', ['Pending', 'Confirmed'])
-            ->whereDate('datetime', $date->toDateString())
-            ->get();
+        // Cache key for this query
+        $therapistKey = $requestedTherapistId ?? 'any';
+        $durationKey = $effectiveDuration;
+        $cacheKey = "available_slots:{$dateString}:{$service->id}:{$therapistKey}:{$durationKey}";
 
-        // Convert appointments to interval minutes [startMin, endMin, therapist_id]
-        $apptIntervals = $existingAppointments->map(function ($appt) {
-            $startMin = (int) $appt->datetime->format('H') * 60 + (int) $appt->datetime->format('i');
-            $dur = $appt->service ? (int) $appt->service->duration : 60;
-            return [
-                'start' => $startMin,
-                'end' => $startMin + $dur,
-                'therapist_id' => $appt->therapist_id,
-            ];
-        });
+        return Cache::remember($cacheKey, 300, function () use ($date, $duration, $effectiveDuration, $dateString, $requestedTherapistId) {
+            // Salon operating hours: 9:00 AM – 9:00 PM
+            $openTime = $date->copy()->setTime(9, 0);
+            $closeTime = $date->copy()->setTime(21, 0);
 
-        // Filter candidate slots based on capacity or specific therapist
-        $availableSlots = array_filter($slots, function ($slotTime) use ($duration, $apptIntervals, $salonCapacity, $requestedTherapistId) {
-            [$h, $m] = explode(':', $slotTime);
-            $slotStart = (int) $h * 60 + (int) $m;
-            $slotEnd = $slotStart + $duration;
+            // Generate candidate slots every 30 minutes - use EFFECTIVE DURATION for boundary check
+            $slots = [];
+            $cursor = $openTime->copy();
+            while ($cursor->copy()->addMinutes($effectiveDuration)->lte($closeTime)) {
+                $slots[] = $cursor->format('H:i');
+                $cursor->addMinutes(30);
+            }
 
-            if ($requestedTherapistId) {
-                // If a specific therapist is requested, slot is unavailable if that therapist is busy
-                foreach ($apptIntervals as $interval) {
-                    if ((int) $interval['therapist_id'] === (int) $requestedTherapistId) {
-                        if ($slotStart < $interval['end'] && $slotEnd > $interval['start']) {
-                            return false;
+            if (empty($slots)) {
+                return [
+                    'date' => $dateString,
+                    'service_id' => $service->id,
+                    'service_name' => $service->name,
+                    'service_duration' => $duration,
+                    'effective_duration' => $effectiveDuration,
+                    'therapist_id' => $requestedTherapistId,
+                    'salon_capacity' => 0,
+                    'available_slots' => [],
+                    'all_slots' => [],
+                    'booked_slots' => [],
+                ];
+            }
+
+            // Determine working therapists for this date (cached)
+            $workingTherapistsCacheKey = "working_therapists:{$dateString}";
+            $workingTherapists = Cache::remember($workingTherapistsCacheKey, 3600, function () use ($dateString) {
+                return User::role('therapist')
+                    ->whereHas('availabilities', fn($q) => $q->where('date', $dateString))
+                    ->pluck('id')
+                    ->toArray();
+            });
+
+            if (empty($workingTherapists)) {
+                $workingTherapists = User::role('therapist')->pluck('id')->toArray();
+            }
+
+            $salonCapacity = max(1, count($workingTherapists));
+
+            // Convert slot times to minutes for DB query - use EFFECTIVE DURATION
+            $slotMinutes = array_map(function ($slot) {
+                [$h, $m] = explode(':', $slot);
+                return (int) $h * 60 + (int) $m;
+            }, $slots);
+            $slotEndMinutes = array_map(fn($start) => $start + $effectiveDuration, $slotMinutes);
+
+            // Fetch ONLY overlapping appointments from DB using indexed columns
+            // This uses the composite index (therapist_id, status, datetime) or (status, datetime)
+            $existingAppointments = Appointment::query()
+                ->select('id', 'therapist_id', 'datetime', 'service_id')
+                ->with(['service:id,duration'])
+                ->whereIn('status', ['Pending', 'Confirmed'])
+                ->whereDate('datetime', $dateString)
+                ->when($requestedTherapistId, fn($q) => $q->where('therapist_id', $requestedTherapistId))
+                ->get();
+
+            if ($existingAppointments->isEmpty()) {
+                return [
+                    'date' => $dateString,
+                    'service_id' => $service->id,
+                    'service_name' => $service->name,
+                    'service_duration' => $duration,
+                    'effective_duration' => $effectiveDuration,
+                    'therapist_id' => $requestedTherapistId,
+                    'salon_capacity' => $salonCapacity,
+                    'available_slots' => $slots,
+                    'all_slots' => $slots,
+                    'booked_slots' => [],
+                ];
+            }
+
+            // Build interval map: therapist_id -> list of [start_min, end_min]
+            $therapistIntervals = [];
+            foreach ($existingAppointments as $appt) {
+                $therapistId = $appt->therapist_id ?? 0; // 0 for unassigned
+                $startMin = (int) $appt->datetime->format('H') * 60 + (int) $appt->datetime->format('i');
+                $dur = $appt->service ? (int) $appt->service->duration : 60;
+                $endMin = $startMin + $dur;
+
+                if (!isset($therapistIntervals[$therapistId])) {
+                    $therapistIntervals[$therapistId] = [];
+                }
+                $therapistIntervals[$therapistId][] = [$startMin, $endMin];
+            }
+
+            // Filter slots efficiently - use EFFECTIVE DURATION for overlap check
+            $availableSlots = [];
+            foreach ($slots as $index => $slotTime) {
+                $slotStart = $slotMinutes[$index];
+                $slotEnd = $slotEndMinutes[$index];
+
+                if ($requestedTherapistId) {
+                    // Check only requested therapist's intervals
+                    $intervals = $therapistIntervals[$requestedTherapistId] ?? [];
+                    $conflict = false;
+                    foreach ($intervals as [$start, $end]) {
+                        if ($slotStart < $end && $slotEnd > $start) {
+                            $conflict = true;
+                            break;
                         }
                     }
+                    if (!$conflict) {
+                        $availableSlots[] = $slotTime;
+                    }
+                } else {
+                    // Count overlapping appointments across all therapists
+                    $overlapCount = 0;
+                    foreach ($therapistIntervals as $intervals) {
+                        foreach ($intervals as [$start, $end]) {
+                            if ($slotStart < $end && $slotEnd > $start) {
+                                $overlapCount++;
+                                break; // Count each appointment once per slot
+                            }
+                        }
+                    }
+                    if ($overlapCount < $salonCapacity) {
+                        $availableSlots[] = $slotTime;
+                    }
                 }
-                return true;
             }
 
-            // General salon capacity: count how many overlapping appointments exist
-            $overlapCount = 0;
-            foreach ($apptIntervals as $interval) {
-                if ($slotStart < $interval['end'] && $slotEnd > $interval['start']) {
-                    $overlapCount++;
-                }
-            }
+            $bookedSlots = array_values(array_diff($slots, $availableSlots));
 
-            return $overlapCount < $salonCapacity;
+            return [
+                'date' => $dateString,
+                'service_id' => $service->id,
+                'service_name' => $service->name,
+                'service_duration' => $duration,
+                'effective_duration' => $effectiveDuration,
+                'therapist_id' => $requestedTherapistId,
+                'salon_capacity' => $salonCapacity,
+                'available_slots' => $availableSlots,
+                'all_slots' => $slots,
+                'booked_slots' => $bookedSlots,
+            ];
         });
-
-        $availableSlots = array_values($availableSlots);
-        $bookedSlots = array_values(array_diff($slots, $availableSlots));
-
-        return response()->json([
-            'date' => $date->toDateString(),
-            'service_id' => $service->id,
-            'service_name' => $service->name,
-            'service_duration' => $duration,
-            'therapist_id' => $requestedTherapistId,
-            'salon_capacity' => $salonCapacity,
-            'available_slots' => $availableSlots,
-            'all_slots' => $slots,
-            'booked_slots' => $bookedSlots,
-        ]);
     }
 
     /**
-     * Create a real booking for the client.
+     * Create a real booking for the client (supports multiple services).
      */
     public function store(Request $request)
     {
         $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'service_ids' => 'sometimes|array|min:1',
+            'service_ids.*' => 'exists:services,id',
+            'service_id' => 'sometimes|exists:services,id', // backward compat
+            'primary_service_id' => 'sometimes|exists:services,id',
             'therapist_id' => 'nullable|exists:users,id',
             'datetime' => 'required|date|after:now',
+            'total_duration' => 'sometimes|integer|min:15|max:480',
             'notes' => 'nullable|string|max:2000|not_regex:/<[^>]*>/',
             'client_name' => 'nullable|string|max:150',
             'client_phone' => 'nullable|string|max:50',
@@ -201,8 +272,25 @@ class ClientController extends Controller
         ]);
 
         $user = $request->user();
-        $service = Service::findOrFail($request->service_id);
-        $duration = (int) $service->duration;
+
+        // Determine services: prefer service_ids array, fall back to single service_id
+        $serviceIds = $request->input('service_ids');
+        if (empty($serviceIds) && $request->filled('service_id')) {
+            $serviceIds = [$request->input('service_id')];
+        }
+        if (empty($serviceIds)) {
+            return response()->json(['message' => 'At least one service must be selected.'], 422);
+        }
+
+        $services = Service::whereIn('id', $serviceIds)->get();
+        if ($services->count() !== count($serviceIds)) {
+            return response()->json(['message' => 'One or more selected services not found.'], 422);
+        }
+
+        // Primary service for slot fetching / capacity check
+        $primaryServiceId = $request->input('primary_service_id') ?? $serviceIds[0];
+        $primaryService = $services->firstWhere('id', $primaryServiceId) ?? $services->first();
+        $totalDuration = $request->filled('total_duration') ? (int) $request->total_duration : $services->sum('duration');
 
         try {
             $parsedDatetime = Carbon::parse($request->datetime);
@@ -210,11 +298,11 @@ class ClientController extends Controller
             return response()->json(['message' => 'Invalid date time format.'], 422);
         }
 
-        // ── Concurrency & Capacity check ─────────────────────────────────────
+        // ── Concurrency & Capacity check (use total duration for capacity) ─────────────────────────────────────
         $newStart = $parsedDatetime->copy();
-        $newEnd = $parsedDatetime->copy()->addMinutes($duration);
+        $newEnd = $parsedDatetime->copy()->addMinutes($totalDuration);
         $newStartMin = (int) $newStart->format('H') * 60 + (int) $newStart->format('i');
-        $newEndMin = $newStartMin + $duration;
+        $newEndMin = $newStartMin + $totalDuration;
 
         $existingAppointments = Appointment::with('service')
             ->whereIn('status', ['Pending', 'Confirmed'])
@@ -293,53 +381,72 @@ class ClientController extends Controller
             $combinedNotes = $combinedNotes ? $combinedNotes . "\n\n" . $billingBlock : $billingBlock;
         }
 
-        // ── Create appointment within transaction ─────────────────────────
-        $appt = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $service, $request, $parsedDatetime, $combinedNotes, $chosenMethod) {
-            $appointment = Appointment::create([
-                'client_id' => $user->id,
-                'therapist_id' => $request->therapist_id, // Assigned if requested, or left for staff
-                'service_id' => $service->id,
-                'datetime' => $parsedDatetime,
-                'status' => 'Pending',
-                'notes' => $combinedNotes,
-                'payment_status' => 'unpaid',
-                'payment_method' => $chosenMethod,
-            ]);
+        // ── Create appointments within transaction ─────────────────────────
+        $appointments = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $services, $request, $parsedDatetime, $combinedNotes, $chosenMethod, $primaryService) {
+            $created = [];
+            foreach ($services as $svc) {
+                $appointment = Appointment::create([
+                    'client_id' => $user->id,
+                    'therapist_id' => $request->therapist_id,
+                    'service_id' => $svc->id,
+                    'datetime' => $parsedDatetime,
+                    'status' => 'Pending',
+                    'notes' => $combinedNotes,
+                    'payment_status' => 'unpaid',
+                    'payment_method' => $chosenMethod,
+                ]);
+                $created[] = $appointment;
+            }
 
-            // Create admin notification for new booking
+            // Create admin notification for new booking (single notification for the group)
+            $serviceNames = $services->pluck('name')->implode(', ');
             Notification::create([
                 'type' => 'new_booking',
                 'title' => 'New Booking Received',
-                'description' => $user->name . ' — ' . $service->name . ' on ' . $parsedDatetime->format('M d, g:i A'),
-                'appointment_id' => $appointment->id,
+                'description' => $user->name . ' — ' . $serviceNames . ' on ' . $parsedDatetime->format('M d, g:i A'),
+                'appointment_id' => $created[0]->id,
             ]);
 
-            return $appointment;
+            return $created;
         });
 
         // Load relationships for response and email
-        $appt->load(['client', 'therapist', 'service']);
+        $firstAppt = $appointments[0];
+        $firstAppt->load(['client', 'therapist', 'service']);
+
+        // Prepare multi-service response
+        $serviceData = $services->map(function ($svc) {
+            return [
+                'id' => $svc->id,
+                'name' => $svc->name,
+                'price' => (float) $svc->price,
+                'duration' => (int) $svc->duration,
+            ];
+        })->values()->toArray();
+
+        $totalPrice = $services->sum('price');
 
         if ($user->email) {
             try {
-                Mail::to($user->email)->send(new BookingConfirmationMail($appt));
+                Mail::to($user->email)->send(new BookingConfirmationMail($firstAppt));
             } catch (\Exception $e) {
                 Log::error('Failed to send booking confirmation email: ' . $e->getMessage());
             }
         }
 
         return response()->json([
-            'message' => 'Booking created successfully!',
+            'message' => count($appointments) === 1 ? 'Booking created successfully!' : count($appointments) . ' bookings created successfully!',
             'booking' => [
-                'id' => $appt->id,
-                'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
-                'therapist_id' => $appt->therapist_id,
-                'service' => $service->name,
-                'service_price' => (float) $service->price,
-                'service_duration' => $duration,
-                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                'id' => $firstAppt->id,
+                'therapist_name' => $firstAppt->therapist ? $firstAppt->therapist->name : 'Awaiting Assignment',
+                'therapist_id' => $firstAppt->therapist_id,
+                'service' => $primaryService->name, // primary service for backward compat
+                'services' => $serviceData, // full array for multi-service
+                'service_price' => (float) $totalPrice,
+                'service_duration' => $totalDuration,
+                'datetime' => $firstAppt->datetime->format('Y-m-d H:i:s'),
                 'status' => 'Pending',
-                'notes' => $appt->notes,
+                'notes' => $firstAppt->notes,
                 'payment_status' => 'unpaid',
                 'payment_method' => $chosenMethod,
             ],

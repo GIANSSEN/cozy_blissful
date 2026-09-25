@@ -47,14 +47,7 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'axios'],
-          motion: ['framer-motion', 'gsap', '@gsap/react', 'lenis'],
-          utils: ['date-fns', 'clsx', 'tailwind-merge', 'lucide-react'],
-        },
-      },
-    },
+    // React.lazy() already code-splits per route — no manual manualChunks needed.
+    // (Vite 8 / Rolldown rejects the legacy object form, so we leave chunking automatic.)
   },
 })
