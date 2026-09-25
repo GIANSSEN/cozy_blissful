@@ -6,7 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   Sliders, Globe, Bell, Save, CheckCircle2, AlertCircle, UserPlus,
   Shield, Search, X, Edit3, Eye, EyeOff, Percent,
-  CalendarClock, Wallet, Database, Download, Upload,
+  CalendarClock, Wallet, Database,
   RotateCcw, Trash2, Phone, Lock, Info,
 } from 'lucide-react';
 
@@ -74,7 +74,6 @@ const NOTIF_DEFAULTS = {
 };
 
 const SYSTEM_DEFAULTS = {
-  currency: 'PHP',
   vatPercent: '12',
   serviceChargePercent: '5',
   downpaymentPercent: '20',
@@ -91,10 +90,10 @@ const SYSTEM_DEFAULTS = {
 };
 
 const INITIAL_STAFF = [
-  { id: 1, name: 'Maria Santos', email: 'maria.santos@cozy.spa', phone: '+63 917 111 2222', role: 'staff', specialty: 'Front Desk & Scheduling', shift: 'Morning', commRate: 0, status: 'active', joined: '2025-01-15', emergency: 'Juan Santos (+63 917 000 1111)' },
-  { id: 2, name: 'Anna Reyes', email: 'anna.reyes@cozy.spa', phone: '+63 919 555 6666', role: 'therapist', specialty: 'Swedish & Hot Stone Massage', shift: 'Afternoon', commRate: 35, status: 'active', joined: '2025-02-20', emergency: 'Pedro Reyes (+63 919 000 2222)' },
-  { id: 3, name: 'Juan Dela Cruz', email: 'juan.delacruz@cozy.spa', phone: '+63 918 333 4444', role: 'manager', specialty: 'Operations & Inventory Lead', shift: 'Full Day', commRate: 0, status: 'active', joined: '2025-01-05', emergency: 'Elena Dela Cruz (+63 918 000 3333)' },
-  { id: 4, name: 'Grace Tan', email: 'grace.tan@cozy.spa', phone: '+63 921 999 0000', role: 'therapist', specialty: 'Hilot & Shiatsu Therapy', shift: 'Evening', commRate: 30, status: 'inactive', joined: '2025-03-01', emergency: 'Kevin Tan (+63 921 000 4444)' },
+  { id: 1, name: 'Maria Santos', email: 'maria.santos@cozy.spa', phone: '+63 917 111 2222', role: 'staff', specialty: 'Front Desk & Scheduling', shift: 'Morning', commRate: 0, status: 'active', joined: '2025-01-15' },
+  { id: 2, name: 'Anna Reyes', email: 'anna.reyes@cozy.spa', phone: '+63 919 555 6666', role: 'therapist', specialty: 'Swedish & Hot Stone Massage', shift: 'Afternoon', commRate: 35, status: 'active', joined: '2025-02-20' },
+  { id: 3, name: 'Juan Dela Cruz', email: 'juan.delacruz@cozy.spa', phone: '+63 918 333 4444', role: 'manager', specialty: 'Operations & Inventory Lead', shift: 'Full Day', commRate: 0, status: 'active', joined: '2025-01-05' },
+  { id: 4, name: 'Grace Tan', email: 'grace.tan@cozy.spa', phone: '+63 921 999 0000', role: 'therapist', specialty: 'Hilot & Shiatsu Therapy', shift: 'Evening', commRate: 30, status: 'inactive', joined: '2025-03-01' },
 ];
 
 const ROLE_DETAILS = {
@@ -126,11 +125,6 @@ function to12h(hhmm) {
   const suffix = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${String(h12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${suffix}`;
-}
-
-function toMinutes(hhmm) {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
 }
 
 function digitsOnly(v) {
@@ -475,7 +469,7 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff, isDark }) {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     name: '', email: '', phone: '', role: 'therapist', specialty: '',
-    shift: SHIFTS[0], commRate: 35, status: 'active', emergency: '',
+    shift: SHIFTS[0], commRate: 35, status: 'active',
     password: '', confirmPassword: '',
   });
   const [errors, setErrors] = useState({});
@@ -489,7 +483,7 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff, isDark }) {
       setShowPassword(false);
       setForm({
         name: '', email: '', phone: '', role: 'therapist', specialty: '',
-        shift: SHIFTS[0], commRate: 35, status: 'active', emergency: '',
+        shift: SHIFTS[0], commRate: 35, status: 'active',
         password: '', confirmPassword: '',
       });
     }
@@ -543,7 +537,6 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff, isDark }) {
       commRate: form.role === 'therapist' ? Number(form.commRate) : 0,
       status: form.status,
       joined: new Date().toISOString().split('T')[0],
-      emergency: form.emergency.trim() || 'N/A',
     });
     onClose();
   };
@@ -649,9 +642,6 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff, isDark }) {
                 )}
               </div>
 
-              <Field id="ns-emg" label="Emergency contact (optional)">
-                <input id="ns-emg" type="text" placeholder="e.g. Roberto Mendoza (+63 918 777 6666)" value={form.emergency} onChange={(e) => patch('emergency', e.target.value)} className={inputCls('')} />
-              </Field>
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
@@ -729,7 +719,7 @@ function AddStaffModal({ isOpen, onClose, onAddStaff, existingStaff, isDark }) {
 }
 
 function EditStaffModal({ isOpen, onClose, staffMember, onSaveStaff, existingStaff, isDark }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'therapist', specialty: '', shift: 'Morning', commRate: 35, status: 'active', emergency: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'therapist', specialty: '', shift: 'Morning', commRate: 35, status: 'active' });
   const [errors, setErrors] = useState({});
   const firstFieldRef = useRef(null);
   useModalBehavior(isOpen, onClose, firstFieldRef);
@@ -740,7 +730,7 @@ function EditStaffModal({ isOpen, onClose, staffMember, onSaveStaff, existingSta
         name: staffMember.name || '', email: staffMember.email || '', phone: staffMember.phone || '',
         role: staffMember.role || 'therapist', specialty: staffMember.specialty || '',
         shift: staffMember.shift || 'Morning', commRate: staffMember.commRate ?? 35,
-        status: staffMember.status || 'active', emergency: staffMember.emergency || '',
+        status: staffMember.status || 'active',
       });
       setErrors({});
     }
@@ -858,7 +848,7 @@ const TABS = [
   { id: 'staff', label: 'Staff', full: 'Staff Provisioning', icon: UserPlus },
   { id: 'cms', label: 'Content', full: 'Content Management', icon: Globe },
   { id: 'notifications', label: 'Alerts', full: 'Alert Triggers', icon: Bell },
-  { id: 'system', label: 'Payments & System', full: 'Payments, Security & Data', icon: Wallet },
+  { id: 'system', label: 'Payments', full: 'Payments, Security & Data', icon: Wallet },
 ];
 
 const AdminSettings = () => {
@@ -898,7 +888,6 @@ const AdminSettings = () => {
   const [editingStaff, setEditingStaff] = useState(null);
   const [deletingStaff, setDeletingStaff] = useState(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     try { window.localStorage.setItem(STAFF_KEY, JSON.stringify({ list: staffList })); } catch { /* storage full — non-fatal */ }
@@ -1000,55 +989,6 @@ const AdminSettings = () => {
     setDeletingStaff(null);
   };
 
-  const exportStaffCSV = () => {
-    const rows = [['Name', 'Email', 'Phone', 'Role', 'Specialty', 'Shift', 'Commission %', 'Status', 'Joined']];
-    staffList.forEach((s) => rows.push([s.name, s.email, s.phone, ROLE_DETAILS[s.role]?.label || s.role, s.specialty, s.shift, s.commRate, s.status, s.joined]));
-    const csv = rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'cozy-blissful-staff.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    pushToast('Staff directory exported as CSV.');
-  };
-
-  const exportSettingsJSON = () => {
-    const blob = new Blob([JSON.stringify({ app: 'cozy-blissful', version: 1, exportedAt: new Date().toISOString(), settings: saved }, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'cozy-blissful-settings.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    pushToast('Settings bundle downloaded.');
-  };
-
-  const importSettingsJSON = (file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result));
-        const incoming = parsed.settings || parsed;
-        const next = {
-          business: { ...BUSINESS_DEFAULTS, ...(incoming.business || {}) },
-          booking: { ...BOOKING_DEFAULTS, ...(incoming.booking || {}) },
-          cms: { ...CMS_DEFAULTS, ...(incoming.cms || {}) },
-          notifs: { ...NOTIF_DEFAULTS, ...(incoming.notifs || {}) },
-          system: { ...SYSTEM_DEFAULTS, ...(incoming.system || {}) },
-        };
-        setSaved(next);
-        setBusiness(next.business); setBooking(next.booking); setCms(next.cms);
-        setNotifs(next.notifs); setSystem(next.system);
-        persistAll(next);
-        pushToast('Settings imported and applied.');
-      } catch {
-        pushToast('Import failed — not a valid settings JSON file.', 'error');
-      }
-    };
-    reader.readAsText(file);
-  };
-
   const factoryReset = () => {
     const fresh = { business: BUSINESS_DEFAULTS, booking: BOOKING_DEFAULTS, cms: CMS_DEFAULTS, notifs: NOTIF_DEFAULTS, system: SYSTEM_DEFAULTS };
     setSaved(fresh);
@@ -1074,11 +1014,6 @@ const AdminSettings = () => {
   }, [staffList, searchStaff, filterRole, sortBy]);
 
   const activeCount = staffList.filter((s) => s.status === 'active').length;
-  const storageBytes = useMemo(() => {
-    try {
-      return (JSON.stringify(saved) || '').length + (JSON.stringify(staffList) || '').length;
-    } catch { return 0; }
-  }, [saved, staffList]);
 
   const fieldCls = (err) => fieldClasses(isDark, err);
   const activeTabMeta = TABS.find((t) => t.id === activeTab);
@@ -1193,14 +1128,6 @@ const AdminSettings = () => {
                       <input id="biz-cancel" type="number" min="0.5" max="72" step="0.5" value={business.cancellationWindowHrs} onChange={(e) => setBusiness({ ...business, cancellationWindowHrs: e.target.value })} aria-invalid={!!bizErrors.cancellationWindowHrs} aria-describedby={bizErrors.cancellationWindowHrs ? 'biz-cancel-error' : 'biz-cancel-hint'} className={fieldCls(bizErrors.cancellationWindowHrs)} />
                     </Field>
                   </div>
-                  {/* live summary */}
-                  <div className={`flex flex-col gap-2 rounded-2xl border p-4 text-xs sm:flex-row sm:items-center ${isDark ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-emerald-600/20 bg-emerald-50'}`}>
-                    <Phone className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />
-                    <p className="leading-relaxed text-slate-400">
-                      <strong className="text-slate-200 dark:text-slate-100">{business.name || 'Your spa'}</strong>
-                      {' '}· {to12h(business.openTime)} – {to12h(business.closeTime)} · {business.phone || 'no hotline'} · within {business.coverageRadiusKm || '—'} km of {business.address || '—'}
-                    </p>
-                  </div>
                 </SectionCard>
               )}
 
@@ -1227,8 +1154,7 @@ const AdminSettings = () => {
                     </div>
                     <p id="op-days-hint" className="mt-1.5 text-[11px] text-slate-500">
                       {booking.operatingDays.length} day(s) open
-                      {business.openTime && business.closeTime ? ` · ${to12h(business.openTime)} – ${to12h(business.closeTime)}` : ''}
-                      {business.openTime && business.closeTime ? ` · ~${Math.max(0, Math.floor((toMinutes(business.closeTime) - toMinutes(business.openTime) + (toMinutes(business.closeTime) <= toMinutes(business.openTime) ? 1440 : 0)) / Number(booking.slotIntervalMin || 30)))} slots/day` : ''}.
+                      {business.openTime && business.closeTime ? ` · ${to12h(business.openTime)} – ${to12h(business.closeTime)}` : ''}.
                     </p>
                     {bookErrors.operatingDays && <p id="op-days-error" role="alert" className="mt-1 text-[11px] font-medium text-red-500">{bookErrors.operatingDays}</p>}
                   </fieldset>
@@ -1277,10 +1203,7 @@ const AdminSettings = () => {
                         <h2 className="mt-1 text-base font-bold tracking-tight sm:text-lg">Staff provisioning & system access</h2>
                         <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-slate-400">Onboard therapists and coordinators with role permissions. Directory persists on this device.</p>
                       </div>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <button type="button" onClick={exportStaffCSV} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2.5 text-xs font-bold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-300">
-                          <Download className="h-4 w-4" aria-hidden="true" /> Export CSV
-                        </button>
+                      <div className="shrink-0">
                         <motion.button type="button" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={() => setIsAddOpen(true)}
                           className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-xs font-bold text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
                           <UserPlus className="h-4 w-4" aria-hidden="true" /> Add new staff member
@@ -1288,42 +1211,38 @@ const AdminSettings = () => {
                       </div>
                     </div>
 
-                    <div className="mt-5 flex flex-col gap-3 lg:flex-row">
-                      <div className={`flex flex-1 items-center gap-2.5 rounded-2xl border px-4 py-1 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'}`}>
+                    <div className="mt-5 space-y-3">
+                      <div className={`flex items-center gap-2.5 rounded-2xl border px-4 py-1 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'}`}>
                         <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                         <label htmlFor="staff-search" className="sr-only">Search staff</label>
                         <input id="staff-search" type="search" placeholder="Search name, email, or specialty…" value={searchStaff} onChange={(e) => setSearchStaff(e.target.value)}
                           className="min-h-[44px] w-full bg-transparent text-sm outline-none placeholder:text-slate-500" />
                         {searchStaff && (
-                          <button type="button" onClick={() => setSearchStaff('')} aria-label="Clear search" className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:text-slate-200">
+                          <button type="button" onClick={() => setSearchStaff('')} aria-label="Clear search" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:text-slate-200">
                             <X className="h-3.5 w-3.5" aria-hidden="true" />
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter by role">
-                        {['all', 'manager', 'staff', 'therapist', 'receptionist'].map((rk) => {
-                          const on = filterRole === rk;
-                          return (
-                            <button key={rk} type="button" aria-pressed={on} onClick={() => setFilterRole(rk)}
-                              className={`min-h-[44px] whitespace-nowrap rounded-2xl border px-3.5 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${on ? 'border-emerald-500 bg-emerald-600 text-white shadow-md' : isDark ? 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-600'}`}>
-                              {rk === 'all' ? 'All roles' : ROLE_DETAILS[rk]?.label || rk}
-                            </button>
-                          );
-                        })}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="staff-role-filter" className="sr-only">Filter by role</label>
+                          <select id="staff-role-filter" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}
+                            className={`min-h-[44px] w-full rounded-2xl border px-3 text-xs font-semibold outline-none ${isDark ? 'border-slate-800 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>
+                            <option value="all">All roles</option>
+                            {Object.entries(ROLE_DETAILS).map(([rk, rm]) => <option key={rk} value={rk}>{rm.label}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="staff-sort" className="sr-only">Sort staff</label>
+                          <select id="staff-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+                            className={`min-h-[44px] w-full rounded-2xl border px-3 text-xs font-semibold outline-none ${isDark ? 'border-slate-800 bg-slate-950 text-slate-200' : 'border-slate-200 bg-white text-slate-700'}`}>
+                            <option value="recent">Recently added</option>
+                            <option value="name">Name A–Z</option>
+                            <option value="role">By role</option>
+                          </select>
+                        </div>
                       </div>
-                      <label className="flex min-h-[44px] items-center gap-2 text-xs text-slate-400">
-                        <span className="sr-only">Sort staff</span>
-                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort staff"
-                          className={`min-h-[44px] rounded-2xl border px-3 text-xs font-semibold outline-none ${isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-white'}`}>
-                          <option value="recent">Recently added</option>
-                          <option value="name">Name A–Z</option>
-                          <option value="role">By role</option>
-                        </select>
-                      </label>
                     </div>
-                    <p className="mt-3 text-[11px] text-slate-500" role="status">
-                      Showing {filteredStaff.length} of {staffList.length} account(s){searchStaff && <> for “{searchStaff}”</>}.
-                    </p>
                   </section>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="list" aria-label="Staff directory">
@@ -1444,10 +1363,6 @@ const AdminSettings = () => {
                         </span>
                         <h2 className="text-xl font-black leading-tight text-emerald-100">{cms.heroTitle || 'Main hero title'}</h2>
                         <p className="text-xs leading-relaxed text-slate-300">{cms.heroDescription || 'Hero description…'}</p>
-                        <div className="flex items-center justify-between gap-2 border-t border-emerald-500/20 pt-3 text-[10px] font-semibold text-emerald-400">
-                          <span>⚡ {booking.operatingDays.length}/7 days · {to12h(business.openTime)} – {to12h(business.closeTime)}</span>
-                          <span className="rounded-xl bg-emerald-500 px-3 py-1.5 font-bold text-white">Book now</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1461,7 +1376,7 @@ const AdminSettings = () => {
                   dirty={isDirty('notifs', notifs)} saving={saving}
                   onSave={() => saveSection('notifs')} onReset={() => resetSection('notifs')} saveLabel="Save rules">
                   <FormErrorSummary errors={notifErrors} />
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className={`divide-y rounded-2xl border ${isDark ? 'divide-slate-800 border-slate-800 bg-slate-900/60' : 'divide-slate-200 border-slate-200 bg-slate-50/70'}`}>
                     {[
                       { key: 'smsBookingCreated', title: 'Instant SMS on booking creation', desc: 'Alert customer and staff the moment a request lands.' },
                       { key: 'smsBookingApproved', title: 'SMS on confirmation', desc: 'Notify the customer when their slot is approved.' },
@@ -1469,7 +1384,7 @@ const AdminSettings = () => {
                       { key: 'therapistDispatchAlert', title: 'Dispatch alert to therapist', desc: 'Push assignment with client location details.' },
                       { key: 'emailPromoUpdates', title: 'Promotional campaigns', desc: 'Include opt-in emails in monthly offers. Marketing only.' },
                     ].map((item) => (
-                      <div key={item.key} className={`rounded-2xl border p-4 transition sm:p-5 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50/70'}`}>
+                      <div key={item.key} className="p-4 sm:px-5">
                         <Toggle id={`ntf-${item.key}`} checked={!!notifs[item.key]} onChange={(v) => setNotifs({ ...notifs, [item.key]: v })} label={item.title} desc={item.desc} />
                       </div>
                     ))}
@@ -1501,13 +1416,7 @@ const AdminSettings = () => {
                     dirty={isDirty('system', system)} saving={saving}
                     onSave={() => saveSection('system')} onReset={() => resetSection('system')}>
                     <FormErrorSummary errors={sysErrors} />
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                      <Field id="sys-cur" label="Currency">
-                        <select id="sys-cur" value={system.currency} onChange={(e) => setSystem({ ...system, currency: e.target.value })} className={fieldCls('')}>
-                          <option value="PHP">PHP (₱) — Philippine Peso</option>
-                          <option value="USD">USD ($) — US Dollar</option>
-                        </select>
-                      </Field>
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
                       <Field id="sys-vat" label="VAT (%)" required error={sysErrors.vatPercent}>
                         <input id="sys-vat" type="number" min="0" max="28" step="0.5" value={system.vatPercent} onChange={(e) => setSystem({ ...system, vatPercent: e.target.value })} className={fieldCls(sysErrors.vatPercent)} aria-invalid={!!sysErrors.vatPercent} aria-describedby={sysErrors.vatPercent ? 'sys-vat-error' : undefined} />
                       </Field>
@@ -1581,31 +1490,9 @@ const AdminSettings = () => {
                       </div>
                     </section>
 
-                    <section aria-label="Data and danger zone" className={`rounded-3xl border p-5 sm:p-7 ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'}`}>
+                    <section aria-label="Reset workspace" className={`rounded-3xl border p-5 sm:p-7 ${isDark ? 'border-slate-800 bg-slate-950/80' : 'border-slate-200 bg-white'}`}>
                       <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-500"><Database className="h-3.5 w-3.5" aria-hidden="true" /> Data & portability</p>
-                      <h2 className="mt-1 text-base font-bold">Backup, transfer & reset</h2>
-                      <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-                        {[
-                          ['Staff', String(staffList.length)],
-                          ['Local KB', `${(storageBytes / 1024).toFixed(1)}`],
-                          ['Sections', '5'],
-                        ].map(([k, v]) => (
-                          <div key={k} className={`rounded-2xl border p-3 ${isDark ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-slate-50'}`}>
-                            <dt className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{k}</dt>
-                            <dd className="mt-0.5 text-lg font-black tabular-nums">{v}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <button type="button" onClick={exportSettingsJSON} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2.5 text-xs font-bold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-200">
-                          <Download className="h-4 w-4" aria-hidden="true" /> Export JSON
-                        </button>
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-300 px-4 py-2.5 text-xs font-bold transition hover:bg-slate-500/10 dark:border-slate-700 dark:text-slate-200">
-                          <Upload className="h-4 w-4" aria-hidden="true" /> Import JSON
-                        </button>
-                        <input ref={fileInputRef} type="file" accept="application/json,.json" className="sr-only" aria-label="Import settings JSON file"
-                          onChange={(e) => { importSettingsJSON(e.target.files?.[0]); e.target.value = ''; }} />
-                      </div>
+                      <h2 className="mt-1 text-base font-bold">Reset to defaults</h2>
                       <div className="mt-4 rounded-2xl border border-red-500/25 bg-red-500/[0.05] p-4">
                         <p className="text-xs font-bold text-red-400">Danger zone</p>
                         <p className="mt-0.5 text-[11px] text-slate-400">Restores all five sections to factory defaults. Staff directory is kept.</p>

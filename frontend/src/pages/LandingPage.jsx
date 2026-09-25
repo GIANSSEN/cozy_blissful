@@ -214,18 +214,6 @@ const MagneticBtn = ({ children, className = "", style = {}, strength = 0.25 }) 
   );
 };
 
-/* ── React Bits: Scroll Progress Bar ──────────────────────────────── */
-const ScrollProgress = () => {
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 120, damping: 26, restDelta: 0.001 });
-  return (
-    <motion.div
-      className="fixed top-0 left-0 right-0 h-[3px] origin-left z-[60] pointer-events-none"
-      style={{ scaleX, background: "linear-gradient(90deg,#bfa15f,#e8cc8a,#34d399)", boxShadow: "0 0 12px rgba(191,161,95,0.55)" }}
-    />
-  );
-};
-
 /* ── React Bits: TiltedCard — 3D perspective tilt on mouse move ───── */
 const TiltedCard = ({ children, className = "", maxTilt = 10 }) => {
   const ref = useRef(null);
@@ -636,7 +624,6 @@ export default function LandingPage() {
     <div className="min-h-screen overflow-x-hidden selection:bg-emerald-200 selection:text-emerald-900" style={{ fontFamily: "'Inter',sans-serif", background: "#faf9f7" }}>
 
       {/* ── GLOBAL INTERACTIVE LAYERS ── */}
-      <ScrollProgress />
       <FloatingActions />
 
       {/* ── GLASSMORPHISM NAVBAR ── */}
@@ -672,9 +659,9 @@ export default function LandingPage() {
                 const active = activeSection === href;
                 return (
                   <a key={href} href={href} onClick={(e) => handleNavClick(e, href)} aria-current={active ? "true" : undefined}
-                    className={`group relative px-4 py-2 text-[13px] font-semibold tracking-wide rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60 ${active
-                      ? "text-amber-200 bg-white/[0.07]"
-                      : "text-white/70 hover:text-white hover:bg-white/[0.05]"
+                    className={`group relative px-4 py-2 text-[13px] font-semibold tracking-wide transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60 ${active
+                      ? "text-amber-200"
+                      : "text-white/70 hover:text-white"
                       }`}>
                     {label}
                     <span aria-hidden className={`absolute bottom-0.5 left-4 right-4 h-[2px] rounded-full origin-left transition-transform duration-300 ${active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"}`} style={{ background: "linear-gradient(90deg,#bfa15f,#e8cc8a)" }} />

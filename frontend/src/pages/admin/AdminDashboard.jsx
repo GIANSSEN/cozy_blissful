@@ -817,9 +817,9 @@ const KPI = ({ icon: Icon, label, value, displayValue, sub, color, trend, trendU
         )}
       </div>
 
-      <div className="relative z-10 my-2">
+      <div className="relative z-10 my-2 min-w-0">
         <p className="text-[10px] font-extrabold uppercase tracking-[0.16em]" style={{ color: t.txtMuted }}>{label}</p>
-        <p className="text-xl sm:text-2xl lg:text-3xl font-black mt-1 leading-tight tabular-nums" style={{ color: t.txt }}>
+        <p className="text-lg sm:text-2xl lg:text-3xl font-black mt-1 leading-tight tabular-nums break-words" style={{ color: t.txt }}>
           {displayValue ?? <Counter value={value} />}
         </p>
         {sub && <p className="text-[11px] mt-1 font-medium truncate" style={{ color: t.txtSub }}>{sub}</p>}
@@ -860,7 +860,11 @@ const AdminDashboard = () => {
 
   const [chartPeriod,    setChartPeriod]    = useState('7D');
   const [activeDonutSeg, setActiveDonutSeg] = useState(null);
-  const [viewMode,       setViewMode]       = useState('table');
+  /* Default to cards on phones so the 7-column table never renders cut-off on first paint */
+  const [viewMode,       setViewMode]       = useState(() => (
+    typeof window !== 'undefined' && window.innerWidth < 640 ? 'cards' : 'table'
+  ));
+  const [userToggledView, setUserToggledView] = useState(false);
   const [apptFilter,     setApptFilter]     = useState('All');
   const [apptSearch,     setApptSearch]     = useState('');
   const [page,           setPage]           = useState(1);
@@ -926,6 +930,18 @@ const AdminDashboard = () => {
 
   /* ─── Reset pagination on filter change ─────────────────────────── */
   useEffect(() => { setPage(1); }, [apptFilter, apptSearch]);
+
+  /* ─── Auto-switch table ↔ cards across breakpoints (until user overrides) ─ */
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = (e) => {
+      if (userToggledView) return;
+      setViewMode(e.matches ? 'cards' : 'table');
+    };
+    sync(mq);
+    mq.addEventListener?.('change', sync);
+    return () => mq.removeEventListener?.('change', sync);
+  }, [userToggledView]);
 
   /* ─── Derived Data ───────────────────────────────────────────────── */
   const stats         = data?.stats || {};
@@ -1349,9 +1365,9 @@ const AdminDashboard = () => {
                   {ins.up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                 </span>
               </div>
-              <div className="relative z-10">
+              <div className="relative z-10 min-w-0">
                 <p className="text-[9px] uppercase font-black tracking-wider" style={{ color: t.txtMuted }}>{ins.label}</p>
-                <p className="text-xl sm:text-2xl font-black mt-0.5" style={{ color: ins.color }}>{ins.value}</p>
+                <p className="text-lg sm:text-2xl font-black mt-0.5 tabular-nums break-words" style={{ color: ins.color }}>{ins.value}</p>
                 <p className="text-[10px] mt-0.5 font-medium truncate" style={{ color: t.txtMuted }}>{ins.sub}</p>
               </div>
             </motion.div>
@@ -1729,72 +1745,74 @@ const AdminDashboard = () => {
         >
           <Card t={t} className="overflow-hidden">
             {/* Toolbar Header */}
-            <div className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 border-b"
+            <div className="p-4 sm:p-5 flex flex-col gap-4 border-b xl:flex-row xl:items-center xl:justify-between"
               style={{ borderColor: t.divider }}>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: t.accentAlpha }}>
                   <Calendar className="w-4 h-4" style={{ color: t.accent }} aria-hidden="true" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-sm sm:text-base font-black" style={{ color: t.txt }}>Scheduled Bookings</h2>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: t.accentAlpha, color: t.accent }}>
+                    <h2 className="text-sm sm:text-base font-black truncate" style={{ color: t.txt }}>Scheduled Bookings</h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: t.accentAlpha, color: t.accent }}>
                       {filteredAppointments.length} Found
                     </span>
                   </div>
-                  <p className="text-xs font-medium" style={{ color: t.txtMuted }}>Reservations requiring active management</p>
+                  <p className="text-xs font-medium truncate" style={{ color: t.txtMuted }}>Reservations requiring active management</p>
                 </div>
               </div>
 
-              <div className="flex items-center flex-wrap gap-2">
-                {/* Search input */}
-                <div className="relative flex-1 sm:flex-initial min-w-[170px] sm:min-w-[210px]">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.txtMuted }} aria-hidden="true" />
+              <div className="flex flex-col gap-2 w-full xl:w-auto xl:flex-row xl:items-center xl:flex-wrap xl:justify-end">
+                {/* Search input — full width on phones */}
+                <div className="relative w-full sm:min-w-[210px] xl:w-[230px] xl:flex-initial">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: t.txtMuted }} aria-hidden="true" />
                   <input
                     type="search"
                     value={apptSearch}
                     onChange={e => setApptSearch(e.target.value)}
                     placeholder="Search client, service, therapist..."
                     aria-label="Filter appointments by client, service, or therapist"
-                    className="w-full pl-8 pr-7 py-1.5 rounded-xl text-xs font-medium border outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                    className="w-full pl-8 pr-7 py-2 sm:py-1.5 rounded-xl text-xs font-medium border outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                     style={{ background: t.inner, borderColor: t.innerBorder, color: t.txt }}
                   />
                   {apptSearch && (
                     <button type="button" onClick={() => setApptSearch('')} aria-label="Clear search"
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 hover:opacity-75 cursor-pointer">
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 hover:opacity-75 cursor-pointer p-1">
                       <X className="w-3 h-3" style={{ color: t.txtMuted }} aria-hidden="true" />
                     </button>
                   )}
                 </div>
 
-                {/* Status filter tabs */}
-                <div role="tablist" aria-label="Filter by booking status"
-                  className="flex items-center rounded-xl p-0.5 border overflow-x-auto max-w-full"
-                  style={{ background: t.inner, borderColor: t.innerBorder, scrollbarWidth: 'none' }}>
-                  {['All', 'In Progress', 'Confirmed', 'Pending', 'Completed'].map(status => (
-                    <button key={status} role="tab" aria-selected={apptFilter === status} type="button"
-                      onClick={() => setApptFilter(status)}
-                      className="px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-                      style={{ background: apptFilter === status ? t.accent : 'transparent', color: apptFilter === status ? '#fff' : t.txtMuted }}>
-                      {status}
-                    </button>
-                  ))}
-                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {/* Status filter tabs — edge-to-edge swipe row on mobile */}
+                  <div role="tablist" aria-label="Filter by booking status"
+                    className="flex items-center gap-0.5 rounded-xl p-1 border overflow-x-auto flex-1 sm:flex-initial min-w-0 overscroll-x-contain"
+                    style={{ background: t.inner, borderColor: t.innerBorder, scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                    {['All', 'In Progress', 'Confirmed', 'Pending', 'Completed'].map(status => (
+                      <button key={status} role="tab" aria-selected={apptFilter === status} type="button"
+                        onClick={() => setApptFilter(status)}
+                        className="px-2.5 py-1.5 sm:py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                        style={{ background: apptFilter === status ? t.accent : 'transparent', color: apptFilter === status ? '#fff' : t.txtMuted }}>
+                        {status}
+                      </button>
+                    ))}
+                  </div>
 
-                {/* View mode switcher */}
-                <div role="group" aria-label="Select view mode"
-                  className="flex items-center rounded-xl p-0.5 border"
-                  style={{ background: t.inner, borderColor: t.innerBorder }}>
-                  <button type="button" onClick={() => setViewMode('table')} aria-label="Compact table view" aria-pressed={viewMode === 'table'}
-                    className="p-1.5 rounded-lg transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-                    style={{ background: viewMode === 'table' ? t.accent : 'transparent', color: viewMode === 'table' ? '#fff' : t.txtMuted }}>
-                    <TableIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                  </button>
-                  <button type="button" onClick={() => setViewMode('cards')} aria-label="Visual cards view" aria-pressed={viewMode === 'cards'}
-                    className="p-1.5 rounded-lg transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-                    style={{ background: viewMode === 'cards' ? t.accent : 'transparent', color: viewMode === 'cards' ? '#fff' : t.txtMuted }}>
-                    <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
-                  </button>
+                  {/* View mode switcher */}
+                  <div role="group" aria-label="Select view mode"
+                    className="flex items-center rounded-xl p-0.5 border shrink-0"
+                    style={{ background: t.inner, borderColor: t.innerBorder }}>
+                    <button type="button" onClick={() => { setUserToggledView(true); setViewMode('table'); }} aria-label="Compact table view" aria-pressed={viewMode === 'table'}
+                      className="p-2 sm:p-1.5 rounded-lg transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                      style={{ background: viewMode === 'table' ? t.accent : 'transparent', color: viewMode === 'table' ? '#fff' : t.txtMuted }}>
+                      <TableIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => { setUserToggledView(true); setViewMode('cards'); }} aria-label="Visual cards view" aria-pressed={viewMode === 'cards'}
+                      className="p-2 sm:p-1.5 rounded-lg transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                      style={{ background: viewMode === 'cards' ? t.accent : 'transparent', color: viewMode === 'cards' ? '#fff' : t.txtMuted }}>
+                      <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1846,9 +1864,10 @@ const AdminDashboard = () => {
                     ))}
                   </div>
                 ) : (
-                  /* Table View */
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left" role="grid" aria-label="Scheduled Appointments">
+                  /* Table View — min-width + momentum scroll + edge fade so it never looks cut-off */
+                  <div className="relative">
+                    <div className="overflow-x-auto overscroll-x-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+                      <table className="w-full min-w-[760px] text-left" role="grid" aria-label="Scheduled Appointments">
                       <thead>
                         <tr style={{ borderBottom: `1px solid ${t.divider}`, background: t.inner }}>
                           {['Client', 'Service', 'Therapist', 'Schedule', 'Location', 'Status', 'Action'].map(h => (
@@ -1901,11 +1920,16 @@ const AdminDashboard = () => {
                         })}
                       </tbody>
                     </table>
+                    </div>
+                    {/* Swipe hint — only visible on touch/small screens when table overflows */}
+                    <p className="sm:hidden px-4 py-2 text-[10px] font-semibold flex items-center gap-1" style={{ color: t.txtMuted }}>
+                      Swipe sideways to see full details <ChevronRight className="w-3 h-3" aria-hidden="true" />
+                    </p>
                   </div>
                 )}
 
-                {/* Pagination */}
-                <div className="p-3 sm:p-4 border-t flex items-center justify-between flex-wrap gap-2"
+                {/* Pagination — stacks on phones */}
+                <div className="p-3 sm:p-4 border-t flex flex-col xs:flex-row sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-2"
                   style={{ borderColor: t.divider }}>
                   <div aria-live="polite" aria-atomic="true">
                     <span className="text-[11px] font-semibold" style={{ color: t.txtMuted }}>
@@ -1914,12 +1938,12 @@ const AdminDashboard = () => {
                       <strong style={{ color: t.txt }}>{filteredAppointments.length}</strong> bookings
                     </span>
                   </div>
-                  <nav aria-label="Pagination" className="flex items-center gap-2">
+                  <nav aria-label="Pagination" className="flex items-center justify-center sm:justify-end gap-2">
                     <button type="button"
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
                       aria-label="Previous page"
-                      className="p-1.5 rounded-xl border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                      className="p-2.5 sm:p-1.5 rounded-xl border transition-all cursor-pointer touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
                       style={{ background: t.inner, borderColor: t.innerBorder, color: t.txt }}>
                       <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
@@ -1930,7 +1954,7 @@ const AdminDashboard = () => {
                       onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
                       aria-label="Next page"
-                      className="p-1.5 rounded-xl border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                      className="p-2.5 sm:p-1.5 rounded-xl border transition-all cursor-pointer touch-manipulation disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
                       style={{ background: t.inner, borderColor: t.innerBorder, color: t.txt }}>
                       <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
                     </button>
