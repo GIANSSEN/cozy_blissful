@@ -1487,9 +1487,9 @@ export default function LandingPage() {
                 Book a Treatment<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </MagneticBtn>
-            <MagneticBtn strength={0.15}>
+            <MagneticBtn strength={0.15} className="w-full sm:w-auto">
               <Link to="/login" id="cta-signin"
-                className="py-4 px-9 font-bold text-white/85 rounded-2xl flex items-center justify-center text-sm transition-all duration-300 hover:bg-white/10"
+                className="py-4 px-9 font-bold text-white/85 rounded-2xl flex items-center justify-center text-sm transition-all duration-300 hover:bg-white/10 w-full sm:w-auto"
                 style={{ border: "1px solid rgba(255,255,255,0.18)", backdropFilter: "blur(8px)" }}>
                 Sign In
               </Link>
@@ -1516,7 +1516,7 @@ export default function LandingPage() {
             <p className="text-white/35 text-[10px] font-bold tracking-widest uppercase mb-5">Quick Links</p>
             <div className="flex flex-col gap-3.5">
               {[["#story", "Our Story"], ["#services", "Our Services"], ["#how-it-works", "How It Works"], ["#testimonials", "Client Reviews"]].map(([href, label]) => (
-                <a key={href} href={href} className="text-white/45 text-xs font-semibold hover:text-amber-400 transition-colors flex items-center gap-2">
+                <a key={href} href={href} onClick={(e) => handleNavClick(e, href)} className="text-white/45 text-xs font-semibold hover:text-amber-400 transition-colors flex items-center gap-2">
                   <span className="w-1 h-1 rounded-full bg-white/20 flex-shrink-0" />{label}
                 </a>
               ))}

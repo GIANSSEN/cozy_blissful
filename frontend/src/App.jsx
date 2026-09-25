@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -9,41 +9,51 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AnimatePresence, motion } from 'framer-motion';
 
+// Code-split route pages so Vite dev only transforms the active route.
+// This is the biggest cold-start win: before, all 22 pages + framer-motion +
+// gsap/lenis/xlsx were parsed on `npm run dev` startup.
 // Public Pages
-import LandingPage from './pages/LandingPage';
-import Login from './pages/Auth/Login';
-import Register from './pages/Auth/Register';
-import ForgotPassword from './pages/Auth/ForgotPassword';
-import ResetPassword from './pages/Auth/ResetPassword';
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Login = lazy(() => import('./pages/Auth/Login'));
+const Register = lazy(() => import('./pages/Auth/Register'));
+const ForgotPassword = lazy(() => import('./pages/Auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/Auth/ResetPassword'));
 
 // Admin Pages
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminAppointments from './pages/admin/AdminAppointments';
-import AdminCustomers from './pages/admin/AdminCustomers';
-import AdminServices from './pages/admin/AdminServices';
-import AdminStaff from './pages/admin/AdminStaff';
-import AdminUserMaintenance from './pages/admin/AdminUserMaintenance';
-import AdminAuditLogs from './pages/admin/AdminAuditLogs';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminHistory from './pages/admin/AdminHistory';
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminAppointments = lazy(() => import('./pages/admin/AdminAppointments'));
+const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
+const AdminServices = lazy(() => import('./pages/admin/AdminServices'));
+const AdminStaff = lazy(() => import('./pages/admin/AdminStaff'));
+const AdminUserMaintenance = lazy(() => import('./pages/admin/AdminUserMaintenance'));
+const AdminAuditLogs = lazy(() => import('./pages/admin/AdminAuditLogs'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminHistory = lazy(() => import('./pages/admin/AdminHistory'));
 
 // Therapist Pages
-import TherapistDashboard from './pages/therapist/TherapistDashboard';
+const TherapistDashboard = lazy(() => import('./pages/therapist/TherapistDashboard'));
 
 // Staff Pages
-import StaffDashboard from './pages/staff/StaffDashboard';
-import StaffTherapists from './pages/staff/StaffTherapists';
-import StaffAppointments from './pages/staff/StaffAppointments';
+const StaffDashboard = lazy(() => import('./pages/staff/StaffDashboard'));
+const StaffTherapists = lazy(() => import('./pages/staff/StaffTherapists'));
+const StaffAppointments = lazy(() => import('./pages/staff/StaffAppointments'));
 
 // Client Pages
-import ClientDashboard from './pages/client/ClientDashboard';
+const ClientDashboard = lazy(() => import('./pages/client/ClientDashboard'));
 
 // Payment Pages (PayMongo)
-import PaymentSuccess from './pages/payment/PaymentSuccess';
-import PaymentCancel from './pages/payment/PaymentCancel';
+const PaymentSuccess = lazy(() => import('./pages/payment/PaymentSuccess'));
+const PaymentCancel = lazy(() => import('./pages/payment/PaymentCancel'));
 
 // 404 Page
-import NotFound from './pages/NotFound';
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+// Lightweight route fallback — no spinner lib, no extra dep to parse
+const RouteFallback = () => (
+  <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', color: '#0a3d30' }}>
+    Loading…
+  </div>
+);
 
 // Page transition wrapper
 const PageTransition = ({ children }) => (

@@ -1,0 +1,15 @@
+{
+  "name": "@cozy-blissful/mail-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Production SMTP engine for Cozy Blissful approval + confirmation lifecycle emails",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "dry-run": "node sender.mjs --dry-run --template approval --to client@example.com --data samples/approval.json",
+    "send": "node sender.mjs --template approval --to client@example.com --data samples/approval.json"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}
