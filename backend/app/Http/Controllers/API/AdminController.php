@@ -12,65 +12,105 @@ use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BookingApprovedMail;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class AdminController extends Controller
 {
     /**
      * Display the Admin Dashboard metrics and stats.
+     *
+     * @return JsonResponse
      */
     public function index(): JsonResponse
     {
         $today = Carbon::today()->toDateString();
 
-        // 1. Core metrics (counts, revenue, ticket size, headcount)
+        /** @var array<string, mixed> $core */
         $core = $this->dashboardCoreMetrics();
 
-        // 2. Active treatments / therapist availability
-        $treatment = $this->dashboardTreatmentStatus($today, $core['active_therapists']);
+        /** @var array<string, mixed> $treatment */
+        $treatment = $this->dashboardTreatmentStatus($today, (int) $core['active_therapists']);
 
-        // 3. Customer funnel (derived from real bookings)
+        /** @var array<string, mixed> $customerFunnel */
         $customerFunnel = $this->dashboardCustomerFunnel(
-            $core['total_bookings'],
-            $core['confirmed_count'],
-            $core['completed_count']
+            (int) $core['total_bookings'],
+            (int) $core['confirmed_count'],
+            (int) $core['completed_count']
         );
 
-        // 4. Operational KPIs
+        /** @var list<array<string, mixed>> $operationalKpis */
         $operationalKpis = $this->dashboardOperationalKpis(
-            $core['avg_ticket'],
-            $core['active_therapists'],
-            $core['registered_clients'],
-            $treatment['break_count']
+            (float) $core['avg_ticket'],
+            (int) $core['active_therapists'],
+            (int) $core['registered_clients'],
+            (int) ($treatment['break_count'] ?? 0)
         );
 
-        // 5. Booking breakdown
+        /** @var array<string, mixed> $revenueChart */
+        $revenueChart = $this->dashboardRevenueChart();
+
+        /** @var list<array<string, mixed>> $liveSessions */
+        $liveSessions = $this->dashboardLiveSessions();
+
+        /** @var list<array<string, mixed>> $activityLogs */
+        $activityLogs = $this->dashboardActivityFeed();
+
+        /** @var list<array<string, mixed>> $recentAppointments */
+        $recentAppointments = $this->dashboardRecentAppointments();
+
+        /** @var list<array<string, mixed>> $payments */
+        $payments = $this->dashboardPaymentsFeed();
+
+        return response()->json($this->buildDashboardPayload(
+            $core,
+            $treatment,
+            $customerFunnel,
+            $operationalKpis,
+            $revenueChart,
+            $liveSessions,
+            $activityLogs,
+            $recentAppointments,
+            $payments
+        ));
+    }
+
+    /**
+     * Assemble the dashboard JSON payload.
+     *
+     * @param array<string, mixed> $core
+     * @param array<string, mixed> $treatment
+     * @param array<string, mixed> $customerFunnel
+     * @param list<array<string, mixed>> $operationalKpis
+     * @param array<string, mixed> $revenueChart
+     * @param list<array<string, mixed>> $liveSessions
+     * @param list<array<string, mixed>> $activityLogs
+     * @param list<array<string, mixed>> $recentAppointments
+     * @param list<array<string, mixed>> $payments
+     * @return array<string, mixed>
+     */
+    private function buildDashboardPayload(
+        array $core,
+        array $treatment,
+        array $customerFunnel,
+        array $operationalKpis,
+        array $revenueChart,
+        array $liveSessions,
+        array $activityLogs,
+        array $recentAppointments,
+        array $payments
+    ): array {
+        /** @var array<string, mixed> $bookingBreakdown */
         $bookingBreakdown = [
             'confirmed' => $core['confirmed_count'],
             'pending' => $core['pending_count'],
             'cancelled' => $core['cancelled_count'],
         ];
 
-        // 6. Revenue chart (7-day + category breakdown)
-        $revenueChart = $this->dashboardRevenueChart();
-
-        // 7. Live sessions (active appointments)
-        $liveSessions = $this->dashboardLiveSessions();
-
-        // 8. Real activity feed from AuditLog
-        $activityLogs = $this->dashboardActivityFeed();
-
-        // 9. Recent appointments (limit 50)
-        $recentAppointments = $this->dashboardRecentAppointments();
-
-        // 10. Services list
-        $services = Service::all();
-
-        // 11. Payments feed generated from appointments
-        $payments = $this->dashboardPaymentsFeed();
-
-        return response()->json([
+        return [
             'message' => 'Admin dashboard metrics retrieved successfully',
             'stats' => [
                 'total_bookings' => $core['total_bookings'],
@@ -82,7 +122,7 @@ class AdminController extends Controller
                 'confirmed_bookings' => $core['confirmed_count'],
                 'pending_bookings' => $core['pending_count'],
                 'cancelled_bookings' => $core['cancelled_count'],
-                'avg_ticket_size' => (int) round($core['avg_ticket']),
+                'avg_ticket_size' => (int) round((float) $core['avg_ticket']),
             ],
             'therapist_status' => $treatment['status'],
             'customer_funnel' => $customerFunnel,
@@ -95,9 +135,9 @@ class AdminController extends Controller
             'active_sessions' => $liveSessions,
             'activity_feed' => $activityLogs,
             'recent_appointments' => $recentAppointments,
-            'services' => $services,
-            'payments' => $payments
-        ]);
+            'services' => Service::all(),
+            'payments' => $payments,
+        ];
     }
 
     /**
@@ -477,7 +517,7 @@ class AdminController extends Controller
                 try {
                     Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to send booking approved email: ' . $e->getMessage());
+                    Log::error('Failed to send booking approved email: ' . $e->getMessage());
                 }
             }
             // Create notification
@@ -572,7 +612,7 @@ class AdminController extends Controller
                 try {
                     Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to send booking approved email in updateStatus: ' . $e->getMessage());
+                    Log::error('Failed to send booking approved email in updateStatus: ' . $e->getMessage());
                 }
             }
             Notification::create([
@@ -1064,15 +1104,15 @@ class AdminController extends Controller
         $permissionsData = $request->input('permissions', []);
 
         foreach ($permissionsData as $roleName => $perms) {
-            /** @var \Spatie\Permission\Models\Role|null $role */
-            $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
+            /** @var Role|null $role */
+            $role = Role::where('name', $roleName)->first();
             if (!$role)
                 continue;
 
             $enabledPerms = array_keys(array_filter($perms));
             // Ensure permissions exist before syncing
             foreach ($enabledPerms as $permName) {
-                \Spatie\Permission\Models\Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
+                Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
             }
             $role->syncPermissions($enabledPerms);
         }

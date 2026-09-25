@@ -109,16 +109,17 @@ const Reveal = ({ children, delay = 0, className = "", dir = "up" }) => {
 };
 
 /* ── True Scroll Parallax Image (scroll-linked, GPU accelerated) ──── */
-const ParImg = ({ src, alt, className }) => {
+const ParImg = ({ src, alt, className, strength = 0.14 }) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], ["-14%", "14%"]);
+  const pct = Math.round(strength * 100);
+  const y = useTransform(scrollYProgress, [0, 1], [`-${pct}%`, `${pct}%`]);
   return (
-    <div ref={ref} className={`overflow-hidden ${className}`}>
+    <div ref={ref} className={`overflow-hidden ${className ?? ""}`}>
       <motion.img
         src={src}
         alt={alt}
-        style={{ y, height: "128%", marginTop: "-14%" }}
+        style={{ y, height: `${100 + pct * 2}%`, marginTop: `-${pct}%` }}
         className="w-full object-cover"
         loading="lazy"
       />
@@ -182,13 +183,18 @@ const SpotlightCard = ({ children, className = "", style = {}, spotlightColor = 
 ─────────────────────────────────────────────────────────────────── */
 const MagneticBtn = ({ children, className = "", style = {}, strength = 0.25 }) => {
   const ref = useRef(null);
+  const coarseRef = useRef(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const springX = useSpring(x, { stiffness: 200, damping: 20 });
   const springY = useSpring(y, { stiffness: 200, damping: 20 });
 
+  useEffect(() => {
+    coarseRef.current = window.matchMedia("(pointer: coarse)").matches;
+  }, []);
+
   const handleMouseMove = useCallback((e) => {
-    if (!ref.current || window.matchMedia("(pointer: coarse)").matches) return;
+    if (!ref.current || coarseRef.current) return;
     const rect = ref.current.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
@@ -217,13 +223,18 @@ const MagneticBtn = ({ children, className = "", style = {}, strength = 0.25 }) 
 /* ── React Bits: TiltedCard — 3D perspective tilt on mouse move ───── */
 const TiltedCard = ({ children, className = "", maxTilt = 10 }) => {
   const ref = useRef(null);
+  const coarseRef = useRef(null);
   const rxv = useMotionValue(0);
   const ryv = useMotionValue(0);
   const rx = useSpring(rxv, { stiffness: 180, damping: 18 });
   const ry = useSpring(ryv, { stiffness: 180, damping: 18 });
 
+  useEffect(() => {
+    coarseRef.current = window.matchMedia("(pointer: coarse)").matches;
+  }, []);
+
   const onMove = useCallback((e) => {
-    if (!ref.current || window.matchMedia("(pointer: coarse)").matches) return;
+    if (!ref.current || coarseRef.current) return;
     const rect = ref.current.getBoundingClientRect();
     const px = (e.clientX - rect.left) / rect.width - 0.5;
     const py = (e.clientY - rect.top) / rect.height - 0.5;
@@ -315,6 +326,7 @@ const FloatingActions = () => {
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.3, ease: EASE }}
           className="fixed bottom-6 right-5 z-[70] flex flex-col items-center gap-2.5 md:bottom-8 md:right-8"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <motion.button
             type="button"
@@ -604,19 +616,25 @@ export default function LandingPage() {
     const el = mqRef.current; if (!el) return;
     const items = el.querySelectorAll(".mq"); if (!items.length) return;
     const tl = gsap.to(items, { xPercent: -100, repeat: -1, duration: 30, ease: "none", modifiers: { xPercent: gsap.utils.wrap(-100, 0) } });
-    el.addEventListener("mouseenter", () => tl.pause());
-    el.addEventListener("mouseleave", () => tl.resume());
-    return () => tl.kill();
+    const pause = () => tl.pause();
+    const resume = () => tl.resume();
+    el.addEventListener("mouseenter", pause);
+    el.addEventListener("mouseleave", resume);
+    return () => {
+      el.removeEventListener("mouseenter", pause);
+      el.removeEventListener("mouseleave", resume);
+      tl.kill();
+    };
   }, []);
 
   const cat = SVCS[tab];
   const vis = showAll ? cat.list : cat.list.slice(0, 6);
   const social = [
-    { I: FacebookIcon, label: "Facebook", href: "#", hover: "#1877F2" },
-    { I: InstagramIcon, label: "Instagram", href: "#", hover: "#E4405F" },
-    { I: TikTokIcon, label: "TikTok", href: "#", hover: "#010101" },
-    { I: TwitterXIcon, label: "X", href: "#", hover: "#14171A" },
-    { I: YouTubeIcon, label: "YouTube", href: "#", hover: "#FF0000" },
+    { I: FacebookIcon, label: "Facebook", href: "https://facebook.com/cozyblissful", hover: "#1877F2" },
+    { I: InstagramIcon, label: "Instagram", href: "https://instagram.com/cozyblissful", hover: "#E4405F" },
+    { I: TikTokIcon, label: "TikTok", href: "https://tiktok.com/@cozyblissful", hover: "#010101" },
+    { I: TwitterXIcon, label: "X", href: "https://x.com/cozyblissful", hover: "#14171A" },
+    { I: YouTubeIcon, label: "YouTube", href: "https://youtube.com/@cozyblissful", hover: "#FF0000" },
     { I: WhatsAppIcon, label: "WhatsApp", href: "https://wa.me/639995435913", hover: "#25D366" },
   ];
 
@@ -926,17 +944,17 @@ export default function LandingPage() {
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.5 }}
-                className="flex flex-col sm:flex-row gap-3.5 justify-center lg:justify-start">
-                <MagneticBtn strength={0.2}>
+                className="flex flex-col sm:flex-row gap-3.5 justify-center lg:justify-start items-stretch sm:items-center">
+                <MagneticBtn strength={0.2} className="w-full sm:w-auto">
                   <Link to="/register" id="hero-explore"
-                    className="group inline-flex items-center justify-center gap-2.5 py-4 px-8 text-sm font-black rounded-2xl transition-all duration-300"
+                    className="group inline-flex w-full sm:w-auto items-center justify-center gap-2.5 py-4 px-8 text-sm font-black rounded-2xl transition-all duration-300"
                     style={{ background: "linear-gradient(135deg,#c9a851,#e8cc8a)", color: "#041e16", boxShadow: "0 10px 34px rgba(191,161,95,0.44)" }}>
                     Explore Services <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </MagneticBtn>
-                <MagneticBtn strength={0.15}>
+                <MagneticBtn strength={0.15} className="w-full sm:w-auto">
                   <Link to="/register" id="hero-book"
-                    className="inline-flex items-center justify-center py-4 px-8 text-sm font-bold text-white/85 rounded-2xl hover:bg-white/10 transition-all duration-300"
+                    className="inline-flex w-full sm:w-auto items-center justify-center py-4 px-8 text-sm font-bold text-white/85 rounded-2xl hover:bg-white/10 transition-all duration-300"
                     style={{ border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }}>
                     Book a Session
                   </Link>
@@ -1060,8 +1078,13 @@ export default function LandingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 2 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer"
-          onClick={() => document.getElementById("stats-strip")?.scrollIntoView({ behavior: "smooth" })}>
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 hidden sm:flex flex-col items-center gap-2 cursor-pointer"
+          onClick={() => {
+            const el = document.getElementById("stats-strip");
+            if (!el) return;
+            if (lenisRef.current) lenisRef.current.scrollTo(el, { offset: 0, duration: 1.2 });
+            else el.scrollIntoView({ behavior: "smooth" });
+          }}>
           <span className="text-[9px] text-white/30 tracking-widest uppercase font-semibold">Scroll</span>
           <motion.div animate={{ y: [0, 9, 0] }} transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
             className="w-5 h-8 rounded-full border border-white/20 flex items-start justify-center pt-1.5">
@@ -1071,7 +1094,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── STATS + MARQUEE ── */}
-      <section id="stats-strip" style={{ background: "linear-gradient(135deg,#051f17,#0a3d30)" }}>
+      <section id="stats-strip" className="scroll-mt-20" style={{ background: "linear-gradient(135deg,#051f17,#0a3d30)" }}>
         <div className="max-w-6xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8">
           {[{ v: 2500, s: "+", l: "Happy Clients" }, { v: 4.9, s: "★", l: "Average Rating" }, { v: 30, s: "+", l: "Expert Therapists" }, { v: 7, s: " Days", l: "Always Available" }].map((st, i) => (
             <Reveal key={st.l} delay={i * 0.09} className="text-center">
@@ -1096,7 +1119,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── OUR STORY ── */}
-      <section id="story" className="py-20 md:py-28 lg:py-32 px-4 sm:px-6 relative overflow-hidden" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f5f0e6 100%)" }}>
+      <section id="story" className="py-20 md:py-28 lg:py-32 px-4 sm:px-6 relative overflow-hidden scroll-mt-16" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f5f0e6 100%)" }}>
         <Orb style={{ width: 500, height: 500, right: "-6%", top: "8%", background: "radial-gradient(circle,rgba(191,161,95,0.12) 0%,transparent 70%)" }} dur={15} />
         <Orb style={{ width: 420, height: 420, left: "-5%", bottom: "5%", background: "radial-gradient(circle,rgba(10,61,48,0.08) 0%,transparent 70%)" }} delay={3} dur={13} />
 
@@ -1247,7 +1270,7 @@ export default function LandingPage() {
 
           {/* 4 Feature Pillars */}
           <Reveal delay={0.2}>
-            <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {[
                 { title: "Traditional Hilot", sub: "Warm banana leaf & coconut oil healing technique", icon: Leaf, color: "#0a3d30" },
                 { title: "Certified Specialists", sub: "Rigorous background checks & clinical training", icon: Shield, color: "#6b5a2e" },
@@ -1272,7 +1295,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f2ebe0 100%)" }}>
+      <section id="how-it-works" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden scroll-mt-16" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f2ebe0 100%)" }}>
         <ParImg src="https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=400&q=50" alt="" className="absolute right-[-4%] top-[6%] w-60 h-72 rounded-3xl opacity-[0.07] hidden md:block" strength={0.1} />
         <div className="max-w-6xl mx-auto relative">
           <Reveal className="text-center mb-10 md:mb-14">
@@ -1280,7 +1303,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>How It Works</h2>
             <p className="text-slate-400 max-w-xs mx-auto mt-3 text-sm leading-relaxed">Three simple steps to your perfect salon & spa experience.</p>
           </Reveal>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-8">
             {[
               { icon: Calendar, color: "#0a3d30", bg: "rgba(10,61,48,0.1)", title: "Book Your Visit", desc: "Choose your service online or by phone, pick a date & time — and we'll handle the rest." },
               { icon: UserCheck, color: "#6b5a2e", bg: "rgba(107,90,46,0.1)", title: "We Assign Your Specialist", desc: "Our admin team carefully matches you with a certified therapist suited for your chosen treatment." },
@@ -1340,7 +1363,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── SERVICES ── */}
-      <section id="services" className="py-20 md:py-28 px-4 sm:px-6" style={{ background: "#faf9f7" }}>
+      <section id="services" className="py-20 md:py-28 px-4 sm:px-6 scroll-mt-16" style={{ background: "#faf9f7" }}>
         <div className="max-w-7xl mx-auto">
           <Reveal className="text-center mb-12">
             <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 mb-4">Specialist Treatments</span>
@@ -1369,8 +1392,9 @@ export default function LandingPage() {
             </AnimatePresence>
           </Reveal>
           <Reveal delay={0.1} className="flex overflow-x-auto no-scrollbar py-2 px-1 justify-start sm:justify-center gap-2.5 sm:gap-3.5 mb-10 flex-nowrap sm:flex-wrap">
+            <div role="tablist" aria-label="Service categories" className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2.5 sm:gap-3.5 w-full">
             {Object.entries(SVCS).map(([key, c]) => (
-              <motion.button key={key} onClick={() => { setTab(key); setShowAll(false); }}
+              <motion.button key={key} role="tab" aria-selected={tab === key} onClick={() => { setTab(key); setShowAll(false); }}
                 className="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold transition-all duration-300"
                 style={tab === key
                   ? { background: c.color.bg, color: "#fff", boxShadow: "0 8px 28px " + c.color.glow }
@@ -1380,6 +1404,7 @@ export default function LandingPage() {
                 <span className="ml-1 px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background: tab === key ? c.color.badge : "rgba(0,0,0,0.07)", color: tab === key ? "#fff" : "#94a3b8" }}>{c.list.length}</span>
               </motion.button>
             ))}
+            </div>
           </Reveal>
           <AnimatePresence mode="wait">
             <motion.div key={tab + "-note"} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, ease: EASE }} className="text-center mb-8">
@@ -1406,7 +1431,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section id="testimonials" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden" style={{ background: "linear-gradient(135deg,#ede4d6,#e4d9c8)" }}>
+      <section id="testimonials" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden scroll-mt-16" style={{ background: "linear-gradient(135deg,#ede4d6,#e4d9c8)" }}>
         <div className="max-w-6xl mx-auto">
           <Reveal className="text-center mb-14">
             <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60 mb-4">Client Reviews</span>
@@ -1454,10 +1479,10 @@ export default function LandingPage() {
             <span style={{ color: "#d4b87a", fontStyle: "italic" }}>Book Today.</span>
           </h2>
           <p className="text-emerald-200/55 text-sm max-w-md mx-auto mb-10 leading-relaxed">Step into our premium salon suites and let our certified specialists restore your mind, body, and spirit. Book ahead or walk in — we're ready for you.</p>
-          <div className="flex flex-col sm:flex-row gap-3.5 justify-center">
-            <MagneticBtn strength={0.2}>
+          <div className="flex flex-col sm:flex-row gap-3.5 justify-center items-stretch sm:items-center">
+            <MagneticBtn strength={0.2} className="w-full sm:w-auto">
               <Link to="/register" id="cta-book"
-                className="group py-4 px-9 font-bold rounded-2xl flex items-center justify-center gap-3 text-sm hover:brightness-110 transition-all duration-200"
+                className="group py-4 px-9 font-bold rounded-2xl flex items-center justify-center gap-3 text-sm hover:brightness-110 transition-all duration-200 w-full sm:w-auto"
                 style={{ background: "linear-gradient(135deg,#d4b87a,#bfa15f)", color: "#041e16", boxShadow: "0 10px 32px rgba(191,161,95,0.4)" }}>
                 Book a Treatment<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
