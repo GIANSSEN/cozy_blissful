@@ -127,7 +127,7 @@ class AuthController extends Controller
                 'string',
                 'min:2',
                 'max:255',
-                'regex:/^[a-zA-Z\s\'-]+$/', // Only letters, spaces, hyphens, apostrophes
+                'regex:/^[\pL\s\'.-]+$/u', // Letters, spaces, hyphens, apostrophes, periods (e.g., Jr., Ma.)
             ],
             'email' => [
                 'required',

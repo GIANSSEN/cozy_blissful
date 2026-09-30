@@ -120,10 +120,20 @@ class SocialAuthController extends Controller
         $lastName = $profile->json('last_name');
         $name = $profile->json('name') ?? trim("{$firstName} {$lastName}");
 
-        if (!$profile->successful() || !$email) {
+        if (!$profile->successful()) {
             return response()->json([
-                'message' => 'Your Facebook account has no verified email address. Please sign up with email.'
+                'message' => 'Failed to retrieve Facebook profile. Please try again.'
             ], 422);
+        }
+
+        // If Facebook profile has no public or verified email, redirect to register with suggested name
+        if (!$email) {
+            return response()->json([
+                'needs_registration' => true,
+                'email'              => '',
+                'suggested_name'     => $name ?: '',
+                'provider'           => 'facebook',
+            ], 202);
         }
 
         return $this->issueSession(
@@ -196,16 +206,24 @@ class SocialAuthController extends Controller
         $lastName = $profile->json('last_name');
         $name = $profile->json('name') ?? trim("{$firstName} {$lastName}");
 
-        if (!$profile->successful() || !$email) {
-            return redirect()->away("{$frontendUrl}/login?error=" . urlencode('Facebook account has no verified email address.'));
+        if (!$profile->successful()) {
+            return redirect()->away("{$frontendUrl}/login?error=" . urlencode('Could not retrieve Facebook profile.'));
         }
 
-        $emailStr = strtolower(trim($email));
-        $user = User::where('email', $emailStr)->first();
+        $emailStr = $email ? strtolower(trim($email)) : '';
+        $user = $emailStr ? User::where('email', $emailStr)->first() : null;
 
         if (!$user) {
-            // New user — send them to the register page to set their name & password
-            return redirect()->away("{$frontendUrl}/register?prefill_email=" . urlencode($emailStr) . '&prefill_name=' . urlencode($name ?: '') . '&provider=facebook');
+            // New user or no email on Facebook — send them to register with their name prefilled
+            $params = [
+                'prefill_name' => $name ?: '',
+                'provider'     => 'facebook',
+            ];
+            if ($emailStr) {
+                $params['prefill_email'] = $emailStr;
+            }
+            $query = http_build_query($params);
+            return redirect()->away("{$frontendUrl}/register?{$query}");
         }
 
         $user->tokens()->delete();

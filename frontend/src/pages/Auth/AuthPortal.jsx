@@ -45,7 +45,7 @@ const TRUST_POINTS_REGISTER = [
 
 // Validation patterns
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-const NAME_REGEX = /^[a-zA-Z\s'-]+$/;
+const NAME_REGEX = /^[\p{L}\s'.-]+$/u;
 const PASS_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 // OAuth configuration
@@ -302,7 +302,11 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
     if (res.success) {
       onSuccess(res.role);
     } else if (res.needsRegistration) {
-      navigate(`/register?prefill_email=${encodeURIComponent(res.email)}&prefill_name=${encodeURIComponent(res.suggestedName || '')}&provider=${encodeURIComponent(res.provider || '')}`);
+      const q = new URLSearchParams();
+      if (res.email) q.set('prefill_email', res.email);
+      if (res.suggestedName) q.set('prefill_name', res.suggestedName);
+      if (res.provider) q.set('provider', res.provider);
+      navigate(`/register?${q.toString()}`);
     } else {
       onError(res.error || `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in failed.`);
     }
@@ -429,8 +433,16 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const [loginFieldErrors, setLoginFieldErrors] = useState({});
 
   // ── Register specific states
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
+  const [regName, setRegName] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    const val = p.get('prefill_name');
+    return (val && val !== 'null' && val !== 'undefined') ? val : '';
+  });
+  const [regEmail, setRegEmail] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    const val = p.get('prefill_email');
+    return (val && val !== 'null' && val !== 'undefined') ? val : '';
+  });
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPw, setRegConfirmPw] = useState('');
   const [showRegPw, setShowRegPw] = useState(false);
@@ -452,13 +464,26 @@ export default function AuthPortal({ initialTab = 'login' }) {
     const prefillName = params.get('prefill_name');
     const provider = params.get('provider');
 
-    if (prefillEmail) {
-      setRegEmail(prefillEmail);
+    const cleanEmail = (prefillEmail && prefillEmail !== 'null' && prefillEmail !== 'undefined') ? prefillEmail : '';
+    const cleanName = (prefillName && prefillName !== 'null' && prefillName !== 'undefined') ? prefillName : '';
+
+    if (cleanEmail) {
+      setRegEmail(cleanEmail);
+    }
+    if (cleanName) {
+      setRegName(cleanName);
+    }
+    if (cleanEmail || cleanName || provider) {
       setActiveTab('register');
     }
-    if (prefillName) setRegName(prefillName);
+
     if (provider) {
-      setNotice(`We verified your ${provider.toUpperCase()} account. Please choose a password to complete registration.`);
+      const provName = provider.charAt(0).toUpperCase() + provider.slice(1).toLowerCase();
+      if (cleanEmail) {
+        setNotice(`Connected with ${provName}! Name and email are pre-filled. Please create a password to finalize your account.`);
+      } else {
+        setNotice(`Connected with ${provName}! Your name is filled in. Please enter your email and password to complete registration.`);
+      }
     }
 
     const err = params.get('error');
@@ -543,7 +568,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
     const errs = {};
     if (!regName.trim()) errs.name = 'Full name is required.';
     else if (regName.trim().length < 2) errs.name = 'Name must be at least 2 characters.';
-    else if (!NAME_REGEX.test(regName.trim())) errs.name = 'Letters, spaces, hyphens, and apostrophes only.';
+    else if (!NAME_REGEX.test(regName.trim())) errs.name = 'Letters, spaces, hyphens, periods, and apostrophes only.';
 
     if (!regEmail.trim()) errs.email = 'Email address is required.';
     else if (!EMAIL_REGEX.test(regEmail.trim())) errs.email = 'Please enter a valid email address.';
