@@ -48,8 +48,9 @@ const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-
 const NAME_REGEX = /^[a-zA-Z\s'-]+$/;
 const PASS_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-// Google OAuth configuration
+// OAuth configuration
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
 
 const loadScript = (src, id) => new Promise((resolve, reject) => {
   const existing = document.getElementById(id);
@@ -207,6 +208,85 @@ const PasswordStrength = ({ password }) => {
   );
 };
 
+// ── Facebook Glyph ──────────────────────────────────────────────────────────
+const FacebookGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-4 h-4 shrink-0" aria-hidden="true">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
+
+// ── Facebook Sign-In Button (Meta JS SDK) ────────────────────────────────────
+const FacebookSignInButton = ({ disabled, pending, mode, onFinish, onError }) => {
+  useEffect(() => {
+    if (!FACEBOOK_APP_ID) return;
+    let cancelled = false;
+
+    loadScript(
+      `https://connect.facebook.net/en_US/sdk.js`,
+      'facebook-jssdk'
+    )
+      .then(() => {
+        if (cancelled) return;
+        if (!window.FB) {
+          // SDK not yet bootstrapped — wait for fbAsyncInit
+          const prev = window.fbAsyncInit;
+          window.fbAsyncInit = () => {
+            if (prev) prev();
+            window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
+          };
+        } else {
+          // SDK already loaded in the page (e.g. hot-reload)
+          window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
+        }
+      })
+      .catch(() => onError('Could not load Facebook Sign-In SDK.'));
+
+    return () => { cancelled = true; };
+  }, [onError]);
+
+  const handleFacebookClick = () => {
+    if (disabled || pending) return;
+    if (!FACEBOOK_APP_ID) { onError('Facebook sign-in is not configured.'); return; }
+    if (!window.FB) { onError('Facebook Sign-In is initializing. Please try again.'); return; }
+
+    window.FB.login(
+      (response) => {
+        if (response.authResponse?.accessToken) {
+          onFinish('facebook', response.authResponse.accessToken);
+        } else {
+          // User cancelled the popup — don't show an error
+        }
+      },
+      { scope: 'email,public_profile' }
+    );
+  };
+
+  return (
+    <motion.button
+      type="button"
+      id="facebook-signin-btn"
+      onClick={handleFacebookClick}
+      disabled={disabled || pending !== null}
+      whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
+      whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
+      className="w-full min-h-[40px] px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border hover:bg-slate-50"
+      style={{ background: '#ffffff', borderColor: '#e2e8f0', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+    >
+      {pending === 'facebook' ? (
+        <>
+          <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1877F2' }} />
+          <span style={{ color: '#64748b' }}>Connecting…</span>
+        </>
+      ) : (
+        <>
+          <FacebookGlyph />
+          <span className="truncate">{mode === 'register' ? 'Sign up with Facebook' : 'Continue with Facebook'}</span>
+        </>
+      )}
+    </motion.button>
+  );
+};
+
 // Social Sign In button
 const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
   const { socialLogin } = useAuth();
@@ -221,10 +301,10 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
 
     if (res.success) {
       onSuccess(res.role);
-    } else if (res.requiresRegistration) {
+    } else if (res.needsRegistration) {
       navigate(`/register?prefill_email=${encodeURIComponent(res.email)}&prefill_name=${encodeURIComponent(res.suggestedName || '')}&provider=${encodeURIComponent(res.provider || '')}`);
     } else {
-      onError(res.error || 'Google sign-in failed.');
+      onError(res.error || `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in failed.`);
     }
   }, [socialLogin, onSuccess, onError, navigate]);
 
@@ -277,33 +357,46 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
         <div className="flex-1 h-px" style={{ background: B.line }} />
       </div>
 
-      <div className="relative w-full">
-        <motion.button
-          type="button"
-          onClick={handleGoogleClick}
-          disabled={disabled || pending !== null}
-          whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
-          whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
-          className="w-full min-h-[40px] px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border hover:bg-slate-50"
-          style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
-        >
-          {pending === 'google' ? (
-            <>
-              <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} />
-              <span style={{ color: B.inkSoft }}>Connecting…</span>
-            </>
-          ) : (
-            <>
-              <GoogleGlyph />
-              <span className="truncate">{mode === 'register' ? 'Sign up with Google' : 'Continue with Google'}</span>
-            </>
-          )}
-        </motion.button>
-        <div
-          ref={googleBtnRef}
-          aria-label="Google authentication container"
-          className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
-          style={{ opacity: pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }}
+      <div className="flex flex-col gap-2 w-full">
+        {/* ── Google Button ── */}
+        <div className="relative w-full">
+          <motion.button
+            type="button"
+            id="google-signin-btn"
+            onClick={handleGoogleClick}
+            disabled={disabled || pending !== null}
+            whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
+            whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
+            className="w-full min-h-[40px] px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border hover:bg-slate-50"
+            style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+          >
+            {pending === 'google' ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} />
+                <span style={{ color: B.inkSoft }}>Connecting…</span>
+              </>
+            ) : (
+              <>
+                <GoogleGlyph />
+                <span className="truncate">{mode === 'register' ? 'Sign up with Google' : 'Continue with Google'}</span>
+              </>
+            )}
+          </motion.button>
+          <div
+            ref={googleBtnRef}
+            aria-label="Google authentication container"
+            className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
+            style={{ opacity: pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }}
+          />
+        </div>
+
+        {/* ── Facebook Button ── */}
+        <FacebookSignInButton
+          disabled={disabled}
+          pending={pending}
+          mode={mode}
+          onFinish={finish}
+          onError={onError}
         />
       </div>
     </div>

@@ -304,13 +304,19 @@ class AdminController extends Controller
     {
         $sevenDaysAgo = Carbon::today()->subDays(6)->toDateString();
 
-        // Single query for 7-day revenue using DATE() function
+        // Single query for 7-day revenue — PostgreSQL-safe:
+        //  • alias renamed from `date` (pgsql reserved keyword) to `appt_date`
+        //  • removed redundant ->where('payment_status','paid') which caused pgsql
+        //    to inject the unquoted identifier "paid" in the compiled query;
+        //    the CASE WHEN already handles the revenue filter correctly.
         $dailyRevenue = DB::table('appointments')
-            ->selectRaw('DATE(datetime) as date, SUM(CASE WHEN payment_status = "paid" THEN COALESCE(amount_paid, 0) ELSE 0 END) as revenue')
+            ->selectRaw(
+                "DATE(datetime) as appt_date,"
+                . " SUM(CASE WHEN payment_status = 'paid' THEN COALESCE(amount_paid, 0) ELSE 0 END) as revenue"
+            )
             ->where('datetime', '>=', $sevenDaysAgo)
-            ->where('payment_status', 'paid')
-            ->groupBy('date')
-            ->pluck('revenue', 'date')
+            ->groupByRaw('DATE(datetime)')
+            ->pluck('revenue', 'appt_date')
             ->toArray();
 
         $days7 = [];

@@ -1537,8 +1537,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     return false;
   };
 
-  const handleNext = () => { setError(''); setStep((s) => s + 1); };
-  const handleBack = () => { setError(''); setStep((s) => s - 1); };
+  const handleBack = () => { setError(''); setStep((s) => Math.max(0, s - 1)); };
 
   const handleSubmit = async () => {
     if (!clientName.trim()) { setError('Please provide your full name.'); return; }
@@ -1550,6 +1549,11 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     if (!['cash', 'gcash'].includes(paymentMethod)) { setError('Please choose a valid payment method.'); return; }
     if (selectedServices.length === 0) { setError('Please select at least one treatment.'); return; }
     if (!selectedDate || !selectedTime) { setError('Please select a date and time slot.'); return; }
+    const picked = new Date(`${selectedDate}T${selectedTime}:00`);
+    if (Number.isNaN(picked.getTime())) { setError('Invalid date or time selected. Please pick again.'); return; }
+    if (picked <= new Date()) { setError('That slot is already in the past. Please choose a future time.'); return; }
+    if (clientAddress && clientAddress.length > 500) { setError('Address is too long (max 500 characters).'); return; }
+    if (notes && notes.length > 2000) { setError('Notes are too long (max 2000 characters).'); return; }
 
     setSubmitting(true);
     setError('');
@@ -1577,23 +1581,41 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     }
   };
 
+  const stepHint = () => {
+    if (step === 0 && selectedServices.length === 0) return 'Select at least one treatment to continue.';
+    if (step === 1 && !selectedDate) return 'Choose a date to view real-time availability.';
+    if (step === 1 && selectedDate && !selectedTime) return loadingSlots ? 'Loading slots…' : 'Pick an open time slot to continue.';
+    if (step === 2 && (!clientName.trim() || !clientPhone.trim())) return 'Full name and mobile number are required.';
+    return '';
+  };
+
+  const validatedNext = () => {
+    setError('');
+    if (step === 0 && selectedServices.length === 0) { setError('Please select at least one treatment before continuing.'); return; }
+    if (step === 1 && (!selectedDate || !selectedTime)) { setError('Please choose both a date and an available time slot.'); return; }
+    setStep((s) => s + 1);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Book a sanctuary session"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto no-scrollbar"
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-      onClick={(e) => e.target === e.currentTarget && step < 3 && onClose()}
+      onClick={(e) => e.target === e.currentTarget && step < 3 && !submitting && onClose()}
     >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0, y: 16 }}
+        initial={{ scale: 0.95, opacity: 0, y: 24 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.95, opacity: 0, y: 16 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        exit={{ scale: 0.95, opacity: 0, y: 24 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className={`w-full ${
           step === 2 ? 'max-w-4xl' : step === 3 ? 'max-w-xl' : 'max-w-2xl'
-        } max-h-[92dvh] sm:max-h-[88vh] my-auto flex flex-col rounded-3xl sm:rounded-[2.2rem] overflow-hidden transition-all duration-300 shadow-2xl bg-white border border-[rgba(191,161,95,0.3)]`}
+        } max-h-[96dvh] sm:max-h-[90vh] my-auto flex flex-col rounded-t-3xl sm:rounded-[2.2rem] overflow-hidden transition-all duration-300 shadow-2xl bg-white border border-[rgba(191,161,95,0.3)]`}
       >
         {/* Fixed Header */}
         <div className="flex-shrink-0 px-5 sm:px-7 pt-5 pb-3 border-b border-slate-100 bg-white">
@@ -1650,11 +1672,13 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
               {step === 1 && (
                 <DateTimePicker
                   selectedDate={selectedDate}
-                  onDateSelect={setSelectedDate}
+                  onDateSelect={(d) => { setSelectedDate(d); setError(''); }}
                   selectedTime={selectedTime}
-                  onTimeSelect={setSelectedTime}
+                  onTimeSelect={(t) => { setSelectedTime(t); setError(''); }}
                   slots={slots}
                   loadingSlots={loadingSlots}
+                  slotsError={slotsError}
+                  onRetry={() => setSlotsFetchKey((k) => k + 1)}
                 />
               )}
               {step === 2 && (
@@ -1691,30 +1715,40 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
 
         {/* Fixed Footer */}
         {step < 3 && (
-          <div className="flex-shrink-0 px-5 sm:px-7 py-3.5 border-t border-slate-100 bg-slate-50/80 backdrop-blur-sm">
+          <div className="flex-shrink-0 px-4 sm:px-7 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] border-t border-slate-100 bg-slate-50/90 backdrop-blur-sm">
             {error && (
-              <div className="mb-3 p-2.5 rounded-xl flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
-                <span className="font-medium">{error}</span>
+              <div className="mb-3 p-2.5 rounded-xl flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200" role="alert">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-px" />
+                <span className="font-medium break-words">{error}</span>
               </div>
             )}
+            {!error && stepHint() && (
+              <p className="mb-2.5 text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 flex-shrink-0" /> {stepHint()}
+              </p>
+            )}
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
               <button
                 type="button"
                 onClick={handleBack}
-                disabled={step === 0}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed border border-slate-200 bg-white min-h-[44px]"
+                disabled={step === 0 || submitting}
+                aria-label="Go back to previous step"
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 transition-all hover:text-slate-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed border border-slate-200 bg-white min-h-[44px] w-full sm:w-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
               >
                 <ChevronLeft className="w-3.5 h-3.5" /> Back
               </button>
 
               {step < 2 ? (
-                <LuxuryBtn onClick={handleNext} disabled={!canNext()}>
-                  Next Step <ChevronRight className="w-4 h-4" />
+                <LuxuryBtn onClick={validatedNext} disabled={!canNext() || loadingSlots} className="w-full sm:w-auto min-h-[44px]">
+                  {loadingSlots && step === 1 ? (
+                    <><span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" /> Loading slots…</>
+                  ) : (
+                    <>Next Step <ChevronRight className="w-4 h-4" /></>
+                  )}
                 </LuxuryBtn>
               ) : (
-                <LuxuryBtn onClick={handleSubmit} disabled={submitting || !canNext()}>
+                <LuxuryBtn onClick={handleSubmit} disabled={submitting || !canNext()} className="w-full sm:w-auto min-h-[44px]">
                   {submitting ? (
                     <>
                       <span className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />
@@ -1722,8 +1756,8 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-[#041e16]" />
-                      Confirm & Book {selectedServices.length === 1 ? 'Appointment' : `${selectedServices.length} Appointments`} • ₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      <CheckCircle2 className="w-4 h-4 text-[#041e16] flex-shrink-0" />
+                      <span className="text-center leading-snug">Confirm &amp; Book {selectedServices.length === 1 ? 'Appointment' : `${selectedServices.length} Appointments`} • ₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
                     </>
                   )}
                 </LuxuryBtn>

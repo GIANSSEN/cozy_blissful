@@ -90,165 +90,151 @@ class ClientController extends Controller
     public function getAvailableSlots(Request $request)
     {
         $request->validate([
-            'date' => 'required|date|after_or_equal:today',
+            'date' => 'required|date_format:Y-m-d|after_or_equal:today',
             'service_id' => 'required|exists:services,id',
             'therapist_id' => 'nullable|exists:users,id',
             'total_duration' => 'sometimes|integer|min:15|max:480', // for multi-service bookings
         ]);
 
         $service = Service::findOrFail($request->service_id);
-        $duration = (int) $service->duration;
+        $duration = max(15, (int) $service->duration);
         // Use total_duration if provided (for multi-service), otherwise use single service duration
-        $effectiveDuration = $request->filled('total_duration') ? (int) $request->total_duration : $duration;
-        $date = Carbon::parse($request->date);
+        $effectiveDuration = $request->filled('total_duration')
+            ? min(480, max(15, (int) $request->total_duration))
+            : $duration;
+        $date = Carbon::parse($request->date)->startOfDay();
         $dateString = $date->toDateString();
         $requestedTherapistId = $request->therapist_id;
 
-        // Cache key for this query
-        $therapistKey = $requestedTherapistId ?? 'any';
-        $durationKey = $effectiveDuration;
-        $cacheKey = "available_slots:{$dateString}:{$service->id}:{$therapistKey}:{$durationKey}";
+        // Salon operating hours: 9:00 AM – 9:00 PM (computed live — no stale slot caching)
+        $openTime = $date->copy()->setTime(9, 0);
+        $closeTime = $date->copy()->setTime(21, 0);
 
-        return Cache::remember($cacheKey, 300, function () use ($date, $duration, $effectiveDuration, $dateString, $requestedTherapistId) {
-            // Salon operating hours: 9:00 AM – 9:00 PM
-            $openTime = $date->copy()->setTime(9, 0);
-            $closeTime = $date->copy()->setTime(21, 0);
+        // Generate candidate slots every 30 minutes - use EFFECTIVE DURATION for boundary check
+        $slots = [];
+        $cursor = $openTime->copy();
+        while ($cursor->copy()->addMinutes($effectiveDuration)->lte($closeTime)) {
+            $slots[] = $cursor->format('H:i');
+            $cursor->addMinutes(30);
+        }
 
-            // Generate candidate slots every 30 minutes - use EFFECTIVE DURATION for boundary check
-            $slots = [];
-            $cursor = $openTime->copy();
-            while ($cursor->copy()->addMinutes($effectiveDuration)->lte($closeTime)) {
-                $slots[] = $cursor->format('H:i');
-                $cursor->addMinutes(30);
+        $basePayload = [
+            'date' => $dateString,
+            'service_id' => $service->id,
+            'service_name' => $service->name,
+            'service_duration' => $duration,
+            'effective_duration' => $effectiveDuration,
+            'therapist_id' => $requestedTherapistId,
+        ];
+
+        if (empty($slots)) {
+            return response()->json(array_merge($basePayload, [
+                'salon_capacity' => 0,
+                'available_slots' => [],
+                'all_slots' => [],
+                'booked_slots' => [],
+            ]));
+        }
+
+        // Determine working therapists for this date (cached — roster changes slowly)
+        $workingTherapistsCacheKey = "working_therapists:{$dateString}";
+        $workingTherapists = Cache::remember($workingTherapistsCacheKey, 3600, function () use ($dateString) {
+            return User::role('therapist')
+                ->whereHas('availabilities', fn($q) => $q->where('date', $dateString))
+                ->pluck('id')
+                ->toArray();
+        });
+
+        if (empty($workingTherapists)) {
+            // Fallback: all active therapists count toward capacity (concierge matching)
+            $workingTherapists = User::role('therapist')->pluck('id')->toArray();
+        }
+
+        $salonCapacity = max(1, count($workingTherapists));
+
+        // Convert slot times to minutes for overlap checks - use EFFECTIVE DURATION
+        $slotMinutes = array_map(function ($slot) {
+            [$h, $m] = explode(':', $slot);
+            return (int) $h * 60 + (int) $m;
+        }, $slots);
+        $slotEndMinutes = array_map(fn($start) => $start + $effectiveDuration, $slotMinutes);
+
+        $existingAppointments = Appointment::query()
+            ->select('id', 'therapist_id', 'datetime', 'service_id')
+            ->with(['service:id,duration'])
+            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->whereDate('datetime', $dateString)
+            ->when($requestedTherapistId, fn($q) => $q->where('therapist_id', $requestedTherapistId))
+            ->get();
+
+        // Past-slot guard: slots starting within the lead window are treated as booked.
+        // Prevents clients from picking a time that already passed today.
+        $now = Carbon::now();
+        $isToday = $now->toDateString() === $dateString;
+        $pastCutoffMin = ((int) $now->format('H')) * 60 + ((int) $now->format('i')) + 15;
+
+        // Build interval map: therapist_id -> list of [start_min, end_min]
+        $therapistIntervals = [];
+        foreach ($existingAppointments as $appt) {
+            $therapistId = $appt->therapist_id ?? 0; // 0 for unassigned
+            $startMin = (int) $appt->datetime->format('H') * 60 + (int) $appt->datetime->format('i');
+            $dur = $appt->service ? max(15, (int) $appt->service->duration) : 60;
+            $endMin = $startMin + $dur;
+
+            if (!isset($therapistIntervals[$therapistId])) {
+                $therapistIntervals[$therapistId] = [];
+            }
+            $therapistIntervals[$therapistId][] = [$startMin, $endMin];
+        }
+
+        // Filter slots - use EFFECTIVE DURATION for overlap check
+        $availableSlots = [];
+        foreach ($slots as $index => $slotTime) {
+            $slotStart = $slotMinutes[$index];
+            $slotEnd = $slotEndMinutes[$index];
+
+            if ($isToday && $slotStart <= $pastCutoffMin) {
+                continue; // already passed today — mark as booked below
             }
 
-            if (empty($slots)) {
-                return [
-                    'date' => $dateString,
-                    'service_id' => $service->id,
-                    'service_name' => $service->name,
-                    'service_duration' => $duration,
-                    'effective_duration' => $effectiveDuration,
-                    'therapist_id' => $requestedTherapistId,
-                    'salon_capacity' => 0,
-                    'available_slots' => [],
-                    'all_slots' => [],
-                    'booked_slots' => [],
-                ];
-            }
-
-            // Determine working therapists for this date (cached)
-            $workingTherapistsCacheKey = "working_therapists:{$dateString}";
-            $workingTherapists = Cache::remember($workingTherapistsCacheKey, 3600, function () use ($dateString) {
-                return User::role('therapist')
-                    ->whereHas('availabilities', fn($q) => $q->where('date', $dateString))
-                    ->pluck('id')
-                    ->toArray();
-            });
-
-            if (empty($workingTherapists)) {
-                $workingTherapists = User::role('therapist')->pluck('id')->toArray();
-            }
-
-            $salonCapacity = max(1, count($workingTherapists));
-
-            // Convert slot times to minutes for DB query - use EFFECTIVE DURATION
-            $slotMinutes = array_map(function ($slot) {
-                [$h, $m] = explode(':', $slot);
-                return (int) $h * 60 + (int) $m;
-            }, $slots);
-            $slotEndMinutes = array_map(fn($start) => $start + $effectiveDuration, $slotMinutes);
-
-            // Fetch ONLY overlapping appointments from DB using indexed columns
-            // This uses the composite index (therapist_id, status, datetime) or (status, datetime)
-            $existingAppointments = Appointment::query()
-                ->select('id', 'therapist_id', 'datetime', 'service_id')
-                ->with(['service:id,duration'])
-                ->whereIn('status', ['Pending', 'Confirmed'])
-                ->whereDate('datetime', $dateString)
-                ->when($requestedTherapistId, fn($q) => $q->where('therapist_id', $requestedTherapistId))
-                ->get();
-
-            if ($existingAppointments->isEmpty()) {
-                return [
-                    'date' => $dateString,
-                    'service_id' => $service->id,
-                    'service_name' => $service->name,
-                    'service_duration' => $duration,
-                    'effective_duration' => $effectiveDuration,
-                    'therapist_id' => $requestedTherapistId,
-                    'salon_capacity' => $salonCapacity,
-                    'available_slots' => $slots,
-                    'all_slots' => $slots,
-                    'booked_slots' => [],
-                ];
-            }
-
-            // Build interval map: therapist_id -> list of [start_min, end_min]
-            $therapistIntervals = [];
-            foreach ($existingAppointments as $appt) {
-                $therapistId = $appt->therapist_id ?? 0; // 0 for unassigned
-                $startMin = (int) $appt->datetime->format('H') * 60 + (int) $appt->datetime->format('i');
-                $dur = $appt->service ? (int) $appt->service->duration : 60;
-                $endMin = $startMin + $dur;
-
-                if (!isset($therapistIntervals[$therapistId])) {
-                    $therapistIntervals[$therapistId] = [];
+            if ($requestedTherapistId) {
+                // Check only requested therapist's intervals
+                $intervals = $therapistIntervals[$requestedTherapistId] ?? [];
+                $conflict = false;
+                foreach ($intervals as [$start, $end]) {
+                    if ($slotStart < $end && $slotEnd > $start) {
+                        $conflict = true;
+                        break;
+                    }
                 }
-                $therapistIntervals[$therapistId][] = [$startMin, $endMin];
-            }
-
-            // Filter slots efficiently - use EFFECTIVE DURATION for overlap check
-            $availableSlots = [];
-            foreach ($slots as $index => $slotTime) {
-                $slotStart = $slotMinutes[$index];
-                $slotEnd = $slotEndMinutes[$index];
-
-                if ($requestedTherapistId) {
-                    // Check only requested therapist's intervals
-                    $intervals = $therapistIntervals[$requestedTherapistId] ?? [];
-                    $conflict = false;
+                if (!$conflict) {
+                    $availableSlots[] = $slotTime;
+                }
+            } else {
+                // Count overlapping appointments across all therapists
+                $overlapCount = 0;
+                foreach ($therapistIntervals as $intervals) {
                     foreach ($intervals as [$start, $end]) {
                         if ($slotStart < $end && $slotEnd > $start) {
-                            $conflict = true;
-                            break;
+                            $overlapCount++;
+                            break; // Count each therapist-block once per slot
                         }
-                    }
-                    if (!$conflict) {
-                        $availableSlots[] = $slotTime;
-                    }
-                } else {
-                    // Count overlapping appointments across all therapists
-                    $overlapCount = 0;
-                    foreach ($therapistIntervals as $intervals) {
-                        foreach ($intervals as [$start, $end]) {
-                            if ($slotStart < $end && $slotEnd > $start) {
-                                $overlapCount++;
-                                break; // Count each appointment once per slot
-                            }
-                        }
-                    }
-                    if ($overlapCount < $salonCapacity) {
-                        $availableSlots[] = $slotTime;
                     }
                 }
+                if ($overlapCount < $salonCapacity) {
+                    $availableSlots[] = $slotTime;
+                }
             }
+        }
 
-            $bookedSlots = array_values(array_diff($slots, $availableSlots));
+        $bookedSlots = array_values(array_diff($slots, $availableSlots));
 
-            return [
-                'date' => $dateString,
-                'service_id' => $service->id,
-                'service_name' => $service->name,
-                'service_duration' => $duration,
-                'effective_duration' => $effectiveDuration,
-                'therapist_id' => $requestedTherapistId,
-                'salon_capacity' => $salonCapacity,
-                'available_slots' => $availableSlots,
-                'all_slots' => $slots,
-                'booked_slots' => $bookedSlots,
-            ];
-        });
+        return response()->json(array_merge($basePayload, [
+            'salon_capacity' => $salonCapacity,
+            'available_slots' => array_values($availableSlots),
+            'all_slots' => array_values($slots),
+            'booked_slots' => array_values($bookedSlots),
+        ]));
     }
 
     /**
