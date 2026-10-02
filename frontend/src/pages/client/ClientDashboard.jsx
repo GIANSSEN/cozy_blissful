@@ -323,7 +323,7 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
                   isSelected ? 'border-white/10 text-[#e8cc8a]' : 'border-slate-100 text-slate-400'
                 }`}
               >
-                <span>{isSelected ? '✓ Added to your session' : 'Click to add'}</span>
+                <span>{isSelected ? 'Added to your visit' : 'Add to visit'}</span>
                 {isSelected && <CheckCircle className="w-4 h-4 text-[#e8cc8a]" />}
               </div>
             </button>
@@ -339,13 +339,13 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
 
       {/* Bottom summary bar when services selected */}
       {selectedIds.length > 0 && (
-        <div className="rounded-2xl p-3 bg-amber-50 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-center sm:text-left">
-          <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold text-emerald-800">
-            <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> {selectedIds.length} Treatments</span>
-            <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-emerald-600" /> {totalDuration} mins total</span>
-            <span className="flex items-center gap-1.5">₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+        <div className="rounded-2xl p-3 bg-emerald-950 border border-[#bfa15f]/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold text-white">
+            <span className="flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5 text-[#e8cc8a]" /> 1 visit · {selectedIds.length} treatment{selectedIds.length > 1 ? 's' : ''}</span>
+            <span className="flex items-center gap-1.5 text-emerald-100"><Clock className="w-3.5 h-3.5" /> {totalDuration} mins total</span>
+            <span className="text-[#e8cc8a]">₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })} total</span>
           </div>
-          <p className="text-[10px] text-emerald-700 font-medium">Proceed to choose date & time →</p>
+          <p className="text-[11px] text-emerald-200 font-semibold">One schedule · One confirmation →</p>
         </div>
       )}
     </div>
