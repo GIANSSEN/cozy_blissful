@@ -1849,10 +1849,10 @@ const AdminAppointments = () => {
       // proportionally across treatments so History stays accurate.
       let perShare = null;
       if (ids.length > 1) {
-        const rows = appointments.filter(a => ids.includes(a.id));
-        const sum = rows.reduce((n, r) => n + Number(r.service_price || 0), 0);
+        const byId = new Map(appointments.filter(a => ids.includes(a.id)).map(a => [a.id, a]));
+        const sum = ids.reduce((n, id) => n + Number(byId.get(id)?.service_price || 0), 0);
         if (sum > 0) {
-          perShare = rows.map(r => (Number(r.service_price || 0) / sum) * Number(payload.amount_paid || 0));
+          perShare = ids.map(id => (Number(byId.get(id)?.service_price || 0) / sum) * Number(payload.amount_paid || 0));
         }
       }
       for (let i = 0; i < ids.length; i++) {
@@ -1866,13 +1866,16 @@ const AdminAppointments = () => {
         lastPaid = res.data?.appointment?.amount_paid ?? share;
       }
       showToast(ids.length > 1 ? `Visit verified — ${ids.length} treatments completed and archived!` : ( 'Session verified — completed and archived!'));
+      // Optimistic update uses the per-treatment shares already sent to the server.
+      const shareById = {};
+      if (perShare) ids.forEach((id, i) => { shareById[id] = Math.round(perShare[i] * 100) / 100; });
       setAppointments(prev => prev.map(a => ids.includes(a.id)
         ? {
           ...a,
           status: 'Completed',
           payment_status: 'paid',
           payment_method: normalizedMethod,
-          amount_paid: perShare ? Math.round((Number(a.service_price || 0) / ids.length || 0) * 100) / 100 : lastPaid,
+          amount_paid: shareById[a.id] ?? lastPaid,
           paid_at: new Date().toISOString(),
         }
         : a));
