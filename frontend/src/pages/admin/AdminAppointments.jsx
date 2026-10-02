@@ -1901,7 +1901,14 @@ const AdminAppointments = () => {
     path: '/admin/appointments',
     category: 'Booking',
     _key: `booking-${a.id || i}`,
-    onSelect: () => setSelectedAppt(a),
+    onSelect: () => {
+      const visit = groupAppointments(appointments.filter(x =>
+        getGroupClientKey(x) === getGroupClientKey(a) &&
+        normalizeGroupDateTime(x.datetime) === normalizeGroupDateTime(a.datetime) &&
+        x.status === a.status
+      ))[0];
+      setSelectedAppt(visit || a);
+    },
   })), [appointments]);
 
   const STAT_CARDS = [

@@ -174,9 +174,9 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Select Your Wellness Therapies
+            Choose Treatments for One Visit
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">Choose one or more treatments — combined duration & price shown below</p>
+          <p className="text-xs text-slate-500 mt-0.5">Pick one or more treatments — they stay together as a single visit with one schedule and one confirmation</p>
         </div>
 
         {/* Selected badge */}
@@ -253,10 +253,11 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
               key={s.id}
               type="button"
               onClick={() => onToggle(s.id)}
-              className={`text-left rounded-2xl p-4 transition-all duration-200 hover:scale-[1.015] active:scale-[0.99] cursor-pointer flex flex-col justify-between border relative ${
+              aria-pressed={isSelected}
+              className={`text-left rounded-2xl p-4 transition-colors duration-150 cursor-pointer flex flex-col justify-between border ${
                 isSelected
-                  ? 'border-[#bfa15f] text-white shadow-lg ring-2 ring-[#bfa15f]/40'
-                  : 'border-slate-200/80 hover:border-[#bfa15f]/50 bg-white hover:bg-slate-50/50 shadow-xs'
+                  ? 'border-[#bfa15f] text-white shadow-md ring-1 ring-[#bfa15f]/50'
+                  : 'border-slate-200/80 bg-white shadow-xs'
               }`}
               style={{
                 background: isSelected

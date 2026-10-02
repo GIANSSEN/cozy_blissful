@@ -172,6 +172,7 @@ const ModalSheet = ({ children, onClose, wide = false }) => {
         exit={{ opacity: 0, y: 60, scale: 0.98 }}
         transition={{ type: 'spring', damping: 28, stiffness: 380 }}
         className={`w-full ${wide ? 'max-w-full sm:max-w-2xl' : 'max-w-full sm:max-w-lg'} rounded-t-3xl sm:rounded-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col shadow-2xl my-0 sm:my-auto overflow-hidden`}
+        style={{ width: '100%', maxWidth: wide ? '672px' : '512px' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Mobile touch drag indicator handle */}

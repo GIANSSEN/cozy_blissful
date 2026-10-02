@@ -70,7 +70,7 @@ const HistoryDetailModal = ({ record, onClose }) => {
   const C = {
     textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
+    textMuted:     isDark ? '#94a3b8' : '#64748b',
     modalBg:       isDark ? '#141927' : '#ffffff',
     cardBg:        isDark ? '#0f1420' : '#f8fafc',
     cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
@@ -80,7 +80,7 @@ const HistoryDetailModal = ({ record, onClose }) => {
 
   const isCancelled = record.status === 'Cancelled';
 
-  /* Scroll-lock + Escape + initial focus + focus return */
+  /* Scroll-lock + Escape key listener */
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -94,12 +94,33 @@ const HistoryDetailModal = ({ record, onClose }) => {
     };
   }, [onClose]);
 
-  const wrap = { overflowWrap: 'break-word', wordBreak: 'break-word' };
+  // Clean remarks and separate contact/billing if attached
+  const notesText = record.notes || '';
+  const hasBillingBlock = notesText.includes('[Billing & Contact Info]');
+  let userRemarks = notesText;
+  let billingInfo = null;
+
+  if (hasBillingBlock) {
+    const parts = notesText.split('[Billing & Contact Info]');
+    userRemarks = parts[0]?.trim();
+    billingInfo = parts[1]?.trim();
+  }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4 overflow-y-auto"
-      style={{ background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)' }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        background: 'rgba(15, 23, 42, 0.72)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        overflowY: 'auto',
+      }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
@@ -109,41 +130,50 @@ const HistoryDetailModal = ({ record, onClose }) => {
         aria-modal="true"
         aria-labelledby="history-modal-title"
         aria-describedby="history-modal-meta"
-        initial={{ y: 32, opacity: 0, scale: 0.98 }}
+        initial={{ y: 20, opacity: 0, scale: 0.96 }}
         animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 32, opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.2 }}
-        className="w-full sm:max-w-[512px] my-auto outline-none"
+        exit={{ y: 20, opacity: 0, scale: 0.96 }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         style={{
-          background: C.modalBg, border: `1px solid ${C.cardBorder}`,
-          borderRadius: '24px 24px 0 0',
-          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
-          maxHeight: 'calc(100dvh - 1rem)',
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          width: '100%',
+          maxWidth: '520px',
+          background: C.modalBg,
+          border: `1px solid ${C.cardBorder}`,
+          borderRadius: '24px',
+          boxShadow: isDark
+            ? '0 25px 60px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)'
+            : '0 25px 60px -15px rgba(15,23,42,0.22), 0 0 0 1px rgba(0,0,0,0.05)',
+          maxHeight: 'min(90vh, 760px)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          margin: 'auto',
+          outline: 'none',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{
-          padding: '20px 20px 16px',
+          padding: '18px 20px',
           background: isCancelled
             ? 'linear-gradient(135deg,#450a0a,#7f1d1d)'
             : 'linear-gradient(135deg,#1e1b4b,#312e81)',
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 14, flexShrink: 0,
+                width: 38, height: 38, borderRadius: 12, flexShrink: 0,
                 background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
                 color: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <Archive size={20} aria-hidden="true" />
+                <Archive size={18} aria-hidden="true" />
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#c7d2fe' }}>
-                  Session Archive — Read Only
+                <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#c7d2fe' }}>
+                  Session Archive · Read Only
                 </span>
-                <h3 id="history-modal-title" style={{ fontSize: 20, fontWeight: 900, color: '#ffffff', margin: '4px 0 0', ...wrap }}>
+                <h3 id="history-modal-title" style={{ fontSize: 17, fontWeight: 900, color: '#ffffff', margin: '2px 0 0', overflowWrap: 'break-word' }}>
                   {record.service}
                 </h3>
               </div>
@@ -151,32 +181,34 @@ const HistoryDetailModal = ({ record, onClose }) => {
             <button
               onClick={onClose}
               aria-label="Close details"
-              className="shrink-0 flex items-center justify-center rounded-xl"
               style={{
-                minWidth: 44, minHeight: 44, border: 'none',
-                background: 'rgba(255,255,255,0.1)', color: '#ffffff', cursor: 'pointer',
+                width: 36, height: 36, borderRadius: 10, border: 'none',
+                background: 'rgba(255,255,255,0.12)', color: '#ffffff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', transition: 'background 0.15s ease', flexShrink: 0,
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
             >
-              <X size={18} aria-hidden="true" />
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
 
           <div id="history-modal-meta" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#e0e7ff', display: 'flex', alignItems: 'center', gap: 6, ...wrap }}>
-              <Calendar size={14} aria-hidden="true" /> {fmtDate(record.datetime) || '—'} at {fmt12(record.datetime) || '—'}
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#e0e7ff', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Calendar size={13} aria-hidden="true" /> {fmtDate(record.datetime) || '—'} at {fmt12(record.datetime) || '—'}
             </span>
             {record.service_duration && (
               <span style={{
-                fontSize: 11, fontWeight: 700, color: '#c7d2fe',
-                background: 'rgba(255,255,255,0.1)', padding: '6px 10px', minHeight: 28,
-                borderRadius: 999, border: '1px solid rgba(255,255,255,0.15)',
-                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 10, fontWeight: 700, color: '#c7d2fe',
+                background: 'rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: 999,
+                border: '1px solid rgba(255,255,255,0.15)', display: 'inline-flex', alignItems: 'center', gap: 3,
               }}>
-                <Clock size={12} aria-hidden="true" /> {record.service_duration} min
+                <Clock size={11} aria-hidden="true" /> {record.service_duration} min
               </span>
             )}
             <span style={{
-              fontSize: 11, fontWeight: 800, padding: '6px 12px', minHeight: 28, borderRadius: 999,
+              fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
               background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`,
               display: 'inline-flex', alignItems: 'center',
             }}>
@@ -186,64 +218,94 @@ const HistoryDetailModal = ({ record, onClose }) => {
         </div>
 
         {/* Body */}
-        <div className="cb-scroll" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0 }}>
-          <div style={{
-            padding: 16, borderRadius: 16, background: C.cardBg,
-            border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client</p>
-            <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0, ...wrap }}>{record.client_name || record.client}</p>
-            {record.client_email && (
-              <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'flex-start', gap: 6, margin: '2px 0 0', ...wrap }}>
-                <Mail size={14} aria-hidden="true" style={{ color: '#059669', flexShrink: 0, marginTop: 1 }} />
-                <span style={{ minWidth: 0 }}>{record.client_email}</span>
+        <div className="cb-scroll" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          {/* Client & Practitioner cards side by side on >= 400px, stacked on very small */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+            {/* Client Card */}
+            <div style={{
+              padding: '12px 14px', borderRadius: 14, background: C.cardBg,
+              border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 3,
+            }}>
+              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client</p>
+              <p style={{ fontSize: 14, fontWeight: 900, color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
+                {record.client_name || record.client || 'Valued Client'}
               </p>
-            )}
+              {record.client_email && (
+                <p style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 5, margin: '2px 0 0', overflowWrap: 'break-word' }}>
+                  <Mail size={12} aria-hidden="true" style={{ color: '#059669', flexShrink: 0 }} />
+                  <span style={{ minWidth: 0, wordBreak: 'break-all' }}>{record.client_email}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Practitioner Card */}
+            <div style={{
+              padding: '12px 14px', borderRadius: 14, background: C.cardBg,
+              border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 3,
+            }}>
+              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Practitioner</p>
+              <p style={{ fontSize: 14, fontWeight: 900, color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
+                {record.therapist_name || 'Unassigned'}
+              </p>
+              {record.service_price && (
+                <p style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, margin: '2px 0 0' }}>
+                  <Zap size={12} aria-hidden="true" style={{ color: '#f59e0b', flexShrink: 0 }} />
+                  Fee: ₱{Number(record.service_price).toLocaleString()}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div style={{
-            padding: 16, borderRadius: 16, background: C.cardBg,
-            border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4,
-          }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Assigned Practitioner</p>
-            <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0, ...wrap }}>{record.therapist_name || 'Unassigned'}</p>
-            {record.service_price && (
-              <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0 0', ...wrap }}>
-                <Zap size={13} aria-hidden="true" style={{ color: '#f59e0b', flexShrink: 0 }} /> Session Fee: ₱{record.service_price}
-              </p>
-            )}
-          </div>
-
-          {record.notes && (
-            <div style={{ padding: 14, borderRadius: 16, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
-              <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Session Remarks</p>
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5, ...wrap }}>{record.notes}</p>
+          {/* User Remarks if present */}
+          {userRemarks && (
+            <div style={{ padding: '12px 14px', borderRadius: 14, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
+              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Remarks & Notes</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.45, overflowWrap: 'break-word' }}>{userRemarks}</p>
             </div>
           )}
 
+          {/* Contact & Billing info if extracted */}
+          {billingInfo && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 12,
+              background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+              border: `1px solid ${C.cardBorder}`,
+            }}>
+              <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Contact & Address</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '3px 0 0', lineHeight: 1.4, overflowWrap: 'break-word' }}>
+                {billingInfo}
+              </p>
+            </div>
+          )}
+
+          {/* Notice banner */}
           <div style={{
-            padding: 12, borderRadius: 14, background: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.06)',
-            border: '1px dashed rgba(99,102,241,0.35)', display: 'flex', alignItems: 'flex-start', gap: 8,
+            padding: '10px 12px', borderRadius: 12,
+            background: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)',
+            border: '1px dashed rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <Info size={15} aria-hidden="true" style={{ color: '#6366f1', flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, margin: 0, ...wrap }}>
-              Archived records are read-only and cannot be modified. Use Export to save a copy.
+            <Info size={14} aria-hidden="true" style={{ color: '#6366f1', flexShrink: 0 }} />
+            <p style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, margin: 0 }}>
+              Archived records are read-only. Use the Export button to download data.
             </p>
           </div>
         </div>
 
         {/* Footer */}
         <div style={{
-          padding: '12px 20px calc(12px + env(safe-area-inset-bottom))', borderTop: `1px solid ${C.cardBorder}`,
-          background: C.cardBg, display: 'flex', flexShrink: 0,
+          padding: '12px 20px', borderTop: `1px solid ${C.cardBorder}`,
+          background: C.cardBg, display: 'flex', justifyContent: 'flex-end', flexShrink: 0,
         }}>
           <button
             type="button" onClick={onClose} aria-label="Close details"
-            className="flex-1 rounded-[14px] text-xs font-black"
             style={{
-              minHeight: 44, padding: '12px', border: `1px solid ${C.cardBorder}`,
-              background: 'transparent', color: C.textSecondary, cursor: 'pointer',
+              padding: '8px 22px', borderRadius: 12, border: `1px solid ${C.cardBorder}`,
+              background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+              color: C.textPrimary, fontSize: 12, fontWeight: 800, cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
           >
             Close
           </button>

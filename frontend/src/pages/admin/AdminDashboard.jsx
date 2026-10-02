@@ -447,7 +447,7 @@ const ModalWrap = ({ children, onClose, titleId = 'modal-title' }) => {
         exit={{ scale: 0.96, opacity: 0, y: 24 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         className="w-full sm:max-w-[540px] max-h-[92vh] sm:max-h-[85vh] flex flex-col min-h-0 rounded-t-3xl sm:rounded-3xl shadow-2xl relative overflow-hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{ width: '100%', maxWidth: '540px', paddingBottom: 'env(safe-area-inset-bottom)' }}
         onClick={e => e.stopPropagation()}
       >
         {children}
