@@ -1774,24 +1774,38 @@ const AdminAppointments = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  // Auto-open appointment from URL param (notification deep-link)
+  // Auto-open appointment from URL param (notification deep-link) — opens the whole visit
   useEffect(() => {
     const targetId = searchParams.get('id');
     if (!targetId || appointments.length === 0) return;
     const found = appointments.find(a => String(a.id) === String(targetId));
     if (found) {
-      if (found.status === 'Pending') setAcceptTarget(found);
-      else if (found.notes && found.notes.toLowerCase().includes('reschedule')) setRescheduleTarget(found);
-      else setSelectedAppt(found);
+      const visit = groupAppointments(appointments.filter(a =>
+        getGroupClientKey(a) === getGroupClientKey(found) &&
+        normalizeGroupDateTime(a.datetime) === normalizeGroupDateTime(found.datetime) &&
+        a.status === found.status
+      ))[0] || found;
+      if (found.status === 'Pending') setAcceptTarget(visit);
+      else if (found.notes && found.notes.toLowerCase().includes('reschedule')) setRescheduleTarget(visit);
+      else setSelectedAppt(visit);
     }
   }, [searchParams, appointments]);
 
-  const handleAssignTherapist = async (apptId, therapistId) => {
+  const toIds = (idOrIds) => Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+
+  const handleAssignTherapist = async (idOrIds, therapistId) => {
+    const ids = toIds(idOrIds);
     try {
-      const res = await API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId });
-      showToast(res.data?.message || 'Therapist assigned — booking confirmed!');
-      setAppointments(prev => prev.map(a => a.id === apptId
-        ? { ...a, therapist_id: therapistId, therapist_name: res.data?.appointment?.therapist_name || 'Assigned', status: res.data?.appointment?.status || 'Confirmed' }
+      let lastName = 'Assigned';
+      let lastStatus = 'Confirmed';
+      for (const apptId of ids) {
+        const res = await API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId });
+        lastName = res.data?.appointment?.therapist_name || lastName;
+        lastStatus = res.data?.appointment?.status || lastStatus;
+      }
+      showToast(ids.length > 1 ? `Visit confirmed — ${ids.length} treatments assigned in 1 go!` : (lastStatus ? 'Therapist assigned — booking confirmed!' : 'Therapist assigned!'));
+      setAppointments(prev => prev.map(a => ids.includes(a.id)
+        ? { ...a, therapist_id: therapistId, therapist_name: lastName, status: lastStatus }
         : a));
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to assign therapist';
@@ -1799,46 +1813,71 @@ const AdminAppointments = () => {
     }
   };
 
-  const handleUpdateStatus = async (apptId, newStatus, reason = '') => {
+  const handleUpdateStatus = async (idOrIds, newStatus, reason = '') => {
+    const ids = toIds(idOrIds);
     try {
-      const res = await API.post(`/admin/appointments/${apptId}/status`, { status: newStatus, reason });
-      showToast(res.data?.message || `Status updated to ${newStatus}`);
-      setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, status: newStatus, notes: reason ? `${a.notes ? a.notes + ' | ' : ''}${reason}` : a.notes } : a));
+      for (const apptId of ids) {
+        await API.post(`/admin/appointments/${apptId}/status`, { status: newStatus, reason });
+      }
+      showToast(ids.length > 1 ? `Visit updated — ${ids.length} treatments set to ${newStatus}` : `Status updated to ${newStatus}`);
+      setAppointments(prev => prev.map(a => ids.includes(a.id) ? { ...a, status: newStatus, notes: reason ? `${a.notes ? a.notes + ' | ' : ''}${reason}` : a.notes } : a));
     } catch (err) {
       const msg = err?.response?.data?.message || `Failed to update status`;
       showToast(msg, 'error');
     }
   };
 
-  const handleReschedule = async (apptId, newDateTime, note) => {
+  const handleReschedule = async (idOrIds, newDateTime, note) => {
+    const ids = toIds(idOrIds);
     try {
-      const res = await API.post(`/admin/appointments/${apptId}/reschedule`, { datetime: newDateTime, notes: note });
-      showToast(res.data?.message || `Rescheduled to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`);
-      setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, datetime: newDateTime, notes: note ? `${a.notes || ''} | Rescheduled: ${note}` : a.notes, status: 'Confirmed' } : a));
+      for (const apptId of ids) {
+        await API.post(`/admin/appointments/${apptId}/reschedule`, { datetime: newDateTime, notes: note });
+      }
+      showToast(ids.length > 1 ? `Visit rescheduled — ${ids.length} treatments moved to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}` : `Rescheduled to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`);
+      setAppointments(prev => prev.map(a => ids.includes(a.id) ? { ...a, datetime: newDateTime, notes: note ? `${a.notes || ''} | Rescheduled: ${note}` : a.notes, status: 'Confirmed' } : a));
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to reschedule', 'error');
     }
   };
 
-  const handleSettleCash = async (apptId, payload) => {
+  const handleSettleCash = async (idOrIds, payload) => {
+    const ids = toIds(idOrIds);
     try {
       const normalizedMethod = String(payload?.payment_method || 'cash').toLowerCase();
-      const res = await API.post(`/admin/appointments/${apptId}/settle-payment`, {
-        amount_paid: payload.amount_paid,
-        payment_method: normalizedMethod,
-        notes: payload.notes,
-      });
-      showToast(res.data?.message || 'Session verified — completed and archived!');
-      setAppointments(prev => prev.map(a => a.id === apptId
+      let lastPaid = payload.amount_paid;
+      // When settling a whole visit, the modal sends the visit total — split it
+      // proportionally across treatments so History stays accurate.
+      let perShare = null;
+      if (ids.length > 1) {
+        const rows = appointments.filter(a => ids.includes(a.id));
+        const sum = rows.reduce((n, r) => n + Number(r.service_price || 0), 0);
+        if (sum > 0) {
+          perShare = rows.map(r => (Number(r.service_price || 0) / sum) * Number(payload.amount_paid || 0));
+        }
+      }
+      for (let i = 0; i < ids.length; i++) {
+        const apptId = ids[i];
+        const share = perShare ? Math.round(perShare[i] * 100) / 100 : payload.amount_paid;
+        const res = await API.post(`/admin/appointments/${apptId}/settle-payment`, {
+          amount_paid: share,
+          payment_method: normalizedMethod,
+          notes: payload.notes,
+        });
+        lastPaid = res.data?.appointment?.amount_paid ?? share;
+      }
+      showToast(ids.length > 1 ? `Visit verified — ${ids.length} treatments completed and archived!` : ( 'Session verified — completed and archived!'));
+      setAppointments(prev => prev.map(a => ids.includes(a.id)
         ? {
           ...a,
           status: 'Completed',
           payment_status: 'paid',
-          payment_method: res.data?.appointment?.payment_method || normalizedMethod,
-          amount_paid: res.data?.appointment?.amount_paid ?? payload.amount_paid,
-          paid_at: res.data?.appointment?.paid_at || new Date().toISOString(),
+          payment_method: normalizedMethod,
+          amount_paid: perShare ? Math.round((Number(a.service_price || 0) / ids.length || 0) * 100) / 100 : lastPaid,
+          paid_at: new Date().toISOString(),
         }
         : a));
+      // Refresh amounts from server to avoid rounding drift
+      loadData();
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to confirm settlement.';
       showToast(msg, 'error');
@@ -1846,11 +1885,13 @@ const AdminAppointments = () => {
     }
   };
 
-  // Metrics
-  const confirmedOnlyCount = appointments.filter(a => a.status === 'Confirmed').length;
-  const inProgressCount = appointments.filter(a => a.status === 'In Progress').length;
-  const pendingCount = appointments.filter(a => a.status === 'Pending').length;
-  const awaitingSignoffCount = appointments.filter(a => a.status === 'Completed by Therapist').length;
+  // Metrics — count visits (groups), not rows, so multi-service bookings don't inflate numbers
+  const visitGroups = useMemo(() => groupAppointments(appointments), [appointments]);
+  const countVisits = (status) => visitGroups.filter(g => g.status === status).length;
+  const confirmedOnlyCount = countVisits('Confirmed');
+  const inProgressCount = countVisits('In Progress');
+  const pendingCount = countVisits('Pending');
+  const awaitingSignoffCount = countVisits('Completed by Therapist');
   const completedCount = appointments.filter(a => a.status === 'Completed').length;
   const cancelledCount = appointments.filter(a => a.status === 'Cancelled').length;
 
@@ -2048,15 +2089,15 @@ const AdminAppointments = () => {
             )}
             {activeTab === 'pending' && (
               <motion.div key="pending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <PendingApprovalsQueue appointments={appointments} onOpenAccept={appt => setAcceptTarget(appt)} onOpenReject={appt => setRejectTarget(appt)} />
+                <PendingApprovalsQueue appointments={appointments} onOpenAccept={g => setAcceptTarget(g)} onOpenReject={g => setRejectTarget(g)} onOpenDetail={g => setSelectedAppt(g)} />
               </motion.div>
             )}
             {activeTab === 'requests' && (
               <motion.div key="requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <TherapistDoneTab
                   appointments={appointments}
-                  onSettle={appt => setSettleCashTarget(appt)}
-                  onDetail={appt => setSelectedAppt(appt)}
+                  onSettle={g => setSettleCashTarget(g)}
+                  onDetail={g => setSelectedAppt(g)}
                 />
               </motion.div>
             )}
@@ -2064,11 +2105,11 @@ const AdminAppointments = () => {
               <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <ConfirmedSessionsTab
                   appointments={appointments}
-                  onSelectAppt={appt => setSelectedAppt(appt)}
-                  onOpenReassign={appt => setAcceptTarget(appt)}
-                  onOpenReschedule={appt => setRescheduleTarget(appt)}
-                  onOpenCancel={appt => setRejectTarget(appt)}
-                  onComplete={appt => setSettleCashTarget(appt)}
+                  onSelectAppt={g => setSelectedAppt(g)}
+                  onOpenReassign={g => setAcceptTarget(g)}
+                  onOpenReschedule={g => setRescheduleTarget(g)}
+                  onOpenCancel={g => setRejectTarget(g)}
+                  onComplete={g => setSettleCashTarget(g)}
                 />
               </motion.div>
             )}
@@ -2109,12 +2150,13 @@ const AdminAppointments = () => {
         <AnimatePresence>
           {selectedAppt && (
             <DetailModal
-              appt={selectedAppt}
+              group={selectedAppt?.ids ? selectedAppt : null}
+              appt={selectedAppt?.ids ? selectedAppt.items[0] : selectedAppt}
               onClose={() => setSelectedAppt(null)}
-              onOpenAccept={appt => setAcceptTarget(appt)}
-              onOpenReject={appt => setRejectTarget(appt)}
-              onOpenReschedule={appt => setRescheduleTarget(appt)}
-              onComplete={appt => { setSelectedAppt(null); setSettleCashTarget(appt); }}
+              onOpenAccept={g => setAcceptTarget(g)}
+              onOpenReject={g => setRejectTarget(g)}
+              onOpenReschedule={g => setRescheduleTarget(g)}
+              onComplete={g => { setSelectedAppt(null); setSettleCashTarget(g); }}
             />
           )}
         </AnimatePresence>

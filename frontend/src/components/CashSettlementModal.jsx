@@ -51,10 +51,20 @@ export default function CashSettlementModal({
   onConfirmSettlement,
   isDark = false,
 }) {
+  // `appt` may be a grouped visit ({ ids, items, totalPrice, ... }) or a single row.
+  const grp = appt?.ids ? appt : null;
+  const groupIds = grp ? grp.ids : (appt?.id != null ? [appt.id] : []);
+  const groupItems = grp ? grp.items : (appt ? [appt] : []);
   const fee = useMemo(() => {
+    if (grp) {
+      const total = Number(grp.totalPrice || 0);
+      if (total > 0) return total;
+    }
+    const sum = groupItems.reduce((n, it) => n + Number(it?.service_price ?? it?.amount_paid ?? 0), 0);
+    if (sum > 0) return sum;
     const v = Number(appt?.service_price ?? appt?.amount_paid ?? 0);
     return Number.isFinite(v) && v > 0 ? v : 0;
-  }, [appt]);
+  }, [appt, grp]);
 
   // Read-only: channel the client chose at booking time. Never editable here.
   const displayMethod = useMemo(
@@ -72,7 +82,7 @@ export default function CashSettlementModal({
     setAcknowledged(false);
     setNotes('');
     setError('');
-  }, [appt?.id]);
+  }, [appt?.id, grp?.key]);
 
   // Lock body scroll while open + Escape to close
   useEffect(() => {
@@ -98,12 +108,16 @@ export default function CashSettlementModal({
     ? validDt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : '';
 
-  const clientName = appt?.client_name || appt?.client || 'Client';
-  const clientEmail = appt?.client_email || '';
-  const serviceName = appt?.service || 'Spa Treatment';
-  const therapist = appt?.therapist_name || appt?.therapist || 'Assigned Therapist';
-  const duration = appt?.service_duration ? `${appt.service_duration} min` : '';
-  const bookingNo = `#${String(appt?.id ?? 0).padStart(5, '0')}`;
+  const clientName = grp?.client_name || appt?.client_name || appt?.client || 'Client';
+  const clientEmail = grp?.client_email || appt?.client_email || '';
+  const serviceName = grp
+    ? (grp.items.length > 1 ? `${grp.items.length} treatments · 1 visit` : (grp.items[0]?.service || 'Spa Treatment'))
+    : (appt?.service || 'Spa Treatment');
+  const therapist = grp?.therapist_name || appt?.therapist_name || appt?.therapist || 'Assigned Therapist';
+  const duration = grp?.totalDuration ? `${grp.totalDuration} min total` : (appt?.service_duration ? `${appt.service_duration} min` : '');
+  const bookingNo = grp
+    ? `#${String(Math.min(...grp.ids)).padStart(5, '0')}${grp.ids.length > 1 ? ` · ${grp.ids.length} treatments` : ''}`
+    : `#${String(appt?.id ?? 0).padStart(5, '0')}`;
   const paymentStatus = String(appt?.payment_status || 'unpaid').toLowerCase();
   const alreadyPaid = paymentStatus === 'paid';
   const amountPaid = Number(appt?.amount_paid || 0);
@@ -116,7 +130,7 @@ export default function CashSettlementModal({
     e?.preventDefault();
     setError('');
 
-    if (!appt?.id) {
+    if (groupIds.length === 0) {
       setError('Missing booking reference. Please reopen the booking and try again.');
       return;
     }
@@ -139,7 +153,7 @@ export default function CashSettlementModal({
 
     setSubmitting(true);
     try {
-      await onConfirmSettlement(appt.id, {
+      await onConfirmSettlement(groupIds, {
         amount_paid: fee,
         payment_method: displayMethod,
         notes: notes.trim() || undefined,
@@ -339,6 +353,16 @@ export default function CashSettlementModal({
                 <p style={{ fontSize: 12, fontWeight: 600, color: t.muted, margin: '2px 0 0', overflowWrap: 'anywhere' }}>{clientEmail}</p>
               ) : null}
               <p style={{ fontSize: 13, fontWeight: 800, color: isDark ? '#34d399' : '#059669', margin: '4px 0 0' }}>{serviceName}</p>
+              {grp && grp.items.length > 1 && (
+                <div style={{ marginTop: 8, borderRadius: 10, border: `1px solid ${t.border}`, overflow: 'hidden' }}>
+                  {grp.items.map((it, idx) => (
+                    <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 10px', fontSize: 12, background: idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc'), borderTop: idx === 0 ? 'none' : `1px solid ${t.border}` }}>
+                      <span style={{ fontWeight: 700, color: t.text }}>{idx + 1}. {it.service}</span>
+                      <span style={{ fontWeight: 700, color: t.muted }}>₱{Number(it.service_price || 0).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="cb-settle-summary-grid" style={{ marginTop: 10 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: t.muted, margin: 0, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
