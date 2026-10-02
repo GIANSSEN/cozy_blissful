@@ -30,7 +30,6 @@ import {
   Minus,
   MessageCircle,
 } from "lucide-react";
-import Lenis from "lenis";
 import gsap from "gsap";
 import { useToast } from "../context/ToastContext";
 import { useCart, peso } from "../context/CartContext";
@@ -108,31 +107,26 @@ const Reveal = ({ children, delay = 0, className = "", dir = "up" }) => {
   );
 };
 
-/* ── True Scroll Parallax Image (scroll-linked, GPU accelerated) ──── */
-const ParImg = ({ src, alt, className, strength = 0.14 }) => {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const pct = Math.round(strength * 100);
-  const y = useTransform(scrollYProgress, [0, 1], [`-${pct}%`, `${pct}%`]);
+/* ── Lightweight Parallax / Ambient Image (Zero CPU Scroll Overhead) ──── */
+const ParImg = ({ src, alt, className }) => {
   return (
-    <div ref={ref} className={`overflow-hidden ${className ?? ""}`}>
-      <motion.img
+    <div className={`overflow-hidden pointer-events-none select-none ${className ?? ""}`}>
+      <img
         src={src}
         alt={alt}
-        style={{ y, height: `${100 + pct * 2}%`, marginTop: `-${pct}%` }}
-        className="w-full object-cover"
+        className="w-full h-full object-cover transform-gpu"
         loading="lazy"
+        decoding="async"
       />
     </div>
   );
 };
 
-const Orb = ({ style, delay = 0, dur = 10 }) => (
-  <motion.div
-    className="absolute rounded-full pointer-events-none blur-2xl"
-    style={{ willChange: "transform", transform: "translateZ(0)", ...style }}
-    animate={{ y: [0, -20, 0], opacity: [0.2, 0.4, 0.2] }}
-    transition={{ duration: dur, delay, repeat: Infinity, ease: "easeInOut" }}
+/* ── Hardware-Accelerated Ambient Glow Orb (Pure CSS Composited) ─────── */
+const Orb = ({ style, className = "" }) => (
+  <div
+    className={`absolute rounded-full pointer-events-none blur-3xl opacity-20 transform-gpu ${className}`}
+    style={{ transform: "translateZ(0)", willChange: "opacity", ...style }}
   />
 );
 
@@ -283,16 +277,16 @@ const TypeRotate = ({ words, interval = 2600 }) => {
 };
 
 /* ── Floating Petals (hero ambience, desktop only) ────────────────── */
-const FloatingPetals = ({ count = 14 }) => {
+const FloatingPetals = ({ count = 6 }) => {
   const petals = useMemo(() =>
     Array.from({ length: count }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
-      size: 4 + Math.random() * 7,
-      delay: Math.random() * 14,
-      dur: 11 + Math.random() * 12,
-      drift: -40 + Math.random() * 80,
-      op: 0.14 + Math.random() * 0.22,
+      size: 4 + Math.random() * 6,
+      delay: Math.random() * 10,
+      dur: 12 + Math.random() * 10,
+      drift: -30 + Math.random() * 60,
+      op: 0.12 + Math.random() * 0.18,
     })), [count]);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden>
@@ -303,6 +297,7 @@ const FloatingPetals = ({ count = 14 }) => {
           style={{
             left: `${p.left}%`, bottom: -20, width: p.size, height: p.size,
             background: "radial-gradient(circle,#e8cc8a 0%,rgba(191,161,95,0.4) 100%)",
+            willChange: "transform, opacity",
           }}
           animate={{ y: [0, -900], x: [0, p.drift], opacity: [0, p.op, p.op, 0], rotate: [0, 220] }}
           transition={{ duration: p.dur, delay: p.delay, repeat: Infinity, ease: "linear" }}
@@ -509,52 +504,33 @@ export default function LandingPage() {
 
   const { count, subtotal, openCart } = useCart();
 
-  const lenisRef = useRef(null);
-
   const handleCartLock = useCallback((lock) => {
-    if (!lenisRef.current) return;
-    if (lock) lenisRef.current.stop();
-    else lenisRef.current.start();
-  }, []);
-
-  useEffect(() => {
-    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
-    const onS = () => {
-      const isScrolled = window.scrollY > 50;
-      setScrolled((prev) => (prev !== isScrolled ? isScrolled : prev));
-    };
-
-    if (!isTouchDevice) {
-      document.documentElement.classList.add("lenis");
-      const lenis = new Lenis({
-        duration: 1.0,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        wheelMultiplier: 1.0,
-        infinite: false,
-      });
-      lenisRef.current = lenis;
-
-      let reqId;
-      const raf = (time) => {
-        lenis.raf(time);
-        reqId = requestAnimationFrame(raf);
-      };
-      reqId = requestAnimationFrame(raf);
-
-      window.addEventListener("scroll", onS, { passive: true });
-      return () => {
-        cancelAnimationFrame(reqId);
-        lenis.destroy();
-        document.documentElement.classList.remove("lenis");
-        window.removeEventListener("scroll", onS);
-      };
+    if (lock) {
+      document.body.style.overflow = "hidden";
     } else {
-      window.addEventListener("scroll", onS, { passive: true });
-      return () => window.removeEventListener("scroll", onS);
+      document.body.style.overflow = "";
     }
   }, []);
 
+  /* Zero-lag hardware-accelerated scroll state with RAF throttling */
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const isScrolled = window.scrollY > 40;
+          setScrolled((prev) => (prev !== isScrolled ? isScrolled : prev));
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  /* Smooth anchor jump without hijacking or lagging manual wheel scrolling */
   const handleNavClick = (e, href) => {
     if (href.startsWith('#')) {
       e.preventDefault();
@@ -562,11 +538,9 @@ export default function LandingPage() {
       setActiveSection(href);
       const targetEl = document.querySelector(href);
       if (targetEl) {
-        if (lenisRef.current) {
-          lenisRef.current.scrollTo(targetEl, { offset: -72, duration: 1.0, easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
-        } else {
-          targetEl.scrollIntoView({ behavior: "smooth" });
-        }
+        const navOffset = 72;
+        const targetPos = targetEl.getBoundingClientRect().top + window.scrollY - navOffset;
+        window.scrollTo({ top: targetPos, behavior: "smooth" });
       }
     }
   };
@@ -594,12 +568,10 @@ export default function LandingPage() {
     if (!mobile) return;
     const onKey = (e) => { if (e.key === "Escape") setMobile(false); };
     window.addEventListener("keydown", onKey);
-    lenisRef.current?.stop();
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      lenisRef.current?.start();
       document.body.style.overflow = prevOverflow;
     };
   }, [mobile]);
@@ -1082,8 +1054,8 @@ export default function LandingPage() {
           onClick={() => {
             const el = document.getElementById("stats-strip");
             if (!el) return;
-            if (lenisRef.current) lenisRef.current.scrollTo(el, { offset: 0, duration: 1.2 });
-            else el.scrollIntoView({ behavior: "smooth" });
+            const top = el.getBoundingClientRect().top + window.scrollY - 72;
+            window.scrollTo({ top, behavior: "smooth" });
           }}>
           <span className="text-[9px] text-white/30 tracking-widest uppercase font-semibold">Scroll</span>
           <motion.div animate={{ y: [0, 9, 0] }} transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
@@ -1119,7 +1091,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── OUR STORY ── */}
-      <section id="story" className="py-20 md:py-28 lg:py-32 px-4 sm:px-6 relative overflow-hidden scroll-mt-16" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f5f0e6 100%)" }}>
+      <section id="story" className="py-20 md:py-28 lg:py-32 px-4 sm:px-6 relative overflow-hidden scroll-mt-16 landing-section" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f5f0e6 100%)" }}>
         <Orb style={{ width: 500, height: 500, right: "-6%", top: "8%", background: "radial-gradient(circle,rgba(191,161,95,0.12) 0%,transparent 70%)" }} dur={15} />
         <Orb style={{ width: 420, height: 420, left: "-5%", bottom: "5%", background: "radial-gradient(circle,rgba(10,61,48,0.08) 0%,transparent 70%)" }} delay={3} dur={13} />
 
@@ -1295,7 +1267,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden scroll-mt-16" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f2ebe0 100%)" }}>
+      <section id="how-it-works" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden scroll-mt-16 landing-section" style={{ background: "linear-gradient(180deg,#faf9f7 0%,#f2ebe0 100%)" }}>
         <ParImg src="https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=400&q=50" alt="" className="absolute right-[-4%] top-[6%] w-60 h-72 rounded-3xl opacity-[0.07] hidden md:block" strength={0.1} />
         <div className="max-w-6xl mx-auto relative">
           <Reveal className="text-center mb-10 md:mb-14">
@@ -1363,7 +1335,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── SERVICES ── */}
-      <section id="services" className="py-20 md:py-28 px-4 sm:px-6 scroll-mt-16" style={{ background: "#faf9f7" }}>
+      <section id="services" className="py-20 md:py-28 px-4 sm:px-6 scroll-mt-16 landing-section" style={{ background: "#faf9f7" }}>
         <div className="max-w-7xl mx-auto">
           <Reveal className="text-center mb-12">
             <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60 mb-4">Specialist Treatments</span>
@@ -1431,7 +1403,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── TESTIMONIALS ── */}
-      <section id="testimonials" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden scroll-mt-16" style={{ background: "linear-gradient(135deg,#ede4d6,#e4d9c8)" }}>
+      <section id="testimonials" className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden scroll-mt-16 landing-section" style={{ background: "linear-gradient(135deg,#ede4d6,#e4d9c8)" }}>
         <div className="max-w-6xl mx-auto">
           <Reveal className="text-center mb-14">
             <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60 mb-4">Client Reviews</span>
@@ -1469,7 +1441,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden" style={{ background: "linear-gradient(135deg,#041e16,#073328,#0e4d38)" }}>
+      <section className="py-20 md:py-28 px-4 sm:px-6 relative overflow-hidden landing-section" style={{ background: "linear-gradient(135deg,#041e16,#073328,#0e4d38)" }}>
         <Orb style={{ width: 500, height: 500, right: "-5%", top: "-10%", background: "radial-gradient(circle,rgba(191,161,95,0.11) 0%,transparent 70%)" }} dur={12} />
         <Orb style={{ width: 320, height: 320, left: "-3%", bottom: "-5%", background: "radial-gradient(circle,rgba(52,201,158,0.08) 0%,transparent 70%)" }} delay={2.5} dur={14} />
         <Reveal className="max-w-3xl mx-auto text-center">
