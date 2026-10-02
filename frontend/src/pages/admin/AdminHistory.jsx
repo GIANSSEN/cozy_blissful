@@ -299,13 +299,21 @@ const AdminHistory = () => {
     try {
       setLoading(true);
       setLoadError(null);
-      const res = await API.get('/admin/appointments');
-      const archived = (res.data?.recent_appointments || []).filter(
+      let rawList = [];
+      try {
+        const res = await API.get('/admin/history');
+        rawList = res.data?.history || res.data?.recent_appointments || res.data?.appointments || (Array.isArray(res.data) ? res.data : []);
+      } catch {
+        const res = await API.get('/admin/appointments');
+        rawList = res.data?.recent_appointments || res.data?.appointments || (Array.isArray(res.data) ? res.data : []);
+      }
+      const archived = (rawList || []).filter(
         (a) => a.status === 'Completed' || a.status === 'Cancelled'
       );
       setRecords(archived);
-    } catch {
-      setLoadError('Could not reach the archive server. Check your connection and try again.');
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || 'Could not reach the archive server. Check your connection and try again.';
+      setLoadError(errMsg);
       toast.error?.('Failed to load history records from server');
     } finally {
       setLoading(false);

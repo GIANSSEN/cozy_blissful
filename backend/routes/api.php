@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'index']);
         Route::get('/appointments', [AdminController::class, 'getAppointments']);
+        Route::get('/history', [AdminController::class, 'getHistory']);
         Route::post('/appointments/{id}/assign', [AdminController::class, 'assignTherapist']);
         Route::post('/appointments/{id}/status', [AdminController::class, 'updateStatus']);
         Route::post('/appointments/{id}/settle-payment', [AdminController::class, 'settleCashPayment']);

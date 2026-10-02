@@ -522,19 +522,56 @@ class AdminController extends Controller
                     'service_id' => $appt->service_id,
                     'service_price' => $appt->service ? (float) $appt->service->price : null,
                     'service_duration' => $appt->service ? (int) $appt->service->duration : null,
-                    'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
+                    'datetime' => $appt->datetime ? ($appt->datetime instanceof \DateTimeInterface ? $appt->datetime->format('Y-m-d H:i:s') : (string) $appt->datetime) : null,
                     'status' => $appt->status,
                     'notes' => $appt->notes ?? '',
                     'payment_status' => $appt->payment_status ?? 'unpaid',
                     'payment_method' => $appt->payment_method ?? 'cash',
                     'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
-                    'paid_at' => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
+                    'paid_at' => $appt->paid_at ? ($appt->paid_at instanceof \DateTimeInterface ? $appt->paid_at->format('Y-m-d H:i:s') : (string) $appt->paid_at) : null,
                 ];
             });
 
         return response()->json([
             'recent_appointments' => $appointments,
             'appointments' => $appointments,
+        ]);
+    }
+
+    /**
+     * Get archived appointments for History (Completed & Cancelled).
+     */
+    public function getHistory()
+    {
+        $history = Appointment::with(['client', 'therapist', 'service'])
+            ->whereIn('status', ['Completed', 'Cancelled'])
+            ->orderBy('datetime', 'desc')
+            ->get()
+            ->map(function ($appt) {
+                return [
+                    'id' => $appt->id,
+                    'client_name' => $appt->client ? $appt->client->name : 'Client',
+                    'client_email' => $appt->client ? $appt->client->email : '',
+                    'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
+                    'therapist_id' => $appt->therapist_id,
+                    'service' => $appt->service ? $appt->service->name : 'Massage Service',
+                    'service_id' => $appt->service_id,
+                    'service_price' => $appt->service ? (float) $appt->service->price : null,
+                    'service_duration' => $appt->service ? (int) $appt->service->duration : null,
+                    'datetime' => $appt->datetime ? ($appt->datetime instanceof \DateTimeInterface ? $appt->datetime->format('Y-m-d H:i:s') : (string) $appt->datetime) : null,
+                    'status' => $appt->status,
+                    'notes' => $appt->notes ?? '',
+                    'payment_status' => $appt->payment_status ?? 'unpaid',
+                    'payment_method' => $appt->payment_method ?? 'cash',
+                    'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
+                    'paid_at' => $appt->paid_at ? ($appt->paid_at instanceof \DateTimeInterface ? $appt->paid_at->format('Y-m-d H:i:s') : (string) $appt->paid_at) : null,
+                ];
+            });
+
+        return response()->json([
+            'history' => $history,
+            'recent_appointments' => $history,
+            'appointments' => $history,
         ]);
     }
 

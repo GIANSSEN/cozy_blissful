@@ -342,5 +342,28 @@ class AuthController extends Controller
             'message' => 'Your password has been reset successfully! You can now log in with your new password.'
         ]);
     }
+
+    /**
+     * Log out the authenticated user (revoke current access token).
+     */
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+        if ($user) {
+            $user->currentAccessToken()?->delete();
+            AuditLog::log('logout', 'Authentication', "User '{$user->name}' logged out", [
+                'actor' => $user->name,
+                'actor_role' => $user->getRoleNames()->first() ?? 'user',
+                'module' => 'Auth',
+                'ip' => $request->ip(),
+                'severity' => 'info',
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Logged out successfully'
+        ]);
+    }
 }
+
 

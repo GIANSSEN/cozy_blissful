@@ -481,8 +481,8 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
                 <UserCheck size={20} />
               </div>
               <div>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>Accept & Match Therapist</span>
-                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{appt.service}</h3>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>Accept & Match Therapist · 1 action confirms all</span>
+                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{titleText}</h3>
               </div>
             </div>
             <HoverButton onClick={onClose} baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}>
@@ -494,18 +494,32 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
           <div style={{ padding: 14, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>
-              <span>Client Request</span>
-              <span>#{String(appt.id).padStart(4, '0')}</span>
+              <span>Client visit · {view.items.length} treatment{view.items.length > 1 ? 's' : ''}</span>
+              <span>{groupRefLabel({ ids: view.ids })}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
               <div>
-                <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.client_name || appt.client}</p>
-                {appt.client_email && <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '2px 0 0' }}>{appt.client_email}</p>}
+                <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{view.client_name}</p>
+                {view.client_email && <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '2px 0 0' }}>{view.client_email}</p>}
               </div>
               <div style={{ textAlign: 'right' }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: 0 }}>{fmtDate(appt.datetime)}</p>
-                <p style={{ fontSize: 12, fontWeight: 900, color: '#059669', margin: '2px 0 0' }}>{fmt12(appt.datetime)}</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: 0 }}>{fmtDate(view.datetime)}</p>
+                <p style={{ fontSize: 12, fontWeight: 900, color: '#059669', margin: '2px 0 0' }}>{fmt12(view.datetime)}</p>
               </div>
+            </div>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {view.items.map((it) => (
+                <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
+                  <span style={{ fontWeight: 800, color: C.textPrimary }}>• {it.service}</span>
+                  <span style={{ fontWeight: 700, color: C.textSecondary }}>{it.service_duration ? `${it.service_duration}m` : ''}{it.service_price ? ` · ₱${Number(it.service_price).toLocaleString()}` : ''}</span>
+                </div>
+              ))}
+              {(view.totalDuration > 0 || view.totalPrice > 0) && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 6, borderTop: `1px solid ${C.cardBorder}`, fontSize: 12, fontWeight: 900 }}>
+                  <span style={{ color: C.textSecondary }}>Visit total · {view.totalDuration} min</span>
+                  <span style={{ color: '#059669' }}>₱{view.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -549,7 +563,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
             baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#062c22,#0f5040)', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             hoverStyle={{ boxShadow: '0 6px 20px rgba(6,44,34,0.45)', transform: 'translateY(-1px)' }}
           >
-            {submitting ? 'Confirming…' : <><CheckCircle size={16} style={{ color: '#6ee7b7' }} /> Confirm & Assign</>}
+            {submitting ? 'Confirming…' : <><CheckCircle size={16} style={{ color: '#6ee7b7' }} /> Confirm & Assign{view.ids.length > 1 ? ` ${view.ids.length} treatments` : ''}</>}
           </HoverButton>
         </div>
       </motion.div>
@@ -564,6 +578,9 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
 const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const grp = appt?.ids ? appt : null;
+  const view = grp || { ids: [appt.id], items: [appt], client_name: appt.client_name || appt.client, datetime: appt.datetime };
+  const titleText = view.items.length > 1 ? `${view.items.length} treatments · 1 visit` : ((view.items[0] || {}).service || 'Booking');
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -592,7 +609,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
     if (reason.trim().length < 5) { setError('Reason must be at least 5 characters.'); return; }
     setSubmitting(true);
     try {
-      await onConfirmReject(appt.id, reason.trim());
+      await onConfirmReject(view.ids, reason.trim());
       // parent's onConfirmReject already closes the modal via setRejectTarget(null)
     } finally {
       setSubmitting(false);
@@ -612,8 +629,8 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><XCircle size={20} /></div>
               <div>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#fca5a5' }}>Reject Booking Request</span>
-                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{appt.service}</h3>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#fca5a5' }}>Decline visit · applies to all treatments</span>
+                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{titleText}</h3>
               </div>
             </div>
             <HoverButton onClick={onClose} baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}>
@@ -624,9 +641,14 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
 
         <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
           <div style={{ padding: 14, borderRadius: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#dc2626', margin: 0 }}>Client & Schedule</p>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{appt.client_name || appt.client}</p>
-            <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '2px 0 0' }}>{fmtDate(appt.datetime)} at {fmt12(appt.datetime)}</p>
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#dc2626', margin: 0 }}>Client visit · {view.items.length} treatment{view.items.length > 1 ? 's' : ''}</p>
+            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{view.client_name}</p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '2px 0 0' }}>{fmtDate(view.datetime)} at {fmt12(view.datetime)}</p>
+            {view.items.length > 1 && (
+              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '6px 0 0' }}>
+                {view.items.map((it) => it.service).join(' + ')}
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -681,6 +703,9 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
 const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const grp = request?.ids ? request : null;
+  const rview = grp || { ids: [request.id], items: [request], client_name: request.client_name || request.client, datetime: request.datetime };
+  const rtitle = rview.items.length > 1 ? `${rview.items.length} treatments · 1 visit` : (request.service || 'Booking');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('14:00');
   const [reasonNote, setReasonNote] = useState('');
@@ -715,7 +740,7 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    await onConfirmReschedule(request.id, `${newDate} ${newTime}:00`, reasonNote);
+    await onConfirmReschedule(rview.ids, `${newDate} ${newTime}:00`, reasonNote);
     setSubmitting(false);
     onClose();
   };
@@ -733,8 +758,8 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 14, background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', color: '#93c5fd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><RotateCcw size={20} /></div>
               <div>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#bfdbfe' }}>Reschedule Session</span>
-                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{request.service}</h3>
+                <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#bfdbfe' }}>Reschedule visit · moves all treatments together</span>
+                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#ffffff', margin: '2px 0 0' }}>{rtitle}</h3>
               </div>
             </div>
             <HoverButton onClick={onClose} baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }} hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}>
@@ -745,9 +770,9 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
 
         <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
           <div style={{ padding: 14, borderRadius: 16, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#2563eb', margin: 0 }}>Current Schedule</p>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{request.client_name || request.client}</p>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', margin: '2px 0 0' }}>{fmtDate(request.datetime)} at {fmt12(request.datetime)}</p>
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#2563eb', margin: 0 }}>Current visit schedule</p>
+            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{rview.client_name}</p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', margin: '2px 0 0' }}>{fmtDate(rview.datetime)} at {fmt12(rview.datetime)}</p>
           </div>
 
           <div className="cb-modal-grid-2col">
@@ -826,12 +851,14 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
     inputTxt: isDark ? '#e8ecf3' : '#0f172a',
   };
 
-  const dayAppts = appointments.filter(a => {
+  const dayRows = appointments.filter(a => {
     if (!a.datetime) return false;
     if (!['Pending', 'Confirmed', 'In Progress', 'Completed by Therapist'].includes(a.status)) return false;
     const d = new Date(a.datetime);
     return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === dateKey;
   });
+  const dayGroups = useMemo(() => groupAppointments(dayRows), [appointments, dateKey]);
+  const dayTreatmentCount = dayGroups.reduce((n, g) => n + g.items.length, 0);
 
   const prevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); onDateChange(d); };
   const nextDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); onDateChange(d); };
@@ -955,84 +982,99 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  PENDING CARD ITEM                                                   */
+/*  PENDING VISIT CARD — one card per client visit (not per service)     */
+/*  Direct, no hidden hover actions: Details / Decline / Accept & Assign  */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const PendingCardItem = ({ appt, isDark, C, onOpenAccept, onOpenReject }) => {
-  const [cardHovered, setCardHovered] = useState(false);
+const PendingCardItem = ({ group, isDark, C, onOpenAccept, onOpenReject, onOpenDetail }) => {
+  const g = group;
+  const contactLine = stripBillingBlock(g.notes);
   return (
     <motion.div
-      key={appt.id}
+      key={g.key}
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-      onMouseEnter={() => setCardHovered(true)}
-      onMouseLeave={() => setCardHovered(false)}
-      onClick={() => onOpenAccept(appt)}
       style={{
-        background: cardHovered ? (isDark ? '#162030' : '#f0fdf4') : C.cardBg,
-        border: `1px solid ${cardHovered ? (isDark ? 'rgba(16,185,129,0.45)' : 'rgba(5,150,105,0.4)') : C.cardBorder}`,
-        borderRadius: 16, padding: '16px 20px',
-        display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14,
-        boxShadow: cardHovered ? (isDark ? '0 8px 24px rgba(0,0,0,0.3), 0 0 16px rgba(16,185,129,0.1)' : '0 8px 24px rgba(0,0,0,0.08)') : '0 2px 8px rgba(0,0,0,0.04)',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: 'pointer',
+        background: C.cardBg,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 18, padding: '16px 18px',
+        display: 'flex', flexDirection: 'column', gap: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       }}
-      title="Click card to accept and assign practitioner"
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1 }}>
+      {/* Row 1: client + schedule — shown once per visit */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Clock size={20} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
-            {appt.service_price && (
-              <span style={{ fontSize: 11, fontWeight: 900, padding: '2px 9px', borderRadius: 999, background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}>₱{appt.service_price}</span>
-            )}
-            <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>#{String(appt.id).padStart(4, '0')}</span>
-          </div>
-          <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '5px 0 0' }}>
-            Client: <strong style={{ color: C.textPrimary }}>{appt.client_name || appt.client}</strong>
-            {appt.client_email && <span style={{ fontWeight: 700, color: C.textMuted }}> ({appt.client_email})</span>}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: '#059669' }}>
-              <Calendar size={13} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
-            </span>
-            {appt.service_duration && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: C.textSecondary, background: isDark ? '#1e293b' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, padding: '2px 8px', borderRadius: 6 }}>
-                <Zap size={12} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
+            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{g.client_name}</p>
+            {g.items.length > 1 && (
+              <span style={{ fontSize: 11, fontWeight: 900, padding: '2px 10px', borderRadius: 999, background: '#062c22', color: '#e8cc8a' }}>
+                {g.items.length} services · 1 visit
               </span>
             )}
+            <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>{groupRefLabel(g)}</span>
           </div>
-          {appt.notes && (
-            <p style={{ fontSize: 11, fontWeight: 500, fontStyle: 'italic', color: C.textSecondary, margin: '8px 0 0', padding: '8px 12px', borderRadius: 10, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
-              📝 "{appt.notes}"
-            </p>
+          {g.client_email && (
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0' }}>{g.client_email}</p>
           )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: '#059669' }}>
+              <Calendar size={13} /> {fmtDate(g.datetime)} at {fmt12(g.datetime)}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: C.textSecondary, background: isDark ? '#1e293b' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, padding: '2px 8px', borderRadius: 8 }}>
+              <Zap size={12} style={{ color: '#f59e0b' }} /> {g.totalDuration} min total
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 900, color: '#b45309', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: 8 }}>
+              ₱{g.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })} total
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div
-        className="booking-card-actions"
-        onClick={(e) => e.stopPropagation()}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}
-      >
+      {/* Row 2: treatments in this visit */}
+      <div style={{ borderRadius: 12, border: `1px solid ${C.cardBorder}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', overflow: 'hidden' }}>
+        {g.items.map((it, idx) => (
+          <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderTop: idx === 0 ? 'none' : `1px solid ${C.cardBorder}` }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: C.textPrimary }}>{idx + 1}. {it.service}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, flexShrink: 0 }}>
+              {it.service_duration ? `${it.service_duration} min` : ''}{it.service_price ? ` · ₱${Number(it.service_price).toLocaleString()}` : ''}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {contactLine && (
+        <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: 0, padding: '8px 12px', borderRadius: 10, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
+          {contactLine.length > 160 ? `${contactLine.slice(0, 160)}…` : contactLine}
+        </p>
+      )}
+
+      {/* Row 3: exactly 3 clear actions — Details (view), Decline (secondary), Accept & Assign (primary) */}
+      <div className="booking-card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <HoverButton
-          id={`accept-btn-${appt.id}`}
-          onClick={() => onOpenAccept(appt)}
-          baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px', borderRadius: 11, fontSize: 12, fontWeight: 900, color: '#fff', background: '#059669', border: 'none', boxShadow: '0 3px 10px rgba(5,150,105,0.25)' }}
-          hoverStyle={{ background: '#047857', boxShadow: '0 5px 16px rgba(5,150,105,0.45)', transform: 'translateY(-1px)' }}
+          onClick={() => onOpenDetail && onOpenDetail(g)}
+          baseStyle={{ display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 14px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: C.textSecondary, background: 'transparent', border: `1px solid ${C.cardBorder}` }}
+          hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}
         >
-          <Check size={15} /> Accept & Assign
+          View details
         </HoverButton>
         <HoverButton
-          id={`reject-btn-${appt.id}`}
-          onClick={() => onOpenReject(appt)}
-          baseStyle={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 14px', borderRadius: 11, fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
-          hoverStyle={{ background: 'rgba(239,68,68,0.2)', borderColor: 'rgba(239,68,68,0.45)', transform: 'translateY(-1px)' }}
+          id={`reject-btn-${g.ids[0]}`}
+          onClick={() => onOpenReject(g)}
+          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 14px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+          hoverStyle={{ background: 'rgba(239,68,68,0.16)' }}
         >
-          <X size={15} /> Decline
+          <X size={15} /> Decline{ g.ids.length > 1 ? ` all (${g.ids.length})` : '' }
+        </HoverButton>
+        <HoverButton
+          id={`accept-btn-${g.ids[0]}`}
+          onClick={() => onOpenAccept(g)}
+          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 18px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#fff', background: '#059669', border: 'none' }}
+          hoverStyle={{ background: '#047857' }}
+        >
+          <Check size={15} /> Accept & Assign{ g.ids.length > 1 ? ` · ${g.ids.length} in 1 go` : '' }
         </HoverButton>
       </div>
     </motion.div>
@@ -1040,13 +1082,14 @@ const PendingCardItem = ({ appt, isDark, C, onOpenAccept, onOpenReject }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  VIEW 2: PENDING APPROVALS QUEUE                                     */
+/*  VIEW 2: PENDING APPROVALS QUEUE (grouped by visit)                   */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => {
+const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject, onOpenDetail }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const pending = appointments.filter(a => a.status === 'Pending');
+  const groups = useMemo(() => groupAppointments(appointments.filter(a => a.status === 'Pending')), [appointments]);
+  const treatmentCount = groups.reduce((n, g) => n + g.items.length, 0);
 
   const C = {
     textPrimary: isDark ? '#e8ecf3' : '#0f172a',
@@ -1058,7 +1101,7 @@ const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => 
     noteBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(253,230,138,1)',
   };
 
-  if (pending.length === 0) {
+  if (groups.length === 0) {
     return (
       <div style={{ padding: 48, textAlign: 'center', borderRadius: 24, background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <CheckCircle size={48} style={{ color: '#059669', margin: '0 auto 12px', opacity: 0.85 }} />
@@ -1070,18 +1113,24 @@ const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <h3 style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
-        Requests Awaiting Action ({pending.length})
-      </h3>
+      <div>
+        <h3 style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
+          Visits awaiting action ({groups.length})
+        </h3>
+        <p style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, margin: '4px 0 0' }}>
+          {treatmentCount} treatment{treatmentCount !== 1 ? 's' : ''} grouped into {groups.length} client visit{groups.length !== 1 ? 's' : ''} — accept or decline the whole visit once.
+        </p>
+      </div>
       <div style={{ display: 'grid', gap: 12 }}>
-        {pending.map(appt => (
+        {groups.map(g => (
           <PendingCardItem
-            key={appt.id}
-            appt={appt}
+            key={g.key}
+            group={g}
             isDark={isDark}
             C={C}
             onOpenAccept={onOpenAccept}
             onOpenReject={onOpenReject}
+            onOpenDetail={onOpenDetail}
           />
         ))}
       </div>
@@ -1095,119 +1144,104 @@ const PendingApprovalsQueue = ({ appointments, onOpenAccept, onOpenReject }) => 
 /*  Admin reviews, confirms, and settles cash payment                  */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const TherapistDoneCard = ({ appt, isDark, C, onSettle, onDetail }) => {
-  const [hovered, setHovered] = useState(false);
-  const therapist = appt.therapist_name || appt.therapist || 'Assigned Therapist';
-  const price = Number(appt.service_price || appt.amount_paid || 0);
+const TherapistDoneCard = ({ group, isDark, C, onSettle, onDetail }) => {
+  const g = group;
+  const therapist = g.therapist_name || 'Assigned Therapist';
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       style={{
         position: 'relative',
-        background: hovered
-          ? (isDark ? 'linear-gradient(145deg,#1a2a1a,#0f2a1a)' : 'linear-gradient(145deg,#f0fdf4,#dcfce7)')
-          : C.cardBg,
-        border: hovered ? '1.5px solid #059669' : `1px solid ${C.cardBorder}`,
-        borderRadius: 22,
-        padding: '18px 20px',
+        background: C.cardBg,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 18,
+        padding: '16px 18px 16px 22px',
         display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'flex-start',
-        gap: 14,
-        boxShadow: hovered
-          ? '0 8px 32px rgba(5,150,105,0.2), 0 0 0 1px rgba(5,150,105,0.1)'
-          : '0 2px 8px rgba(0,0,0,0.06)',
-        transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
-        cursor: 'default',
+        flexDirection: 'column',
+        gap: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
         overflow: 'hidden',
       }}
     >
-      {/* Glow accent bar on left */}
       <div style={{
         position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
         background: 'linear-gradient(180deg,#059669,#34d399)',
-        borderRadius: '22px 0 0 22px',
-        opacity: hovered ? 1 : 0.5,
-        transition: 'opacity 0.22s',
       }} />
 
-      {/* Icon */}
-      <div style={{
-        width: 48, height: 48, borderRadius: 16, flexShrink: 0, marginLeft: 4,
-        background: hovered ? 'linear-gradient(135deg,#059669,#34d399)' : 'rgba(5,150,105,0.12)',
-        color: hovered ? '#ffffff' : '#059669',
-        border: `1.5px solid ${hovered ? 'transparent' : 'rgba(5,150,105,0.28)'}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.22s',
-        boxShadow: hovered ? '0 4px 16px rgba(5,150,105,0.35)' : 'none',
-      }}>
-        <CheckCircle2 size={22} />
-      </div>
-
-      {/* Info */}
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-          <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
-          <span style={{
-            fontSize: 10, fontWeight: 800, padding: '2px 10px', borderRadius: 999,
-            background: 'rgba(5,150,105,0.14)', color: '#059669',
-            border: '1px solid rgba(5,150,105,0.28)', letterSpacing: '0.05em'
-          }}>✓ Therapist Done</span>
-          <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>#{String(appt.id).padStart(4, '0')}</span>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+          background: 'rgba(5,150,105,0.12)', color: '#059669',
+          border: '1px solid rgba(5,150,105,0.28)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <CheckCircle2 size={22} />
         </div>
 
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
-          Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{appt.client_name || appt.client || '—'}</span>
-        </p>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
-          Therapist: <span style={{ fontWeight: 900, color: '#059669' }}>{therapist}</span>
-        </p>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
-          Session: <span style={{ fontWeight: 900, color: C.textPrimary }}>{fmtDate(appt.datetime)} at {fmt12(appt.datetime)}</span>
-        </p>
-        {price > 0 && (
-          <p style={{ fontSize: 13, fontWeight: 900, color: '#d97706', margin: '6px 0 0' }}>
-            Service Fee: <span style={{ color: '#059669' }}>₱{price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
+              {g.items.length > 1 ? `${g.items.length} treatments · 1 visit` : (g.items[0]?.service || 'Visit')}
+            </p>
+            <span style={{
+              fontSize: 10, fontWeight: 800, padding: '2px 10px', borderRadius: 999,
+              background: 'rgba(5,150,105,0.14)', color: '#059669',
+              border: '1px solid rgba(5,150,105,0.28)', letterSpacing: '0.05em'
+            }}>✓ Therapist Done</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>{groupRefLabel(g)}</span>
+          </div>
+
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
+            Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{g.client_name || '—'}</span>
+            {g.client_email ? <span style={{ fontWeight: 600, color: C.textMuted }}> · {g.client_email}</span> : null}
           </p>
-        )}
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
+            Therapist: <span style={{ fontWeight: 900, color: '#059669' }}>{therapist}</span>
+          </p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
+            Visit: <span style={{ fontWeight: 900, color: C.textPrimary }}>{fmtDate(g.datetime)} at {fmt12(g.datetime)} · {g.totalDuration} min</span>
+          </p>
+          <div style={{ marginTop: 8, borderRadius: 12, border: `1px solid ${C.cardBorder}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', overflow: 'hidden' }}>
+            {g.items.map((it, idx) => (
+              <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 12px', borderTop: idx === 0 ? 'none' : `1px solid ${C.cardBorder}`, fontSize: 12 }}>
+                <span style={{ fontWeight: 800, color: C.textPrimary }}>{it.service}</span>
+                <span style={{ fontWeight: 700, color: C.textSecondary }}>₱{Number(it.service_price || 0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+          {g.totalPrice > 0 && (
+            <p style={{ fontSize: 13, fontWeight: 900, color: '#059669', margin: '8px 0 0' }}>
+              Visit total: ₱{g.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Actions — stacks full-width on small screens, never clips */}
       <div
         className="booking-card-actions therapist-done-actions"
-        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, alignSelf: 'center' }}
+        style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
       >
         <HoverButton
-          onClick={() => onDetail(appt)}
-          baseStyle={{ height: 40, padding: '0 16px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: C.textSecondary, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', border: `1px solid ${C.cardBorder}`, whiteSpace: 'nowrap' }}
-          hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)' }}
-        >Details</HoverButton>
+          onClick={() => onDetail(g)}
+          baseStyle={{ height: 40, padding: '0 16px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: C.textSecondary, background: 'transparent', border: `1px solid ${C.cardBorder}`, whiteSpace: 'nowrap' }}
+          hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.07)' : '#f1f5f9' }}
+        >View details</HoverButton>
         <HoverButton
-          id={`settle-btn-${appt.id}`}
-          onClick={() => onSettle(appt)}
+          id={`settle-btn-${g.ids[0]}`}
+          onClick={() => onSettle(g)}
           baseStyle={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            minHeight: 40, padding: '10px 18px', borderRadius: 14,
-            fontSize: 12, fontWeight: 900,
-            color: '#ffffff',
-            background: hovered
-              ? 'linear-gradient(135deg,#059669,#047857)'
-              : 'linear-gradient(135deg,#047857,#064e3b)',
-            border: 'none',
-            boxShadow: hovered
-              ? '0 4px 20px rgba(5,150,105,0.45)'
-              : '0 2px 8px rgba(5,150,105,0.25)',
-            letterSpacing: '0.01em',
-            whiteSpace: 'nowrap',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            minHeight: 40, padding: '10px 18px', borderRadius: 12,
+            fontSize: 12, fontWeight: 900, color: '#ffffff',
+            background: 'linear-gradient(135deg,#047857,#064e3b)',
+            border: 'none', whiteSpace: 'nowrap',
           }}
-          hoverStyle={{ transform: 'translateY(-2px)', boxShadow: '0 6px 24px rgba(5,150,105,0.5)' }}
+          hoverStyle={{ background: 'linear-gradient(135deg,#059669,#047857)' }}
         >
           <Banknote size={15} style={{ flexShrink: 0 }} />
-          Verify &amp; Complete
+          Verify &amp; Complete{ g.ids.length > 1 ? ` (${g.ids.length})` : '' }
         </HoverButton>
       </div>
     </motion.div>
@@ -1226,10 +1260,11 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
     cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
   };
 
-  const doneItems = useMemo(
-    () => appointments.filter(a => a.status === 'Completed by Therapist'),
+  const doneGroups = useMemo(
+    () => groupAppointments(appointments.filter(a => a.status === 'Completed by Therapist')),
     [appointments]
   );
+  const doneTreatments = doneGroups.reduce((n, g) => n + g.items.length, 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1237,13 +1272,13 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <h3 style={{ fontSize: 18, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
-            Therapist Completed Sessions
+            Visits ready for sign-off ({doneGroups.length})
           </h3>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '4px 0 0' }}>
-            Sessions marked done by therapist · Admin verifies service and payment to close.
+            {doneTreatments} treatment{doneTreatments !== 1 ? 's' : ''} marked done by therapist · Verify the whole visit once to close.
           </p>
         </div>
-        {doneItems.length > 0 && (
+        {doneGroups.length > 0 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px',
             borderRadius: 12, background: 'rgba(245,158,11,0.12)',
@@ -1251,7 +1286,7 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
             fontSize: 12, fontWeight: 800,
           }}>
             <AlertCircle size={14} />
-            {doneItems.length} Awaiting Admin Sign-off
+            {doneGroups.length} visit{doneGroups.length !== 1 ? 's' : ''} awaiting sign-off
           </div>
         )}
       </div>
@@ -1270,7 +1305,7 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
       </div>
 
       {/* Cards */}
-      {doneItems.length === 0 ? (
+      {doneGroups.length === 0 ? (
         <div style={{ padding: 52, textAlign: 'center', borderRadius: 24, background: C.cardBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
           <CheckCircle2 size={44} style={{ color: '#059669', margin: '0 auto 14px', opacity: 0.5 }} />
           <p style={{ fontSize: 17, fontWeight: 900, color: C.textPrimary, margin: 0 }}>All clear!</p>
@@ -1278,10 +1313,10 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
-          {doneItems.map(appt => (
+          {doneGroups.map(g => (
             <TherapistDoneCard
-              key={appt.id}
-              appt={appt}
+              key={g.key}
+              group={g}
               isDark={isDark}
               C={C}
               onSettle={onSettle}
@@ -1318,8 +1353,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
   };
 
   const confirmed = useMemo(() => {
-    return appointments.filter(a => {
-      // Only active sessions: Confirmed (scheduled) and In Progress (undergoing treatment)
+    const rows = appointments.filter(a => {
       if (!['Confirmed', 'In Progress'].includes(a.status)) return false;
       const q = search.toLowerCase();
       if (!q) return true;
@@ -1327,7 +1361,8 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
         (a.client_name || a.client || '').toLowerCase().includes(q) ||
         (a.therapist_name || '').toLowerCase().includes(q) ||
         String(a.id).includes(q);
-    }).sort((a, b) => {
+    });
+    return groupAppointments(rows).sort((a, b) => {
       const order = { 'In Progress': 1, 'Confirmed': 2 };
       return (order[a.status] || 3) - (order[b.status] || 3);
     });
@@ -1364,30 +1399,24 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 12 }}>
-          {confirmed.map(appt => {
-            const isInProgress = appt.status === 'In Progress';
-            const isConfirmed = appt.status === 'Confirmed';
+          {confirmed.map(g => {
+            const isInProgress = g.status === 'In Progress';
+            const isConfirmed = g.status === 'Confirmed';
 
             return (
               <motion.div
-                key={appt.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                key={g.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                 style={{
                   background: isInProgress
                     ? (isDark ? 'linear-gradient(135deg,#0c2233,#141927)' : 'linear-gradient(135deg,#f0f9ff,#ffffff)')
                     : C.cardBg,
                   border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.35)' : C.cardBorder}`,
-                  borderRadius: 20, padding: '16px 18px',
-                  display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+                  borderRadius: 18, padding: '16px 18px',
+                  display: 'flex', flexDirection: 'column', gap: 12,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
               >
-                {/* Left Info — clickable for detail modal */}
-                <div
-                  onClick={() => onSelectAppt && onSelectAppt(appt)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 14, minWidth: 0, flex: 1, cursor: 'pointer' }}
-                  title="Click to view full booking details"
-                >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{
                     width: 44, height: 44, borderRadius: 14, flexShrink: 0,
                     background: isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
@@ -1400,124 +1429,98 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.service}</p>
+                      <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>
+                        {g.items.length > 1 ? `${g.items.length} treatments · 1 visit` : (g.items[0]?.service || 'Visit')}
+                      </p>
                       {isInProgress && (
-                        <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(14,165,233,0.12)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                          🔵 In Progress
+                        <span style={{ fontSize: 10, fontWeight: 900, padding: '2px 8px', borderRadius: 999, background: 'rgba(14,165,233,0.12)', color: '#0284c7', border: '1px solid rgba(14,165,233,0.3)' }}>
+                          In Progress
                         </span>
                       )}
                       {isConfirmed && (
                         <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'rgba(5,150,105,0.08)', color: '#059669', border: '1px solid rgba(5,150,105,0.2)' }}>Confirmed</span>
                       )}
-                      <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>#{String(appt.id).padStart(4, '0')}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>{groupRefLabel(g)}</span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary }}>
-                        Client: <strong style={{ color: C.textPrimary }}>{appt.client_name || appt.client}</strong>
+                        {g.client_name}
                       </span>
-                      <span style={{ color: C.textMuted, opacity: 0.5 }}>•</span>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: isInProgress ? 'rgba(14,165,233,0.08)' : 'rgba(5,150,105,0.08)', color: isInProgress ? '#0284c7' : '#047857', border: `1px solid ${isInProgress ? 'rgba(14,165,233,0.2)' : 'rgba(5,150,105,0.18)'}` }}>
-                        <UserCheck size={12} /> {appt.therapist_name || 'Unassigned'}
+                        <UserCheck size={12} /> {g.therapist_name || 'Unassigned'}
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 5 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isInProgress ? '#0284c7' : '#059669' }}>
-                        <Calendar size={13} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 5 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: isInProgress ? '#0284c7' : '#059669' }}>
+                        <Calendar size={13} /> {fmtDate(g.datetime)} at {fmt12(g.datetime)} · {g.totalDuration} min
                       </span>
-                      {appt.service_duration && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: C.textSecondary, background: C.pillBg, border: `1px solid ${C.pillBorder}`, padding: '2px 8px', borderRadius: 6 }}>
-                          <Clock size={11} style={{ color: '#f59e0b' }} /> {appt.service_duration} min
-                        </span>
-                      )}
-                      {appt.payment_status === 'paid' ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: '#059669', background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)', padding: '2px 8px', borderRadius: 6 }}>
-                          <Check size={11} /> Paid {appt.amount_paid ? `(₱${Number(appt.amount_paid).toFixed(2)})` : ''}
-                        </span>
-                      ) : (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#d97706', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)', padding: '2px 8px', borderRadius: 6 }}>
-                          <Banknote size={11} /> Cash on Visit {appt.service_price ? `(₱${Number(appt.service_price).toFixed(2)})` : ''}
-                        </span>
+                      {g.totalPrice > 0 && (
+                        <span style={{ fontSize: 11, fontWeight: 900, color: '#059669' }}>₱{g.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
                       )}
                     </div>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, margin: '6px 0 0' }}>
+                      {g.items.map((it) => it.service).join(' + ')}
+                    </p>
                   </div>
                 </div>
 
-                {/* RIGHT: Action Controls */}
-                <div className="booking-card-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-                  {/* Confirmed: Scheduled session — Reassign, Reschedule, or Cancel */}
+                {/* Actions — always visible, never hover-only */}
+                <div className="booking-card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {isConfirmed && (
                     <>
                       {onOpenReassign && (
                         <HoverButton
-                          onClick={() => onOpenReassign(appt)}
-                          title="Switch assigned therapist"
-                          baseStyle={{ display: 'flex', alignItems: 'center', gap: 5, height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textPrimary, background: C.pillBg, border: `1px solid ${C.cardBorder}` }}
-                          hoverStyle={{ background: isDark ? '#2a3a4a' : '#e2e8f0', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}
+                          onClick={() => onOpenReassign(g)}
+                          title="Switch assigned therapist for the whole visit"
+                          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textPrimary, background: C.pillBg, border: `1px solid ${C.cardBorder}` }}
+                          hoverStyle={{ background: isDark ? '#2a3a4a' : '#e2e8f0' }}
                         >
                           <UserCheck size={13} style={{ color: '#059669' }} /> Reassign
                         </HoverButton>
                       )}
                       {onOpenReschedule && (
                         <HoverButton
-                          onClick={() => onOpenReschedule(appt)}
-                          title="Reschedule date or time"
-                          baseStyle={{ display: 'flex', alignItems: 'center', gap: 5, height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textPrimary, background: C.pillBg, border: `1px solid ${C.cardBorder}` }}
-                          hoverStyle={{ background: isDark ? '#2a3a4a' : '#e2e8f0', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}
+                          onClick={() => onOpenReschedule(g)}
+                          title="Reschedule the whole visit"
+                          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textPrimary, background: C.pillBg, border: `1px solid ${C.cardBorder}` }}
+                          hoverStyle={{ background: isDark ? '#2a3a4a' : '#e2e8f0' }}
                         >
                           <RotateCcw size={13} style={{ color: '#2563eb' }} /> Reschedule
                         </HoverButton>
                       )}
                       <HoverButton
-                        onClick={() => onSelectAppt && onSelectAppt(appt)}
-                        title="View Details"
-                        baseStyle={{ height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textSecondary, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', border: `1px solid ${C.cardBorder}` }}
-                        hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)' }}
+                        onClick={() => onSelectAppt && onSelectAppt(g)}
+                        title="View details"
+                        baseStyle={{ height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textSecondary, background: 'transparent', border: `1px solid ${C.cardBorder}` }}
+                        hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.07)' : '#f1f5f9' }}
                       >
-                        Details
+                        View details
                       </HoverButton>
                       <HoverButton
-                        onClick={() => onOpenCancel(appt)}
-                        title="Cancel Appointment"
-                        baseStyle={{ width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', background: isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2', border: `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : '#fecaca'}` }}
-                        hoverStyle={{ background: isDark ? 'rgba(239,68,68,0.22)' : '#fee2e2', borderColor: '#f87171' }}
+                        onClick={() => onOpenCancel(g)}
+                        title="Cancel whole visit"
+                        baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+                        hoverStyle={{ background: 'rgba(239,68,68,0.16)' }}
                       >
-                        <X size={15} />
+                        <X size={14} /> Cancel visit
                       </HoverButton>
                     </>
                   )}
 
-                  {/* In Progress: Session undergoing with therapist — no cancel/verify here.
-                      Only the assigned therapist marks this done from their own panel.
-                      Admin verifies later in Therapist Done tab. */}
                   {isInProgress && (
                     <>
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          height: 36,
-                          padding: '0 12px',
-                          borderRadius: 12,
-                          fontSize: 12,
-                          fontWeight: 800,
-                          color: '#0284c7',
-                          background: isDark ? 'rgba(14,165,233,0.14)' : 'rgba(14,165,233,0.09)',
-                          border: '1px solid rgba(14,165,233,0.28)',
-                        }}
-                      >
-                        <Zap size={13} className="animate-pulse" style={{ color: '#0284c7' }} />
-                        <span>Ongoing Session</span>
-                      </div>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#0284c7', background: isDark ? 'rgba(14,165,233,0.14)' : 'rgba(14,165,233,0.09)', border: '1px solid rgba(14,165,233,0.28)' }}>
+                        <Zap size={13} /> Ongoing visit — therapist completes it
+                      </span>
                       <HoverButton
-                        onClick={() => onSelectAppt && onSelectAppt(appt)}
-                        title="View Details"
-                        baseStyle={{ height: 36, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textSecondary, background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)', border: `1px solid ${C.cardBorder}` }}
-                        hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)' }}
+                        onClick={() => onSelectAppt && onSelectAppt(g)}
+                        title="View details"
+                        baseStyle={{ height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textSecondary, background: 'transparent', border: `1px solid ${C.cardBorder}` }}
+                        hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.07)' : '#f1f5f9' }}
                       >
-                        Details
+                        View details
                       </HoverButton>
                     </>
                   )}
@@ -2116,14 +2119,4 @@ const AdminAppointments = () => {
             <CashSettlementModal
               appt={settleCashTarget}
               onClose={() => setSettleCashTarget(null)}
-              onConfirmSettlement={handleSettleCash}
-              isDark={isDark}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-    </AdminLayout>
-  );
-};
-
-export default AdminAppointments;
+              onConfirmSettlement={handleSettle
