@@ -8,12 +8,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ─── Luxury Brand Tokens (Matching Landing Page) ──────────────────────────────
+// ─── Brand Tokens ──────────────────────────────────────────────────────────────
 const B = {
   canvas: '#03140e',
   deep: '#041e16',
   green: '#0a3d30',
-  mid: '#0f5c47',
   gold: '#bfa15f',
   goldLight: '#e8cc8a',
   goldDark: '#8c7033',
@@ -21,8 +20,6 @@ const B = {
   inkSoft: '#64748b',
   line: '#e2e8f0',
   white: '#ffffff',
-  glowEmerald: 'rgba(10,61,48,0.35)',
-  glowGold: 'rgba(191,161,95,0.15)',
 };
 
 const SOCIALS = [
@@ -43,15 +40,16 @@ const TRUST_POINTS_REGISTER = [
   { icon: Gem, title: 'Exclusive Home Spa Rates', note: 'Access member-only packages for massages and nail treatments.' },
 ];
 
-// Validation patterns
+// ─── Validation Patterns ───────────────────────────────────────────────────────
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 const NAME_REGEX = /^[\p{L}\s'.-]+$/u;
 const PASS_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-// OAuth configuration
+// ─── OAuth Configuration ───────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID;
 
+// ─── Script Loader (Singleton) ─────────────────────────────────────────────────
 const loadScript = (src, id) => new Promise((resolve, reject) => {
   const existing = document.getElementById(id);
   if (existing) {
@@ -67,6 +65,11 @@ const loadScript = (src, id) => new Promise((resolve, reject) => {
   document.head.appendChild(s);
 });
 
+// ─── Helper: clean URL param value ────────────────────────────────────────────
+const cleanParam = (val) =>
+  val && val !== 'null' && val !== 'undefined' && val.trim() !== '' ? val.trim() : '';
+
+// ─── Google Glyph ──────────────────────────────────────────────────────────────
 const GoogleGlyph = () => (
   <svg viewBox="0 0 48 48" className="w-4 h-4 shrink-0" aria-hidden="true">
     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
@@ -76,54 +79,58 @@ const GoogleGlyph = () => (
   </svg>
 );
 
-// Floating Golden Petals (Adopted from Landing Page)
-const FloatingPetals = ({ count = 12 }) => {
-  const petals = useMemo(() =>
-    Array.from({ length: count }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      size: 4 + Math.random() * 6,
-      delay: Math.random() * 12,
-      dur: 10 + Math.random() * 10,
-      drift: -30 + Math.random() * 60,
-      op: 0.12 + Math.random() * 0.2,
-    })), [count]);
+// ─── Facebook Glyph ────────────────────────────────────────────────────────────
+const FacebookGlyph = () => (
+  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-4 h-4 shrink-0" aria-hidden="true">
+    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+  </svg>
+);
 
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
-      {petals.map(p => (
-        <motion.span
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            left: `${p.left}%`,
-            bottom: -20,
-            width: p.size,
-            height: p.size,
-            background: 'radial-gradient(circle, #e8cc8a 0%, rgba(191,161,95,0.35) 100%)',
-          }}
-          animate={{
-            y: [0, -900],
-            x: [0, p.drift],
-            opacity: [0, p.op, p.op, 0],
-            rotate: [0, 200],
-          }}
-          transition={{ duration: p.dur, delay: p.delay, repeat: Infinity, ease: 'linear' }}
-        />
-      ))}
-    </div>
-  );
-};
+// ─── Floating Petals ───────────────────────────────────────────────────────────
+const PETALS = Array.from({ length: 14 }, (_, i) => ({
+  id: i,
+  left: (i * 7.14) % 100,
+  size: 4 + (i % 3) * 2,
+  delay: (i * 0.857) % 12,
+  dur: 10 + (i % 5) * 2,
+  drift: -30 + (i % 7) * 12,
+  op: 0.12 + (i % 4) * 0.05,
+}));
 
-// Rate Limit countdown banner
+const FloatingPetals = () => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none hidden sm:block" aria-hidden="true">
+    {PETALS.map(p => (
+      <motion.span
+        key={p.id}
+        className="absolute rounded-full"
+        style={{
+          left: `${p.left}%`,
+          bottom: -20,
+          width: p.size,
+          height: p.size,
+          background: 'radial-gradient(circle, #e8cc8a 0%, rgba(191,161,95,0.35) 100%)',
+        }}
+        animate={{ y: [0, -900], x: [0, p.drift], opacity: [0, p.op, p.op, 0], rotate: [0, 200] }}
+        transition={{ duration: p.dur, delay: p.delay, repeat: Infinity, ease: 'linear' }}
+      />
+    ))}
+  </div>
+);
+
+// ─── Rate Limit Banner ─────────────────────────────────────────────────────────
 const RateLimitBanner = ({ retryAfter }) => {
   const [s, setS] = useState(retryAfter);
+  // Sync when retryAfter prop changes
+  const prevRef = useRef(retryAfter);
+  if (prevRef.current !== retryAfter) { prevRef.current = retryAfter; }
+
   useEffect(() => { setS(retryAfter); }, [retryAfter]);
   useEffect(() => {
     if (s <= 0) return;
     const id = setInterval(() => setS(v => Math.max(0, v - 1)), 1000);
     return () => clearInterval(id);
   }, [s]);
+
   const m = Math.floor(s / 60), sec = s % 60;
   return (
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
@@ -138,7 +145,7 @@ const RateLimitBanner = ({ retryAfter }) => {
   );
 };
 
-// Sleek Input Component with Focus Ring & Error Handling
+// ─── Input Component ───────────────────────────────────────────────────────────
 const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
   const [focused, setFocused] = useState(false);
   return (
@@ -156,7 +163,7 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
           className="w-full rounded-xl outline-none transition-all duration-200 bg-white"
           style={{
             fontSize: '14px',
-            minHeight: '40px',
+            minHeight: '42px',
             paddingLeft: '38px',
             paddingRight: rightEl ? '38px' : '12px',
             border: `1.5px solid ${error ? '#dc2626' : focused ? B.gold : B.line}`,
@@ -182,7 +189,7 @@ const Input = ({ label, id, icon: Icon, error, rightEl, onBlur, ...props }) => {
   );
 };
 
-// Compact password requirements checklist
+// ─── Password Strength ─────────────────────────────────────────────────────────
 const PasswordStrength = ({ password }) => {
   const rules = [
     { label: '8+ chars', ok: password.length >= 8 },
@@ -208,58 +215,59 @@ const PasswordStrength = ({ password }) => {
   );
 };
 
-// ── Facebook Glyph ──────────────────────────────────────────────────────────
-const FacebookGlyph = () => (
-  <svg viewBox="0 0 24 24" fill="#1877F2" className="w-4 h-4 shrink-0" aria-hidden="true">
-    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-  </svg>
-);
-
-// ── Facebook Sign-In Button (Meta JS SDK) ────────────────────────────────────
+// ─── Facebook Sign-In Button (Meta JS SDK) ─────────────────────────────────────
 const FacebookSignInButton = ({ disabled, pending, mode, onFinish, onError }) => {
+  const sdkInitRef = useRef(false);
+
   useEffect(() => {
-    if (!FACEBOOK_APP_ID) return;
-    let cancelled = false;
+    if (!FACEBOOK_APP_ID || sdkInitRef.current) return;
 
-    loadScript(
-      `https://connect.facebook.net/en_US/sdk.js`,
-      'facebook-jssdk'
-    )
-      .then(() => {
-        if (cancelled) return;
-        if (!window.FB) {
-          // SDK not yet bootstrapped — wait for fbAsyncInit
-          const prev = window.fbAsyncInit;
-          window.fbAsyncInit = () => {
-            if (prev) prev();
-            window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
-          };
-        } else {
-          // SDK already loaded in the page (e.g. hot-reload)
-          window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
-        }
-      })
+    const initFB = () => {
+      if (window.FB && !sdkInitRef.current) {
+        sdkInitRef.current = true;
+        window.FB.init({
+          appId: FACEBOOK_APP_ID,
+          cookie: true,
+          xfbml: false,
+          version: 'v21.0',
+        });
+      }
+    };
+
+    if (window.FB) {
+      initFB();
+      return;
+    }
+
+    // Set fbAsyncInit before script loads
+    const prevInit = window.fbAsyncInit;
+    window.fbAsyncInit = () => {
+      if (prevInit) prevInit();
+      initFB();
+    };
+
+    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
       .catch(() => onError('Could not load Facebook Sign-In SDK.'));
-
-    return () => { cancelled = true; };
-  }, [onError]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFacebookClick = () => {
     if (disabled || pending) return;
     if (!FACEBOOK_APP_ID) { onError('Facebook sign-in is not configured.'); return; }
-    if (!window.FB) { onError('Facebook Sign-In is initializing. Please try again.'); return; }
+    if (!window.FB) { onError('Facebook Sign-In is still loading. Please try again.'); return; }
 
     window.FB.login(
       (response) => {
-        if (response.authResponse?.accessToken) {
+        if (response.status === 'connected' && response.authResponse?.accessToken) {
           onFinish('facebook', response.authResponse.accessToken);
-        } else {
-          // User cancelled the popup — don't show an error
         }
+        // else: user cancelled — no error shown
       },
       { scope: 'email,public_profile' }
     );
   };
+
+  const isLoading = pending === 'facebook';
 
   return (
     <motion.button
@@ -269,10 +277,11 @@ const FacebookSignInButton = ({ disabled, pending, mode, onFinish, onError }) =>
       disabled={disabled || pending !== null}
       whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
       whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
-      className="w-full min-h-[40px] px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border hover:bg-slate-50"
+      className="w-full min-h-[42px] px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border hover:bg-slate-50 touch-manipulation"
       style={{ background: '#ffffff', borderColor: '#e2e8f0', color: '#0f172a', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+      aria-label={mode === 'register' ? 'Sign up with Facebook' : 'Continue with Facebook'}
     >
-      {pending === 'facebook' ? (
+      {isLoading ? (
         <>
           <div className="w-3.5 h-3.5 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1877F2' }} />
           <span style={{ color: '#64748b' }}>Connecting…</span>
@@ -287,7 +296,7 @@ const FacebookSignInButton = ({ disabled, pending, mode, onFinish, onError }) =>
   );
 };
 
-// Social Sign In button
+// ─── Social Sign-In Wrapper ────────────────────────────────────────────────────
 const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
   const { socialLogin } = useAuth();
   const [pending, setPending] = useState(null);
@@ -296,16 +305,27 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
 
   const finish = useCallback(async (provider, cred) => {
     setPending(provider);
-    const res = await socialLogin(provider, cred);
+    let res;
+    try {
+      res = await socialLogin(provider, cred);
+    } catch {
+      setPending(null);
+      onError(`${provider} sign-in encountered an unexpected error.`);
+      return;
+    }
     setPending(null);
 
     if (res.success) {
       onSuccess(res.role);
     } else if (res.needsRegistration) {
+      // Build clean params — skip empty values
       const q = new URLSearchParams();
-      if (res.email) q.set('prefill_email', res.email);
-      if (res.suggestedName) q.set('prefill_name', res.suggestedName);
-      if (res.provider) q.set('provider', res.provider);
+      const name = cleanParam(res.suggestedName);
+      const email = cleanParam(res.email);
+      const prov = cleanParam(res.provider);
+      if (email) q.set('prefill_email', email);
+      if (name) q.set('prefill_name', name);
+      if (prov) q.set('provider', prov);
       navigate(`/register?${q.toString()}`);
     } else {
       onError(res.error || `${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in failed.`);
@@ -353,7 +373,7 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-2.5 my-2.5">
+      <div className="flex items-center gap-2.5 my-3">
         <div className="flex-1 h-px" style={{ background: B.line }} />
         <span className="text-[10px] font-bold tracking-widest uppercase shrink-0" style={{ color: B.inkSoft }}>
           or {mode === 'register' ? 'sign up with' : 'continue with'}
@@ -362,7 +382,7 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
       </div>
 
       <div className="flex flex-col gap-2 w-full">
-        {/* ── Google Button ── */}
+        {/* Google Button */}
         <div className="relative w-full">
           <motion.button
             type="button"
@@ -371,8 +391,9 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
             disabled={disabled || pending !== null}
             whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
             whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
-            className="w-full min-h-[40px] px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border hover:bg-slate-50"
+            className="w-full min-h-[42px] px-4 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border hover:bg-slate-50 touch-manipulation"
             style={{ background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+            aria-label={mode === 'register' ? 'Sign up with Google' : 'Continue with Google'}
           >
             {pending === 'google' ? (
               <>
@@ -388,13 +409,13 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
           </motion.button>
           <div
             ref={googleBtnRef}
-            aria-label="Google authentication container"
-            className="absolute inset-0 flex items-center justify-center overflow-hidden cursor-pointer"
-            style={{ opacity: pending !== 'google' ? 0.011 : 0, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }}
+            aria-hidden="true"
+            className="absolute inset-0 flex items-center justify-center overflow-hidden"
+            style={{ opacity: 0.011, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }}
           />
         </div>
 
-        {/* ── Facebook Button ── */}
+        {/* Facebook Button */}
         <FacebookSignInButton
           disabled={disabled}
           pending={pending}
@@ -408,41 +429,60 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MAIN UNIFIED AUTH PORTAL COMPONENT
-// Fits directly on desktop screens with zero scrolling & complete landing theme continuity
+// MAIN UNIFIED AUTH PORTAL
 // ══════════════════════════════════════════════════════════════════════════════
+const YEAR = new Date().getFullYear();
+
 export default function AuthPortal({ initialTab = 'login' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, register, logout, token, user, role } = useAuth();
 
-  // Active tab: 'login' | 'register'
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // ── Derive initial values from URL immediately (avoids flash) ──────────────
+  const initParams = useMemo(() => {
+    const p = new URLSearchParams(location.search);
+    return {
+      email: cleanParam(p.get('prefill_email')),
+      name: cleanParam(p.get('prefill_name')),
+      provider: cleanParam(p.get('provider')),
+      error: cleanParam(p.get('error')),
+      tab: p.get('tab'),
+    };
+  // Only run once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Common Notification & Rate limit states
+  const deriveTab = useCallback(() => {
+    if (location.pathname === '/register' || initParams.email || initParams.name || initParams.provider) return 'register';
+    if (location.pathname === '/login') return 'login';
+    return initialTab;
+  }, [location.pathname, initParams, initialTab]);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState(deriveTab);
   const [rateLimit, setRateLimit] = useState(null);
-  const [error, setError] = useState(null);
-  const [notice, setNotice] = useState(() => location.state?.notice || null);
+  const [error, setError] = useState(initParams.error || null);
+  const [notice, setNotice] = useState(() => {
+    if (initParams.provider) {
+      const pName = initParams.provider.charAt(0).toUpperCase() + initParams.provider.slice(1).toLowerCase();
+      return initParams.email
+        ? `Connected with ${pName}! Your name and email are pre-filled — just create a password.`
+        : `Connected with ${pName}! Your name is pre-filled — enter your email and create a password.`;
+    }
+    return null;
+  });
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Login specific states
+  // Login state
   const [loginEmail, setLoginEmail] = useState(() => location.state?.email || localStorage.getItem('remember_email') || '');
   const [loginPassword, setLoginPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem('remember_email'));
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [loginFieldErrors, setLoginFieldErrors] = useState({});
 
-  // ── Register specific states
-  const [regName, setRegName] = useState(() => {
-    const p = new URLSearchParams(window.location.search);
-    const val = p.get('prefill_name');
-    return (val && val !== 'null' && val !== 'undefined') ? val : '';
-  });
-  const [regEmail, setRegEmail] = useState(() => {
-    const p = new URLSearchParams(window.location.search);
-    const val = p.get('prefill_email');
-    return (val && val !== 'null' && val !== 'undefined') ? val : '';
-  });
+  // Register state
+  const [regName, setRegName] = useState(initParams.name);
+  const [regEmail, setRegEmail] = useState(initParams.email);
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPw, setRegConfirmPw] = useState('');
   const [showRegPw, setShowRegPw] = useState(false);
@@ -451,76 +491,68 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const [regSuccessModal, setRegSuccessModal] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
 
-  // Handle URL changes to keep active tab in sync
+  // ── Tab sync with URL ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (location.pathname === '/register') setActiveTab('register');
-    else if (location.pathname === '/login') setActiveTab('login');
+    const newTab = location.pathname === '/register' ? 'register' : location.pathname === '/login' ? 'login' : null;
+    if (newTab) setActiveTab(newTab);
   }, [location.pathname]);
 
-  // Handle prefilled params
+  // ── Handle param changes on navigation (e.g. after Facebook redirect) ──────
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const prefillEmail = params.get('prefill_email');
-    const prefillName = params.get('prefill_name');
-    const provider = params.get('provider');
+    const p = new URLSearchParams(location.search);
+    const email = cleanParam(p.get('prefill_email'));
+    const name = cleanParam(p.get('prefill_name'));
+    const provider = cleanParam(p.get('provider'));
+    const err = cleanParam(p.get('error'));
 
-    const cleanEmail = (prefillEmail && prefillEmail !== 'null' && prefillEmail !== 'undefined') ? prefillEmail : '';
-    const cleanName = (prefillName && prefillName !== 'null' && prefillName !== 'undefined') ? prefillName : '';
+    if (email) setRegEmail(email);
+    if (name) setRegName(name);
+    if (err) setError(err.slice(0, 200));
 
-    if (cleanEmail) {
-      setRegEmail(cleanEmail);
-    }
-    if (cleanName) {
-      setRegName(cleanName);
-    }
-    if (cleanEmail || cleanName || provider) {
+    if (email || name || provider) {
       setActiveTab('register');
-    }
-
-    if (provider) {
-      const provName = provider.charAt(0).toUpperCase() + provider.slice(1).toLowerCase();
-      if (cleanEmail) {
-        setNotice(`Connected with ${provName}! Name and email are pre-filled. Please create a password to finalize your account.`);
-      } else {
-        setNotice(`Connected with ${provName}! Your name is filled in. Please enter your email and password to complete registration.`);
+      setError(null);
+      if (provider) {
+        const pName = provider.charAt(0).toUpperCase() + provider.slice(1).toLowerCase();
+        setNotice(email
+          ? `Connected with ${pName}! Name and email are pre-filled — just create a password to finish.`
+          : `Connected with ${pName}! Your name is pre-filled — please enter your email and create a password.`
+        );
       }
     }
-
-    const err = params.get('error');
-    if (err) setError(String(err).slice(0, 200));
   }, [location.search]);
 
-  // Redirect helper
+  // ── Redirect logged-in users ───────────────────────────────────────────────
+  useEffect(() => {
+    if (token && user && role) redirect(role);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user, role]);
+
+  // ── Redirect helper ────────────────────────────────────────────────────────
   const redirect = useCallback((userRole) => {
     const r = String(userRole || '').trim().toLowerCase();
     if (r === 'admin') navigate('/admin/dashboard');
     else if (r === 'therapist') navigate('/therapist/dashboard');
     else if (r === 'staff') navigate('/staff/dashboard');
     else if (r === 'client') navigate('/client/dashboard');
-    else navigate('/booking/dashboard');
+    else navigate('/client/dashboard');
   }, [navigate]);
 
-  // Redirect if already logged in
-  useEffect(() => {
-    if (token && user && role) redirect(role);
-  }, [token, user, role, redirect]);
-
-  // Tab switcher helper
+  // ── Tab switcher ───────────────────────────────────────────────────────────
   const handleTabSwitch = (tab) => {
     setError(null);
     setNotice(null);
     setRateLimit(null);
+    setLoginFieldErrors({});
+    setRegFieldErrors({});
     setActiveTab(tab);
     navigate(tab === 'login' ? '/login' : '/register', { replace: true });
   };
 
-  // ── Login Submit Handler
+  // ── Login submit ───────────────────────────────────────────────────────────
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setLoginFieldErrors({});
-    setRateLimit(null);
+    setError(null); setNotice(null); setLoginFieldErrors({}); setRateLimit(null);
 
     const errs = {};
     if (!loginEmail.trim()) errs.email = 'Email address is required.';
@@ -528,47 +560,34 @@ export default function AuthPortal({ initialTab = 'login' }) {
     if (!loginPassword) errs.password = 'Password is required.';
     else if (loginPassword.length < 8) errs.password = 'Password must be at least 8 characters.';
 
-    if (Object.keys(errs).length > 0) {
-      setLoginFieldErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length > 0) { setLoginFieldErrors(errs); return; }
 
     setSubmitting(true);
     if (rememberMe) localStorage.setItem('remember_email', loginEmail.trim());
     else localStorage.removeItem('remember_email');
 
     const res = await login(loginEmail.trim(), loginPassword);
-    if (res.success) {
-      setLoginPassword('');
-      redirect(res.role);
-      return;
-    }
+    if (res.success) { setLoginPassword(''); redirect(res.role); return; }
 
-    setLoginPassword('');
-    if (res.rateLimited) setRateLimit(res.retryAfter || 900);
+    if (res.rateLimited) { setRateLimit(res.retryAfter || 3600); }
     else if (res.errors) {
       const m = {};
       Object.keys(res.errors).forEach(k => { m[k] = res.errors[k][0]; });
       setLoginFieldErrors(m);
-      setError('Please fix the errors below.');
-    } else {
-      setError(res.error);
-    }
+      setError('Please correct the errors below.');
+    } else { setError(res.error || 'Login failed. Please check your credentials.'); }
     setSubmitting(false);
   };
 
-  // ── Register Submit Handler
+  // ── Register submit ────────────────────────────────────────────────────────
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setNotice(null);
-    setRegFieldErrors({});
-    setRateLimit(null);
+    setError(null); setNotice(null); setRegFieldErrors({}); setRateLimit(null);
 
     const errs = {};
     if (!regName.trim()) errs.name = 'Full name is required.';
     else if (regName.trim().length < 2) errs.name = 'Name must be at least 2 characters.';
-    else if (!NAME_REGEX.test(regName.trim())) errs.name = 'Letters, spaces, hyphens, periods, and apostrophes only.';
+    else if (!NAME_REGEX.test(regName.trim())) errs.name = 'Only letters, spaces, hyphens, periods, and apostrophes.';
 
     if (!regEmail.trim()) errs.email = 'Email address is required.';
     else if (!EMAIL_REGEX.test(regEmail.trim())) errs.email = 'Please enter a valid email address.';
@@ -579,15 +598,11 @@ export default function AuthPortal({ initialTab = 'login' }) {
     if (!regConfirmPw) errs.confirmPassword = 'Please confirm your password.';
     else if (regPassword !== regConfirmPw) errs.confirmPassword = 'Passwords do not match.';
 
-    if (Object.keys(errs).length > 0) {
-      setRegFieldErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length > 0) { setRegFieldErrors(errs); return; }
 
     setSubmitting(true);
     const res = await register(regName.trim(), regEmail.trim(), regPassword, regConfirmPw);
-    setRegPassword('');
-    setRegConfirmPw('');
+    setRegPassword(''); setRegConfirmPw('');
 
     if (res.success) {
       await logout();
@@ -604,163 +619,69 @@ export default function AuthPortal({ initialTab = 'login' }) {
       Object.keys(res.errors).forEach(k => { m[k] = res.errors[k][0]; });
       setRegFieldErrors(m);
       setError('Please resolve the errors highlighted below.');
-    } else {
-      setError(res.error);
-    }
+    } else { setError(res.error); }
     setSubmitting(false);
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
-      className="min-h-screen lg:h-screen lg:max-h-screen flex flex-col justify-between selection:bg-amber-200 selection:text-amber-900 relative overflow-x-hidden"
-      style={{
-        background: `radial-gradient(ellipse at 50% 0%, #072a1e 0%, ${B.canvas} 75%)`,
-        fontFamily: "'Inter', sans-serif",
-      }}
+      className="min-h-screen flex flex-col selection:bg-amber-200 selection:text-amber-900 relative overflow-x-hidden"
+      style={{ background: `radial-gradient(ellipse at 50% 0%, #072a1e 0%, ${B.canvas} 75%)`, fontFamily: "'Inter', sans-serif" }}
     >
-      {/* ── AMBIENT LANDING BACKGROUND MOTIFS ── */}
-      <FloatingPetals count={14} />
+      <FloatingPetals />
 
-      {/* Decorative radial glows */}
+      {/* Decorative glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: '50vw',
-            maxWidth: 600,
-            height: '50vw',
-            maxHeight: 600,
-            left: '-10vw',
-            top: '-15vw',
-            background: 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)',
-            filter: 'blur(50px)',
-          }}
-        />
-        <div
-          className="absolute rounded-full"
-          style={{
-            width: '50vw',
-            maxWidth: 600,
-            height: '50vw',
-            maxHeight: 600,
-            right: '-10vw',
-            bottom: '-15vw',
-            background: 'radial-gradient(circle, rgba(191,161,95,0.1) 0%, transparent 70%)',
-            filter: 'blur(50px)',
-          }}
-        />
+        <div className="absolute rounded-full" style={{ width: '50vw', maxWidth: 600, height: '50vw', maxHeight: 600, left: '-10vw', top: '-15vw', background: 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)', filter: 'blur(50px)' }} />
+        <div className="absolute rounded-full" style={{ width: '50vw', maxWidth: 600, height: '50vw', maxHeight: 600, right: '-10vw', bottom: '-15vw', background: 'radial-gradient(circle, rgba(191,161,95,0.1) 0%, transparent 70%)', filter: 'blur(50px)' }} />
       </div>
 
-      {/* ── GLASSMORPHIC LANDING-STYLE TOP NAVBAR ── */}
-      <header
-        className="shrink-0 w-full border-b z-40"
-        style={{
-          background: 'rgba(4, 16, 10, 0.90)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderColor: 'rgba(191,161,95,0.22)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
-        }}
-      >
+      {/* ── Navbar ── */}
+      <header className="shrink-0 w-full border-b z-40 sticky top-0" style={{ background: 'rgba(4,16,10,0.95)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderColor: 'rgba(191,161,95,0.22)', boxShadow: '0 4px 20px rgba(0,0,0,0.35)' }}>
         <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between">
-          {/* Logo brand with pulsing gold ring */}
-          <Link
-            to="/"
-            className="flex items-center gap-3 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
-            title="Return to Cozy Blissful Sanctuary"
-          >
+          <Link to="/" className="flex items-center gap-2.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60" title="Return to Cozy Blissful Sanctuary">
             <div className="relative shrink-0">
-              <motion.div
-                className="absolute inset-0 rounded-full"
-                style={{ border: '1.5px solid rgba(191,161,95,0.55)' }}
-                animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }}
-                transition={{ duration: 2.8, repeat: Infinity }}
-              />
-              <img
-                src="/cb-logo.jpg"
-                alt="Cozy Blissful Logo"
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover relative z-10"
-                style={{ border: '2px solid rgba(191,161,95,0.55)', boxShadow: '0 0 0 1px rgba(191,161,95,0.15),0 4px 20px rgba(0,0,0,0.4)' }}
-              />
+              <motion.div className="absolute inset-0 rounded-full" style={{ border: '1.5px solid rgba(191,161,95,0.55)' }} animate={{ scale: [1, 1.22, 1], opacity: [0.6, 0, 0.6] }} transition={{ duration: 2.8, repeat: Infinity }} />
+              <img src="/cb-logo.jpg" alt="Cozy Blissful Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover relative z-10" style={{ border: '2px solid rgba(191,161,95,0.55)', boxShadow: '0 0 0 1px rgba(191,161,95,0.15),0 4px 20px rgba(0,0,0,0.4)' }} />
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#041e16] bg-emerald-400 z-20" />
             </div>
             <div className="leading-tight">
-              <span className="text-sm font-black text-white block group-hover:text-amber-200 transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Cozy Blissful
-              </span>
-              <span className="text-[9px] font-bold tracking-[0.18em] uppercase block" style={{ color: B.gold }}>
-                Salon &amp; Spa Sanctuary
-              </span>
+              <span className="text-sm font-black text-white block group-hover:text-amber-200 transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>Cozy Blissful</span>
+              <span className="text-[9px] font-bold tracking-[0.18em] uppercase block hidden sm:block" style={{ color: B.gold }}>Salon &amp; Spa Sanctuary</span>
             </div>
           </Link>
-
-          {/* Back to Home Link */}
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer hover:border-[#bfa15f]/40"
-          >
+          <Link to="/" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all cursor-pointer hover:border-[#bfa15f]/40 touch-manipulation">
             <ArrowLeft className="w-3.5 h-3.5 text-[#e8cc8a]" />
             <span className="hidden sm:inline">Back to Home</span>
           </Link>
         </div>
       </header>
 
-      {/* ── MAIN AUTH CONTAINER (Fits Directly on Computer Without Scrolling) ── */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 lg:py-2 min-h-0 overflow-y-auto lg:overflow-visible">
+      {/* ── Main ── */}
+      <main className="relative z-10 flex-1 flex items-start sm:items-center justify-center px-4 sm:px-6 py-4 sm:py-6 lg:py-8">
         <motion.div
           initial={{ opacity: 0, y: 12, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="relative w-full max-w-[920px] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border my-auto"
-          style={{
-            background: '#ffffff',
-            borderColor: 'rgba(191,161,95,0.25)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(191,161,95,0.15)',
-          }}
+          className="relative w-full max-w-[920px] rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border"
+          style={{ background: '#ffffff', borderColor: 'rgba(191,161,95,0.25)', boxShadow: '0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(191,161,95,0.15)' }}
         >
-          {/* ─── LEFT BRAND PANEL (Adopted from Landing Page & Image 2) ─── */}
+          {/* ─── Left Brand Panel (md+) ─── */}
           <div
-            className="hidden md:flex flex-col justify-between w-[40%] relative p-6 lg:p-7 xl:p-8 shrink-0 text-white overflow-hidden"
-            style={{
-              background: `linear-gradient(160deg, ${B.green} 0%, #062b22 50%, ${B.deep} 100%)`,
-            }}
+            className="hidden md:flex flex-col justify-between w-[38%] lg:w-[40%] relative p-6 lg:p-8 shrink-0 text-white overflow-hidden"
+            style={{ background: `linear-gradient(160deg, ${B.green} 0%, #062b22 50%, ${B.deep} 100%)` }}
           >
-            {/* Concentric ripple watermark circles (Image 2 aesthetic) */}
-            <div
-              className="absolute rounded-full pointer-events-none"
-              style={{ width: 280, height: 280, right: -70, top: -70, border: '1.5px solid rgba(191,161,95,0.18)' }}
-            />
-            <div
-              className="absolute rounded-full pointer-events-none"
-              style={{ width: 380, height: 380, right: -120, top: -120, border: '1px solid rgba(255,255,255,0.06)' }}
-            />
-            <div
-              className="absolute rounded-full pointer-events-none"
-              style={{ width: 180, height: 180, left: -50, bottom: -50, border: '1.5px solid rgba(191,161,95,0.14)' }}
-            />
+            <div className="absolute rounded-full pointer-events-none" style={{ width: 280, height: 280, right: -70, top: -70, border: '1.5px solid rgba(191,161,95,0.18)' }} />
+            <div className="absolute rounded-full pointer-events-none" style={{ width: 380, height: 380, right: -120, top: -120, border: '1px solid rgba(255,255,255,0.06)' }} />
+            <div className="absolute rounded-full pointer-events-none" style={{ width: 180, height: 180, left: -50, bottom: -50, border: '1.5px solid rgba(191,161,95,0.14)' }} />
 
             <div className="relative z-10 space-y-4 lg:space-y-5">
-              {/* Badge: Premium Spa & Wellness (as in Image 2) */}
-              <div
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                style={{
-                  background: 'rgba(191,161,95,0.12)',
-                  border: '1px solid rgba(191,161,95,0.32)',
-                  color: '#e8cc8a',
-                }}
-              >
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ background: 'rgba(191,161,95,0.12)', border: '1px solid rgba(191,161,95,0.32)', color: '#e8cc8a' }}>
                 <span>PREMIUM SPA &amp; WELLNESS</span>
               </div>
-
-              {/* Dynamic headline based on active tab */}
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2 }}
-                >
+                <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
                   <h2 className="text-2xl lg:text-[28px] font-black leading-tight tracking-tight mb-2 text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
                     {activeTab === 'login' ? 'Welcome back to your calm.' : 'Begin your wellness journey.'}
                   </h2>
@@ -771,15 +692,10 @@ export default function AuthPortal({ initialTab = 'login' }) {
                   </p>
                 </motion.div>
               </AnimatePresence>
-
-              {/* Trust Points (Image 2) */}
               <ul className="space-y-3 pt-1">
                 {(activeTab === 'login' ? TRUST_POINTS_LOGIN : TRUST_POINTS_REGISTER).map((t) => (
                   <li key={t.title} className="flex items-start gap-2.5">
-                    <span
-                      className="flex items-center justify-center w-7 h-7 rounded-xl shrink-0 mt-0.5"
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
-                    >
+                    <span className="flex items-center justify-center w-7 h-7 rounded-xl shrink-0 mt-0.5" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}>
                       <t.icon className="w-3.5 h-3.5 text-[#e8cc8a]" />
                     </span>
                     <div>
@@ -791,20 +707,13 @@ export default function AuthPortal({ initialTab = 'login' }) {
               </ul>
             </div>
 
-            {/* Panel footer */}
             <div className="relative z-10 pt-4 flex items-center justify-between border-t border-white/10 text-[10px] text-white/50">
-              <p>© {new Date().getFullYear()} Cozy Blissful</p>
+              <p>© {YEAR} Cozy Blissful</p>
               <div className="flex gap-1.5">
                 {SOCIALS.map((s) => (
-                  <a
-                    key={s.label}
-                    href={s.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={s.label}
+                  <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}
                     className="flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-white/20 hover:text-white"
-                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-                  >
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
                     <s.icon />
                   </a>
                 ))}
@@ -812,325 +721,170 @@ export default function AuthPortal({ initialTab = 'login' }) {
             </div>
           </div>
 
-          {/* ─── RIGHT FORM PANEL (Seamless Tabbed Portal - Direct View) ─── */}
-          <div className="flex-1 flex flex-col justify-center px-5 sm:px-8 lg:px-9 py-4 sm:py-5 lg:py-6 bg-white text-slate-800">
-            <div className="w-full max-w-[420px] mx-auto">
+          {/* ─── Right Form Panel ─── */}
+          <div className="flex-1 flex flex-col justify-start md:justify-center px-4 sm:px-7 lg:px-9 py-5 sm:py-7 bg-white text-slate-800">
+            <div className="w-full max-w-[440px] mx-auto">
 
-              {/* ── SLIDING TAB SWITCHER (Zero Page Jump!) ── */}
-              <div
-                className="relative p-1 rounded-2xl mb-3 sm:mb-4 flex items-center bg-slate-100 border border-slate-200"
-                role="tablist"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === 'login'}
-                  onClick={() => handleTabSwitch('login')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold transition-all relative flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
-                    activeTab === 'login' ? 'text-slate-950' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {activeTab === 'login' && (
-                    <motion.div
-                      layoutId="active-auth-tab"
-                      className="absolute inset-0 bg-white rounded-xl shadow-xs border border-slate-200/80"
-                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                    />
-                  )}
-                  <span className="relative z-10 flex items-center gap-1.5">
-                    <LogIn className="w-3.5 h-3.5 text-[#8c7033]" /> Sign In
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === 'register'}
-                  onClick={() => handleTabSwitch('register')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-extrabold transition-all relative flex items-center justify-center gap-1.5 cursor-pointer min-h-[36px] ${
-                    activeTab === 'register' ? 'text-slate-950' : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {activeTab === 'register' && (
-                    <motion.div
-                      layoutId="active-auth-tab"
-                      className="absolute inset-0 bg-white rounded-xl shadow-xs border border-slate-200/80"
-                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                    />
-                  )}
-                  <span className="relative z-10 flex items-center gap-1.5">
-                    <UserPlus className="w-3.5 h-3.5 text-[#8c7033]" /> Create Account
-                  </span>
-                </button>
+              {/* Tab Switcher */}
+              <div className="relative p-1 rounded-2xl mb-4 flex items-center bg-slate-100 border border-slate-200" role="tablist">
+                {[
+                  { id: 'login', label: 'Sign In', icon: LogIn },
+                  { id: 'register', label: 'Create Account', icon: UserPlus },
+                ].map(({ id, label, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === id}
+                    onClick={() => handleTabSwitch(id)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all relative flex items-center justify-center gap-1.5 cursor-pointer min-h-[38px] touch-manipulation ${activeTab === id ? 'text-slate-950' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    {activeTab === id && (
+                      <motion.div layoutId="active-auth-tab" className="absolute inset-0 bg-white rounded-xl shadow-xs border border-slate-200/80" transition={{ type: 'spring', stiffness: 450, damping: 32 }} />
+                    )}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <Icon className="w-3.5 h-3.5 text-[#8c7033]" /> {label}
+                    </span>
+                  </button>
+                ))}
               </div>
 
-              {/* Notice & Rate Limit alerts */}
-              <AnimatePresence mode="wait">
-                {rateLimit !== null && (
-                  <motion.div key="rl" className="mb-2.5" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                    <RateLimitBanner retryAfter={rateLimit} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
+              {/* Notice Banner */}
               <AnimatePresence mode="wait">
                 {notice && !error && (
-                  <motion.div
-                    key="note"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="flex items-start gap-2 p-2.5 rounded-xl text-xs mb-2.5"
-                    style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.35)', color: '#8c7033' }}
-                  >
+                  <motion.div key="note" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="flex items-start gap-2 p-2.5 rounded-xl text-xs mb-3"
+                    style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.35)', color: '#8c7033' }}>
                     <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[#bfa15f]" />
                     <span className="font-semibold">{notice}</span>
                   </motion.div>
                 )}
               </AnimatePresence>
 
+              {/* Error Banner */}
               <AnimatePresence mode="wait">
                 {error && !rateLimit && (
-                  <motion.div
-                    key="err"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    role="alert"
-                    className="flex items-start gap-2 p-2.5 rounded-xl text-xs mb-2.5 bg-red-50 border border-red-200 text-red-700"
-                  >
+                  <motion.div key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} role="alert"
+                    className="flex items-start gap-2 p-2.5 rounded-xl text-xs mb-3 bg-red-50 border border-red-200 text-red-700">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-red-600" />
                     <span className="font-semibold">{error}</span>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* ── FORMS (Fluid Tab Content) ── */}
+              {/* Rate Limit */}
+              {rateLimit > 0 && <div className="mb-3"><RateLimitBanner retryAfter={rateLimit} /></div>}
+
+              {/* ── Forms ── */}
               <AnimatePresence mode="wait">
                 {activeTab === 'login' ? (
-                  /* ── TAB 1: LOGIN FORM ── */
-                  <motion.div
-                    key="form-login"
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    transition={{ duration: 0.18 }}
-                  >
+
+                  /* LOGIN FORM */
+                  <motion.div key="form-login" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.18 }}>
                     <div className="mb-3">
-                      <h1 className="text-xl font-black tracking-tight text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
-                        Sign In to Your Account
-                      </h1>
+                      <h1 className="text-xl font-black tracking-tight text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>Sign In to Your Account</h1>
                       <p className="text-xs text-slate-500 mt-0.5">Enter your email and password to proceed</p>
                     </div>
 
                     <form onSubmit={handleLoginSubmit} noValidate className="space-y-3">
-                      <Input
-                        label="Email Address"
-                        id="login-email"
-                        name="email"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        required
-                        maxLength={254}
-                        icon={Mail}
-                        value={loginEmail}
-                        placeholder="admin@example.com"
-                        error={loginFieldErrors.email}
-                        onChange={(e) => {
-                          setLoginEmail(e.target.value);
-                          if (loginFieldErrors.email) setLoginFieldErrors(p => ({ ...p, email: '' }));
-                        }}
+                      <Input label="Email Address" id="login-email" name="email" type="email" inputMode="email"
+                        autoComplete="email" required maxLength={254} icon={Mail}
+                        value={loginEmail} placeholder="your@email.com" error={loginFieldErrors.email}
+                        onChange={(e) => { setLoginEmail(e.target.value); if (loginFieldErrors.email) setLoginFieldErrors(p => ({ ...p, email: '' })); }}
                       />
 
-                      <Input
-                        label="Password"
-                        id="login-password"
-                        name="password"
-                        type={showLoginPw ? 'text' : 'password'}
-                        autoComplete="current-password"
-                        required
-                        maxLength={128}
-                        icon={Lock}
-                        value={loginPassword}
-                        placeholder="Enter your password"
-                        error={loginFieldErrors.password}
-                        onChange={(e) => {
-                          setLoginPassword(e.target.value);
-                          if (loginFieldErrors.password) setLoginFieldErrors(p => ({ ...p, password: '' }));
-                        }}
+                      <Input label="Password" id="login-password" name="password"
+                        type={showLoginPw ? 'text' : 'password'} autoComplete="current-password"
+                        required maxLength={128} icon={Lock} value={loginPassword}
+                        placeholder="Enter your password" error={loginFieldErrors.password}
+                        onChange={(e) => { setLoginPassword(e.target.value); if (loginFieldErrors.password) setLoginFieldErrors(p => ({ ...p, password: '' })); }}
                         rightEl={
-                          <button
-                            type="button"
-                            tabIndex={-1}
-                            onClick={() => setShowLoginPw(v => !v)}
+                          <button type="button" tabIndex={-1} onClick={() => setShowLoginPw(v => !v)}
                             aria-label={showLoginPw ? 'Hide password' : 'Show password'}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-                          >
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer touch-manipulation">
                             {showLoginPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         }
                       />
 
-                      {/* Remember & Forgot */}
                       <div className="flex items-center justify-between text-xs pt-0.5">
                         <label htmlFor="remember-me" className="inline-flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            id="remember-me"
-                            type="checkbox"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded cursor-pointer accent-[#bfa15f]"
-                          />
+                          <input id="remember-me" type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)}
+                            className="w-3.5 h-3.5 rounded cursor-pointer accent-[#bfa15f]" />
                           <span className="font-medium text-slate-600">Remember me</span>
                         </label>
-                        <Link
-                          to="/forgot-password"
-                          className="font-bold hover:underline underline-offset-2 transition-colors text-[#bfa15f] hover:text-[#8c7033]"
-                        >
+                        <Link to="/forgot-password" className="font-bold hover:underline underline-offset-2 transition-colors text-[#bfa15f] hover:text-[#8c7033]">
                           Forgot password?
                         </Link>
                       </div>
 
-                      {/* Submit Button: Label is 'Sign In' (as requested) + Gold Glow Hover */}
                       <motion.button
-                        type="submit"
-                        disabled={submitting || rateLimit > 0}
-                        whileHover={{ scale: submitting ? 1 : 1.01 }}
-                        whileTap={{ scale: submitting ? 1 : 0.985 }}
-                        className="w-full min-h-[42px] flex justify-center items-center gap-2 rounded-xl font-black text-sm text-[#041e16] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer shadow-md hover:brightness-110 hover:shadow-[0_6px_22px_rgba(191,161,95,0.55)] active:scale-[0.985]"
-                        style={{
-                          background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)',
-                          boxShadow: '0 4px 16px rgba(191,161,95,0.4)',
-                        }}
+                        type="submit" disabled={submitting || rateLimit > 0}
+                        whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.985 }}
+                        className="w-full min-h-[44px] flex justify-center items-center gap-2 rounded-xl font-black text-sm text-[#041e16] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer shadow-md hover:brightness-110 hover:shadow-[0_6px_22px_rgba(191,161,95,0.55)] touch-manipulation"
+                        style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)', boxShadow: '0 4px 16px rgba(191,161,95,0.4)' }}
                       >
-                        {submitting ? (
-                          <div className="w-4 h-4 border-2 border-[#041e16]/30 border-t-[#041e16] rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <LogIn className="w-4 h-4" />
-                            <span>Sign In</span>
-                          </>
-                        )}
+                        {submitting ? <div className="w-4 h-4 border-2 border-[#041e16]/30 border-t-[#041e16] rounded-full animate-spin" /> : <><LogIn className="w-4 h-4" /><span>Sign In</span></>}
                       </motion.button>
                     </form>
 
-                    {/* Social OAuth */}
-                    <SocialSignIn
-                      disabled={submitting}
-                      mode="login"
-                      onSuccess={redirect}
-                      onError={(msg) => { setRateLimit(null); setNotice(null); setError(msg); }}
-                    />
+                    <SocialSignIn disabled={submitting} mode="login" onSuccess={redirect} onError={(msg) => { setRateLimit(null); setNotice(null); setError(msg); }} />
+
+                    <p className="text-center text-xs text-slate-500 mt-4">
+                      Don&apos;t have an account?{' '}
+                      <button type="button" onClick={() => handleTabSwitch('register')} className="font-bold text-[#bfa15f] hover:text-[#8c7033] hover:underline underline-offset-2 cursor-pointer touch-manipulation">
+                        Create one free
+                      </button>
+                    </p>
                   </motion.div>
+
                 ) : (
-                  /* ── TAB 2: REGISTER FORM (Compact & Fits on Screen) ── */
-                  <motion.div
-                    key="form-register"
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 8 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    <div className="mb-2.5">
-                      <h1 className="text-xl font-black tracking-tight text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>
-                        Create Your Sanctuary Account
-                      </h1>
-                      <p className="text-xs text-slate-500 mt-0.5">Experience personalized bookings &amp; exclusive treatments</p>
+
+                  /* REGISTER FORM */
+                  <motion.div key="form-register" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} transition={{ duration: 0.18 }}>
+                    <div className="mb-3">
+                      <h1 className="text-xl font-black tracking-tight text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>Create Your Account</h1>
+                      <p className="text-xs text-slate-500 mt-0.5">Fill in your details to get started</p>
                     </div>
 
-                    <form onSubmit={handleRegisterSubmit} noValidate className="space-y-2.5">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <Input
-                          label="Full Name"
-                          id="reg-name"
-                          name="name"
-                          type="text"
-                          autoComplete="name"
-                          required
-                          maxLength={100}
-                          icon={User}
-                          value={regName}
-                          placeholder="e.g. Maria Santos"
-                          error={regFieldErrors.name}
-                          onChange={(e) => {
-                            setRegName(e.target.value);
-                            if (regFieldErrors.name) setRegFieldErrors(p => ({ ...p, name: '' }));
-                          }}
+                    <form onSubmit={handleRegisterSubmit} noValidate className="space-y-3">
+                      {/* Name & Email */}
+                      <div className="grid grid-cols-1 gap-2.5">
+                        <Input label="Full Name" id="reg-name" name="name" type="text"
+                          autoComplete="name" required maxLength={100} icon={User}
+                          value={regName} placeholder="e.g. Maria Santos" error={regFieldErrors.name}
+                          onChange={(e) => { setRegName(e.target.value); if (regFieldErrors.name) setRegFieldErrors(p => ({ ...p, name: '' })); }}
                         />
-
-                        <Input
-                          label="Email Address"
-                          id="reg-email"
-                          name="email"
-                          type="email"
-                          inputMode="email"
-                          autoComplete="email"
-                          required
-                          maxLength={254}
-                          icon={Mail}
-                          value={regEmail}
-                          placeholder="you@example.com"
-                          error={regFieldErrors.email}
-                          onChange={(e) => {
-                            setRegEmail(e.target.value);
-                            if (regFieldErrors.email) setRegFieldErrors(p => ({ ...p, email: '' }));
-                          }}
+                        <Input label="Email Address" id="reg-email" name="email" type="email"
+                          inputMode="email" autoComplete="email" required maxLength={254} icon={Mail}
+                          value={regEmail} placeholder="you@example.com" error={regFieldErrors.email}
+                          readOnly={!!initParams.email && regEmail === initParams.email}
+                          onChange={(e) => { setRegEmail(e.target.value); if (regFieldErrors.email) setRegFieldErrors(p => ({ ...p, email: '' })); }}
                         />
                       </div>
 
+                      {/* Password fields */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <Input
-                          label="Password"
-                          id="reg-password"
-                          name="password"
-                          type={showRegPw ? 'text' : 'password'}
-                          autoComplete="new-password"
-                          required
-                          maxLength={128}
-                          icon={Lock}
-                          value={regPassword}
-                          placeholder="8+ characters"
-                          error={regFieldErrors.password}
-                          onChange={(e) => {
-                            setRegPassword(e.target.value);
-                            if (regFieldErrors.password) setRegFieldErrors(p => ({ ...p, password: '' }));
-                          }}
+                        <Input label="Password" id="reg-password" name="password"
+                          type={showRegPw ? 'text' : 'password'} autoComplete="new-password"
+                          required maxLength={128} icon={Lock} value={regPassword}
+                          placeholder="8+ characters" error={regFieldErrors.password}
+                          onChange={(e) => { setRegPassword(e.target.value); if (regFieldErrors.password) setRegFieldErrors(p => ({ ...p, password: '' })); }}
                           rightEl={
-                            <button
-                              type="button"
-                              tabIndex={-1}
-                              onClick={() => setShowRegPw(v => !v)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-                            >
+                            <button type="button" tabIndex={-1} onClick={() => setShowRegPw(v => !v)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer touch-manipulation">
                               {showRegPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
                           }
                         />
-
-                        <Input
-                          label="Confirm Password"
-                          id="reg-confirm-password"
-                          name="confirm_password"
-                          type={showRegConfirmPw ? 'text' : 'password'}
-                          autoComplete="new-password"
-                          required
-                          maxLength={128}
-                          icon={Lock}
-                          value={regConfirmPw}
-                          placeholder="Re-enter password"
-                          error={regFieldErrors.confirmPassword}
-                          onChange={(e) => {
-                            setRegConfirmPw(e.target.value);
-                            if (regFieldErrors.confirmPassword) setRegFieldErrors(p => ({ ...p, confirmPassword: '' }));
-                          }}
+                        <Input label="Confirm Password" id="reg-confirm-password" name="confirm_password"
+                          type={showRegConfirmPw ? 'text' : 'password'} autoComplete="new-password"
+                          required maxLength={128} icon={Lock} value={regConfirmPw}
+                          placeholder="Re-enter password" error={regFieldErrors.confirmPassword}
+                          onChange={(e) => { setRegConfirmPw(e.target.value); if (regFieldErrors.confirmPassword) setRegFieldErrors(p => ({ ...p, confirmPassword: '' })); }}
                           rightEl={
-                            <button
-                              type="button"
-                              tabIndex={-1}
-                              onClick={() => setShowRegConfirmPw(v => !v)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-                            >
+                            <button type="button" tabIndex={-1} onClick={() => setShowRegConfirmPw(v => !v)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer touch-manipulation">
                               {showRegConfirmPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
                           }
@@ -1139,36 +893,28 @@ export default function AuthPortal({ initialTab = 'login' }) {
 
                       <PasswordStrength password={regPassword} />
 
-                      {/* Submit */}
                       <motion.button
-                        type="submit"
-                        disabled={submitting || rateLimit > 0}
-                        whileHover={{ scale: submitting ? 1 : 1.01 }}
-                        whileTap={{ scale: submitting ? 1 : 0.985 }}
-                        className="w-full min-h-[42px] flex justify-center items-center gap-2 rounded-xl font-black text-sm text-[#041e16] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer shadow-md hover:brightness-110 hover:shadow-[0_6px_22px_rgba(191,161,95,0.55)] active:scale-[0.985]"
-                        style={{
-                          background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)',
-                          boxShadow: '0 4px 16px rgba(191,161,95,0.4)',
-                        }}
+                        type="submit" disabled={submitting || rateLimit > 0}
+                        whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.985 }}
+                        className="w-full min-h-[44px] flex justify-center items-center gap-2 rounded-xl font-black text-sm text-[#041e16] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer shadow-md hover:brightness-110 hover:shadow-[0_6px_22px_rgba(191,161,95,0.55)] touch-manipulation"
+                        style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)', boxShadow: '0 4px 16px rgba(191,161,95,0.4)' }}
                       >
-                        {submitting ? (
-                          <div className="w-4 h-4 border-2 border-[#041e16]/30 border-t-[#041e16] rounded-full animate-spin" />
-                        ) : (
-                          <>
-                            <UserPlus className="w-4 h-4" />
-                            <span>Create Account</span>
-                          </>
-                        )}
+                        {submitting ? <div className="w-4 h-4 border-2 border-[#041e16]/30 border-t-[#041e16] rounded-full animate-spin" /> : <><UserPlus className="w-4 h-4" /><span>Create Account</span></>}
                       </motion.button>
                     </form>
 
-                    {/* Social OAuth */}
                     <SocialSignIn
-                      disabled={submitting}
-                      mode="register"
+                      disabled={submitting} mode="register"
                       onSuccess={redirect}
                       onError={(msg) => { setRateLimit(null); setNotice(null); setError(msg); }}
                     />
+
+                    <p className="text-center text-xs text-slate-500 mt-4">
+                      Already have an account?{' '}
+                      <button type="button" onClick={() => handleTabSwitch('login')} className="font-bold text-[#bfa15f] hover:text-[#8c7033] hover:underline underline-offset-2 cursor-pointer touch-manipulation">
+                        Sign in instead
+                      </button>
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1178,39 +924,30 @@ export default function AuthPortal({ initialTab = 'login' }) {
         </motion.div>
       </main>
 
-      {/* ── FOOTER BAR (Sleek & Unobtrusive) ── */}
-      <footer className="shrink-0 py-2.5 px-4 text-center text-[11px] text-white/40 border-t border-white/5 z-10">
-        <p>© {new Date().getFullYear()} Cozy Blissful Salon &amp; Spa • Luxury Specialist Sanctuary</p>
+      {/* ── Footer ── */}
+      <footer className="shrink-0 py-3 px-4 text-center text-[11px] text-white/40 border-t border-white/5 z-10">
+        <p>© {YEAR} Cozy Blissful Salon &amp; Spa • Luxury Specialist Sanctuary</p>
       </footer>
 
-      {/* ── SUCCESS REGISTRATION MODAL ── */}
+      {/* ── Registration Success Modal ── */}
       <AnimatePresence>
         {regSuccessModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center space-y-4 border border-slate-100"
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center space-y-4 border border-slate-100 mx-4"
             >
               <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto shadow-sm">
                 <CheckCircle2 className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Account Created!
-              </h3>
+              <h3 className="text-xl font-black tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>Account Created!</h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 Welcome to Cozy Blissful! Your account for <strong className="text-slate-800">{registeredEmail}</strong> is ready.
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setRegSuccessModal(false);
-                  handleTabSwitch('login');
-                  setNotice('Account ready! Please sign in with your password.');
-                  setLoginEmail(registeredEmail);
-                }}
-                className="w-full py-3 rounded-xl font-black text-sm text-[#041e16] shadow-md cursor-pointer transition-transform hover:scale-[1.02] hover:brightness-110"
+                onClick={() => { setRegSuccessModal(false); handleTabSwitch('login'); setNotice('Account ready! Please sign in with your password.'); setLoginEmail(registeredEmail); }}
+                className="w-full py-3 rounded-xl font-black text-sm text-[#041e16] shadow-md cursor-pointer transition-transform hover:scale-[1.02] hover:brightness-110 touch-manipulation"
                 style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
               >
                 Sign In Now
