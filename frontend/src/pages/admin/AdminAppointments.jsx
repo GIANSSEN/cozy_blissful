@@ -914,7 +914,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
             {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
           </h3>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '4px 0 0' }}>
-            {dayAppts.length} session{dayAppts.length !== 1 ? 's' : ''} scheduled
+            {dayGroups.length} visit{dayGroups.length !== 1 ? 's' : ''} · {dayTreatmentCount} treatment{dayTreatmentCount !== 1 ? 's' : ''} scheduled
           </p>
         </div>
       </div>
@@ -929,7 +929,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
             {HOUR_SLOTS.map(hour => {
               const h12 = hour > 12 ? hour - 12 : hour;
               const period = hour >= 12 ? 'PM' : 'AM';
-              const slotAppts = dayAppts.filter(a => new Date(a.datetime).getHours() === hour);
+              const slotGroups = dayGroups.filter(g => new Date(g.datetime).getHours() === hour);
               return (
                 <div key={hour} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', minHeight: 68, borderBottom: `1px solid ${C.rowBorder}` }}>
                   <div style={{ borderRight: `1px solid ${C.rowBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0' }}>
@@ -939,35 +939,40 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
                     </div>
                   </div>
                   <div style={{ padding: '8px 12px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                    {slotAppts.map(appt => {
-                      const ss = getStatusStyle(appt.status, isDark);
-                      const isConfirmed = appt.status === 'Confirmed';
-                      const isInProgress = appt.status === 'In Progress';
+                    {slotGroups.map(g => {
+                      const ss = getStatusStyle(g.status, isDark);
+                      const isConfirmed = g.status === 'Confirmed';
+                      const isInProgress = g.status === 'In Progress';
                       const isEmphasized = isConfirmed || isInProgress;
+                      const label = g.items.length > 1 ? `${g.items.length} treatments · 1 visit` : (g.items[0]?.service || 'Visit');
                       return (
-                        <motion.button
-                          key={appt.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                          onClick={() => onSelectAppt(appt)}
+                        <button
+                          key={g.key}
+                          type="button"
+                          onClick={() => onSelectAppt(g)}
                           style={{
-                            flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', minWidth: 170, maxWidth: 280,
+                            flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', minWidth: 190, maxWidth: 300,
                             background: isInProgress ? 'linear-gradient(135deg,#0c4a6e,#075985)' : isConfirmed ? 'linear-gradient(135deg,#062c22,#0a3d30)' : C.cardBg,
                             border: `1px solid ${isInProgress ? '#38bdf8' : isConfirmed ? '#10b981' : ss.border}`,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                            <p style={{ fontWeight: 900, fontSize: 12, margin: 0, color: isEmphasized ? '#ffffff' : C.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.service}</p>
-                            <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`, flexShrink: 0 }}>{appt.status}</span>
+                            <p style={{ fontWeight: 900, fontSize: 12, margin: 0, color: isEmphasized ? '#ffffff' : C.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</p>
+                            <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`, flexShrink: 0 }}>{g.status}</span>
                           </div>
-                          <p style={{ fontSize: 11, fontWeight: 700, margin: '5px 0 0', color: isEmphasized ? '#a7f3d0' : C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>👤 {appt.client_name || appt.client}</p>
+                          <p style={{ fontSize: 11, fontWeight: 700, margin: '5px 0 0', color: isEmphasized ? '#a7f3d0' : C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.client_name} · {fmt12(g.datetime)}</p>
+                          <p style={{ fontSize: 11, fontWeight: 600, margin: '3px 0 0', color: isEmphasized ? '#d1fae5' : C.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {g.items.map((it) => it.service).join(' + ')}
+                          </p>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTop: `1px solid ${isEmphasized ? 'rgba(255,255,255,0.15)' : C.rowBorder}`, fontSize: 11, fontWeight: 700, color: isEmphasized ? '#d1fae5' : C.textMuted }}>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🙌 {appt.therapist_name || 'Unassigned'}</span>
-                            <span style={{ flexShrink: 0, fontWeight: 900 }}>{appt.service_duration || 60}m</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.therapist_name || 'Unassigned'}</span>
+                            <span style={{ flexShrink: 0, fontWeight: 900 }}>{g.totalDuration || 60}m · {groupRefLabel(g)}</span>
                           </div>
-                        </motion.button>
+                        </button>
                       );
                     })}
-                    {slotAppts.length === 0 && (
+                    {slotGroups.length === 0 && (
                       <span style={{ fontSize: 11, fontWeight: 600, fontStyle: 'italic', color: C.textMuted }}>Available</span>
                     )}
                   </div>
@@ -2119,4 +2124,14 @@ const AdminAppointments = () => {
             <CashSettlementModal
               appt={settleCashTarget}
               onClose={() => setSettleCashTarget(null)}
-              onConfirmSettlement={handleSettle
+              onConfirmSettlement={handleSettleCash}
+              isDark={isDark}
+            />
+          )}
+        </AnimatePresence>
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default AdminAppointments;
