@@ -9,14 +9,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// ─── Shared ease curve (mirrors LandingPage) ────────────────────────────────
+// ─── Ease ────────────────────────────────────────────────────────────────────
 const EASE = [0.22, 1, 0.36, 1];
 
-// ─── Brand Tokens ───────────────────────────────────────────────────────────
+// ─── Brand tokens ────────────────────────────────────────────────────────────
 const B = {
-  canvas : '#04100a',
-  deep   : '#041e16',
-  green  : '#0a3d30',
   gold   : '#bfa15f',
   goldLt : '#e8cc8a',
   goldDk : '#8c7033',
@@ -24,21 +21,26 @@ const B = {
   inkSoft: '#64748b',
   line   : '#e2e8f0',
   white  : '#ffffff',
-  cream  : '#faf9f7',
 };
 
-// ─── Validation ─────────────────────────────────────────────────────────────
+// ─── Validation ──────────────────────────────────────────────────────────────
 const EMAIL_RE = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 const NAME_RE  = /^[\p{L}\s'.-]+$/u;
 const PASS_RE  = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-// ─── OAuth ──────────────────────────────────────────────────────────────────
-const GOOGLE_CLIENT_ID  = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const FACEBOOK_APP_ID   = import.meta.env.VITE_FACEBOOK_APP_ID;
+// ─── OAuth env vars ──────────────────────────────────────────────────────────
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const FACEBOOK_APP_ID  = import.meta.env.VITE_FACEBOOK_APP_ID;
 
+// ─── Script loader (singleton) ───────────────────────────────────────────────
 const loadScript = (src, id) => new Promise((resolve, reject) => {
   const ex = document.getElementById(id);
-  if (ex) { if (ex.dataset.loaded === 'true') return resolve(); ex.addEventListener('load', resolve); ex.addEventListener('error', reject); return; }
+  if (ex) {
+    if (ex.dataset.loaded === 'true') return resolve();
+    ex.addEventListener('load', resolve);
+    ex.addEventListener('error', reject);
+    return;
+  }
   const s = document.createElement('script');
   s.src = src; s.id = id; s.async = true; s.defer = true;
   s.addEventListener('load', () => { s.dataset.loaded = 'true'; resolve(); });
@@ -46,15 +48,41 @@ const loadScript = (src, id) => new Promise((resolve, reject) => {
   document.head.appendChild(s);
 });
 
-const cleanParam = (v) => v && v !== 'null' && v !== 'undefined' && v.trim() !== '' ? v.trim() : '';
+const cleanParam = (v) =>
+  v && v !== 'null' && v !== 'undefined' && v.trim() !== '' ? v.trim() : '';
 
+// ─── Social links (left panel footer) ────────────────────────────────────────
 const SOCIALS = [
-  { label: 'Facebook',  href: 'https://facebook.com/cozyblissful',  icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg> },
-  { label: 'Instagram', href: 'https://instagram.com/cozyblissful', icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg> },
-  { label: 'WhatsApp',  href: 'https://wa.me/639995435913',         icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" /></svg> },
+  {
+    label: 'Facebook',
+    href : 'https://facebook.com/cozyblissful',
+    icon : () => (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Instagram',
+    href : 'https://instagram.com/cozyblissful',
+    icon : () => (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'WhatsApp',
+    href : 'https://wa.me/639995435913',
+    icon : () => (
+      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" />
+      </svg>
+    ),
+  },
 ];
 
-// ─── Google glyph ────────────────────────────────────────────────────────────
+// ─── Google glyph ─────────────────────────────────────────────────────────────
 const GoogleGlyph = () => (
   <svg viewBox="0 0 48 48" className="w-[17px] h-[17px] shrink-0" aria-hidden="true">
     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
@@ -70,7 +98,7 @@ const FacebookGlyph = () => (
   </svg>
 );
 
-// ─── Ambient background (exact match to LandingPage hero language) ───────────
+// ─── Ambient spa backdrop ─────────────────────────────────────────────────────
 const SpaBackdrop = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
     <img
@@ -80,12 +108,12 @@ const SpaBackdrop = () => (
       loading="eager"
       decoding="async"
     />
-    <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg,rgba(4,30,22,0.82) 0%,rgba(7,51,40,0.65) 55%,rgba(14,77,56,0.75) 100%)' }} />
-    {/* Gold orb top-right */}
+    <div
+      className="absolute inset-0"
+      style={{ background: 'linear-gradient(135deg,rgba(4,30,22,0.82) 0%,rgba(7,51,40,0.65) 55%,rgba(14,77,56,0.75) 100%)' }}
+    />
     <div className="absolute rounded-full blur-3xl opacity-25" style={{ width: 520, height: 520, right: '-6%', top: '-10%', background: 'radial-gradient(circle,rgba(191,161,95,0.25) 0%,transparent 68%)' }} />
-    {/* Teal orb bottom-left */}
     <div className="absolute rounded-full blur-3xl opacity-20" style={{ width: 380, height: 380, left: '-5%', bottom: '-8%', background: 'radial-gradient(circle,rgba(52,201,158,0.18) 0%,transparent 70%)' }} />
-    {/* Floating petals */}
     <div className="absolute inset-0 hidden sm:block">
       {Array.from({ length: 8 }, (_, i) => (
         <motion.span
@@ -106,138 +134,7 @@ const SpaBackdrop = () => (
   </div>
 );
 
-// ─── Navbar — glassmorphism, pixel-matched to LandingPage ───────────────────
-const AuthNavbar = ({ activeTab }) => {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobile, setMobile] = useState(false);
-
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => { setScrolled(window.scrollY > 24); ticking = false; });
-        ticking = true;
-      }
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
-    if (!mobile) return;
-    const onKey = (e) => { if (e.key === 'Escape') setMobile(false); };
-    window.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [mobile]);
-
-  return (
-    <>
-      <motion.header
-        initial={{ y: -68, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.52, ease: EASE }}
-        className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${
-          scrolled ? 'bg-[#04100a]/95 backdrop-blur-xl border-[rgba(191,161,95,0.22)] shadow-lg shadow-black/40'
-                   : 'bg-[#04100a]/50 backdrop-blur-md border-white/5'}`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-          <div className={`flex items-center justify-between transition-all duration-300 ${scrolled ? 'py-2' : 'py-3'}`}>
-            {/* Logo */}
-            <Link to="/" aria-label="Cozy Blissful — back to home" className="flex items-center gap-2.5 group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60">
-              <span className="relative flex-shrink-0">
-                <motion.span className="absolute inset-0 rounded-full" style={{ border: '1.5px solid rgba(191,161,95,0.5)' }} animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }} transition={{ duration: 2.8, repeat: Infinity }} />
-                <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-9 h-9 lg:w-10 lg:h-10 rounded-full object-cover relative z-10" style={{ border: '2px solid rgba(191,161,95,0.55)', boxShadow: '0 0 0 1px rgba(191,161,95,0.15),0 4px 16px rgba(0,0,0,0.4)' }} />
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 z-20" style={{ background: '#34d399', borderColor: '#041e16' }} />
-              </span>
-              <span className="leading-none">
-                <span className="text-sm font-black tracking-wide text-white block group-hover:text-amber-200 transition-colors" style={{ fontFamily: "'Playfair Display', serif" }}>Cozy Blissful</span>
-                <span className="text-[9px] font-bold tracking-[0.18em] uppercase block mt-0.5" style={{ color: '#bfa15f' }}>Salon &amp; Spa</span>
-              </span>
-            </Link>
-
-            {/* Desktop nav */}
-            <nav className="hidden lg:flex items-center gap-0.5" aria-label="Primary">
-              {NAV_LINKS.map(({ href, label }) => (
-                <a key={href} href={href} className="group relative px-3.5 py-2 text-[12.5px] font-semibold tracking-wide text-white/70 hover:text-white transition-all duration-300 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60">
-                  {label}
-                  <span aria-hidden className="absolute bottom-0.5 left-3.5 right-3.5 h-[2px] rounded-full origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" style={{ background: 'linear-gradient(90deg,#bfa15f,#e8cc8a)' }} />
-                </a>
-              ))}
-            </nav>
-
-            {/* Desktop CTA */}
-            <div className="hidden lg:flex items-center gap-2">
-              <Link to="/" className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl text-white/75 hover:text-white hover:bg-white/10 border border-white/10 hover:border-[#bfa15f]/35 transition-all">
-                <ArrowLeft className="w-3.5 h-3.5 text-[#e8cc8a]" /> Back to Home
-              </Link>
-              <Link
-                to={activeTab === 'login' ? '/register' : '/login'}
-                className="px-4 py-2 text-xs font-black text-[#041e16] rounded-xl hover:brightness-110 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)', boxShadow: '0 4px 14px rgba(191,161,95,0.4)' }}
-              >
-                {activeTab === 'login' ? 'Create Account' : 'Sign In'}
-              </Link>
-            </div>
-
-            {/* Mobile hamburger */}
-            <button
-              type="button"
-              aria-label={mobile ? 'Close menu' : 'Open menu'}
-              aria-expanded={mobile}
-              onClick={() => setMobile(v => !v)}
-              className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/10 border border-white/15 text-white active:scale-90 transition-all touch-manipulation"
-            >
-              {mobile ? <X className="w-4.5 h-4.5 text-amber-300" /> : <Menu className="w-4.5 h-4.5" />}
-            </button>
-          </div>
-        </div>
-      </motion.header>
-
-      {/* Mobile drawer */}
-      <AnimatePresence>
-        {mobile && (
-          <>
-            <motion.div key="mob-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMobile(false)} className="lg:hidden fixed inset-0 z-[54] bg-black/60 backdrop-blur-sm" />
-            <motion.aside
-              key="mob-drawer" role="dialog" aria-modal="true" aria-label="Site navigation"
-              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ duration: 0.32, ease: EASE }}
-              style={{ background: 'linear-gradient(180deg,#04100a 0%,#06251a 100%)' }}
-              className="lg:hidden fixed top-0 right-0 bottom-0 z-[55] w-[82%] max-w-xs flex flex-col border-l border-[rgba(191,161,95,0.22)]"
-            >
-              <div className="flex items-center justify-between pl-4 pr-3 py-3 border-b border-white/[0.06]">
-                <span className="flex items-center gap-2">
-                  <img src="/cb-logo.jpg" alt="" className="w-8 h-8 rounded-full object-cover" style={{ border: '2px solid rgba(191,161,95,0.55)' }} />
-                  <span className="text-sm font-black text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Cozy Blissful</span>
-                </span>
-                <button type="button" aria-label="Close menu" onClick={() => setMobile(false)} className="flex items-center justify-center w-10 h-10 rounded-xl text-white/70 hover:bg-white/10 touch-manipulation">
-                  <X className="w-4.5 h-4.5" />
-                </button>
-              </div>
-              <nav aria-label="Mobile" className="flex-1 px-4 py-4 flex flex-col gap-1">
-                {NAV_LINKS.map(({ href, label }) => (
-                  <a key={href} href={href} onClick={() => setMobile(false)} className="px-3 py-2.5 rounded-xl text-[14px] font-semibold text-white/80 active:bg-[#bfa15f]/15">
-                    {label}
-                  </a>
-                ))}
-              </nav>
-              <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-white/[0.06] bg-black/20 flex gap-2">
-                <Link to="/" onClick={() => setMobile(false)} className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold text-white/80 border border-white/10 bg-white/5">Home</Link>
-                <Link to={activeTab === 'login' ? '/register' : '/login'} onClick={() => setMobile(false)} className="flex-1 text-center py-2.5 rounded-xl text-sm font-bold text-[#041e16] bg-gradient-to-r from-[#bfa15f] to-[#d4b87a]">
-                  {activeTab === 'login' ? 'Sign Up' : 'Sign In'}
-                </Link>
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-    </>
-  );
-};
-
-// ─── Rate limit countdown ────────────────────────────────────────────────────
+// ─── Rate-limit countdown ─────────────────────────────────────────────────────
 const RateLimitBanner = ({ retryAfter, onDone }) => {
   const [s, setS] = useState(retryAfter);
   useEffect(() => { setS(retryAfter); }, [retryAfter]);
@@ -248,9 +145,12 @@ const RateLimitBanner = ({ retryAfter, onDone }) => {
   }, [s, onDone]);
   const m = Math.floor(s / 60), sec = s % 60;
   return (
-    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+    <motion.div
+      initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-[12px]"
-      style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.3)' }} role="alert">
+      style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.3)' }}
+      role="alert"
+    >
       <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: '#8c7033' }} />
       <span style={{ color: '#6b5a2e' }}>
         <strong>Too many attempts.</strong>{' '}
@@ -260,8 +160,8 @@ const RateLimitBanner = ({ retryAfter, onDone }) => {
   );
 };
 
-// ─── Form Input ─────────────────────────────────────────────────────────────
-const Input = ({ label, id, icon: Icon, error, success, rightEl, helper, onBlur, ...props }) => {
+// ─── Form input ───────────────────────────────────────────────────────────────
+const Input = ({ label, id, icon: Icon, error, success, rightEl, onBlur, ...props }) => {
   const [focused, setFocused] = useState(false);
   const errId = error ? `${id}-error` : undefined;
   return (
@@ -285,33 +185,52 @@ const Input = ({ label, id, icon: Icon, error, success, rightEl, helper, onBlur,
             fontSize: '15px',
             minHeight: '44px',
             paddingLeft: '38px',
-            paddingRight: rightEl ? '80px' : success ? '36px' : '12px',
+            paddingRight: rightEl ? '44px' : success ? '36px' : '12px',
             paddingTop: '10px',
             paddingBottom: '10px',
             border: `1.5px solid ${error ? '#dc2626' : focused ? B.gold : B.line}`,
-            boxShadow: focused && !error ? '0 0 0 3px rgba(191,161,95,0.15)' : error ? '0 0 0 3px rgba(220,38,38,0.07)' : '0 1px 2px rgba(0,0,0,0.04)',
+            boxShadow: focused && !error
+              ? '0 0 0 3px rgba(191,161,95,0.15)'
+              : error
+              ? '0 0 0 3px rgba(220,38,38,0.07)'
+              : '0 1px 2px rgba(0,0,0,0.04)',
           }}
           {...props}
         />
         {success && !error && (
           <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-600 pointer-events-none" aria-hidden="true" />
         )}
-        {rightEl && <div className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10">{rightEl}</div>}
+        {rightEl && (
+          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10">{rightEl}</div>
+        )}
       </div>
       {error && (
-        <motion.p id={errId} initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }}
-          className="text-[11px] mt-1 flex items-center gap-1 font-semibold" style={{ color: '#dc2626' }} role="alert">
+        <motion.p
+          id={errId}
+          initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }}
+          className="text-[11px] mt-1 flex items-center gap-1 font-semibold"
+          style={{ color: '#dc2626' }}
+          role="alert"
+        >
           <AlertCircle className="w-3 h-3 shrink-0" />{error}
         </motion.p>
-      )}
-      {helper && !error && (
-        <p className="text-[11px] mt-0.5 text-slate-400">{helper}</p>
       )}
     </div>
   );
 };
 
-// ─── Compact password strength bar ──────────────────────────────────────────
+// ─── Eye toggle ───────────────────────────────────────────────────────────────
+const EyeBtn = ({ show, onToggle, label }) => (
+  <button
+    type="button" onClick={onToggle}
+    aria-label={label} aria-pressed={show}
+    className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer touch-manipulation transition-colors"
+  >
+    {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+  </button>
+);
+
+// ─── Compact password strength ────────────────────────────────────────────────
 const PasswordStrength = ({ password }) => {
   if (!password) return null;
   const checks = [
@@ -347,17 +266,31 @@ const PasswordStrength = ({ password }) => {
   );
 };
 
-// ─── Facebook button ─────────────────────────────────────────────────────────
+// ─── Stat pill (left panel) ───────────────────────────────────────────────────
+const StatPill = ({ value, label }) => (
+  <span className="text-center">
+    <span className="block text-[17px] font-black" style={{ color: '#e8cc8a' }}>{value}</span>
+    <span className="block text-[9.5px] text-white/50 font-semibold mt-px">{label}</span>
+  </span>
+);
+
+// ─── Facebook sign-in button ──────────────────────────────────────────────────
 const FacebookBtn = ({ disabled, pending, mode, onFinish, onError }) => {
   const sdkRef = useRef(false);
 
   useEffect(() => {
     if (!FACEBOOK_APP_ID || sdkRef.current) return;
-    const init = () => { if (window.FB && !sdkRef.current) { sdkRef.current = true; window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' }); } };
+    const init = () => {
+      if (window.FB && !sdkRef.current) {
+        sdkRef.current = true;
+        window.FB.init({ appId: FACEBOOK_APP_ID, cookie: true, xfbml: false, version: 'v21.0' });
+      }
+    };
     if (window.FB) { init(); return; }
     const prev = window.fbAsyncInit;
     window.fbAsyncInit = () => { if (prev) prev(); init(); };
-    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk').catch(() => onError('Facebook Sign-In unavailable. Use email instead.'));
+    loadScript('https://connect.facebook.net/en_US/sdk.js', 'facebook-jssdk')
+      .catch(() => onError('Facebook Sign-In unavailable. Use email instead.'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -366,7 +299,11 @@ const FacebookBtn = ({ disabled, pending, mode, onFinish, onError }) => {
     if (!FACEBOOK_APP_ID) { onError('Facebook sign-in is not configured.'); return; }
     if (!window.FB) { onError('Facebook is still loading. Please wait.'); return; }
     window.FB.login(
-      (r) => { if (r.status === 'connected' && r.authResponse?.accessToken) onFinish('facebook', r.authResponse.accessToken); },
+      (r) => {
+        if (r.status === 'connected' && r.authResponse?.accessToken) {
+          onFinish('facebook', r.authResponse.accessToken);
+        }
+      },
       { scope: 'email,public_profile' }
     );
   };
@@ -390,7 +327,7 @@ const FacebookBtn = ({ disabled, pending, mode, onFinish, onError }) => {
   );
 };
 
-// ─── Social sign-in wrapper ──────────────────────────────────────────────────
+// ─── Social sign-in wrapper ───────────────────────────────────────────────────
 const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
   const { socialLogin } = useAuth();
   const [pending, setPending] = useState(null);
@@ -400,19 +337,25 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
   const finish = useCallback(async (provider, cred) => {
     setPending(provider);
     let res;
-    try { res = await socialLogin(provider, cred); } catch { setPending(null); onError('Social sign-in failed. Please use email.'); return; }
+    try { res = await socialLogin(provider, cred); } catch {
+      setPending(null);
+      onError('Social sign-in failed. Please use email.');
+      return;
+    }
     setPending(null);
     if (res.success) { onSuccess(res.role); return; }
     if (res.needsRegistration) {
       const q = new URLSearchParams();
-      const name = cleanParam(res.suggestedName);
+      const name  = cleanParam(res.suggestedName);
       const email = cleanParam(res.email);
-      const prov = cleanParam(res.provider);
+      const prov  = cleanParam(res.provider);
       if (email) q.set('prefill_email', email);
-      if (name) q.set('prefill_name', name);
-      if (prov) q.set('provider', prov);
+      if (name)  q.set('prefill_name', name);
+      if (prov)  q.set('provider', prov);
       navigate(`/register?${q.toString()}`);
-    } else { onError(res.error || 'Social sign-in failed. Please use email.'); }
+    } else {
+      onError(res.error || 'Social sign-in failed. Please use email.');
+    }
   }, [socialLogin, onSuccess, onError, navigate]);
 
   useEffect(() => {
@@ -423,8 +366,11 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
         if (cancelled || !window.google?.accounts?.id) return;
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
-          callback: (resp) => resp?.credential ? finish('google', resp.credential) : onError('Google sign-in was cancelled.'),
-          auto_select: false, cancel_on_tap_outside: true,
+          callback: (resp) => resp?.credential
+            ? finish('google', resp.credential)
+            : onError('Google sign-in was cancelled.'),
+          auto_select: false,
+          cancel_on_tap_outside: true,
         });
         if (googleBtnRef.current) {
           window.google.accounts.id.renderButton(googleBtnRef.current, {
@@ -445,11 +391,14 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
       setPending('google');
       window.google.accounts.id.prompt((n) => {
         if (n.isNotDisplayed() || n.isSkippedMoment()) {
-          const btn = googleBtnRef.current?.querySelector('iframe') || googleBtnRef.current?.querySelector('div[role="button"]');
+          const btn = googleBtnRef.current?.querySelector('iframe')
+            || googleBtnRef.current?.querySelector('div[role="button"]');
           if (btn) btn.click(); else setPending(null);
         }
       });
-    } else { onError('Google is still loading. Please wait.'); }
+    } else {
+      onError('Google is still loading. Please wait.');
+    }
   };
 
   return (
@@ -477,7 +426,12 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
               : <GoogleGlyph />}
             <span className="truncate">Google</span>
           </motion.button>
-          <div ref={googleBtnRef} aria-hidden="true" className="absolute inset-0 overflow-hidden" style={{ opacity: 0.011, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }} />
+          <div
+            ref={googleBtnRef}
+            aria-hidden="true"
+            className="absolute inset-0 overflow-hidden"
+            style={{ opacity: 0.011, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }}
+          />
         </div>
 
         <FacebookBtn disabled={disabled} pending={pending} mode={mode} onFinish={finish} onError={onError} />
@@ -486,36 +440,17 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
   );
 };
 
-// ─── Eye-toggle button ───────────────────────────────────────────────────────
-const EyeBtn = ({ show, onToggle, label }) => (
-  <button
-    type="button" onClick={onToggle}
-    aria-label={label} aria-pressed={show}
-    className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer touch-manipulation transition-colors"
-  >
-    {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-  </button>
-);
-
-// ─── Stat pill ───────────────────────────────────────────────────────────────
-const StatPill = ({ value, label }) => (
-  <span className="text-center">
-    <span className="block text-[17px] font-black" style={{ color: '#e8cc8a' }}>{value}</span>
-    <span className="block text-[9.5px] text-white/50 font-semibold mt-px">{label}</span>
-  </span>
-);
-
 // ═══════════════════════════════════════════════════════════════════════════════
-// MAIN
+// MAIN AUTH PORTAL
 // ═══════════════════════════════════════════════════════════════════════════════
 const YEAR = new Date().getFullYear();
 
 export default function AuthPortal({ initialTab = 'login' }) {
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { login, register, logout, token, user, role } = useAuth();
 
-  // URL param parsing (memoized once on mount)
+  // Parse URL params once on mount
   const initParams = useMemo(() => {
     const p = new URLSearchParams(location.search);
     return {
@@ -534,24 +469,26 @@ export default function AuthPortal({ initialTab = 'login' }) {
   }, [location.pathname, initParams, initialTab]);
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab]     = useState(deriveTab);
-  const [rateLimit, setRateLimit]     = useState(null);
-  const [error,     setError]         = useState(initParams.error || null);
-  const [notice,    setNotice]        = useState(() => {
+  const [activeTab,  setActiveTab]  = useState(deriveTab);
+  const [rateLimit,  setRateLimit]  = useState(null);
+  const [error,      setError]      = useState(initParams.error || null);
+  const [notice,     setNotice]     = useState(() => {
     if (initParams.provider) {
       const n = initParams.provider.charAt(0).toUpperCase() + initParams.provider.slice(1).toLowerCase();
-      return `Connected with ${n}! ${initParams.email ? 'Name and email filled in — just create a password.' : 'Name filled in — add your email and create a password.'}`;
+      return initParams.email
+        ? `Connected with ${n}! Name and email filled in — just create a password.`
+        : `Connected with ${n}! Name filled in — add your email and create a password.`;
     }
     return null;
   });
-  const [submitting, setSubmitting]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Login fields
-  const [loginEmail,   setLoginEmail]   = useState(() => location.state?.email || localStorage.getItem('remember_email') || '');
-  const [loginPw,      setLoginPw]      = useState('');
-  const [rememberMe,   setRememberMe]   = useState(() => !!localStorage.getItem('remember_email'));
-  const [showLoginPw,  setShowLoginPw]  = useState(false);
-  const [loginErrors,  setLoginErrors]  = useState({});
+  const [loginEmail,  setLoginEmail]  = useState(() => location.state?.email || localStorage.getItem('remember_email') || '');
+  const [loginPw,     setLoginPw]     = useState('');
+  const [rememberMe,  setRememberMe]  = useState(() => !!localStorage.getItem('remember_email'));
+  const [showLoginPw, setShowLoginPw] = useState(false);
+  const [loginErrors, setLoginErrors] = useState({});
 
   // Register fields
   const [regName,          setRegName]          = useState(initParams.name);
@@ -564,32 +501,37 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const [successModal,     setSuccessModal]     = useState(false);
   const [registeredEmail,  setRegisteredEmail]  = useState('');
 
-  // ── Sync tab with URL ──────────────────────────────────────────────────────
+  // ── Sync tab with URL pathname ─────────────────────────────────────────────
   useEffect(() => {
-    const t = location.pathname === '/register' ? 'register' : location.pathname === '/login' ? 'login' : null;
+    const t = location.pathname === '/register' ? 'register'
+            : location.pathname === '/login'    ? 'login'
+            : null;
     if (t) setActiveTab(t);
   }, [location.pathname]);
 
-  // ── Sync prefill params ────────────────────────────────────────────────────
+  // ── Sync prefill params from URL search ───────────────────────────────────
   useEffect(() => {
-    const p = new URLSearchParams(location.search);
-    const e = cleanParam(p.get('prefill_email'));
-    const n = cleanParam(p.get('prefill_name'));
+    const p    = new URLSearchParams(location.search);
+    const e    = cleanParam(p.get('prefill_email'));
+    const n    = cleanParam(p.get('prefill_name'));
     const prov = cleanParam(p.get('provider'));
-    const err = cleanParam(p.get('error'));
+    const err  = cleanParam(p.get('error'));
     if (e) setRegEmail(e);
     if (n) setRegName(n);
     if (err) setError(err.slice(0, 200));
     if (e || n || prov) {
-      setActiveTab('register'); setError(null);
+      setActiveTab('register');
+      setError(null);
       if (prov) {
         const nn = prov.charAt(0).toUpperCase() + prov.slice(1).toLowerCase();
-        setNotice(e ? `Connected with ${nn}! Name and email filled in — just create a password.` : `Connected with ${nn}! Name filled in — add your email and password.`);
+        setNotice(e
+          ? `Connected with ${nn}! Name and email filled in — just create a password.`
+          : `Connected with ${nn}! Name filled in — add your email and password.`);
       }
     }
   }, [location.search]);
 
-  // ── Auto-redirect if already logged in ────────────────────────────────────
+  // ── Redirect already-authenticated users ──────────────────────────────────
   useEffect(() => {
     if (token && user && role) redirect(role);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -617,11 +559,12 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(null); setNotice(null); setLoginErrors({}); setRateLimit(null);
+
     const errs = {};
-    if (!loginEmail.trim())                              errs.email    = 'Email is required.';
-    else if (!EMAIL_RE.test(loginEmail.trim()))          errs.email    = 'Invalid email. e.g. maria@email.com';
-    if (!loginPw)                                        errs.password = 'Password is required.';
-    else if (loginPw.length < 8)                         errs.password = 'At least 8 characters.';
+    if (!loginEmail.trim())                     errs.email    = 'Email is required.';
+    else if (!EMAIL_RE.test(loginEmail.trim())) errs.email    = 'Invalid email. e.g. maria@email.com';
+    if (!loginPw)                               errs.password = 'Password is required.';
+    else if (loginPw.length < 8)                errs.password = 'At least 8 characters.';
     if (Object.keys(errs).length) { setLoginErrors(errs); return; }
 
     setSubmitting(true);
@@ -643,16 +586,17 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError(null); setNotice(null); setRegErrors({}); setRateLimit(null);
+
     const errs = {};
-    if (!regName.trim())                       errs.name            = 'Full name is required.';
-    else if (regName.trim().length < 2)        errs.name            = 'At least 2 characters.';
-    else if (!NAME_RE.test(regName.trim()))    errs.name            = 'Letters, spaces, hyphens only.';
-    if (!regEmail.trim())                      errs.email           = 'Email is required.';
-    else if (!EMAIL_RE.test(regEmail.trim()))  errs.email           = 'Invalid email. e.g. maria@email.com';
-    if (!regPw)                                errs.password        = 'Password is required.';
-    else if (!PASS_RE.test(regPw))             errs.password        = 'Must include upper, lower, number & symbol.';
-    if (!regConfirmPw)                         errs.confirmPassword = 'Please confirm your password.';
-    else if (regPw !== regConfirmPw)           errs.confirmPassword = 'Passwords do not match.';
+    if (!regName.trim())                      errs.name            = 'Full name is required.';
+    else if (regName.trim().length < 2)       errs.name            = 'At least 2 characters.';
+    else if (!NAME_RE.test(regName.trim()))   errs.name            = 'Letters, spaces, hyphens only.';
+    if (!regEmail.trim())                     errs.email           = 'Email is required.';
+    else if (!EMAIL_RE.test(regEmail.trim())) errs.email           = 'Invalid email. e.g. maria@email.com';
+    if (!regPw)                               errs.password        = 'Password is required.';
+    else if (!PASS_RE.test(regPw))            errs.password        = 'Must include upper, lower, number & symbol.';
+    if (!regConfirmPw)                        errs.confirmPassword = 'Please confirm your password.';
+    else if (regPw !== regConfirmPw)          errs.confirmPassword = 'Passwords do not match.';
     if (Object.keys(errs).length) { setRegErrors(errs); return; }
 
     setSubmitting(true);
@@ -678,6 +622,19 @@ export default function AuthPortal({ initialTab = 'login' }) {
 
   const isLogin = activeTab === 'login';
 
+  // Trust bullets
+  const loginTrust = [
+    { icon: ShieldCheck, t: 'Encrypted & secure',      n: 'Your data stays safe.'       },
+    { icon: BadgeCheck,  t: '30+ certified therapists', n: 'All vetted & rated.'          },
+    { icon: Clock,       t: 'Open 9 AM – 9 PM',         n: 'Book anytime online.'         },
+  ];
+  const registerTrust = [
+    { icon: Gift,         t: 'Welcome perks',       n: 'Special rates on day one.'           },
+    { icon: Zap,          t: 'Priority scheduling', n: 'Best slots, first access.'            },
+    { icon: CheckCircle2, t: 'Track every visit',   n: 'History & receipts in one place.'     },
+  ];
+  const trustPoints = isLogin ? loginTrust : registerTrust;
+
   return (
     <div
       className="fixed inset-0 flex flex-col overflow-hidden"
@@ -685,12 +642,12 @@ export default function AuthPortal({ initialTab = 'login' }) {
     >
       <SpaBackdrop />
 
-      {/* ── Main content — vertically centered, never scrolls ── */}
+      {/* ── Full-viewport centered card ── */}
       <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 py-4 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.5, ease: EASE }}
+          transition={{ duration: 0.48, ease: EASE }}
           className="w-full max-w-[920px] flex flex-col md:flex-row rounded-2xl overflow-hidden border shadow-2xl"
           style={{
             borderColor: 'rgba(191,161,95,0.3)',
@@ -698,7 +655,8 @@ export default function AuthPortal({ initialTab = 'login' }) {
             maxHeight: 'calc(100dvh - 32px)',
           }}
         >
-          {/* ══ LEFT PANEL — brand / social proof ══ */}
+
+          {/* ══ LEFT PANEL ══ */}
           <div
             className="hidden md:flex flex-col justify-between shrink-0 relative overflow-hidden text-white"
             style={{
@@ -713,16 +671,16 @@ export default function AuthPortal({ initialTab = 'login' }) {
 
             {/* Top content */}
             <div className="relative z-10 flex flex-col gap-4">
-              {/* Badge */}
               <span className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-full text-[9.5px] font-bold uppercase tracking-[0.12em]" style={{ background: 'rgba(191,161,95,0.12)', border: '1px solid rgba(191,161,95,0.28)', color: '#e8cc8a' }}>
                 <Sparkles className="w-2.5 h-2.5" /> Premium Spa &amp; Wellness
               </span>
 
-              {/* Headline */}
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.22, ease: EASE }}>
                   <h2 className="font-black leading-[1.15] tracking-tight text-white" style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(20px, 2.2vw, 26px)' }}>
-                    {isLogin ? <>Welcome back<br />to your <em className="text-[#e8cc8a]">calm.</em></> : <>Begin your<br /><em className="text-[#e8cc8a]">wellness</em> journey.</>}
+                    {isLogin
+                      ? <>Welcome back<br />to your <em className="text-[#e8cc8a]">calm.</em></>
+                      : <>Begin your<br /><em className="text-[#e8cc8a]">wellness</em> journey.</>}
                   </h2>
                   <p className="text-[11.5px] text-emerald-100/65 leading-relaxed mt-2">
                     {isLogin
@@ -732,9 +690,11 @@ export default function AuthPortal({ initialTab = 'login' }) {
                 </motion.div>
               </AnimatePresence>
 
-              {/* Stars */}
+              {/* Rating */}
               <div className="flex items-center gap-1.5">
-                <span className="flex" aria-label="Rated 4.9">{[0,1,2,3,4].map(i => <Star key={i} className="w-3 h-3 fill-[#e8cc8a] text-[#e8cc8a]" />)}</span>
+                <span className="flex" aria-label="Rated 4.9">
+                  {[0, 1, 2, 3, 4].map(i => <Star key={i} className="w-3 h-3 fill-[#e8cc8a] text-[#e8cc8a]" />)}
+                </span>
                 <span className="text-[11px] font-bold text-[#e8cc8a]">4.9</span>
                 <span className="text-[11px] text-white/45">· 15k+ guests</span>
               </div>
@@ -742,18 +702,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
               {/* Trust bullets */}
               <AnimatePresence mode="wait">
                 <motion.ul key={`tp-${activeTab}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="space-y-2.5">
-                  {(isLogin
-                    ? [
-                        { icon: ShieldCheck, t: 'Encrypted & secure',     n: 'Your data stays safe.' },
-                        { icon: BadgeCheck,  t: '30+ certified therapists', n: 'All vetted & rated.' },
-                        { icon: Clock,       t: 'Open 9 AM – 9 PM',        n: 'Book anytime online.' },
-                      ]
-                    : [
-                        { icon: Gift,      t: 'Welcome perks',       n: 'Special rates on day one.' },
-                        { icon: Zap,       t: 'Priority scheduling', n: 'Best slots, first access.' },
-                        { icon: CheckCircle2, t: 'Track every visit', n: 'History & receipts in one place.' },
-                      ]
-                  ).map(({ icon: Icon, t, n }) => (
+                  {trustPoints.map(({ icon: Icon, t, n }) => (
                     <li key={t} className="flex items-center gap-2.5">
                       <span className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }}>
                         <Icon className="w-3.5 h-3.5 text-[#e8cc8a]" />
@@ -799,7 +748,10 @@ export default function AuthPortal({ initialTab = 'login' }) {
 
           {/* ══ RIGHT PANEL — form ══ */}
           <div className="flex-1 bg-white flex flex-col min-w-0 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-            <div className="w-full max-w-[420px] mx-auto flex flex-col" style={{ padding: 'clamp(16px, 3vh, 28px) clamp(16px, 4vw, 32px)' }}>
+            <div
+              className="w-full max-w-[420px] mx-auto flex flex-col"
+              style={{ padding: 'clamp(16px, 3vh, 28px) clamp(16px, 4vw, 32px)' }}
+            >
 
               {/* Mobile brand pill */}
               <div className="md:hidden flex items-center gap-2 mb-4">
@@ -823,7 +775,11 @@ export default function AuthPortal({ initialTab = 'login' }) {
                     className={`flex-1 py-2 px-2 rounded-lg text-[12.5px] font-extrabold transition-colors relative flex items-center justify-center gap-1.5 cursor-pointer min-h-[40px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f] ${activeTab === id ? 'text-slate-950' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     {activeTab === id && (
-                      <motion.span layoutId="auth-tab-indicator" className="absolute inset-0 bg-white rounded-lg shadow-sm border border-slate-200/80" transition={{ type: 'spring', stiffness: 440, damping: 34 }} />
+                      <motion.span
+                        layoutId="auth-tab-indicator"
+                        className="absolute inset-0 bg-white rounded-lg shadow-sm border border-slate-200/80"
+                        transition={{ type: 'spring', stiffness: 440, damping: 34 }}
+                      />
                     )}
                     <span className="relative z-10 flex items-center gap-1.5">
                       <Icon className="w-3.5 h-3.5 text-[#8c7033]" /> {label}
@@ -832,36 +788,51 @@ export default function AuthPortal({ initialTab = 'login' }) {
                 ))}
               </div>
 
-              {/* Banners */}
+              {/* Notice banner */}
               <AnimatePresence mode="wait">
                 {notice && !error && (
-                  <motion.div key="note" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  <motion.div
+                    key="note"
+                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11.5px] mb-3"
-                    style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.3)', color: '#6b5a2e' }}>
+                    style={{ background: 'rgba(191,161,95,0.1)', border: '1px solid rgba(191,161,95,0.3)', color: '#6b5a2e' }}
+                  >
                     <span className="flex-1 font-semibold leading-snug">{notice}</span>
-                    <button type="button" onClick={dismiss} aria-label="Dismiss" className="p-1 rounded-lg hover:bg-black/5 touch-manipulation shrink-0"><X className="w-3 h-3" /></button>
+                    <button type="button" onClick={dismiss} aria-label="Dismiss" className="p-1 rounded-lg hover:bg-black/5 touch-manipulation shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
 
+              {/* Error banner */}
               <AnimatePresence mode="wait">
                 {error && !rateLimit && (
-                  <motion.div key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} role="alert"
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11.5px] mb-3 bg-red-50 border border-red-200 text-red-700">
+                  <motion.div
+                    key="err"
+                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11.5px] mb-3 bg-red-50 border border-red-200 text-red-700"
+                    role="alert"
+                  >
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     <span className="flex-1 font-semibold leading-snug">{error}</span>
-                    <button type="button" onClick={dismiss} aria-label="Dismiss" className="p-1 rounded-lg hover:bg-red-100 touch-manipulation shrink-0"><X className="w-3 h-3" /></button>
+                    <button type="button" onClick={dismiss} aria-label="Dismiss" className="p-1 rounded-lg hover:bg-red-100 touch-manipulation shrink-0">
+                      <X className="w-3 h-3" />
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {rateLimit > 0 && <div className="mb-3"><RateLimitBanner retryAfter={rateLimit} onDone={() => setRateLimit(null)} /></div>}
+              {rateLimit > 0 && (
+                <div className="mb-3">
+                  <RateLimitBanner retryAfter={rateLimit} onDone={() => setRateLimit(null)} />
+                </div>
+              )}
 
-              {/* Forms */}
+              {/* ── Login / Register forms ── */}
               <AnimatePresence mode="wait">
                 {isLogin ? (
                   <motion.div key="login" initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -14 }} transition={{ duration: 0.24, ease: EASE }}>
-                    {/* Heading */}
                     <div className="mb-4">
                       <h1 className="text-[20px] font-black tracking-tight text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>Sign in</h1>
                       <p className="text-[12px] text-slate-400 mt-0.5">Welcome back — your session awaits.</p>
@@ -892,12 +863,16 @@ export default function AuthPortal({ initialTab = 'login' }) {
                           <input id="remember-me" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded cursor-pointer accent-[#bfa15f]" />
                           <span className="font-semibold text-slate-600">Remember me</span>
                         </label>
-                        <Link to="/forgot-password" className="font-bold text-[#8c7033] hover:underline underline-offset-2">Forgot password?</Link>
+                        <Link to="/forgot-password" className="font-bold hover:underline underline-offset-2" style={{ color: '#8c7033' }}>
+                          Forgot password?
+                        </Link>
                       </div>
 
                       <motion.button
-                        type="submit" disabled={submitting || rateLimit > 0}
-                        whileHover={{ scale: submitting ? 1 : 1.013 }} whileTap={{ scale: submitting ? 1 : 0.98 }}
+                        type="submit"
+                        disabled={submitting || rateLimit > 0}
+                        whileHover={{ scale: submitting ? 1 : 1.013 }}
+                        whileTap={{ scale: submitting ? 1 : 0.98 }}
                         className="w-full min-h-[46px] flex justify-center items-center gap-2 rounded-xl font-black text-[14px] text-[#041e16] disabled:opacity-60 disabled:cursor-not-allowed transition-all cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#bfa15f]"
                         style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)', boxShadow: '0 5px 18px rgba(191,161,95,0.4)' }}
                       >
@@ -907,18 +882,22 @@ export default function AuthPortal({ initialTab = 'login' }) {
                       </motion.button>
                     </form>
 
-                    <SocialSignIn disabled={submitting} mode="login" onSuccess={redirect} onError={msg => { setRateLimit(null); setNotice(null); setError(msg); }} />
+                    <SocialSignIn
+                      disabled={submitting}
+                      mode="login"
+                      onSuccess={redirect}
+                      onError={msg => { setRateLimit(null); setNotice(null); setError(msg); }}
+                    />
 
                     <p className="text-center text-[12px] text-slate-500 mt-3">
                       No account?{' '}
-                      <button type="button" onClick={() => switchTab('register')} className="font-bold text-[#8c7033] hover:underline underline-offset-2 cursor-pointer">
+                      <button type="button" onClick={() => switchTab('register')} className="font-bold hover:underline underline-offset-2 cursor-pointer" style={{ color: '#8c7033' }}>
                         Create one free
                       </button>
                     </p>
                   </motion.div>
                 ) : (
                   <motion.div key="register" initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 14 }} transition={{ duration: 0.24, ease: EASE }}>
-                    {/* Heading */}
                     <div className="mb-3">
                       <h1 className="text-[20px] font-black tracking-tight text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>Create account</h1>
                       <p className="text-[12px] text-slate-400 mt-0.5">Free forever · No card needed.</p>
@@ -966,7 +945,6 @@ export default function AuthPortal({ initialTab = 'login' }) {
                         />
                       </div>
 
-                      {/* Compact strength meter */}
                       {regPw && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="px-0.5">
                           <PasswordStrength password={regPw} />
@@ -974,8 +952,10 @@ export default function AuthPortal({ initialTab = 'login' }) {
                       )}
 
                       <motion.button
-                        type="submit" disabled={submitting || rateLimit > 0}
-                        whileHover={{ scale: submitting ? 1 : 1.013 }} whileTap={{ scale: submitting ? 1 : 0.98 }}
+                        type="submit"
+                        disabled={submitting || rateLimit > 0}
+                        whileHover={{ scale: submitting ? 1 : 1.013 }}
+                        whileTap={{ scale: submitting ? 1 : 0.98 }}
                         className="w-full min-h-[46px] flex justify-center items-center gap-2 rounded-xl font-black text-[14px] text-[#041e16] disabled:opacity-60 disabled:cursor-not-allowed transition-all cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#bfa15f]"
                         style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)', boxShadow: '0 5px 18px rgba(191,161,95,0.4)' }}
                       >
@@ -985,25 +965,36 @@ export default function AuthPortal({ initialTab = 'login' }) {
                       </motion.button>
                     </form>
 
-                    <SocialSignIn disabled={submitting} mode="register" onSuccess={redirect} onError={msg => { setRateLimit(null); setNotice(null); setError(msg); }} />
+                    <SocialSignIn
+                      disabled={submitting}
+                      mode="register"
+                      onSuccess={redirect}
+                      onError={msg => { setRateLimit(null); setNotice(null); setError(msg); }}
+                    />
 
                     <p className="text-center text-[11.5px] text-slate-400 mt-3">
                       By continuing you agree to our{' '}
-                      <Link to="/privacy-policy" className="font-bold text-[#8c7033] hover:underline underline-offset-2">Privacy Policy</Link>
+                      <Link to="/privacy-policy" className="font-bold hover:underline underline-offset-2" style={{ color: '#8c7033' }}>Privacy Policy</Link>
                       {' '}· Already have an account?{' '}
-                      <button type="button" onClick={() => switchTab('login')} className="font-bold text-[#8c7033] hover:underline underline-offset-2 cursor-pointer">Sign in</button>
+                      <button type="button" onClick={() => switchTab('login')} className="font-bold hover:underline underline-offset-2 cursor-pointer" style={{ color: '#8c7033' }}>
+                        Sign in
+                      </button>
                     </p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Help */}
+              {/* Help row */}
               <div className="flex items-center justify-center gap-2 mt-3 text-[11px] text-slate-400">
                 <MessageCircle className="w-3 h-3 text-[#8c7033]" />
                 Need help?{' '}
-                <a href="https://wa.me/639995435913" target="_blank" rel="noopener noreferrer" className="font-bold text-[#8c7033] hover:underline underline-offset-2">Chat with us</a>
+                <a href="https://wa.me/639995435913" target="_blank" rel="noopener noreferrer" className="font-bold hover:underline underline-offset-2" style={{ color: '#8c7033' }}>
+                  Chat with us
+                </a>
                 <span className="text-slate-200">·</span>
-                <Link to="/" className="font-bold hover:underline underline-offset-2">Explore services</Link>
+                <Link to="/" className="font-bold hover:underline underline-offset-2" style={{ color: '#8c7033' }}>
+                  Explore services
+                </Link>
               </div>
 
             </div>
@@ -1014,9 +1005,14 @@ export default function AuthPortal({ initialTab = 'login' }) {
       {/* ── Registration Success Modal ── */}
       <AnimatePresence>
         {successModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Account created">
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
+            role="dialog" aria-modal="true" aria-label="Account created"
+          >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               transition={{ duration: 0.28, ease: EASE }}
               className="bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-100 w-full max-w-[320px]"
               style={{ padding: 'clamp(20px, 4vw, 28px)' }}
@@ -1030,7 +1026,9 @@ export default function AuthPortal({ initialTab = 'login' }) {
                 <CheckCircle2 className="w-8 h-8 text-emerald-600" />
               </motion.div>
 
-              <h3 className="text-[19px] font-black tracking-tight mt-4 text-center" style={{ fontFamily: "'Playfair Display', serif" }}>Account created!</h3>
+              <h3 className="text-[19px] font-black tracking-tight mt-4 text-center" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Account created!
+              </h3>
               <p className="text-[12.5px] text-slate-500 leading-relaxed mt-1.5 text-center">
                 Welcome to Cozy Blissful! Ready for <strong className="text-slate-800 break-all">{registeredEmail}</strong>.
               </p>
