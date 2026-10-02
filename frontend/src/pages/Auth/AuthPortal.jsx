@@ -4,8 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LogIn, UserPlus, User, Mail, Lock, Eye, EyeOff,
   AlertCircle, Clock, ShieldCheck, Check, X,
-  CheckCircle2, Gift, Zap, Sparkles, ArrowLeft,
-  Star, MapPin, MessageCircle, BadgeCheck, Menu,
+  CheckCircle2, Gift, Zap, Sparkles,
+  Star, MapPin, MessageCircle, BadgeCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -47,13 +47,6 @@ const loadScript = (src, id) => new Promise((resolve, reject) => {
 });
 
 const cleanParam = (v) => v && v !== 'null' && v !== 'undefined' && v.trim() !== '' ? v.trim() : '';
-
-const NAV_LINKS = [
-  { href: '/#story',        label: 'Our Story'    },
-  { href: '/#services',     label: 'Services'     },
-  { href: '/#how-it-works', label: 'How It Works' },
-  { href: '/#testimonials', label: 'Reviews'      },
-];
 
 const SOCIALS = [
   { label: 'Facebook',  href: 'https://facebook.com/cozyblissful',  icon: () => <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg> },
@@ -691,10 +684,9 @@ export default function AuthPortal({ initialTab = 'login' }) {
       style={{ background: '#04100a', fontFamily: "'Inter', sans-serif" }}
     >
       <SpaBackdrop />
-      <AuthNavbar activeTab={activeTab} />
 
       {/* ── Main content — vertically centered, never scrolls ── */}
-      <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 pt-14 sm:pt-16 pb-2 overflow-hidden">
+      <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 py-4 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -703,7 +695,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
           style={{
             borderColor: 'rgba(191,161,95,0.3)',
             boxShadow: '0 28px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(191,161,95,0.15), 0 8px 32px rgba(191,161,95,0.1)',
-            maxHeight: 'calc(100dvh - 72px)',
+            maxHeight: 'calc(100dvh - 32px)',
           }}
         >
           {/* ══ LEFT PANEL — brand / social proof ══ */}
