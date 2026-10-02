@@ -16,9 +16,9 @@ import {
   Award, Gift, Send, UserCheck, Star, X,
   Zap, MessageSquare, Scissors, XCircle, RefreshCw,
   CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
-  CheckCircle2, Compass, Heart, PhoneCall, MapPin,
+  CheckCircle2, Compass, Heart, MapPin,
   Banknote, Wallet, Receipt, User, Mail, Check,
-  ArrowLeft, Search, CheckCheck, Smile, HelpCircle, ExternalLink
+  Search, CheckCheck, ExternalLink
 } from 'lucide-react';
 
 // ─── LUXURY DESIGN SYSTEM TOKENS ─────────────────────────────────────────────
@@ -316,15 +316,6 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
                     {s.description}
                   </p>
                 )}
-              </div>
-
-              <div
-                className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] font-bold ${
-                  isSelected ? 'border-white/10 text-[#e8cc8a]' : 'border-slate-100 text-slate-400'
-                }`}
-              >
-                <span>{isSelected ? 'Added to your visit' : 'Add to visit'}</span>
-                {isSelected && <CheckCircle className="w-4 h-4 text-[#e8cc8a]" />}
               </div>
             </button>
           );
@@ -702,10 +693,10 @@ const ReviewStep = ({
         <div>
           <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
             <Receipt className="w-5 h-5 text-emerald-800" />
-            Billing Details & Summary
+            Review Your Visit
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Review contact information, {services.length} treatment{services.length > 1 ? 's' : ''}, and payment preference
+            One visit · {services.length} treatment{services.length > 1 ? 's' : ''} · One schedule · One payment — check details, then confirm
           </p>
         </div>
         <span className="self-start sm:self-auto text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 flex items-center gap-1 shadow-xs">
@@ -849,9 +840,16 @@ const ReviewStep = ({
                         <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isSelected ? 'bg-[#062c22] text-[#e8cc8a]' : 'bg-slate-100 text-slate-600'}`}>
                           <IconComponent className="w-3.5 h-3.5" />
                         </div>
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isSelected ? 'bg-[#062c22] text-[#e8cc8a]' : 'bg-slate-100 text-slate-500'}`}>
-                          {opt.tag}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${isSelected ? 'bg-[#062c22] text-[#e8cc8a]' : 'bg-slate-100 text-slate-500'}`}>
+                            {opt.tag}
+                          </span>
+                          {isSelected && (
+                            <span className="w-4 h-4 rounded-full bg-emerald-700 text-white flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className={`text-xs font-black ${isSelected ? 'text-slate-900' : 'text-slate-800'}`}>
                         {opt.name}
@@ -859,13 +857,6 @@ const ReviewStep = ({
                       <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
                         {opt.description}
                       </p>
-                    </div>
-
-                    <div className="mt-2.5 pt-1.5 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[9px] font-bold text-slate-400">Selected</span>
-                      <span className={`text-[9px] font-black flex items-center gap-1 ${isSelected ? 'text-emerald-700' : 'text-slate-300'}`}>
-                        {isSelected ? <Check className="w-3 h-3 stroke-[3]" /> : 'Select'}
-                      </span>
                     </div>
                   </button>
                 );
@@ -1018,13 +1009,13 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
       </motion.div>
       <div>
         <h3 className="text-lg sm:text-xl font-black text-slate-800" style={{ fontFamily: "'Playfair Display', serif" }}>
-          Booking Request Confirmed!
+          Visit Request Received!
         </h3>
         <p className="text-xs text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed px-2">
           {isCash ? (
-            <>Your {services.length === 1 ? 'appointment' : `${services.length} appointments`} are registered. <strong className="text-emerald-900">No online payment needed</strong> — simply pay {formattedTotalPrice || 'in cash'} at the salon counter after your session.</>
+            <>Your visit with {services.length} treatment{services.length > 1 ? 's' : ''} is registered under one booking reference. <strong className="text-emerald-900">No online payment needed</strong> — pay {formattedTotalPrice || 'in cash'} at the counter after your session.</>
           ) : (
-            <>Your {services.length === 1 ? 'appointment' : `${services.length} appointments`} are registered with <strong className="text-emerald-900">{methodName}</strong>. Complete your online payment below to secure your slot — or pay at the counter on arrival.</>
+            <>Your visit with {services.length} treatment{services.length > 1 ? 's' : ''} is registered under one booking reference with <strong className="text-emerald-900">{methodName}</strong>. Complete payment below to secure your slot — or pay at the counter on arrival.</>
           )}
         </p>
       </div>
@@ -1051,7 +1042,7 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
 
         {formattedTotalPrice && (
           <div className="flex items-center justify-between gap-2 text-xs pt-1">
-            <span className="text-slate-500 font-semibold">Total Amount ({services.length} items):</span>
+            <span className="text-slate-500 font-semibold">Visit total:</span>
             <span className="font-black text-emerald-900 text-sm whitespace-nowrap">{formattedTotalPrice}</span>
           </div>
         )}
@@ -1547,7 +1538,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
     const digits = clientPhone.replace(/\D/g, '');
     const localDigits = digits.startsWith('63') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits;
     if (!/^9\d{9}$/.test(localDigits)) { setError('Please enter a valid PH mobile number (e.g. 0917 123 4567).'); return; }
-    if (!['cash', 'gcash'].includes(paymentMethod)) { setError('Please choose a valid payment method.'); return; }
+    if (!['cash', 'gcash', 'maya', 'qrph', 'online'].includes(paymentMethod)) { setError('Please choose a valid payment method.'); return; }
     if (selectedServices.length === 0) { setError('Please select at least one treatment.'); return; }
     if (!selectedDate || !selectedTime) { setError('Please select a date and time slot.'); return; }
     const picked = new Date(`${selectedDate}T${selectedTime}:00`);
@@ -1758,7 +1749,7 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4 text-[#041e16] flex-shrink-0" />
-                      <span className="text-center leading-snug">Confirm &amp; Book {selectedServices.length === 1 ? 'Appointment' : `${selectedServices.length} Appointments`} • ₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-center leading-snug">Confirm Visit • ₱{totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
                     </>
                   )}
                 </LuxuryBtn>
@@ -1919,16 +1910,6 @@ const ClientDashboard = () => {
         </div>
 
         <div className="flex items-center space-x-2.5 sm:space-x-4">
-          {/* Quick Book CTA in Navbar */}
-          <button
-            type="button"
-            onClick={() => setShowWizard(true)}
-            className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-[#041e16] shadow-sm hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-            style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
-          >
-            <Plus className="w-3.5 h-3.5" /> Book Session
-          </button>
-
           <Link
             to="/"
             title="Return to Home Landing"

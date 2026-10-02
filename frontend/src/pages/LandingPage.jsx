@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import {
   motion,
   AnimatePresence,
-  useScroll,
-  useTransform,
   useInView,
   useMotionValue,
   animate,
@@ -918,11 +916,12 @@ export default function LandingPage() {
               <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.5 }}
                 className="flex flex-col sm:flex-row gap-3.5 justify-center lg:justify-start items-stretch sm:items-center">
                 <MagneticBtn strength={0.2} className="w-full sm:w-auto">
-                  <Link to="/register" id="hero-explore"
-                    className="group inline-flex w-full sm:w-auto items-center justify-center gap-2.5 py-4 px-8 text-sm font-black rounded-2xl transition-all duration-300"
+                  <a href="#services" id="hero-explore"
+                    onClick={(e) => handleNavClick(e, '#services')}
+                    className="group inline-flex w-full sm:w-auto items-center justify-center gap-2.5 py-4 px-8 text-sm font-black rounded-2xl transition-all duration-300 cursor-pointer"
                     style={{ background: "linear-gradient(135deg,#c9a851,#e8cc8a)", color: "#041e16", boxShadow: "0 10px 34px rgba(191,161,95,0.44)" }}>
                     Explore Services <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
+                  </a>
                 </MagneticBtn>
                 <MagneticBtn strength={0.15} className="w-full sm:w-auto">
                   <Link to="/register" id="hero-book"

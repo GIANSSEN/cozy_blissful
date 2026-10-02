@@ -74,6 +74,43 @@
   }
 }
 
+/* ── Auth + route-transition polish ─────────────────────────────────── */
+/* Smooth scrolling only for in-page anchors; route changes reset instantly. */
+@media (prefers-reduced-motion: no-preference) {
+  html:focus-within {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Honor users who prefer minimal animation (petals, page blur, tab slides). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible, on-brand keyboard focus for auth controls. */
+.auth-focus:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(191, 161, 95, 0.85);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Small phones: tighten auth card so nothing overflows 320px viewports. */
+@media screen and (max-width: 380px) {
+  input {
+    letter-spacing: 0;
+  }
+}
+
 /* Prevent iOS Safari auto-zoom on input focus across all mobile devices */
 @media screen and (max-width: 768px) {
 

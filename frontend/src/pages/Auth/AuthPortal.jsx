@@ -6,6 +6,7 @@ import {
   AlertCircle, Clock, ShieldCheck, Check, X,
   CheckCircle2, Gift, Zap, Sparkles,
   Star, MapPin, MessageCircle, BadgeCheck,
+  ArrowLeft, Menu, ChevronRight, Info, CalendarCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -642,8 +643,30 @@ export default function AuthPortal({ initialTab = 'login' }) {
     >
       <SpaBackdrop />
 
+      {/* ── Floating back-to-home (same glass language as landing navbar) ── */}
+      <div className="absolute top-0 left-0 right-0 z-20">
+        <div className="max-w-[920px] mx-auto w-full flex items-center justify-between px-3 sm:px-5 pt-3 sm:pt-4">
+          <Link
+            to="/"
+            aria-label="Back to Cozy Blissful home"
+            className="inline-flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-xl text-[12px] font-bold text-white/80 hover:text-white transition-all touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+            style={{ background: 'rgba(4,16,10,0.55)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(191,161,95,0.25)' }}
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[#e8cc8a]" />
+            Home
+          </Link>
+          <a
+            href="/#services"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-white/60 hover:text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            Browse services
+          </a>
+        </div>
+      </div>
+
       {/* ── Full-viewport centered card ── */}
-      <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 py-4 overflow-hidden">
+      <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 pt-14 sm:pt-16 pb-4 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -652,7 +675,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
           style={{
             borderColor: 'rgba(191,161,95,0.3)',
             boxShadow: '0 28px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(191,161,95,0.15), 0 8px 32px rgba(191,161,95,0.1)',
-            maxHeight: 'calc(100dvh - 32px)',
+            maxHeight: 'calc(100dvh - 96px)',
           }}
         >
 
@@ -923,7 +946,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
                         onChange={(e) => { setRegEmail(e.target.value); if (regErrors.email) setRegErrors(p => ({ ...p, email: '' })); }}
                       />
 
-                      <div className="grid grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-1 min-[440px]:grid-cols-2 gap-2.5">
                         <Input
                           label="Password" id="reg-password" name="password"
                           type={showRegPw ? 'text' : 'password'} autoComplete="new-password"

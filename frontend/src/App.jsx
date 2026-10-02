@@ -7,7 +7,7 @@ import { ToastProvider } from './context/ToastContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 // Code-split route pages so Vite dev only transforms the active route.
 // This is the biggest cold-start win: before, all 22 pages + framer-motion +
@@ -51,31 +51,48 @@ const NotFound = lazy(() => import('./pages/NotFound'));
 // Legal — public, no auth (Meta Privacy Policy URL must be crawlable)
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
-// Lightweight route fallback — no spinner lib, no extra dep to parse
+// Lightweight route fallback — matches landing/auth luxury theme
 const RouteFallback = () => (
-  <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', color: '#0a3d30' }}>
-    Loading…
+  <div className="min-h-[100dvh] grid place-items-center" style={{ background: 'linear-gradient(135deg,#041e16 0%,#073328 55%,#0e4d38 100%)' }}>
+    <div className="flex flex-col items-center gap-3">
+      <img src="/cb-logo.jpg" alt="" className="w-12 h-12 rounded-full object-cover animate-pulse" style={{ border: '2px solid rgba(191,161,95,0.55)' }} />
+      <p className="text-sm font-semibold text-white/70">Preparing your sanctuary…</p>
+    </div>
   </div>
 );
 
-// Page transition wrapper
+// Buttery page transition shared by landing ⇄ login ⇄ register.
+// Slightly longer than before + blur/rise so route changes feel like one
+// continuous glide instead of a hard cut. Respects reduced-motion via CSS.
 const PageTransition = ({ children }) => (
   <motion.div
-    initial={{ opacity: 0, y: 6 }}
-    animate={{ opacity: 1, y: 0, transition: { duration: 0.16, ease: [0.22, 1, 0.36, 1] } }}
-    exit={{ opacity: 0, y: -4, transition: { duration: 0.08, ease: 'easeIn' } }}
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+    className="w-full min-h-screen"
   >
     {children}
   </motion.div>
 );
 
+// Scroll restoration: every route change starts at top (instant, no fight
+// with in-page smooth anchors — those use element scroll, not route change).
+function ScrollToTop() {
+  const { pathname, hash } = useLocation();
+  React.useEffect(() => {
+    if (!hash) window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }, [pathname, hash]);
+  return null;
+}
+
 // Animated routes (needs location)
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait">
+    <>
+      <ScrollToTop />
       <Suspense fallback={<RouteFallback />}>
-      <Routes location={location} key={location.pathname}>
+        <Routes location={location} key={location.pathname}>
         {/* ── Public ─────────────────────────────────────────────────────── */}
         <Route path="/" element={<PageTransition><LandingPage /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
@@ -124,7 +141,7 @@ function AnimatedRoutes() {
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
       </Suspense>
-    </AnimatePresence>
+    </>
   );
 }
 
