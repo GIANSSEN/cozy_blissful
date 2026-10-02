@@ -56,6 +56,82 @@ const fmtDate = (dt) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────── */
+/*  BOOKING GROUPS — one client visit may contain multiple treatments   */
+/*  Backend stores one row per service, so we group rows that share the  */
+/*  same client + same schedule + same status into a single visit card.  */
+/*  This is the core fix for "client chose 2 services = 2 separate cards" */
+/* ─────────────────────────────────────────────────────────────────── */
+
+const normalizeGroupDateTime = (dt) => {
+  if (!dt) return '';
+  const d = new Date(dt);
+  if (isNaN(d.getTime())) return String(dt).slice(0, 16);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day} ${hh}:${mm}`;
+};
+
+const getGroupClientKey = (a) => String(
+  a.client_id ?? a.client_email ?? a.client_name ?? a.client ?? ''
+).trim().toLowerCase();
+
+const stripBillingBlock = (notes) => {
+  if (!notes) return '';
+  return String(notes)
+    .replace(/\[Billing & Contact Info\]/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+};
+
+const groupAppointments = (list = []) => {
+  const map = new Map();
+  for (const a of list) {
+    const key = `${getGroupClientKey(a)}|${normalizeGroupDateTime(a.datetime)}|${a.status || ''}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        ids: [],
+        items: [],
+        client_name: a.client_name || a.client,
+        client_email: a.client_email || '',
+        datetime: a.datetime,
+        status: a.status,
+        therapist_name: a.therapist_name || 'Unassigned',
+        therapist_id: a.therapist_id || null,
+        payment_method: a.payment_method || 'cash',
+        payment_status: a.payment_status || 'unpaid',
+        notes: a.notes || '',
+        totalPrice: 0,
+        totalDuration: 0,
+      });
+    }
+    const g = map.get(key);
+    g.ids.push(a.id);
+    g.items.push(a);
+    g.totalPrice += Number(a.service_price || 0);
+    g.totalDuration += Number(a.service_duration || 0);
+    // Keep the richest contact info / earliest notes (rows share the same block)
+    if (!g.client_email && a.client_email) g.client_email = a.client_email;
+    if ((!g.notes || g.notes.length < (a.notes || '').length) && a.notes) g.notes = a.notes;
+    if (g.therapist_name === 'Unassigned' && a.therapist_name && a.therapist_name !== 'Unassigned') {
+      g.therapist_name = a.therapist_name;
+      g.therapist_id = a.therapist_id;
+    }
+  }
+  return [...map.values()].sort((x, y) => new Date(x.datetime) - new Date(y.datetime));
+};
+
+const groupRefLabel = (g) => {
+  const first = Math.min(...g.ids.map(Number).filter(Number.isFinite));
+  if (!Number.isFinite(first)) return `#${String(g.ids[0]).padStart(4, '0')}`;
+  if (g.ids.length === 1) return `#${String(first).padStart(4, '0')}`;
+  return `#${String(first).padStart(4, '0')} · ${g.ids.length} treatments`;
+};
+
+/* ─────────────────────────────────────────────────────────────────── */
 /*  REUSABLE HOVER BUTTON                                              */
 /* ─────────────────────────────────────────────────────────────────── */
 
@@ -89,10 +165,23 @@ const HoverButton = ({ onClick, children, baseStyle, hoverStyle, title, disabled
 /*  APPOINTMENT DETAIL MODAL (CONTEXTUAL ACTIONS)                       */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedule, onComplete }) => {
+const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenReschedule, onComplete }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const ss = getStatusStyle(appt.status, isDark);
+  // Accept either a single appointment or a grouped visit. Group wins when present.
+  const view = group || (appt ? {
+    ids: [appt.id], items: [appt], client_name: appt.client_name || appt.client,
+    client_email: appt.client_email, datetime: appt.datetime, status: appt.status,
+    therapist_name: appt.therapist_name, therapist_id: appt.therapist_id,
+    payment_method: appt.payment_method, notes: appt.notes,
+    totalPrice: Number(appt.service_price || 0), totalDuration: Number(appt.service_duration || 0),
+  } : null);
+  if (!view) return null;
+  const primary = view.items[0] || {};
+  const ss = getStatusStyle(view.status, isDark);
+  const refLabel = view.ids.length > 1
+    ? `#${String(Math.min(...view.ids)).padStart(4, '0')} · ${view.ids.length} treatments, 1 visit`
+    : `#${String(view.ids[0]).padStart(4, '0')}`;
 
   const C = {
     textPrimary: isDark ? '#e8ecf3' : '#0f172a',
@@ -115,18 +204,22 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
         initial={{ scale: 0.95, y: 24, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '100%', maxWidth: 560, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
       >
-        {/* Header */}
+        {/* Header — one visit, not one row */}
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <div>
-              <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>Booking Details</span>
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#ffffff', margin: '4px 0 0' }}>{appt.service}</h3>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a7f3d0' }}>
+                Booking Details · {refLabel} · 1 visit
+              </span>
+              <h3 style={{ fontSize: 19, fontWeight: 900, color: '#ffffff', margin: '4px 0 0', lineHeight: 1.3 }}>
+                {view.items.length > 1 ? `${view.items.length} treatments in one visit` : (primary.service || 'Booking')}
+              </h3>
             </div>
             <HoverButton
               onClick={onClose}
-              baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              baseStyle={{ width: 32, height: 32, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.1)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               hoverStyle={{ background: 'rgba(255,255,255,0.22)' }}
               title="Close"
             >
@@ -135,15 +228,15 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#d1fae5', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Calendar size={14} /> {fmtDate(appt.datetime)} at {fmt12(appt.datetime)}
+              <Calendar size={14} /> {fmtDate(view.datetime)} at {fmt12(view.datetime)}
             </span>
-            {appt.service_duration && (
+            {view.totalDuration > 0 && (
               <span style={{ fontSize: 11, fontWeight: 700, color: '#a7f3d0', background: 'rgba(255,255,255,0.1)', padding: '2px 10px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Clock size={12} /> {appt.service_duration} min
+                <Clock size={12} /> {view.totalDuration} min total
               </span>
             )}
             <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 10px', borderRadius: 999, background: ss.bg, color: ss.color, border: `1px solid ${ss.border}` }}>
-              {appt.status}
+              {view.status}
             </span>
           </div>
         </div>
@@ -151,56 +244,72 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
         {/* Body */}
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '60vh', overflowY: 'auto' }}>
           <div style={{ padding: 16, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client Information</p>
-            <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{appt.client_name || appt.client}</p>
-            {appt.client_email && (
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client — one record for the whole visit</p>
+            <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{view.client_name}</p>
+            {view.client_email && (
               <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0 0' }}>
-                <Mail size={14} style={{ color: '#059669' }} /> {appt.client_email}
+                <Mail size={14} style={{ color: '#059669' }} /> {view.client_email}
               </p>
+            )}
+          </div>
+
+          <div style={{ padding: 16, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>
+              Treatments in this visit ({view.items.length})
+            </p>
+            {view.items.map((it) => (
+              <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(148,163,184,0.15)' }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{it.service}</p>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, margin: '2px 0 0' }}>
+                    {it.service_duration ? `${it.service_duration} min` : ''}{it.service_duration && it.service_price ? ' · ' : ''}{it.service_price ? `₱${Number(it.service_price).toLocaleString()}` : ''}
+                  </p>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace', flexShrink: 0 }}>#{String(it.id).padStart(4, '0')}</span>
+              </div>
+            ))}
+            {view.totalPrice > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTop: `1px solid ${C.cardBorder}` }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: C.textSecondary }}>Visit total</span>
+                <span style={{ fontSize: 15, fontWeight: 900, color: '#059669' }}>₱{view.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+              </div>
             )}
           </div>
 
           <div style={{ padding: 16, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Assigned Practitioner</p>
-            <p style={{ fontSize: 16, fontWeight: 900, color: appt.therapist_name && appt.therapist_name !== 'Unassigned' ? C.textPrimary : C.textMuted, margin: 0 }}>
-              {appt.therapist_name || 'Unassigned'}
+            <p style={{ fontSize: 16, fontWeight: 900, color: view.therapist_name && view.therapist_name !== 'Unassigned' ? C.textPrimary : C.textMuted, margin: 0 }}>
+              {view.therapist_name || 'Unassigned'}
             </p>
-            {appt.service_price && (
-              <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0 0' }}>
-                <Zap size={13} style={{ color: '#f59e0b' }} /> Session Fee: ₱{appt.service_price}
-              </p>
-            )}
           </div>
 
-          {appt.notes && (
+          {stripBillingBlock(view.notes) && (
             <div style={{ padding: 14, borderRadius: 16, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
               <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Special Notes</p>
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.6 }}>{appt.notes}</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.6 }}>{stripBillingBlock(view.notes)}</p>
             </div>
           )}
 
-          {appt.status === 'Completed by Therapist' && (
+          {view.status === 'Completed by Therapist' && (
             <div style={{ padding: 14, borderRadius: 16, background: isDark ? 'rgba(217,119,6,0.15)' : '#fefce8', border: '1.5px solid rgba(217,119,6,0.35)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>Therapist Concluded Treatment Session</p>
-              </div>
+              <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#fbbf24' : '#92400e', margin: 0 }}>Therapist Concluded Treatment Session</p>
               <p style={{ fontSize: 11, color: isDark ? '#fef3c7' : '#78350f', margin: 0, lineHeight: 1.6 }}>
-                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> marked this treatment as complete. Verify the service and payment below to confirm and archive this booking into History.
+                Specialist <strong>{view.therapist_name || 'Assigned Therapist'}</strong> marked this visit as complete. Verify the service and payment below to confirm and archive this booking into History.
               </p>
             </div>
           )}
 
-          {appt.status === 'In Progress' && (
+          {view.status === 'In Progress' && (
             <div style={{ padding: 14, borderRadius: 16, background: isDark ? 'rgba(14,165,233,0.12)' : '#f0f9ff', border: '1.5px solid rgba(14,165,233,0.3)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#38bdf8' : '#0369a1', margin: 0 }}>Session Ongoing with Therapist</p>
               <p style={{ fontSize: 11, color: isDark ? '#e0f2fe' : '#0c4a6e', margin: 0, lineHeight: 1.6 }}>
-                Specialist <strong>{appt.therapist_name || 'Assigned Therapist'}</strong> is currently with the client. Only the therapist can mark this session as done from their panel — it will then move to Therapist Done for your verification.
+                Specialist <strong>{view.therapist_name || 'Assigned Therapist'}</strong> is currently with the client. Only the therapist can mark this session as done from their panel — it will then move to Therapist Done for your verification.
               </p>
             </div>
           )}
         </div>
 
-        {/* Footer — contextual actions by status */}
+        {/* Footer — one action set per visit, never per treatment */}
         <div className="cb-modal-footer-actions" style={{ padding: '14px 20px', borderTop: `1px solid ${C.cardBorder}`, background: C.cardBg, flexShrink: 0 }}>
           <HoverButton
             onClick={onClose}
@@ -211,11 +320,11 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
           </HoverButton>
 
           {/* PENDING: Decline + Assign */}
-          {appt.status === 'Pending' && (
+          {view.status === 'Pending' && (
             <>
               {onOpenReject && (
                 <HoverButton
-                  onClick={() => { onClose(); onOpenReject(appt); }}
+                  onClick={() => { onClose(); onOpenReject(group || primary); }}
                   baseStyle={{ padding: '10px 16px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
                   hoverStyle={{ background: 'rgba(239,68,68,0.18)', borderColor: 'rgba(239,68,68,0.45)' }}
                 >
@@ -224,9 +333,9 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
               )}
               {onOpenAccept && (
                 <HoverButton
-                  onClick={() => { onClose(); onOpenAccept(appt); }}
+                  onClick={() => { onClose(); onOpenAccept(group || primary); }}
                   baseStyle={{ flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#062c22,#0a3d30)', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                  hoverStyle={{ boxShadow: '0 6px 20px rgba(6,44,34,0.45)', transform: 'translateY(-1px)' }}
+                  hoverStyle={{ boxShadow: '0 6px 20px rgba(6,44,34,0.45)' }}
                 >
                   <UserCheck size={16} style={{ color: '#6ee7b7' }} /> Assign Specialist & Confirm
                 </HoverButton>
@@ -234,12 +343,12 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
             </>
           )}
 
-          {/* CONFIRMED: Reassign + Reschedule (NO Complete — therapist must do In Progress first) */}
-          {appt.status === 'Confirmed' && (
+          {/* CONFIRMED: Reassign + Reschedule */}
+          {view.status === 'Confirmed' && (
             <>
               {onOpenAccept && (
                 <HoverButton
-                  onClick={() => { onClose(); onOpenAccept(appt); }}
+                  onClick={() => { onClose(); onOpenAccept(group || primary); }}
                   baseStyle={{ padding: '10px 14px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#059669', background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', gap: 5 }}
                   hoverStyle={{ background: 'rgba(5,150,105,0.2)', borderColor: 'rgba(5,150,105,0.45)' }}
                 >
@@ -248,7 +357,7 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
               )}
               {onOpenReschedule && (
                 <HoverButton
-                  onClick={() => { onClose(); onOpenReschedule(appt); }}
+                  onClick={() => { onClose(); onOpenReschedule(group || primary); }}
                   baseStyle={{ padding: '10px 14px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#2563eb', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', gap: 5 }}
                   hoverStyle={{ background: 'rgba(37,99,235,0.2)', borderColor: 'rgba(37,99,235,0.45)' }}
                 >
@@ -258,19 +367,16 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
             </>
           )}
 
-          {/* COMPLETED BY THERAPIST ONLY: verify + confirm completion.
-              In Progress sessions are concluded by the therapist from their own
-              panel — admin must wait and verify in the Therapist Done tab. */}
-          {appt.status === 'Completed by Therapist' && onComplete && (
+          {view.status === 'Completed by Therapist' && onComplete && (
             <HoverButton
-              onClick={() => { onClose(); onComplete(appt); }}
+              onClick={() => { onClose(); onComplete(group || primary); }}
               baseStyle={{
                 flex: 1, padding: '10px 18px', borderRadius: 14, border: 'none',
                 background: 'linear-gradient(135deg,#059669,#047857)',
                 color: '#ffffff', fontSize: 12, fontWeight: 900,
                 boxShadow: '0 4px 14px rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
-              hoverStyle={{ boxShadow: '0 6px 20px rgba(5,150,105,0.45)', transform: 'translateY(-1px)' }}
+              hoverStyle={{ boxShadow: '0 6px 20px rgba(5,150,105,0.45)' }}
             >
               <Banknote size={15} style={{ color: '#fde68a' }} />
               Verify & Complete
@@ -289,6 +395,11 @@ const DetailModal = ({ appt, onClose, onOpenAccept, onOpenReject, onOpenReschedu
 const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  // `appt` may be a single row or a grouped visit ({ ids, items, ... }).
+  const grp = appt?.ids ? appt : null;
+  const view = grp || { ids: [appt.id], items: [appt], client_name: appt.client_name || appt.client, client_email: appt.client_email, datetime: appt.datetime, therapist_id: appt.therapist_id, totalPrice: Number(appt.service_price || 0), totalDuration: Number(appt.service_duration || 0) };
+  const primary = view.items[0] || appt;
+  const titleText = view.items.length > 1 ? `${view.items.length} treatments · 1 visit` : (primary.service || 'Booking');
   const [selectedTherapistId, setSelectedTherapistId] = useState(appt.therapist_id || '');
   const [submitting, setSubmitting] = useState(false);
 
@@ -317,7 +428,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     e.preventDefault();
     if (!selectedTherapistId) return;
     setSubmitting(true);
-    await onConfirmAssign(appt.id, selectedTherapistId);
+    await onConfirmAssign(view.ids, selectedTherapistId);
     setSubmitting(false);
     onClose();
   };

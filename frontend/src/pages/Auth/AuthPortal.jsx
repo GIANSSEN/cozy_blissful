@@ -424,6 +424,14 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
           onError={onError}
         />
       </div>
+
+      <p className="text-center text-[11px] text-slate-500 mt-3 leading-relaxed">
+        By continuing with Google or Facebook, you agree to our{' '}
+        <Link to="/privacy-policy" className="font-bold text-[#8c7033] hover:underline underline-offset-2">
+          Privacy Policy
+        </Link>
+        . We receive only your name and email for account sign-in &amp; booking.
+      </p>
     </div>
   );
 };
@@ -927,6 +935,11 @@ export default function AuthPortal({ initialTab = 'login' }) {
       {/* ── Footer ── */}
       <footer className="shrink-0 py-3 px-4 text-center text-[11px] text-white/40 border-t border-white/5 z-10">
         <p>© {YEAR} Cozy Blissful Salon &amp; Spa • Luxury Specialist Sanctuary</p>
+        <p className="mt-1">
+          <Link to="/privacy-policy" className="font-semibold text-white/60 hover:text-amber-200 hover:underline underline-offset-2 transition-colors">
+            Privacy Policy
+          </Link>
+        </p>
       </footer>
 
       {/* ── Registration Success Modal ── */}

@@ -48,6 +48,9 @@ const PaymentCancel = lazy(() => import('./pages/payment/PaymentCancel'));
 // 404 Page
 const NotFound = lazy(() => import('./pages/NotFound'));
 
+// Legal — public, no auth (Meta Privacy Policy URL must be crawlable)
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+
 // Lightweight route fallback — no spinner lib, no extra dep to parse
 const RouteFallback = () => (
   <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center', color: '#0a3d30' }}>
@@ -79,6 +82,9 @@ function AnimatedRoutes() {
         <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
         <Route path="/forgot-password" element={<PageTransition><ForgotPassword /></PageTransition>} />
         <Route path="/reset-password" element={<PageTransition><ResetPassword /></PageTransition>} />
+        {/* ── Legal (public — Meta App Review requires crawlable URLs) ─────── */}
+        <Route path="/privacy-policy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
+        <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
 
         {/* ── Payment Callback Pages (PayMongo) — require client auth ─────── */}
         <Route

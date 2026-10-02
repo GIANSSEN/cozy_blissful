@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — Cozy Blissful Salon &amp; Spa</title>
+<meta name="description" content="Privacy Policy for Cozy Blissful Salon & Spa, including Facebook Login data use (public_profile and email) for Login dialog and app details." />
+<style>
+body{font-family:Georgia,'Times New Roman',serif;background:#faf9f7;color:#334155;margin:0;line-height:1.7}
+.wrap{max-width:860px;margin:0 auto;padding:32px 20px 64px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.05)}
+h1{font-size:28px;color:#0f172a;margin:8px 0}
+h2{font-size:18px;color:#0f172a;margin:28px 0 8px}
+p,li{font-size:14px}
+.kicker{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8c7033;font-weight:800;font-family:Arial,sans-serif}
+a{color:#8c7033}
+.meta{font-size:12px;color:#64748b}
+ul{padding-left:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card">
+<p class="kicker">Privacy policy for Login dialog and app details</p>
+<h1>Privacy Policy — Cozy Blissful Salon &amp; Spa</h1>
+<p class="meta">Effective date: October 2, 2026 • Last updated: October 2, 2026</p>
+<p><strong>Cozy Blissful Salon &amp; Spa</strong> (“we”, “us”, “our”) operates a luxury spa &amp; salon appointment booking platform. This policy explains what we collect when you use our website and sign in — including with <strong>Facebook Login (Meta)</strong> — how we use it, and your choices. Contact: <a href="mailto:cozyblissfulspa@gmail.com">cozyblissfulspa@gmail.com</a> • Facebook: <a href="https://facebook.com/cozyblissful">facebook.com/cozyblissful</a>.</p>
+
+<h2>1. Facebook Login — data we receive and why</h2>
+<p>When you tap “Continue with Facebook” on our Login/Register page, Meta shares limited data via the Facebook SDK / OAuth dialog. We request only:</p>
+<ul>
+<li><strong>public_profile</strong> — name, first name, last name, Facebook user ID (account identification &amp; personalization).</li>
+<li><strong>email</strong> — Facebook email address (account identifier, login matching, booking confirmations, recovery).</li>
+</ul>
+<p>Server-side we verify each access token against the Meta Graph API (<code>debug_token</code> + <code>/me?fields=id,name,first_name,last_name,email</code>) with our App ID / Secret before fetching any profile. We do <strong>not</strong> request friends, photos, birthday, gender, likes, or posts. If no email is shared, we ask you to enter one on the Register page.</p>
+
+<h2>2. How we use your information</h2>
+<ul>
+<li>Authentication: match Facebook email to an existing account or pre-fill registration (name/email) to finish signup with a password.</li>
+<li>Bookings: create/manage appointments (pending → confirmed → in-progress → completed), therapist assignment, rescheduling, cancellations, reminders.</li>
+<li>Communications: booking confirmation, approval, reminder, and welcome emails.</li>
+<li>Security: rate-limit logins, audit logs, fraud prevention.</li>
+<li>Payments: PayMongo checkout metadata (we never store full card numbers).</li>
+</ul>
+<p>We never sell personal data and never use Facebook data for third-party advertising.</p>
+
+<h2>3. Other data we collect</h2>
+<ul>
+<li>Account data you provide: name, email, bcrypt-hashed password, phone (optional), preferences, appointment history.</li>
+<li>Google Sign-In (optional): verified ID token → name/email, same use as above.</li>
+<li>Automatic: IP, device/browser, login timestamps, audit logs.</li>
+<li>Cookies/local storage: 7-day Sanctum session token, remembered email (“Remember me”), theme/cart. No third-party ad trackers.</li>
+</ul>
+
+<h2>4. Sharing</h2>
+<ul>
+<li>Meta Platforms, Inc. — Facebook Login SDK / Graph API verification.</li>
+<li>Google LLC — only if you use Google sign-in.</li>
+<li>PayMongo — payment processing.</li>
+<li>Email provider (SMTP/Gmail) — transactional emails.</li>
+<li>Hosting provider — secure app/database hosting.</li>
+</ul>
+
+<h2>5. Retention</h2>
+<p>Account/booking records kept while active and as required for business/tax/audit (typically up to 5 years for transaction logs). Session tokens expire after 7 days. Earlier deletion available on request.</p>
+
+<h2>6. Security</h2>
+<p>Bcrypt (12 rounds), server-side social-token verification, HTTPS, role-based access (admin/staff/therapist/client), Sanctum Bearer tokens, login throttles, transactions + audit logs.</p>
+
+<h2>7. Your rights — access, correction &amp; deletion</h2>
+<ul>
+<li>Access/correct via your dashboard or by email.</li>
+<li><strong>Delete:</strong> email <a href="mailto:cozyblissfulspa@gmail.com?subject=Data%20deletion%20request">cozyblissfulspa@gmail.com</a> with subject “Data deletion request” from your account email (include full name + account email). We verify ownership and delete account, personal booking identifiers, and Facebook-derived fields within 30 days and confirm by email.</li>
+<li><strong>Disconnect Facebook:</strong> Facebook → Settings → Apps and Websites → remove “Cozy Blissful”. This stops future sharing; stored data deleted per above.</li>
+</ul>
+
+<h2>8. Children</h2>
+<p>Not directed to children under 13. Contact us to delete any inadvertently collected child data.</p>
+
+<h2>9. Changes</h2>
+<p>Updates posted here with a new “Last updated” date; material changes notified by email/in-app where appropriate.</p>
+
+<h2>10. Contact</h2>
+<p>Email: <a href="mailto:cozyblissfulspa@gmail.com">cozyblissfulspa@gmail.com</a><br/>App: Cozy Blissful Salon &amp; Spa — <a href="https://facebook.com/cozyblissful">facebook.com/cozyblissful</a></p>
+
+<p class="meta">© 2026 Cozy Blissful Salon &amp; Spa • <a href="/">Home</a> • <a href="/login">Login</a> • <a href="/register">Register</a></p>
+</div>
+</div>
+</body>
+</html>
