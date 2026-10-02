@@ -94,16 +94,33 @@ const HistoryDetailModal = ({ record, onClose }) => {
     };
   }, [onClose]);
 
-  // Clean remarks and separate contact/billing if attached
+  // Clean remarks and separate contact/billing if attached.
+  // Handles both `&` and `&amp;` variants written by different backend versions.
   const notesText = record.notes || '';
-  const hasBillingBlock = notesText.includes('[Billing & Contact Info]');
+  const BILLING_DELIMITERS = [
+    '[Billing & Contact Info]',
+    '[Billing &amp; Contact Info]',
+    '[Billing and Contact Info]',
+  ];
   let userRemarks = notesText;
   let billingInfo = null;
 
-  if (hasBillingBlock) {
-    const parts = notesText.split('[Billing & Contact Info]');
-    userRemarks = parts[0]?.trim();
-    billingInfo = parts[1]?.trim();
+  for (const delim of BILLING_DELIMITERS) {
+    if (notesText.includes(delim)) {
+      const parts = notesText.split(delim);
+      userRemarks = parts[0]?.trim();
+      billingInfo = parts[1]?.trim();
+      break;
+    }
+  }
+
+  // Fallback: if notes contain Phone:/Address: inline (no bracket delimiter), split there.
+  if (!billingInfo && /Phone:\s*\d/.test(notesText)) {
+    const phoneIdx = notesText.search(/Phone:\s*\d/);
+    if (phoneIdx > 0) {
+      userRemarks = notesText.slice(0, phoneIdx).trim();
+      billingInfo = notesText.slice(phoneIdx).trim();
+    }
   }
 
   return (
@@ -257,10 +274,15 @@ const HistoryDetailModal = ({ record, onClose }) => {
           </div>
 
           {/* User Remarks if present */}
-          {userRemarks && (
+          {userRemarks ? (
             <div style={{ padding: '12px 14px', borderRadius: 14, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
-              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Remarks & Notes</p>
+              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Session Remarks</p>
               <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.45, overflowWrap: 'break-word' }}>{userRemarks}</p>
+            </div>
+          ) : (
+            <div style={{ padding: '10px 14px', borderRadius: 14, background: C.cardBg, border: `1px solid ${C.cardBorder}` }}>
+              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Session Remarks</p>
+              <p style={{ fontSize: 11, fontWeight: 500, color: C.textMuted, margin: '3px 0 0', fontStyle: 'italic' }}>No remarks recorded.</p>
             </div>
           )}
 
@@ -271,8 +293,8 @@ const HistoryDetailModal = ({ record, onClose }) => {
               background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
               border: `1px solid ${C.cardBorder}`,
             }}>
-              <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Contact & Address</p>
-              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '3px 0 0', lineHeight: 1.4, overflowWrap: 'break-word' }}>
+              <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Contact &amp; Billing Info</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '3px 0 0', lineHeight: 1.4, overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
                 {billingInfo}
               </p>
             </div>
