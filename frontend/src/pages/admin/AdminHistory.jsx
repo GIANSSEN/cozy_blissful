@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from './AdminLayout';
-import { SkeletonStatsRow, SkeletonSessionFeed } from '../../components/Skeleton';
+import LoadingSpinner from '../../components/LoadingSpinner';
 import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import API from '../../api/axios';
@@ -682,9 +682,8 @@ const AdminHistory = () => {
 
         {/* ── Content states ── */}
         {loading ? (
-          <div className="space-y-4" role="status" aria-busy="true" aria-label="Loading history records">
-            <SkeletonStatsRow />
-            <SkeletonSessionFeed count={5} />
+          <div style={{ paddingTop: 48, paddingBottom: 48 }} role="status" aria-busy="true" aria-label="Loading history records">
+            <LoadingSpinner message="Loading session archive..." />
           </div>
         ) : loadError ? (
           <div className="p-8 sm:p-12 text-center rounded-3xl" role="alert" style={{
