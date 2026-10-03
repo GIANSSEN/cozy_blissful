@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 
 class AuditLogController extends Controller
 {
@@ -54,20 +55,27 @@ class AuditLogController extends Controller
         $perPage = (int) $request->input('per_page', 10);
         $logs = $query->paginate($perPage);
 
-        // Stats
-        $stats = AuditLog::selectRaw('action, count(*) as count')
-            ->groupBy('action')
-            ->pluck('count', 'action');
+        // Cached stats and filter options (60s TTL) to prevent repeated full-table scans
+        $meta = Cache::remember('audit_logs_meta', 60, function () {
+            $stats = AuditLog::selectRaw('action, count(*) as count')
+                ->groupBy('action')
+                ->pluck('count', 'action');
 
-        // Distinct roles and modules for filter options
-        $roles = AuditLog::distinct()->pluck('actor_role');
-        $modules = AuditLog::distinct()->whereNotNull('module')->pluck('module');
+            $roles = AuditLog::distinct()->pluck('actor_role');
+            $modules = AuditLog::distinct()->whereNotNull('module')->pluck('module');
+
+            return [
+                'stats' => $stats,
+                'roles' => $roles,
+                'modules' => $modules,
+            ];
+        });
 
         return response()->json([
             'logs' => $logs,
-            'stats' => $stats,
-            'roles' => $roles,
-            'modules' => $modules,
+            'stats' => $meta['stats'],
+            'roles' => $meta['roles'],
+            'modules' => $meta['modules'],
         ]);
     }
 

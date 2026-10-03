@@ -4,9 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LogIn, UserPlus, User, Mail, Lock, Eye, EyeOff,
   AlertCircle, Clock, ShieldCheck, Check, X,
-  CheckCircle2, Gift, Zap, Sparkles,
+  ArrowLeft, CheckCircle2, Gift, Zap, Sparkles,
   Star, MapPin, MessageCircle, BadgeCheck,
-  Info, CalendarCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -51,21 +50,6 @@ const loadScript = (src, id) => new Promise((resolve, reject) => {
 
 const cleanParam = (v) =>
   v && v !== 'null' && v !== 'undefined' && v.trim() !== '' ? v.trim() : '';
-
-// ─── In-page anchors (same labels as LandingPage sections) ────────────────────
-const NAV_LINKS = [
-  { href: '/#story',        label: 'Our Story'    },
-  { href: '/#services',     label: 'Services'     },
-  { href: '/#how-it-works', label: 'How It Works' },
-  { href: '/#testimonials', label: 'Reviews'      },
-];
-
-// ─── 3-step explainer in plain words (desktop panel + mobile card) ───────────
-const HOW_IT_WORKS = [
-  { n: '1', title: 'Sign in or join free', desc: 'Email + password only.' },
-  { n: '2', title: 'Pick service & time',  desc: 'Massage, nails & more.' },
-  { n: '3', title: 'Relax — we confirm',   desc: 'Details sent by email.' },
-];
 
 // ─── Social links (left panel footer) ────────────────────────────────────────
 const SOCIALS = [
@@ -176,43 +160,48 @@ const RateLimitBanner = ({ retryAfter, onDone }) => {
   );
 };
 
-// ─── Form input ───────────────────────────────────────────────────────────────
-const Input = ({ label, id, icon: Icon, error, success, rightEl, onBlur, ...props }) => {
+// ─── Form input — 48px targets, 16px text (no iOS zoom), plain hints ───────────
+const Input = ({ label, id, icon: Icon, error, success, rightEl, hint, onBlur, ...props }) => {
   const [focused, setFocused] = useState(false);
   const errId = error ? `${id}-error` : undefined;
+  const hintId = hint && !error ? `${id}-hint` : undefined;
+  const describedBy = [errId, hintId].filter(Boolean).join(' ') || undefined;
   return (
     <div className="w-full">
       <label
         htmlFor={id}
-        className="block text-[11px] font-semibold mb-1 tracking-[0.06em] uppercase"
-        style={{ color: '#94a3b8' }}
+        className="flex items-baseline justify-between gap-2 text-[13px] font-bold mb-1.5"
+        style={{ color: B.ink }}
       >
-        {label}
+        <span>{label} {props.required && <span aria-hidden="true" style={{ color: '#bfa15f' }}>*</span>}</span>
       </label>
       <div className="relative">
         <Icon
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-[14px] h-[14px] pointer-events-none transition-colors shrink-0 z-10"
-          style={{ color: error ? '#f87171' : focused ? B.goldDk : '#cbd5e1' }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-[17px] h-[17px] pointer-events-none transition-colors shrink-0 z-10"
+          style={{ color: error ? '#dc2626' : focused ? B.goldDk : '#94a3b8' }}
+          aria-hidden="true"
         />
         <input
           id={id}
           aria-invalid={!!error}
-          aria-describedby={errId}
+          aria-describedby={describedBy}
           onFocus={() => setFocused(true)}
           onBlur={(e) => { setFocused(false); if (onBlur) onBlur(e); }}
-          className="w-full rounded-xl outline-none transition-all duration-150 text-slate-800 placeholder:text-slate-300 font-medium"
+          className="auth-input w-full rounded-2xl outline-none transition-all duration-150 text-slate-800 placeholder:text-slate-400 font-medium"
           style={{
-            fontSize: '13.5px',
-            height: '42px',
-            paddingLeft: '34px',
-            paddingRight: rightEl ? '42px' : success ? '34px' : '12px',
+            fontSize: '16px',
+            minHeight: '50px',
+            paddingLeft: '44px',
+            paddingRight: rightEl ? '52px' : success ? '38px' : '14px',
+            paddingTop: '10px',
+            paddingBottom: '10px',
             background: focused ? '#ffffff' : '#f8fafc',
-            border: `1.5px solid ${error ? '#fca5a5' : focused ? B.gold : '#e8edf2'}`,
+            border: `1.5px solid ${error ? '#dc2626' : focused ? B.gold : '#e2e8f0'}`,
             boxShadow: focused && !error
-              ? '0 0 0 3px rgba(191,161,95,0.1)'
+              ? '0 0 0 4px rgba(191,161,95,0.15)'
               : error
-              ? '0 0 0 3px rgba(248,113,113,0.12)'
-              : 'none',
+              ? '0 0 0 3px rgba(220,38,38,0.08)'
+              : '0 1px 2px rgba(0,0,0,0.04)',
           }}
           {...props}
         />
@@ -225,29 +214,32 @@ const Input = ({ label, id, icon: Icon, error, success, rightEl, onBlur, ...prop
           <div className="absolute right-1 top-1/2 -translate-y-1/2 z-10">{rightEl}</div>
         )}
       </div>
+      {hint && !error && (
+        <p id={hintId} className="text-[12px] mt-1.5 leading-relaxed" style={{ color: '#64748b' }}>{hint}</p>
+      )}
       {error && (
         <motion.p
           id={errId}
           initial={{ opacity: 0, y: -2 }} animate={{ opacity: 1, y: 0 }}
-          className="text-[10.5px] mt-1 flex items-center gap-1 font-semibold"
+          className="text-[12px] mt-1.5 flex items-start gap-1.5 font-semibold leading-relaxed"
           style={{ color: '#dc2626' }}
           role="alert"
         >
-          <AlertCircle className="w-2.5 h-2.5 shrink-0" />{error}
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />{error}
         </motion.p>
       )}
     </div>
   );
 };
 
-// ─── Eye toggle ───────────────────────────────────────────────────────────────
+// ─── Eye toggle — 40px touch target ───────────────────────────────────────────
 const EyeBtn = ({ show, onToggle, label }) => (
   <button
     type="button" onClick={onToggle}
-    aria-label={label} aria-pressed={show}
-    className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-300 hover:text-slate-600 hover:bg-slate-100 cursor-pointer touch-manipulation transition-colors"
+    aria-label={label} aria-pressed={show} title={label}
+    className="flex items-center justify-center w-10 h-10 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer touch-manipulation transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
   >
-    {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+    {show ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
   </button>
 );
 
@@ -276,10 +268,10 @@ const PasswordStrength = ({ password }) => {
       <div className="h-1 rounded-full bg-slate-200 overflow-hidden">
         <motion.div className="h-full rounded-full" animate={{ width, backgroundColor: color }} transition={{ duration: 0.3 }} />
       </div>
-      <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px]" aria-live="polite">
-        {['8+ chars', 'A–Z', 'a–z', '0–9', 'Symbol'].map((r, i) => (
-          <span key={r} className={`inline-flex items-center gap-0.5 font-semibold ${checks[i] ? 'text-emerald-600' : 'text-slate-400'}`}>
-            {checks[i] ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : <X className="w-2.5 h-2.5" />}{r}
+      <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[11px]" aria-live="polite">
+        {['8+ characters', 'BIG letter (A–Z)', 'small letter (a–z)', 'number (0–9)', 'symbol (@$!…)'].map((r, i) => (
+          <span key={r} className={`inline-flex items-center gap-1 font-semibold ${checks[i] ? 'text-emerald-600' : 'text-slate-400'}`}>
+            {checks[i] ? <Check className="w-3 h-3 stroke-[3]" /> : <X className="w-3 h-3" />}{r}
           </span>
         ))}
       </div>
@@ -336,14 +328,13 @@ const FacebookBtn = ({ disabled, pending, mode, onFinish, onError }) => {
       disabled={disabled || pending !== null}
       whileHover={{ scale: (disabled || pending) ? 1 : 1.013 }}
       whileTap={{ scale: (disabled || pending) ? 1 : 0.98 }}
-      className="flex-1 h-[38px] px-3 rounded-xl flex items-center justify-center gap-1.5 font-semibold text-[12.5px] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border hover:bg-slate-50 touch-manipulation"
-      style={{ background: '#fafafa', borderColor: '#e2e8f0', color: '#334155', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      className="w-full px-4 rounded-2xl flex items-center justify-center gap-2.5 font-bold text-[13.5px] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border hover:bg-slate-50 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+      style={{ minHeight: '50px', background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
       aria-label={mode === 'register' ? 'Sign up with Facebook' : 'Continue with Facebook'}
     >
       {isLoading
-        ? <span className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1877F2' }} />
-        : <FacebookGlyph />}
-      <span className="truncate">Facebook</span>
+        ? <><span className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: '#1877F2' }} /><span className="text-slate-500 font-semibold">Connecting…</span></>
+        : <><FacebookGlyph /><span className="truncate">{mode === 'register' ? 'Sign up with Facebook' : 'Continue with Facebook'}</span></>}
     </motion.button>
   );
 };
@@ -424,39 +415,49 @@ const SocialSignIn = ({ disabled, mode = 'login', onSuccess, onError }) => {
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-2 my-2.5">
-        <div className="flex-1 h-px" style={{ background: '#e8edf2' }} />
-        <span className="text-[10px] font-semibold tracking-[0.14em] uppercase shrink-0" style={{ color: '#b0bec5' }}>or continue with</span>
-        <div className="flex-1 h-px" style={{ background: '#e8edf2' }} />
+      <div className="flex items-center gap-3 my-4">
+        <div className="flex-1 h-px" style={{ background: B.line }} />
+        <span className="text-[11px] font-bold tracking-widest uppercase shrink-0" style={{ color: B.inkSoft }}>
+          or {mode === 'register' ? 'sign up with' : 'continue with'}
+        </span>
+        <div className="flex-1 h-px" style={{ background: B.line }} />
       </div>
 
-      <div className="flex gap-2">
+      {/* Stacked full-width buttons — readable on 320px phones up to desktop */}
+      <div className="flex flex-col gap-2.5">
         {/* Google */}
-        <div className="relative flex-1">
+        <div className="relative w-full">
           <motion.button
             type="button" onClick={handleGoogleClick}
             disabled={disabled || pending !== null}
-            whileHover={{ scale: (disabled || pending) ? 1 : 1.013 }}
-            whileTap={{ scale: (disabled || pending) ? 1 : 0.98 }}
-            className="w-full h-[38px] px-3 rounded-xl flex items-center justify-center gap-1.5 font-semibold text-[12.5px] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border hover:bg-slate-50 touch-manipulation"
-            style={{ background: '#fafafa', borderColor: '#e2e8f0', color: '#334155', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+            whileHover={{ scale: (disabled || pending) ? 1 : 1.01 }}
+            whileTap={{ scale: (disabled || pending) ? 1 : 0.985 }}
+            className="w-full px-4 rounded-2xl flex items-center justify-center gap-2.5 font-bold text-[13.5px] transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border hover:bg-slate-50 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+            style={{ minHeight: '50px', background: B.white, borderColor: B.line, color: B.ink, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
             aria-label={mode === 'register' ? 'Sign up with Google' : 'Continue with Google'}
           >
             {pending === 'google'
-              ? <span className="w-3.5 h-3.5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} />
-              : <GoogleGlyph />}
-            <span className="truncate">Google</span>
+              ? <><span className="w-4 h-4 border-2 rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'rgba(0,0,0,0.1)', borderTopColor: B.gold }} /><span className="text-slate-500 font-semibold">Connecting…</span></>
+              : <><GoogleGlyph /><span className="truncate">{mode === 'register' ? 'Sign up with Google' : 'Continue with Google'}</span></>}
           </motion.button>
           <div
             ref={googleBtnRef}
             aria-hidden="true"
-            className="absolute inset-0 overflow-hidden"
+            className="absolute inset-0 flex items-center justify-center overflow-hidden"
             style={{ opacity: 0.011, colorScheme: 'light', pointerEvents: pending !== null ? 'none' : 'auto' }}
           />
         </div>
 
         <FacebookBtn disabled={disabled} pending={pending} mode={mode} onFinish={finish} onError={onError} />
       </div>
+
+      <p className="text-center text-[12px] text-slate-500 mt-3.5 leading-relaxed px-1">
+        By continuing, you agree to our{' '}
+        <Link to="/privacy-policy" className="font-bold hover:underline underline-offset-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60" style={{ color: '#8c7033' }}>
+          Privacy Policy
+        </Link>
+        . We only use your name and email for sign-in &amp; booking.
+      </p>
     </div>
   );
 };
@@ -671,12 +672,22 @@ export default function AuthPortal({ initialTab = 'login' }) {
     >
       <SpaBackdrop />
 
+      {/* ── Floating back-to-home: always reachable on every device ── */}
+      <Link
+        to="/"
+        aria-label="Back to home page"
+        className="absolute z-20 top-3 left-3 sm:top-4 sm:left-4 inline-flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-full text-[11.5px] font-bold text-white/85 hover:text-white bg-white/10 hover:bg-white/20 border border-white/15 backdrop-blur-md active:scale-95 transition-all touch-manipulation min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]"
+      >
+        <ArrowLeft className="w-3.5 h-3.5 text-[#e8cc8a]" aria-hidden="true" />
+        <span className="hidden min-[420px]:inline">Home</span>
+      </Link>
+
       {/* ── Full-viewport centered card ── */}
       <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 py-3 overflow-hidden">
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          initial={authCardSeen ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.45, ease: EASE }}
+          transition={{ duration: authCardSeen ? 0.18 : 0.45, ease: EASE }}
           className="w-full max-w-[900px] flex flex-col md:flex-row rounded-2xl overflow-hidden border shadow-2xl"
           style={{
             borderColor: 'rgba(191,161,95,0.28)',
@@ -777,10 +788,10 @@ export default function AuthPortal({ initialTab = 'login' }) {
           </div>
 
           {/* ══ RIGHT PANEL — form ══ */}
-          <div className="flex-1 bg-white flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 bg-white flex flex-col min-w-0 overflow-y-auto auth-scroll">
             <div
-              className="w-full max-w-[390px] mx-auto flex flex-col justify-center h-full"
-              style={{ padding: '0 clamp(20px, 4vw, 34px)' }}
+              className="w-full max-w-[390px] my-auto mx-auto flex flex-col justify-center"
+              style={{ padding: '20px clamp(20px, 4vw, 34px)' }}
             >
 
               {/* ── Brand header ── */}
@@ -953,7 +964,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
                         onChange={(e) => { setRegEmail(e.target.value); if (regErrors.email) setRegErrors(p => ({ ...p, email: '' })); }}
                       />
 
-                      <div className="grid grid-cols-2 gap-2.5">
+                      <div className="grid grid-cols-1 min-[440px]:grid-cols-2 gap-2.5">
                         <Input
                           label="Password" id="reg-password" name="password"
                           type={showRegPw ? 'text' : 'password'} autoComplete="new-password"

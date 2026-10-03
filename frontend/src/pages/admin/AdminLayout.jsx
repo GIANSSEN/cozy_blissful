@@ -946,6 +946,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         onAvatarChange={setAvatar}
         onSave={handleSaveProfile}
         isDark={isDark}
+        disableSpring={true}
       />
       <ConfirmModal
         open={showLogoutConfirm}

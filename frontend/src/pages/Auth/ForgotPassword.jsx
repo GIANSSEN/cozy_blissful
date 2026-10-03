@@ -2,30 +2,51 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Mail, ArrowLeft, CheckCircle, AlertCircle,
-  Send, Clock, ShieldCheck, Inbox, RefreshCw, ChevronRight
+  Mail, ArrowLeft, CheckCircle, AlertCircle, X,
+  Send, Clock, ShieldCheck, Inbox, RefreshCw,
+  Sparkles, Star, MapPin, MessageCircle,
 } from 'lucide-react';
 import API from '../../api/axios';
 
-/* ── Brand Tokens ─────────────────────────────────── */
+/* ── Shared luxury motion ease (identical to LandingPage / AuthPortal) ─────── */
+const EASE = [0.22, 1, 0.36, 1];
+
+/* ── Brand Tokens (same as AuthPortal) ─────────────────────────────────────── */
 const B = {
-  green: '#0a3d30',
   deep: '#041e16',
+  green: '#0a3d30',
   gold: '#bfa15f',
   goldLight: '#e8cc8a',
-  ink: '#1e293b',
+  goldDark: '#8c7033',
+  ink: '#0f172a',
   muted: '#64748b',
   line: '#e2e8f0',
 };
 
-/* ── Tiny helpers ─────────────────────────────────── */
-const Dot = ({ color }) => (
-  <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+/* ── Ambient spa backdrop (same language as AuthPortal hero) ──────────────── */
+const SpaBackdrop = () => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <img
+      src="https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=1920&q=60"
+      alt=""
+      className="absolute inset-0 w-full h-full object-cover opacity-[0.14]"
+      loading="eager"
+      decoding="async"
+    />
+    <div
+      className="absolute inset-0"
+      style={{ background: 'linear-gradient(135deg,rgba(4,30,22,0.82) 0%,rgba(7,51,40,0.65) 55%,rgba(14,77,56,0.75) 100%)' }}
+    />
+    <div className="absolute rounded-full blur-3xl opacity-25" style={{ width: 520, height: 520, right: '-6%', top: '-10%', background: 'radial-gradient(circle,rgba(191,161,95,0.25) 0%,transparent 68%)' }} />
+    <div className="absolute rounded-full blur-3xl opacity-20" style={{ width: 380, height: 380, left: '-5%', bottom: '-8%', background: 'radial-gradient(circle,rgba(52,201,158,0.18) 0%,transparent 70%)' }} />
+  </div>
 );
 
-/* ════════════════════════════════════════════════════
-   FORGOT PASSWORD PAGE
-   ════════════════════════════════════════════════════ */
+const YEAR = new Date().getFullYear();
+
+/* ════════════════════════════════════════════════════════════════════════════
+   FORGOT PASSWORD — matches AuthPortal (dark spa, single-viewport card)
+   ════════════════════════════════════════════════════════════════════════════ */
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -53,264 +74,284 @@ const ForgotPassword = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-10 relative overflow-hidden"
-      style={{ fontFamily: "'Inter', sans-serif", background: 'linear-gradient(135deg,#f8f5f0 0%,#fdfcfa 60%,#f0ede8 100%)' }}
+      className="fixed inset-0 flex flex-col overflow-hidden"
+      style={{ background: '#04100a', fontFamily: "'Inter', sans-serif" }}
     >
-      {/* ── Ambient bg blobs ── */}
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', top: -160, left: -120, width: 500, height: 500, borderRadius: '50%', background: `radial-gradient(circle, ${B.green}22 0%, transparent 70%)` }} />
-        <div style={{ position: 'absolute', bottom: -200, right: -100, width: 460, height: 460, borderRadius: '50%', background: `radial-gradient(circle, ${B.gold}18 0%, transparent 70%)` }} />
-        <div style={{ position: 'absolute', top: '30%', right: '8%', width: 240, height: 240, borderRadius: '50%', background: `radial-gradient(circle, ${B.green}10 0%, transparent 70%)` }} />
+      <SpaBackdrop />
+
+      {/* ── Floating back-to-home (same glass language as AuthPortal) ── */}
+      <div className="absolute top-0 left-0 right-0 z-20">
+        <div className="max-w-[920px] mx-auto w-full flex items-center justify-between px-3 sm:px-5 pt-3 sm:pt-4">
+          <Link
+            to="/login"
+            aria-label="Back to sign in"
+            className="inline-flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-xl text-[12px] font-bold text-white/80 hover:text-white transition-all touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+            style={{ background: 'rgba(4,16,10,0.55)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(191,161,95,0.25)' }}
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[#e8cc8a]" />
+            Sign In
+          </Link>
+          <Link
+            to="/"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-white/60 hover:text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            Back to Home
+          </Link>
+        </div>
       </div>
 
-      {/* ── Main Card ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        style={{
-          position: 'relative', width: '100%', maxWidth: 900,
-          borderRadius: 28, overflow: 'hidden', display: 'flex',
-          background: '#fff',
-          boxShadow: '0 32px 80px rgba(4,30,22,0.16), 0 8px 32px rgba(191,161,95,0.12)',
-          border: '1px solid rgba(191,161,95,0.2)',
-        }}
-      >
-        {/* ════ LEFT PANEL ════ */}
-        <div
-          className="hidden md:flex flex-col"
+      {/* ── Full-viewport centered card ── */}
+      <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 pt-14 sm:pt-16 pb-4 overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.48, ease: EASE }}
+          className="w-full max-w-[860px] flex flex-col md:flex-row rounded-2xl overflow-hidden border shadow-2xl"
           style={{
-            width: '42%', minWidth: 300,
-            background: `linear-gradient(155deg, ${B.deep} 0%, ${B.green} 55%, #0e4a37 100%)`,
-            padding: '44px 36px', position: 'relative', overflow: 'hidden',
+            borderColor: 'rgba(191,161,95,0.3)',
+            boxShadow: '0 28px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(191,161,95,0.15), 0 8px 32px rgba(191,161,95,0.1)',
+            maxHeight: 'calc(100dvh - 32px)',
           }}
         >
-          {/* decorative circles */}
-          <div style={{ position: 'absolute', top: -80, right: -80, width: 260, height: 260, borderRadius: '50%', border: `2px solid rgba(191,161,95,0.12)` }} />
-          <div style={{ position: 'absolute', bottom: -60, left: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(191,161,95,0.07)' }} />
 
-          {/* Brand pill */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(191,161,95,0.3)', marginBottom: 32, width: 'fit-content' }}>
-            <span style={{ color: B.goldLight, fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Cozy Blissful Salon &amp; Spa</span>
-          </div>
+          {/* ══ LEFT PANEL (md+) ══ */}
+          <div
+            className="hidden md:flex flex-col justify-between shrink-0 relative overflow-hidden text-white"
+            style={{
+              width: '40%',
+              background: 'linear-gradient(155deg, #0a3d30 0%, #062b22 55%, #041e16 100%)',
+              padding: 'clamp(20px, 3.5vh, 32px) clamp(20px, 2.5vw, 28px)',
+            }}
+          >
+            <div className="absolute rounded-full pointer-events-none" style={{ width: 260, height: 260, right: -70, top: -70, border: '1.5px solid rgba(191,161,95,0.15)' }} />
+            <div className="absolute rounded-full pointer-events-none" style={{ width: 380, height: 380, right: -120, top: -120, border: '1px solid rgba(255,255,255,0.05)' }} />
 
-          {/* Heading */}
-          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 30, fontWeight: 900, color: '#fff', lineHeight: 1.25, marginBottom: 12 }}>
-            Forgot Your<br />
-            <span style={{ color: B.goldLight, fontStyle: 'italic' }}>Password?</span>
-          </h2>
-          <p style={{ fontSize: 13, color: 'rgba(220,250,240,0.65)', lineHeight: 1.75, marginBottom: 36 }}>
-            No worries — it happens to the best of us. Enter your registered email and we'll send a secure reset link straight to your inbox.
-          </p>
+            <div className="relative z-10 flex flex-col gap-4">
+              <span className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-full text-[9.5px] font-bold uppercase tracking-[0.12em]" style={{ background: 'rgba(191,161,95,0.12)', border: '1px solid rgba(191,161,95,0.28)', color: '#e8cc8a' }}>
+                <Sparkles className="w-2.5 h-2.5" /> Cozy Blissful Salon &amp; Spa
+              </span>
 
-          {/* Steps */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 36 }}>
-            {[
-              { icon: '1', label: 'Enter your email below' },
-              { icon: '2', label: 'Check your inbox for the link' },
-              { icon: '3', label: 'Click the link to set new password' },
-            ].map(step => (
-              <div key={step.icon} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(191,161,95,0.18)', border: '1px solid rgba(191,161,95,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: B.goldLight }}>{step.icon}</span>
-                </div>
-                <span style={{ fontSize: 12, color: 'rgba(220,250,240,0.8)' }}>{step.label}</span>
+              <div>
+                <h2 className="font-black leading-[1.15] tracking-tight text-white" style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(20px, 2.2vw, 26px)' }}>
+                  Forgot your<br /><em className="text-[#e8cc8a]">password?</em>
+                </h2>
+                <p className="text-[11.5px] text-emerald-100/65 leading-relaxed mt-2">
+                  No worries — enter your email and we’ll send a secure reset link straight to your inbox.
+                </p>
               </div>
-            ))}
-          </div>
 
-          {/* Gmail SMTP info box */}
-          <div style={{ marginTop: 'auto', background: 'rgba(255,255,255,0.055)', border: '1px solid rgba(191,161,95,0.22)', borderRadius: 16, padding: '18px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <div style={{ width: 30, height: 30, borderRadius: 10, background: 'rgba(191,161,95,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Mail style={{ width: 15, height: 15, color: B.goldLight }} />
+              <div className="flex items-center gap-1.5">
+                <span className="flex" aria-label="Rated 4.9">
+                  {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="w-3 h-3 fill-[#e8cc8a] text-[#e8cc8a]" />)}
+                </span>
+                <span className="text-[11px] font-bold text-[#e8cc8a]">4.9</span>
+                <span className="text-[11px] text-white/45">· 15k+ guests</span>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 800, color: B.goldLight, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Gmail SMTP Delivery</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {[
-                { icon: <Clock style={{ width: 11, height: 11 }} />, text: 'Link valid for 60 minutes' },
-                { icon: <ShieldCheck style={{ width: 11, height: 11 }} />, text: 'Sent via secure Gmail SMTP' },
-                { icon: <Inbox style={{ width: 11, height: 11 }} />, text: 'Check Spam if not in inbox' },
-              ].map((row, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <span style={{ color: 'rgba(232,204,138,0.7)' }}>{row.icon}</span>
-                  <span style={{ fontSize: 11, color: 'rgba(220,250,240,0.6)' }}>{row.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* ════ RIGHT PANEL ════ */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '52px 40px' }}>
-          <div style={{ width: '100%', maxWidth: 360 }}>
+              {/* 3 steps — plain language */}
+              <ul className="space-y-2.5">
+                {['Enter your email on the right', 'Check your inbox for the link', 'Click it to set a new password'].map((s, i) => (
+                  <li key={s} className="flex items-center gap-2.5">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black shrink-0" style={{ background: 'rgba(191,161,95,0.18)', border: '1px solid rgba(191,161,95,0.4)', color: '#e8cc8a' }}>
+                      {i + 1}
+                    </span>
+                    <span className="text-[11.5px] text-emerald-100/70">{s}</span>
+                  </li>
+                ))}
+              </ul>
 
-            {/* Logo + header */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32, textAlign: 'center' }}>
-              <div style={{ position: 'relative', marginBottom: 16 }}>
-                <div style={{ width: 64, height: 64, borderRadius: 20, overflow: 'hidden', border: `2.5px solid ${B.gold}`, boxShadow: '0 8px 24px rgba(191,161,95,0.25)' }}>
-                  <img src="/cb-logo.jpg" alt="Cozy Blissful" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {/* Delivery info */}
+              <div className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(191,161,95,0.22)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0" style={{ background: 'rgba(191,161,95,0.15)' }}>
+                    <Mail className="w-3.5 h-3.5 text-[#e8cc8a]" />
+                  </span>
+                  <span className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#e8cc8a]">Secure email delivery</span>
                 </div>
-                <div style={{ position: 'absolute', bottom: -4, right: -4, width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
-                  <Mail style={{ width: 11, height: 11, color: B.deep }} />
-                </div>
+                {[
+                  { icon: Clock, text: 'Link is valid for 60 minutes' },
+                  { icon: ShieldCheck, text: 'Sent via secure encrypted mail' },
+                  { icon: Inbox, text: 'Not in inbox? Check spam / junk' },
+                ].map(({ icon: Icon, text }) => (
+                  <div key={text} className="flex items-center gap-2 py-0.5">
+                    <Icon className="w-3 h-3 shrink-0 text-[#e8cc8a]/70" />
+                    <span className="text-[11px] text-emerald-100/60">{text}</span>
+                  </div>
+                ))}
               </div>
-              <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, fontWeight: 900, color: B.ink, marginBottom: 4 }}>Reset Password</h1>
-              <p style={{ fontSize: 13, color: B.muted, lineHeight: 1.5 }}>Enter your email to receive a secure reset link</p>
             </div>
 
-            {/* Error */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 14, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)', marginBottom: 20, overflow: 'hidden' }}
-                >
-                  <AlertCircle style={{ width: 16, height: 16, color: '#dc2626', flexShrink: 0, marginTop: 1 }} />
-                  <span style={{ fontSize: 12.5, color: '#b91c1c', lineHeight: 1.5 }}>{error}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="relative z-10 pt-3 border-t border-white/[0.08]">
+              <div className="flex items-center gap-1.5 text-[10.5px] text-white/50">
+                <Clock className="w-3 h-3 text-[#e8cc8a]" /> Open daily 9 AM – 9 PM
+                <span aria-hidden className="text-white/20">·</span>
+                <MapPin className="w-3 h-3 text-[#e8cc8a]" /> Home service
+              </div>
+              <p className="text-[10px] text-white/35 mt-1.5">© {YEAR} Cozy Blissful</p>
+            </div>
+          </div>
 
-            {/* Form or Success */}
-            <AnimatePresence mode="wait">
-              {!submitted ? (
-                <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onSubmit={handleSubmit}>
-                  {/* Email field */}
-                  <div style={{ marginBottom: 20 }}>
-                    <label htmlFor="forgot-email" style={{ display: 'block', fontSize: 12, fontWeight: 700, color: B.ink, marginBottom: 7 }}>
-                      Email Address
+          {/* ══ RIGHT PANEL — form ══ */}
+          <div className="flex-1 bg-white flex flex-col min-w-0 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="w-full max-w-[420px] mx-auto flex flex-col" style={{ padding: 'clamp(18px, 3.5vh, 30px) clamp(16px, 4vw, 32px)' }}>
+
+              {/* Mobile brand row */}
+              <div className="md:hidden flex items-center gap-2 mb-4">
+                <img src="/cb-logo.jpg" alt="" className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: '2px solid rgba(191,161,95,0.55)' }} />
+                <span className="text-sm font-black text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>Cozy Blissful</span>
+                <span className="ml-auto text-[10px] font-bold tracking-wide uppercase" style={{ color: B.goldDark }}>Reset password</span>
+              </div>
+
+              <div className="flex flex-col items-center text-center mb-4">
+                <div className="relative mb-3">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden" style={{ border: `2.5px solid ${B.gold}`, boxShadow: '0 8px 24px rgba(191,161,95,0.25)' }}>
+                    <img src="/cb-logo.jpg" alt="Cozy Blissful" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)', border: '2px solid #fff' }}>
+                    <Mail className="w-3 h-3" style={{ color: B.deep }} />
+                  </div>
+                </div>
+                <h1 className="text-[20px] font-black tracking-tight text-slate-900" style={{ fontFamily: "'Playfair Display', serif" }}>Reset your password</h1>
+                <p className="text-[12.5px] text-slate-500 mt-1 leading-relaxed">Type your account email below — we’ll send you a secure link.</p>
+              </div>
+
+              {/* Error */}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="flex items-start gap-2 p-3 rounded-xl text-[12px] mb-3 bg-red-50 border border-red-200 text-red-700"
+                    role="alert"
+                  >
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-px text-red-600" />
+                    <span className="font-semibold flex-1 leading-relaxed">{error}</span>
+                    <button type="button" onClick={() => setError('')} aria-label="Dismiss error" className="p-1 rounded-lg hover:bg-red-100 touch-manipulation shrink-0">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence mode="wait">
+                {!submitted ? (
+                  <motion.form key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onSubmit={handleSubmit} noValidate>
+                    <label htmlFor="forgot-email" className="block text-[12px] font-bold mb-1 tracking-wide" style={{ color: B.ink }}>
+                      Email address
                     </label>
-                    <div style={{ position: 'relative' }}>
-                      <Mail style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: focused ? B.green : B.muted, transition: 'color 0.2s' }} />
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-[17px] h-[17px] pointer-events-none transition-colors" style={{ color: focused ? B.goldDark : '#94a3b8' }} />
                       <input
                         id="forgot-email"
                         type="email"
+                        inputMode="email"
+                        autoComplete="email"
                         required
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        onChange={(e) => setEmail(e.target.value)}
                         onFocus={() => setFocused(true)}
                         onBlur={() => setFocused(false)}
-                        placeholder="your@email.com"
+                        placeholder="Example: maria@email.com"
+                        className="w-full rounded-xl outline-none transition-all duration-200 bg-white text-slate-900 placeholder:text-slate-400"
                         style={{
-                          width: '100%', padding: '13px 14px 13px 44px',
-                          borderRadius: 14, fontSize: 13.5, color: B.ink,
-                          border: `1.5px solid ${focused ? B.green : B.line}`,
-                          background: focused ? '#fafffe' : '#faf9f7',
-                          outline: 'none', transition: 'border-color 0.2s, background 0.2s',
-                          boxSizing: 'border-box',
+                          fontSize: '16px',
+                          minHeight: '50px',
+                          paddingLeft: '46px',
+                          paddingRight: '14px',
+                          paddingTop: '13px',
+                          paddingBottom: '13px',
+                          border: `1.5px solid ${focused ? B.gold : B.line}`,
+                          boxShadow: focused ? '0 0 0 4px rgba(191,161,95,0.15)' : '0 1px 2px rgba(0,0,0,0.04)',
                         }}
                       />
                     </div>
-                  </div>
+                    <p className="text-[11px] text-slate-400 mt-1">Use the email you signed up with.</p>
 
-                  {/* Submit button */}
-                  <motion.button
-                    type="submit"
-                    disabled={submitting}
-                    whileHover={{ scale: submitting ? 1 : 1.018 }}
-                    whileTap={{ scale: submitting ? 1 : 0.972 }}
-                    style={{
-                      width: '100%', padding: '14px', borderRadius: 14,
-                      background: submitting ? '#c8b880' : 'linear-gradient(135deg,#bfa15f 0%,#e8cc8a 50%,#c8a455 100%)',
-                      color: B.deep, fontSize: 13.5, fontWeight: 800,
-                      border: 'none', cursor: submitting ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: submitting ? 'none' : '0 6px 20px rgba(191,161,95,0.4)',
-                      transition: 'box-shadow 0.2s',
-                      letterSpacing: '0.02em',
-                    }}
-                  >
-                    {submitting ? (
-                      <>
-                        <span style={{ width: 16, height: 16, border: '2px solid rgba(4,30,22,0.25)', borderTopColor: B.deep, borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
-                        Sending Reset Link…
-                      </>
-                    ) : (
-                      <>
-                        <Send style={{ width: 15, height: 15 }} />
-                        Send Reset Link
-                      </>
-                    )}
-                  </motion.button>
+                    <motion.button
+                      type="submit"
+                      disabled={submitting}
+                      whileHover={{ scale: submitting ? 1 : 1.013 }}
+                      whileTap={{ scale: submitting ? 1 : 0.98 }}
+                      className="w-full mt-3 min-h-[50px] flex justify-center items-center gap-2 rounded-xl font-black text-[14px] text-[#041e16] disabled:opacity-60 disabled:cursor-not-allowed transition-all cursor-pointer touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#bfa15f]"
+                      style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)', boxShadow: '0 5px 18px rgba(191,161,95,0.4)' }}
+                    >
+                      {submitting ? (
+                        <><span className="w-4 h-4 border-2 border-[#041e16]/30 border-t-[#041e16] rounded-full animate-spin" /><span>Sending link…</span></>
+                      ) : (
+                        <><Send className="w-4 h-4" /><span>Send Reset Link</span></>
+                      )}
+                    </motion.button>
 
-                  {/* Mobile SMTP note */}
-                  <div className="md:hidden" style={{ marginTop: 18, padding: '12px 14px', borderRadius: 12, background: 'rgba(10,61,48,0.05)', border: '1px solid rgba(10,61,48,0.1)', display: 'flex', gap: 8 }}>
-                    <ShieldCheck style={{ width: 14, height: 14, color: B.green, flexShrink: 0, marginTop: 1 }} />
-                    <p style={{ fontSize: 11.5, color: B.muted, lineHeight: 1.6 }}>
-                      A secure link will be emailed via Gmail SMTP, valid for <strong>60 minutes</strong>. Check your spam folder if you don't see it.
-                    </p>
-                  </div>
-                </motion.form>
-              ) : (
-                /* ── SUCCESS STATE ── */
-                <motion.div
-                  key="success"
-                  initial={{ opacity: 0, scale: 0.93 }} animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                  style={{ textAlign: 'center' }}
-                >
-                  {/* Animated check */}
-                  <motion.div
-                    initial={{ scale: 0 }} animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
-                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg,#d1fae5,#a7f3d0)', border: '2px solid #34d399', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}
-                  >
-                    <CheckCircle style={{ width: 34, height: 34, color: '#059669' }} />
+                    {/* Mobile delivery note (left panel is hidden on small screens) */}
+                    <div className="md:hidden mt-3 p-3 rounded-xl flex gap-2" style={{ background: 'rgba(10,61,48,0.05)', border: '1px solid rgba(10,61,48,0.1)' }}>
+                      <ShieldCheck className="w-4 h-4 shrink-0 mt-px" style={{ color: B.green }} />
+                      <p className="text-[11.5px] text-slate-500 leading-relaxed">
+                        The link is valid for <strong>60 minutes</strong>. Can’t find it? Check your spam or junk folder.
+                      </p>
+                    </div>
+                  </motion.form>
+                ) : (
+                  <motion.div key="success" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.35, ease: EASE }} className="text-center">
+                    <motion.div
+                      initial={{ scale: 0 }} animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.08 }}
+                      className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+                      style={{ background: 'linear-gradient(135deg,#d1fae5,#a7f3d0)', border: '2px solid #34d399' }}
+                    >
+                      <CheckCircle className="w-9 h-9 text-emerald-600" />
+                    </motion.div>
+                    <h3 className="text-[19px] font-black tracking-tight mt-4" style={{ fontFamily: "'Playfair Display', serif" }}>Check your inbox!</h3>
+                    <p className="text-[12.5px] text-slate-500 leading-relaxed mt-1.5">{successMsg}</p>
+
+                    <div className="flex flex-col gap-2 mt-4 text-left">
+                      {[
+                        { dot: '#34d399', text: `Sent to: ${email}` },
+                        { dot: B.gold, text: 'Link expires in 60 minutes' },
+                        { dot: '#94a3b8', text: 'Not visible? Check spam / junk' },
+                      ].map((row) => (
+                        <div key={row.text} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: row.dot }} />
+                          <span className="text-[12px] text-slate-700 break-all">{row.text}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => { setSubmitted(false); setEmail(''); setSuccessMsg(''); }}
+                      className="inline-flex items-center gap-1.5 mt-4 min-h-[44px] px-3 text-[12.5px] font-bold cursor-pointer touch-manipulation"
+                      style={{ color: B.green }}
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Didn’t get it? Send again
+                    </button>
                   </motion.div>
+                )}
+              </AnimatePresence>
 
-                  <h3 style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: 20, fontWeight: 900, color: B.ink, marginBottom: 8 }}>
-                    Check Your Inbox!
-                  </h3>
-                  <p style={{ fontSize: 13, color: B.muted, lineHeight: 1.7, marginBottom: 20 }}>
-                    {successMsg}
-                  </p>
+              <div className="mt-4 pt-4 border-t border-slate-200/80 text-center">
+                <Link to="/login" className="inline-flex items-center gap-1.5 min-h-[44px] px-3 text-[12.5px] font-bold text-slate-500 hover:text-slate-900 transition-colors touch-manipulation">
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to Sign In
+                </Link>
+              </div>
 
-                  {/* Info cards */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
-                    {[
-                      { dot: '#34d399', text: `Sent to: ${email}` },
-                      { dot: B.gold, text: 'Link expires in 60 minutes' },
-                      { dot: '#94a3b8', text: 'Check spam/junk if not visible' },
-                    ].map((row, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: '#f8f9fb', border: '1px solid #eef0f4', textAlign: 'left' }}>
-                        <Dot color={row.dot} />
-                        <span style={{ fontSize: 12, color: B.ink }}>{row.text}</span>
-                      </div>
-                    ))}
-                  </div>
+              <div className="flex items-center justify-center gap-2 mt-2 text-[11px] text-slate-400">
+                <MessageCircle className="w-3 h-3" style={{ color: B.goldDark }} />
+                Need help?{' '}
+                <a href="https://wa.me/639995435913" target="_blank" rel="noopener noreferrer" className="font-bold hover:underline underline-offset-2" style={{ color: B.goldDark }}>
+                  Chat with us
+                </a>
+              </div>
 
-                  {/* Resend */}
-                  <button
-                    onClick={() => { setSubmitted(false); setEmail(''); setSuccessMsg(''); }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: B.green, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 2px' }}
-                  >
-                    <RefreshCw style={{ width: 13, height: 13 }} />
-                    Didn't get it? Send again
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Back to login */}
-            <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${B.line}`, textAlign: 'center' }}>
-              <Link
-                to="/login"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: B.muted, textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e => e.currentTarget.style.color = B.ink}
-                onMouseLeave={e => e.currentTarget.style.color = B.muted}
-              >
-                <ArrowLeft style={{ width: 14, height: 14 }} />
-                Back to Login
-              </Link>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </main>
 
-      {/* spin keyframe */}
-      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+      <footer className="relative z-10 shrink-0 py-3 px-4 text-center border-t border-white/5" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <p className="text-[11px] text-white/40">© {YEAR} Cozy Blissful Salon &amp; Spa · Your sanctuary of calm</p>
+      </footer>
     </div>
   );
 };

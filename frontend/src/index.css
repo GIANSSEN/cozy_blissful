@@ -427,3 +427,47 @@ input:autofill {
 .btn-primary:active {
   transform: scale(0.98);
 }
+
+/* ── Auth + route-transition accessibility ───────────────────────────────
+   Respects users who prefer reduced motion: kills the blur glide, petal
+   drift, and smooth-scroll so landing ⇄ login ⇄ register stays instant. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Visible gold focus ring for auth controls on cream backgrounds */
+.auth-focus:focus-visible {
+  outline: 2px solid #bfa15f;
+  outline-offset: 2px;
+}
+
+/* Auth card internal scroll area — thin, unobtrusive */
+.auth-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 44, 34, 0.2) transparent;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.auth-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.auth-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-scroll::-webkit-scrollbar-thumb {
+  background: rgba(6, 44, 34, 0.2);
+  border-radius: 9999px;
+}

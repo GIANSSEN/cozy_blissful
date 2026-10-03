@@ -11,8 +11,10 @@ import {
   Clock, AlertCircle,
   UserCheck, Gift, Hourglass,
   FileText, UserCog,
-  History, Star, ListOrdered, CalendarDays, Shield, Archive,
+  History, Star, ListOrdered, CalendarDays, Shield, Archive, Loader2,
 } from 'lucide-react';
+import ConfirmModal from './ui/ConfirmModal';
+import { triggerBrowserLoading } from './ui/TopProgressBar';
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  MENU CONFIG                                                         */
@@ -146,12 +148,36 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => { document.body.style.overflow = prev; };
   }, [isOpen]);
 
-  const handleToggle = (title) => setOpenTitle(prev => prev === title ? null : title);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState('');
 
-  const handleLogout = async () => {
-    await logout();
+  // Clear navigating state once URL matches or changes
+  useEffect(() => {
+    setNavigatingTo('');
+  }, [location.pathname, location.search]);
+
+  const handleNavClick = (targetPath) => {
+    if (targetPath && targetPath !== (location.pathname + location.search)) {
+      setNavigatingTo(targetPath);
+      triggerBrowserLoading();
+    }
     if (onClose) onClose();
-    navigate('/login');
+  };
+
+  const handleConfirmLogout = async () => {
+    try {
+      setLoggingOut(true);
+      triggerBrowserLoading();
+      await logout();
+      if (onClose) onClose();
+      setShowLogoutConfirm(false);
+      navigate('/login');
+    } catch {
+      // ignore
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   /* Search filter */
@@ -293,11 +319,12 @@ const Sidebar = ({ isOpen, onClose }) => {
             if (cat.path && cat.subs.length === 0) {
               const active = location.pathname === cat.path
                 || (cat.basePath && location.pathname.startsWith(cat.basePath));
+              const isNavigating = navigatingTo === cat.path;
               return (
                 <Link
                   key={cat.title}
                   to={cat.path}
-                  onClick={onClose}
+                  onClick={() => handleNavClick(cat.path)}
                   aria-current={active ? 'page' : undefined}
                   className={`group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors w-full min-h-[40px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${active ? 'sb-active' : ''}`}
                   style={{ background: active ? t.activeParent : 'transparent', textDecoration: 'none' }}>
@@ -307,7 +334,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                     style={{ color: active ? t.txt : t.txtSub, letterSpacing: '-0.01em' }}>
                     {cat.title}
                   </span>
-                  {active && (
+                  {isNavigating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" style={{ color: t.accent }} />
+                  ) : active && (
                     <motion.span
                       initial={{ scale: 0 }} animate={{ scale: 1 }}
                       transition={{ type: 'spring', stiffness: 500, damping: 25 }}
@@ -367,6 +396,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                           const active = isSubActive(sub);
                           const SubIcon = SUB_ICON[sub.tab] || FileText;
                           const subAccent = sub.accent || t.defaultSubActive;
+                          const subTarget = `${sub.path}?tab=${sub.tab}`;
+                          const isNavigatingSub = navigatingTo === subTarget;
                           return (
                             <motion.div
                               key={sub.label}
@@ -374,8 +405,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.18, delay: idx * 0.04, ease: 'easeOut' }}>
                               <Link
-                                to={`${sub.path}?tab=${sub.tab}`}
-                                onClick={onClose}
+                                to={subTarget}
+                                onClick={() => handleNavClick(subTarget)}
                                 aria-current={active ? 'page' : undefined}
                                 className={`group flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-colors min-h-[36px] active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item ${active ? 'sb-active' : ''}`}
                                 style={{
@@ -405,7 +436,9 @@ const Sidebar = ({ isOpen, onClose }) => {
                                   }}>
                                   {sub.label}
                                 </span>
-                                {active && (
+                                {isNavigatingSub ? (
+                                  <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" style={{ color: subAccent }} />
+                                ) : active && (
                                   <motion.span
                                     initial={{ scale: 0 }} animate={{ scale: 1 }}
                                     transition={{ type: 'spring', stiffness: 500, damping: 25 }}
@@ -431,7 +464,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <div className="px-3 pt-3 flex-shrink-0 space-y-0.5" style={{ borderTop: `1px solid ${t.border}`, paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <Link
             to="/"
-            onClick={onClose}
+            onClick={() => handleNavClick('/')}
             aria-label="Back to Customer Website Homepage"
             className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none sb-item"
             style={{ background: 'transparent', textDecoration: 'none' }}>
@@ -441,15 +474,19 @@ const Sidebar = ({ isOpen, onClose }) => {
               style={{ color: t.txtSub, letterSpacing: '-0.01em' }}>
               Back to Home
             </span>
-            <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all"
-              style={{ color: t.txtMuted }} aria-hidden="true" />
+            {navigatingTo === '/' ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0 text-emerald-500" />
+            ) : (
+              <ChevronLeft className="w-3.5 h-3.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all"
+                style={{ color: t.txtMuted }} aria-hidden="true" />
+            )}
           </Link>
 
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={() => setShowLogoutConfirm(true)}
             aria-label="Sign out of Admin Account"
-            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none sb-danger"
+            className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors min-h-[40px] touch-manipulation focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none sb-danger cursor-pointer"
             style={{ background: 'transparent' }}>
             <LogOut className="w-4 h-4 flex-shrink-0 group-hover:translate-x-0.5 transition-transform"
               style={{ color: '#ef4444' }} aria-hidden="true" />
@@ -460,6 +497,19 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
         </div>
       </aside>
+
+      {/* ── Compact responsive Sign Out Modal ── */}
+      <ConfirmModal
+        open={showLogoutConfirm}
+        onClose={() => !loggingOut && setShowLogoutConfirm(false)}
+        onConfirm={handleConfirmLogout}
+        title="Sign out?"
+        message="You will be signed out of the management console."
+        confirmLabel="Sign Out"
+        tone="logout"
+        busy={loggingOut}
+        busyLabel="Signing out…"
+      />
     </>
   );
 };

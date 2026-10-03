@@ -8,6 +8,7 @@ import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import { motion, AnimatePresence } from 'framer-motion';
+import TopProgressBar from './components/ui/TopProgressBar';
 
 // Code-split route pages so Vite dev only transforms the active route.
 // This is the biggest cold-start win: before, all 22 pages + framer-motion +
@@ -66,10 +67,10 @@ const RouteFallback = () => (
 // continuous glide instead of a hard cut. Respects reduced-motion via CSS.
 const PageTransition = ({ children }) => (
   <motion.div
-    initial={{ opacity: 0, y: 14 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+    initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
+    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+    exit={{ opacity: 0, y: -8, filter: 'blur(5px)' }}
+    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     className="w-full min-h-screen"
   >
     {children}
@@ -91,6 +92,7 @@ function AnimatedRoutes() {
   const location = useLocation();
   return (
     <>
+      <TopProgressBar />
       <ScrollToTop />
       <AnimatePresence mode="wait">
         <Suspense fallback={<RouteFallback />}>

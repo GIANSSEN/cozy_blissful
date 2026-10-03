@@ -17,7 +17,8 @@ export const useNotifications = () => {
   return ctx;
 };
 
-const POLL_INTERVAL = 10_000; // 10s real-time polling
+const POLL_INTERVAL = 30_000; // 30s smart polling to prevent server request lag
+const FOCUS_COOLDOWN = 15_000; // Min 15s between tab-focus refreshes
 
 export const NotificationProvider = ({ children }) => {
   const { user, role } = useAuth();
@@ -28,16 +29,19 @@ export const NotificationProvider = ({ children }) => {
   const [lastFetched, setLastFetched] = useState(null);
 
   const intervalRef = useRef(null);
+  const lastFetchTimestamp = useRef(0);
 
-  /* Robust admin/staff detection */
+  /* Robust admin/staff detection with active token check */
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const storedRole = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
   const isAdmin =
-    role === 'admin' ||
-    role === 'staff' ||
-    storedRole === 'admin' ||
-    storedRole === 'staff' ||
-    (user && (user.role === 'admin' || user.role === 'staff')) ||
-    (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
+    Boolean(token) &&
+    (role === 'admin' ||
+      role === 'staff' ||
+      storedRole === 'admin' ||
+      storedRole === 'staff' ||
+      (user && (user.role === 'admin' || user.role === 'staff')) ||
+      (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')));
 
   /* ─── Core fetch ─────────────────────────────────────────────── */
   const fetchNotifications = useCallback(async (silent = false) => {
@@ -53,7 +57,9 @@ export const NotificationProvider = ({ children }) => {
             ? data.unread_count
             : data.notifications.filter((n) => n.unread).length
         );
-        setLastFetched(new Date());
+        const now = new Date();
+        setLastFetched(now);
+        lastFetchTimestamp.current = now.getTime();
       }
     } catch (err) {
       // Silently ignore auth errors (e.g. 401 on logout)
@@ -76,24 +82,31 @@ export const NotificationProvider = ({ children }) => {
     // Immediate first fetch
     fetchNotifications();
 
-    // Poll every 10s
-    intervalRef.current = setInterval(() => fetchNotifications(true), POLL_INTERVAL);
+    // Poll every 30s only when document is visible
+    intervalRef.current = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchNotifications(true);
+      }
+    }, POLL_INTERVAL);
 
-    // Re-fetch on tab focus or visibility change
-    const onFocus = () => fetchNotifications(true);
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+    // Re-fetch on tab focus or visibility change only if cooldown elapsed
+    const handleRecheck = () => {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible' &&
+        Date.now() - lastFetchTimestamp.current >= FOCUS_COOLDOWN
+      ) {
         fetchNotifications(true);
       }
     };
 
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', handleRecheck);
+    document.addEventListener('visibilitychange', handleRecheck);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', handleRecheck);
+      document.removeEventListener('visibilitychange', handleRecheck);
     };
   }, [isAdmin, fetchNotifications]);
 

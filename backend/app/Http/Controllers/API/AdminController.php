@@ -30,7 +30,7 @@ class AdminController extends Controller
      */
     public function index(): JsonResponse
     {
-        return Cache::remember('admin_dashboard', 60, function () {
+        $payload = Cache::remember('admin_dashboard_data', 30, function () {
             $today = Carbon::today()->toDateString();
 
             // Single query for all core metrics using conditional aggregation
@@ -62,7 +62,7 @@ class AdminController extends Controller
 
             $payments = $this->dashboardPaymentsFeedOptimized();
 
-            return response()->json($this->buildDashboardPayload(
+            return $this->buildDashboardPayload(
                 $core,
                 $treatment,
                 $customerFunnel,
@@ -72,8 +72,10 @@ class AdminController extends Controller
                 $activityLogs,
                 $recentAppointments,
                 $payments
-            ));
+            );
         });
+
+        return response()->json($payload);
     }
 
     /**
@@ -133,7 +135,7 @@ class AdminController extends Controller
             'active_sessions' => $liveSessions,
             'activity_feed' => $activityLogs,
             'recent_appointments' => $recentAppointments,
-            'services' => Service::all(),
+            'services' => Cache::remember('all_services', 300, fn () => Service::all()),
             'payments' => $payments,
         ];
     }
@@ -318,21 +320,21 @@ class AdminController extends Controller
             ->groupByRaw('DATE(datetime)')
             ->pluck('revenue', 'appt_date')
             ->toArray();
+        // One single batch query for fallback revenue if any dates have 0 paid
+        $fallbackRevenues = DB::table('appointments')
+            ->join('services', 'appointments.service_id', '=', 'services.id')
+            ->where('appointments.datetime', '>=', $sevenDaysAgo)
+            ->where('appointments.status', 'Completed')
+            ->selectRaw("DATE(appointments.datetime) as appt_date, SUM(services.price) as fallback_rev")
+            ->groupByRaw('DATE(appointments.datetime)')
+            ->pluck('fallback_rev', 'appt_date')
+            ->toArray();
 
         $days7 = [];
         for ($i = 6; $i >= 0; $i--) {
             $dayDate = Carbon::today()->subDays($i);
             $dateStr = $dayDate->toDateString();
-            $dayVal = (float) ($dailyRevenue[$dateStr] ?? 0);
-
-            // Fallback for completed but unpaid
-            if ($dayVal == 0) {
-                $dayVal = (float) DB::table('appointments')
-                    ->join('services', 'appointments.service_id', '=', 'services.id')
-                    ->whereDate('appointments.datetime', $dateStr)
-                    ->where('appointments.status', 'Completed')
-                    ->sum('services.price');
-            }
+            $dayVal = (float) ($dailyRevenue[$dateStr] ?? ($fallbackRevenues[$dateStr] ?? 0));
             $days7[] = ['day' => $dayDate->format('D'), 'val' => (int) $dayVal];
         }
 
@@ -504,37 +506,49 @@ class AdminController extends Controller
     }
 
     /**
-     * Get all appointments.
+     * Get all appointments (15-second short cache to reduce DB load).
      */
     public function getAppointments()
     {
-        $appointments = Appointment::with(['client', 'therapist', 'service'])
-            ->orderBy('datetime', 'asc')
-            ->get()
-            ->map(function ($appt) {
-                return [
-                    'id' => $appt->id,
-                    'client_name' => $appt->client ? $appt->client->name : 'Client',
-                    'client_email' => $appt->client ? $appt->client->email : '',
-                    'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
-                    'therapist_id' => $appt->therapist_id,
-                    'service' => $appt->service ? $appt->service->name : 'Massage Service',
-                    'service_id' => $appt->service_id,
-                    'service_price' => $appt->service ? (float) $appt->service->price : null,
-                    'service_duration' => $appt->service ? (int) $appt->service->duration : null,
-                    'datetime' => $appt->datetime ? ($appt->datetime instanceof \DateTimeInterface ? $appt->datetime->format('Y-m-d H:i:s') : (string) $appt->datetime) : null,
-                    'status' => $appt->status,
-                    'notes' => $appt->notes ?? '',
-                    'payment_status' => $appt->payment_status ?? 'unpaid',
-                    'payment_method' => $appt->payment_method ?? 'cash',
-                    'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
-                    'paid_at' => $appt->paid_at ? ($appt->paid_at instanceof \DateTimeInterface ? $appt->paid_at->format('Y-m-d H:i:s') : (string) $appt->paid_at) : null,
-                ];
-            });
+        $appointments = Cache::remember('admin_all_appointments', 15, function () {
+            return Appointment::with(['client:id,name,email', 'therapist:id,name', 'service:id,name,price,duration'])
+                ->orderBy('datetime', 'asc')
+                ->get()
+                ->map(function ($appt) {
+                    return [
+                        'id'               => $appt->id,
+                        'client_name'      => $appt->client ? $appt->client->name : 'Client',
+                        'client_email'     => $appt->client ? $appt->client->email : '',
+                        'therapist_name'   => $appt->therapist ? $appt->therapist->name : 'Unassigned',
+                        'therapist_id'     => $appt->therapist_id,
+                        'service'          => $appt->service ? $appt->service->name : 'Massage Service',
+                        'service_id'       => $appt->service_id,
+                        'service_price'    => $appt->service ? (float) $appt->service->price : null,
+                        'service_duration' => $appt->service ? (int) $appt->service->duration : null,
+                        'datetime'         => $appt->datetime
+                            ? ($appt->datetime instanceof \DateTimeInterface
+                                ? $appt->datetime->format('Y-m-d H:i:s')
+                                : (string) $appt->datetime)
+                            : null,
+                        'status'           => $appt->status,
+                        'notes'            => $appt->notes ?? '',
+                        'payment_status'   => $appt->payment_status ?? 'unpaid',
+                        'payment_method'   => $appt->payment_method ?? 'cash',
+                        'amount_paid'      => $appt->amount_paid ? (float) $appt->amount_paid : null,
+                        'paid_at'          => $appt->paid_at
+                            ? ($appt->paid_at instanceof \DateTimeInterface
+                                ? $appt->paid_at->format('Y-m-d H:i:s')
+                                : (string) $appt->paid_at)
+                            : null,
+                    ];
+                })
+                ->values()
+                ->all();
+        });
 
         return response()->json([
             'recent_appointments' => $appointments,
-            'appointments' => $appointments,
+            'appointments'        => $appointments,
         ]);
     }
 
@@ -629,6 +643,8 @@ class AdminController extends Controller
                 'status' => $appt->status
             ]
         ]);
+
+        $this->clearDashboardCache();
 
         return response()->json([
             'message' => 'Therapist assigned successfully',
@@ -767,6 +783,8 @@ class AdminController extends Controller
             ]
         ]);
 
+        $this->clearDashboardCache();
+
         return response()->json([
             'message' => 'Appointment status updated to ' . $appt->status,
             'appointment' => [
@@ -877,6 +895,8 @@ class AdminController extends Controller
             ]
         ]);
 
+        $this->clearDashboardCache();
+
         return response()->json([
             'message' => 'Session verified — payment recorded and appointment marked Completed!',
             'appointment' => [
@@ -938,6 +958,8 @@ class AdminController extends Controller
             ]
         ]);
 
+        $this->clearDashboardCache();
+
         return response()->json([
             'message' => 'Appointment rescheduled successfully',
             'appointment' => [
@@ -959,14 +981,15 @@ class AdminController extends Controller
     public function getTherapists()
     {
         $therapists = User::role('therapist')
+            ->with(['availabilities' => function ($q) {
+                $q->orderBy('date', 'asc');
+            }])
             ->get()
             ->map(function ($t) {
-                // Fetch availability dates
-                $availDates = TherapistAvailability::where('therapist_id', $t->id)
+                $availDates = $t->availabilities
                     ->pluck('date')
-                    ->map(function ($date) {
-                    return Carbon::parse($date)->format('Y-m-d');
-                })
+                    ->map(fn($date) => Carbon::parse($date)->format('Y-m-d'))
+                    ->values()
                     ->toArray();
 
                 return [
@@ -974,7 +997,7 @@ class AdminController extends Controller
                     'name' => $t->name,
                     'email' => $t->email,
                     'availabilities' => $availDates,
-                    'specialty' => 'Spa Professional'
+                    'specialty' => $t->specialty ?: 'Spa Professional'
                 ];
             });
 
@@ -1003,6 +1026,7 @@ class AdminController extends Controller
         ]);
 
         $service = Service::create($validated);
+        $this->clearDashboardCache();
 
         return response()->json([
             'message' => 'Service created successfully',
@@ -1023,6 +1047,7 @@ class AdminController extends Controller
 
         $service = Service::findOrFail($id);
         $service->update($validated);
+        $this->clearDashboardCache();
 
         return response()->json([
             'message' => 'Service updated successfully',
@@ -1034,6 +1059,7 @@ class AdminController extends Controller
     {
         $service = Service::findOrFail($id);
         $service->delete();
+        $this->clearDashboardCache();
 
         return response()->json([
             'message' => 'Service deleted successfully'
@@ -1048,7 +1074,11 @@ class AdminController extends Controller
         $clients = User::role('client')
             ->with([
                 'appointments' => function ($q) {
-                    $q->with(['service', 'therapist'])
+                    $q->select('id', 'client_id', 'service_id', 'therapist_id', 'datetime', 'status', 'amount_paid')
+                        ->with([
+                            'service:id,name,price',
+                            'therapist:id,name'
+                        ])
                         ->orderBy('datetime', 'desc');
                 }
             ])
@@ -1056,25 +1086,22 @@ class AdminController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($c) {
-                // Total spent: sum of service prices for Completed appointments
                 $totalSpent = $c->appointments
                     ->where('status', 'Completed')
-                    ->sum(fn($a) => $a->service ? (float) $a->service->price : 0);
+                    ->sum(fn($a) => $a->amount_paid ? (float) $a->amount_paid : ($a->service ? (float) $a->service->price : 0));
 
-                // Auto-tier: VIP if >= 5 bookings, else use stored tier
                 $tier = $c->tier ?? 'Regular';
                 if ($c->appointments_count >= 5 && $tier === 'Regular') {
                     $tier = 'VIP';
                 }
 
-                // Build history array (last 10 appointments)
                 $history = $c->appointments->take(10)->map(fn($a) => [
                     'id' => 'b' . $a->id,
                     'service' => $a->service ? $a->service->name : 'Service',
-                    'date' => $a->datetime->format('Y-m-d'),
+                    'date' => $a->datetime ? $a->datetime->format('Y-m-d') : '',
                     'therapist' => $a->therapist ? $a->therapist->name : 'Unassigned',
                     'status' => $a->status,
-                    'amount' => $a->service ? (float) $a->service->price : 0,
+                    'amount' => $a->amount_paid ? (float) $a->amount_paid : ($a->service ? (float) $a->service->price : 0),
                 ])->values()->toArray();
 
                 return [
@@ -1086,7 +1113,7 @@ class AdminController extends Controller
                     'bookings' => $c->appointments_count,
                     'totalSpent' => $totalSpent,
                     'notes' => $c->notes ?? '',
-                    'created_at' => $c->created_at->format('Y-m-d'),
+                    'created_at' => $c->created_at ? $c->created_at->format('Y-m-d') : date('Y-m-d'),
                     'history' => $history,
                 ];
             });
@@ -1094,6 +1121,19 @@ class AdminController extends Controller
         return response()->json([
             'customers' => $clients
         ]);
+    }
+
+    /**
+     * Clear cached dashboard data on mutation.
+     */
+    private function clearDashboardCache(): void
+    {
+        Cache::forget('admin_dashboard_data');
+        Cache::forget('admin_dashboard');
+        Cache::forget('revenue_category_breakdown');
+        Cache::forget('repeat_clients_count');
+        Cache::forget('admin_all_appointments');
+        Cache::forget('all_services');
     }
 
     /**

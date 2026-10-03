@@ -1798,10 +1798,13 @@ const AdminAppointments = () => {
     try {
       let lastName = 'Assigned';
       let lastStatus = 'Confirmed';
-      for (const apptId of ids) {
-        const res = await API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId });
-        lastName = res.data?.appointment?.therapist_name || lastName;
-        lastStatus = res.data?.appointment?.status || lastStatus;
+      const results = await Promise.all(
+        ids.map(apptId => API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId }))
+      );
+      if (results.length > 0) {
+        const last = results[results.length - 1];
+        lastName = last.data?.appointment?.therapist_name || lastName;
+        lastStatus = last.data?.appointment?.status || lastStatus;
       }
       showToast(ids.length > 1 ? `Visit confirmed — ${ids.length} treatments assigned in 1 go!` : (lastStatus ? 'Therapist assigned — booking confirmed!' : 'Therapist assigned!'));
       setAppointments(prev => prev.map(a => ids.includes(a.id)
@@ -1816,9 +1819,9 @@ const AdminAppointments = () => {
   const handleUpdateStatus = async (idOrIds, newStatus, reason = '') => {
     const ids = toIds(idOrIds);
     try {
-      for (const apptId of ids) {
-        await API.post(`/admin/appointments/${apptId}/status`, { status: newStatus, reason });
-      }
+      await Promise.all(
+        ids.map(apptId => API.post(`/admin/appointments/${apptId}/status`, { status: newStatus, reason }))
+      );
       showToast(ids.length > 1 ? `Visit updated — ${ids.length} treatments set to ${newStatus}` : `Status updated to ${newStatus}`);
       setAppointments(prev => prev.map(a => ids.includes(a.id) ? { ...a, status: newStatus, notes: reason ? `${a.notes ? a.notes + ' | ' : ''}${reason}` : a.notes } : a));
     } catch (err) {
@@ -1830,9 +1833,9 @@ const AdminAppointments = () => {
   const handleReschedule = async (idOrIds, newDateTime, note) => {
     const ids = toIds(idOrIds);
     try {
-      for (const apptId of ids) {
-        await API.post(`/admin/appointments/${apptId}/reschedule`, { datetime: newDateTime, notes: note });
-      }
+      await Promise.all(
+        ids.map(apptId => API.post(`/admin/appointments/${apptId}/reschedule`, { datetime: newDateTime, notes: note }))
+      );
       showToast(ids.length > 1 ? `Visit rescheduled — ${ids.length} treatments moved to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}` : `Rescheduled to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`);
       setAppointments(prev => prev.map(a => ids.includes(a.id) ? { ...a, datetime: newDateTime, notes: note ? `${a.notes || ''} | Rescheduled: ${note}` : a.notes, status: 'Confirmed' } : a));
     } catch (err) {
@@ -1844,7 +1847,6 @@ const AdminAppointments = () => {
     const ids = toIds(idOrIds);
     try {
       const normalizedMethod = String(payload?.payment_method || 'cash').toLowerCase();
-      let lastPaid = payload.amount_paid;
       // When settling a whole visit, the modal sends the visit total — split it
       // proportionally across treatments so History stays accurate.
       let perShare = null;
@@ -1855,16 +1857,16 @@ const AdminAppointments = () => {
           perShare = ids.map(id => (Number(byId.get(id)?.service_price || 0) / sum) * Number(payload.amount_paid || 0));
         }
       }
-      for (let i = 0; i < ids.length; i++) {
-        const apptId = ids[i];
-        const share = perShare ? Math.round(perShare[i] * 100) / 100 : payload.amount_paid;
-        const res = await API.post(`/admin/appointments/${apptId}/settle-payment`, {
-          amount_paid: share,
-          payment_method: normalizedMethod,
-          notes: payload.notes,
-        });
-        lastPaid = res.data?.appointment?.amount_paid ?? share;
-      }
+      await Promise.all(
+        ids.map((apptId, i) => {
+          const share = perShare ? Math.round(perShare[i] * 100) / 100 : payload.amount_paid;
+          return API.post(`/admin/appointments/${apptId}/settle-payment`, {
+            amount_paid: share,
+            payment_method: normalizedMethod,
+            notes: payload.notes,
+          });
+        })
+      );
       showToast(ids.length > 1 ? `Visit verified — ${ids.length} treatments completed and archived!` : ( 'Session verified — completed and archived!'));
       // Optimistic update uses the per-treatment shares already sent to the server.
       const shareById = {};

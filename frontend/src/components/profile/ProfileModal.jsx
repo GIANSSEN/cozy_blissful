@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { User as UserIcon, Camera, Trash2, Eye, EyeOff, KeyRound, Save, Phone, MapPin, Sparkles } from 'lucide-react';
 import ModalShell from '../ui/ModalShell';
 import ProfileField, { profileInputClass } from '../ui/ProfileField';
-import { SpringElement } from '../ui/spring-element';
 import { getRoleMeta, initialOf } from '../../lib/roleMeta';
 import {
   validateProfileForm,
@@ -167,29 +166,20 @@ const ProfileModal = ({
           onDragLeave={() => setDragOver(false)}
           onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0]); }}
         >
-          {/* Spring-draggable preview: pull the photo, gold tether
-              stretches, snap-back on release. overlayClassName lifts the
-              tether above the modal backdrop (z-120). */}
-          <SpringElement
-            className="relative block w-16 h-16 flex-shrink-0"
-            springClassName="stroke-[1.5] stroke-[#bfa15f] dark:stroke-[#e8cc8a]"
-            overlayClassName="z-[130]"
+          <span
+            className="relative block w-16 h-16 rounded-full flex-shrink-0"
+            aria-hidden="true"
           >
             <span
-              className="relative block w-16 h-16 rounded-full flex-shrink-0"
-              aria-hidden="true"
-            >
-              <span
-                className="absolute inset-0 rounded-full"
-                style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a,#bfa15f)' }}
-              />
-              <span className="absolute flex items-center justify-center overflow-hidden rounded-full" style={{ inset: '2.5px', background: 'linear-gradient(135deg,#041e16,#0c4a36)' }}>
-                {avatarUrl
-                  ? <img src={avatarUrl} alt="Profile preview" className="w-full h-full object-cover" draggable={false} />
-                  : <span className="text-xl font-black text-white">{initialOf(form.name || user?.name, meta.label.charAt(0))}</span>}
-              </span>
+              className="absolute inset-0 rounded-full"
+              style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a,#bfa15f)' }}
+            />
+            <span className="absolute flex items-center justify-center overflow-hidden rounded-full" style={{ inset: '2.5px', background: 'linear-gradient(135deg,#041e16,#0c4a36)' }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="Profile preview" className="w-full h-full object-cover" draggable={false} />
+                : <span className="text-xl font-black text-white">{initialOf(form.name || user?.name, meta.label.charAt(0))}</span>}
             </span>
-          </SpringElement>
+          </span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-black text-slate-800 dark:text-slate-100">Profile photo</p>
             <p className="text-[11px] text-slate-400 mt-0.5">JPG, PNG or WebP • max 2 MB • drag &amp; drop or browse</p>
