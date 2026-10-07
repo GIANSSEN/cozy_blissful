@@ -306,6 +306,11 @@ const StaffSidebar = ({ isOpen, onClose }) => {
 
         {/* ── Navigation ── */}
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pb-2 space-y-0.5" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }} aria-label="Main Navigation">
+          {filtered.length === 0 ? (
+            <p className="px-3 py-6 text-center text-[11px] font-semibold" style={{ color: t.txtMuted }}>
+              No menus match “{search}”.
+            </p>
+          ) : null}
           {filtered.map(cat => {
             const Icon = cat.icon;
 

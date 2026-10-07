@@ -87,7 +87,7 @@ export function DatePickerInput({
   };
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`} style={{ minWidth: 150, ...style }}>
+    <div ref={containerRef} className={`relative w-full min-w-0 ${className}`} style={{ ...style }}>
       {/* Trigger Button */}
       <button
         type="button"
@@ -128,7 +128,7 @@ export function DatePickerInput({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute top-[calc(100%+6px)] right-0 z-[120] w-[270px] rounded-2xl p-2.5 overflow-hidden"
+            className="absolute top-[calc(100%+6px)] left-0 sm:left-auto sm:right-0 z-[120] w-[min(270px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-2xl p-2.5 overflow-hidden max-h-[min(70dvh,380px)] overflow-y-auto"
             style={{
               background: token.popupBg,
               border: `1px solid ${token.popupBorder}`,

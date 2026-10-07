@@ -289,16 +289,16 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer — stacks on phones, side-by-side on sm+ */}
           <div
-            className="p-5 border-t flex items-center gap-3 flex-shrink-0"
-            style={{ borderColor: 'rgba(6,44,34,0.08)', background: '#fcfbfa' }}
+            className="p-4 sm:p-5 border-t flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 flex-shrink-0"
+            style={{ borderColor: 'rgba(6,44,34,0.08)', background: '#fcfbfa', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           >
             <button
               type="button"
               onClick={() => !loading && onClose()}
               disabled={loading}
-              className="flex-1 py-3 rounded-xl font-bold text-xs text-slate-600 border border-slate-200 hover:bg-slate-50 transition cursor-pointer disabled:opacity-40"
+              className="flex-1 py-3 min-h-[44px] rounded-xl font-bold text-xs text-slate-600 border border-slate-200 hover:bg-slate-50 transition cursor-pointer disabled:opacity-40"
             >
               Cancel
             </button>
@@ -306,7 +306,7 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
               type="button"
               onClick={handlePay}
               disabled={loading}
-              className="flex-[2] py-3 px-5 rounded-xl font-bold text-xs text-white flex items-center justify-center gap-2 transition cursor-pointer shadow-lg disabled:opacity-50"
+              className="flex-[2] py-3 px-5 min-h-[44px] rounded-xl font-bold text-xs text-white flex items-center justify-center gap-2 transition cursor-pointer shadow-lg disabled:opacity-50 break-words text-center"
               style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}
             >
               {loading ? (

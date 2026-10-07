@@ -490,7 +490,7 @@ const StaffLayout = ({ children, title = 'Staff Portal', subtitle, icon: PageIco
         </header>
 
         {/* ── Page Content ── */}
-        <main className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto">
+        <main className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto min-w-0 overflow-x-clip">
           {children}
         </main>
       </div>

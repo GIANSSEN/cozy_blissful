@@ -276,7 +276,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
       <Sidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* ── Right canvas ── */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip">
 
         {/* ════════════════════════════════════════
             TOP HEADER BAR
@@ -929,7 +929,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         {/* ── Page Content ── */}
         <main
           id="main-content"
-          className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto"
+          className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto min-w-0 overflow-x-clip"
           tabIndex={-1}
         >
           {children}

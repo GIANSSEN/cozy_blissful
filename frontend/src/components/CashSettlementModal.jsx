@@ -194,7 +194,6 @@ export default function CashSettlementModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={(e) => e.target === e.currentTarget && !submitting && onClose?.()}
       className="cb-settle-overlay"
       role="dialog"
       aria-modal="true"
@@ -203,20 +202,27 @@ export default function CashSettlementModal({
       <style>{`
         .cb-settle-overlay {
           position: fixed; inset: 0; z-index: 100;
-          display: flex; align-items: center; justify-content: center;
-          padding: 16px 12px;
+          overflow-y: auto; overflow-x: hidden;
+          overscroll-behavior: contain;
           background: rgba(2, 6, 23, 0.75);
           backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-          overflow-y: auto; overscroll-behavior: contain;
+        }
+        .cb-settle-inner {
+          display: flex; align-items: center; justify-content: center;
+          min-height: 100%;
+          padding: 16px 12px;
         }
         .cb-settle-sheet {
-          margin: auto;
           width: 100%; max-width: 560px;
           max-height: min(90dvh, calc(100dvh - 32px));
           display: flex; flex-direction: column;
           overflow: hidden;
           border-radius: 24px;
           box-shadow: 0 25px 60px -15px rgba(0,0,0,0.55);
+        }
+        @media (max-width: 640px) {
+          .cb-settle-inner { align-items: flex-start; padding: 12px 8px; }
+          .cb-settle-sheet { max-height: none; border-radius: 16px; }
         }
         .cb-settle-body {
           flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; min-height: 0;
@@ -236,7 +242,6 @@ export default function CashSettlementModal({
           display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
         }
         @media (max-width: 560px) {
-          .cb-settle-overlay { padding: 12px 8px; }
           .cb-settle-sheet {
             max-width: 100%; border-radius: 20px;
             max-height: min(92dvh, calc(100dvh - 20px));
@@ -255,6 +260,10 @@ export default function CashSettlementModal({
         @keyframes cb-spin { to { transform: rotate(360deg); } }
       `}</style>
 
+      <div
+        className="cb-settle-inner"
+        onClick={(e) => e.target === e.currentTarget && !submitting && onClose?.()}
+      >
       <motion.div
         initial={{ scale: 0.96, y: 28, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
@@ -562,6 +571,7 @@ export default function CashSettlementModal({
           </div>
         </form>
       </motion.div>
+      </div>
     </motion.div>
   );
 }

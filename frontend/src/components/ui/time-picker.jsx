@@ -83,7 +83,7 @@ export function TimePickerInput({
   };
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`} style={{ minWidth: 150, ...style }}>
+    <div ref={containerRef} className={`relative w-full min-w-0 ${className}`} style={{ ...style }}>
       {/* Trigger Button */}
       <button
         type="button"
@@ -119,7 +119,7 @@ export function TimePickerInput({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-            className="absolute top-[calc(100%+6px)] right-0 z-[120] w-full min-w-[220px] rounded-2xl p-2.5 overflow-y-auto max-h-[240px]"
+            className="absolute top-[calc(100%+6px)] left-0 sm:left-auto sm:right-0 z-[120] w-full min-w-[min(220px,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-2xl p-2.5 overflow-y-auto max-h-[min(60dvh,240px)]"
             style={{
               background: token.popupBg,
               border: `1px solid ${token.popupBorder}`,

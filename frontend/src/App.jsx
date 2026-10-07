@@ -65,11 +65,18 @@ const RouteFallback = () => (
 // Buttery page transition shared by landing ⇄ login ⇄ register.
 // Rise + fade on enter, gentle fade on exit, so route changes feel like one
 // continuous glide instead of a hard cut. Respects reduced-motion via CSS.
+//
+// NOTE: Never animate `filter` (e.g. blur) here. Framer Motion leaves the
+// final filter value (even `blur(0px)`) as an inline style, and any non-none
+// filter turns this wrapper into the containing block for ALL fixed-position
+// descendants — every `fixed inset-0` modal (booking wizard, cancel,
+// reschedule, payment) then sizes against the full page height instead of
+// the viewport, so the dialog lands off-screen behind a blurred backdrop.
 const PageTransition = ({ children }) => (
   <motion.div
-    initial={{ opacity: 0, y: 14, filter: 'blur(6px)' }}
-    animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-    exit={{ opacity: 0, y: -8, filter: 'blur(5px)' }}
+    initial={{ opacity: 0, y: 14 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -8 }}
     transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
     className="w-full min-h-screen"
   >

@@ -15,6 +15,8 @@ function useDropdownPosition(isOpen, triggerRef, menuWidth = 240, align = 'auto'
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     const gap = 6;
+    const margin = 12;
+    const maxMenuWidth = Math.max(200, viewportWidth - margin * 2);
 
     // Vertical placement
     let placement = preferredPlacement;
@@ -27,9 +29,11 @@ function useDropdownPosition(isOpen, triggerRef, menuWidth = 240, align = 'auto'
       placement = 'bottom';
     }
 
-    // Horizontal alignment
+    // Horizontal alignment — width always clamped to the viewport
+    // so 320px phones, split-screen and zoomed layouts never overflow.
     let effectiveAlign = align;
-    const resolvedWidth = typeof menuWidth === 'number' ? menuWidth : Math.max(rect.width, 200);
+    const requestedWidth = typeof menuWidth === 'number' ? menuWidth : Math.max(rect.width, 200);
+    const resolvedWidth = Math.min(requestedWidth, maxMenuWidth);
 
     if (align === 'auto') {
       if (rect.left + resolvedWidth > viewportWidth - 16) {

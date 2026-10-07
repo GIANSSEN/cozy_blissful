@@ -237,15 +237,19 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
       aria-modal="true"
       aria-label={`Booking details ${refLabel}`}
       className="cb-modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, overflowY: 'auto', overscrollBehavior: 'contain', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
     >
+      <div
+        className="cb-modal-inner"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
       <motion.div
         className="cb-modal-sheet"
         initial={{ scale: 0.95, y: 24, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 560, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 560, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
       >
         {/* Header — one visit, not one row */}
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
@@ -426,6 +430,7 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
           )}
         </div>
       </motion.div>
+      </div>
     </div>
   );
 };
@@ -553,15 +558,19 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Booking dialog"
+      aria-label="Assign therapist dialog"
       className="cb-modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, overflowY: 'auto', overscrollBehavior: 'contain', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
     >
+      <div
+        className="cb-modal-inner"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
       <motion.div
         className="cb-modal-sheet"
         initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -662,6 +671,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
           </HoverButton>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 };
@@ -716,15 +726,19 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Booking dialog"
+      aria-label="Decline visit dialog"
       className="cb-modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, overflowY: 'auto', overscrollBehavior: 'contain', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
     >
+      <div
+        className="cb-modal-inner"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
       <motion.div
         className="cb-modal-sheet"
         initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#7f1d1d,#991b1b)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -769,13 +783,22 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
               <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Quick Presets</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {presets.map(p => (
-                  <HoverButton
-                    key={p} onClick={() => { setReason(p); setError(''); }}
-                    baseStyle={{ fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 10, background: reason === p ? '#dc2626' : C.presetBg, color: reason === p ? '#ffffff' : C.textSecondary, border: reason === p ? '1px solid #b91c1c' : `1px solid ${C.cardBorder}` }}
-                    hoverStyle={{ background: reason === p ? '#b91c1c' : (isDark ? '#2a3a4a' : '#e2e8f0') }}
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => { setReason(p); setError(''); }}
+                    className="cb-preset-chip"
+                    data-selected={reason === p ? 'true' : 'false'}
+                    style={{
+                      fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 10,
+                      background: reason === p ? '#dc2626' : C.presetBg,
+                      color: reason === p ? '#ffffff' : C.textSecondary,
+                      border: reason === p ? '1px solid #b91c1c' : `1px solid ${C.cardBorder}`,
+                      cursor: 'pointer', transition: 'all 0.15s ease',
+                    }}
                   >
                     {p}
-                  </HoverButton>
+                  </button>
                 ))}
               </div>
             </div>
@@ -796,6 +819,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
           </div>
         </form>
       </motion.div>
+      </div>
     </div>
   );
 };
@@ -878,15 +902,19 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Booking dialog"
+      aria-label="Reschedule visit dialog"
       className="cb-modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, overflowY: 'auto', overscrollBehavior: 'contain', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
     >
+      <div
+        className="cb-modal-inner"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
       <motion.div
         className="cb-modal-sheet"
         initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#1e3a8a,#3b55e6)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -950,6 +978,7 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
           </div>
         </form>
       </motion.div>
+      </div>
     </div>
   );
 };
@@ -1766,26 +1795,32 @@ const StatCardItem = ({ label, value, color, accent, Icon, pulse, isWide, isDark
 const TabButtonItem = ({ tab, active, isDark, onClick }) => {
   const Icon = tab.icon;
   const [tabHov, setTabHov] = useState(false);
+  const [tabPressed, setTabPressed] = useState(false);
   return (
     <button
       id={`tab-${tab.id}`}
       type="button"
       onClick={onClick}
       onMouseEnter={() => setTabHov(true)}
-      onMouseLeave={() => setTabHov(false)}
+      onMouseLeave={() => { setTabHov(false); setTabPressed(false); }}
+      onFocus={() => setTabHov(true)}
+      onBlur={() => { setTabHov(false); setTabPressed(false); }}
+      onMouseDown={() => setTabPressed(true)}
+      onMouseUp={() => setTabPressed(false)}
       style={{
         width: '100%',
         minHeight: 42,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
+        gap: 6,
         borderRadius: 12,
-        padding: '9px 14px',
+        padding: '9px 10px',
         fontSize: 12.5,
         fontWeight: 800,
         cursor: 'pointer',
         transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: tabPressed ? 'scale(0.97)' : 'none',
         border: active
           ? (isDark ? '1px solid rgba(52,211,153,0.5)' : '1px solid #047857')
           : '1px solid transparent',
@@ -1803,11 +1838,13 @@ const TabButtonItem = ({ tab, active, isDark, onClick }) => {
           ? (isDark ? '0 2px 12px rgba(16,185,129,0.25)' : '0 2px 10px rgba(5,150,105,0.25)')
           : 'none',
         whiteSpace: 'nowrap',
+        overflow: 'hidden',
         boxSizing: 'border-box',
+        outline: 'none',
       }}
     >
       <Icon size={15} style={{ flexShrink: 0 }} />
-      <span>{tab.label}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab.label}</span>
       {tab.badge !== undefined && tab.badge > 0 && (
         <span
           style={{
@@ -1815,6 +1852,7 @@ const TabButtonItem = ({ tab, active, isDark, onClick }) => {
             fontWeight: 900,
             padding: '1px 7px',
             borderRadius: 999,
+            flexShrink: 0,
             background: active
               ? (isDark ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.25)')
               : tab.pulse
@@ -2110,17 +2148,39 @@ const AdminAppointments = () => {
           .cb-tab-inner {
             display: flex;
             gap: 5px;
-            min-width: max-content;
+            width: 100%;
+          }
+          .cb-tab-inner > button {
+            flex: 1 1 0;
+            min-width: 0;
+            padding: 9px 6px;
+          }
+        }
+        @media (max-width: 440px) {
+          .cb-tab-inner > button {
+            font-size: 10.5px;
+            gap: 4px;
+            padding: 8px 4px;
           }
         }
 
-        /* ── Card Action Buttons (never clip, full-width stack on phones) ── */
+        /* ── Card Action Buttons ──
+         * Desktop: flex-wrap row
+         * Tablet  (<=768px): 2-column grid so 4 buttons sit 2×2, never orphaned
+         * Mobile  (<=480px): single full-width column stack
+         */
         .therapist-done-actions { min-width: 0; }
         @media (max-width: 768px) {
           .booking-card-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
             width: 100%;
-            justify-content: stretch;
-            margin-top: 8px;
+          }
+          .booking-card-actions > * {
+            width: 100% !important;
+            justify-content: center !important;
+            min-height: 44px !important;
           }
           .therapist-done-actions {
             display: grid !important;
@@ -2132,7 +2192,13 @@ const AdminAppointments = () => {
             justify-content: center;
           }
         }
-        @media (max-width: 420px) {
+        @media (max-width: 480px) {
+          .booking-card-actions {
+            grid-template-columns: 1fr !important;
+          }
+          .booking-card-actions > * {
+            width: 100% !important;
+          }
           .therapist-done-actions {
             grid-template-columns: 1fr;
           }
@@ -2172,38 +2238,78 @@ const AdminAppointments = () => {
         }
 
         /* ── Modal Responsive Centered Styling ── */
+        /*
+         * INNER-WRAPPER PATTERN (Radix UI / Headless UI standard)
+         * ─────────────────────────────────────────────────────────
+         * .cb-modal-backdrop  → position:fixed scroll container (no flex/center)
+         * .cb-modal-inner     → min-height:100% flex centering wrapper
+         * .cb-modal-sheet     → the actual dialog card
+         *
+         * Why this works where justify-content:center + overflow-y:auto fails:
+         *   flex justify-content:center places the overflowing child at a
+         *   NEGATIVE top offset that overflow-y:auto cannot scroll back to.
+         *   With .cb-modal-inner min-height:100%, when content > viewport,
+         *   the inner div grows and the OUTER backdrop scrolls from y=0, so
+         *   the header is always reachable.
+         */
         .cb-modal-backdrop {
           position: fixed;
           inset: 0;
           z-index: 100;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 16px 12px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          overscroll-behavior: contain;
           background: rgba(15, 23, 42, 0.72);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
-          overflow-y: auto;
-          overscroll-behavior: contain;
+        }
+        .cb-modal-inner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100%;
+          padding: clamp(12px, 3vh, 24px) clamp(10px, 3vw, 20px);
         }
         .cb-modal-sheet {
-          margin: auto !important;
           width: 100% !important;
           max-height: min(90vh, calc(100dvh - 32px)) !important;
-          border-radius: 24px !important;
+          border-radius: 20px !important;
           display: flex !important;
           flex-direction: column !important;
           overflow: hidden !important;
           box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
         }
-        @media (max-width: 540px) {
-          .cb-modal-backdrop {
-            padding: 12px 8px;
+        @media (max-width: 640px) {
+          .cb-modal-inner {
+            padding: 12px 10px;
+            align-items: flex-start;
           }
           .cb-modal-sheet {
-            max-height: min(92dvh, calc(100dvh - 20px)) !important;
-            border-radius: 20px !important;
+            max-height: none !important;
+            border-radius: 16px !important;
           }
+        }
+        @media (max-height: 600px) {
+          .cb-modal-inner {
+            align-items: flex-start;
+          }
+          .cb-modal-sheet {
+            max-height: none !important;
+          }
+        }
+
+        /* ── Preset chip (RejectModal) — single hover, no redundant layer ── */
+        .cb-preset-chip:hover,
+        .cb-preset-chip:focus-visible {
+          filter: brightness(0.9);
+          outline: none;
+        }
+        .cb-preset-chip[data-selected="true"]:hover,
+        .cb-preset-chip[data-selected="true"]:focus-visible {
+          background: #b91c1c !important;
+        }
+        .cb-preset-chip:focus-visible {
+          box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.4);
         }
 
         /* ── Pulse badge animation ── */

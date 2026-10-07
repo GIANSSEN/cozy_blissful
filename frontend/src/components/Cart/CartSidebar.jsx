@@ -506,7 +506,7 @@ export default function CartSidebar({ onLockChange }) {
             exit={{ x: "100%" }}
             transition={{ duration: 0.42, ease: EASE }}
             style={{ willChange: "transform" }}
-            className="fixed inset-y-0 right-0 z-[90] flex h-full w-full max-w-md flex-col bg-[#faf9f7] shadow-2xl"
+            className="fixed inset-y-0 right-0 z-[90] flex h-full w-full max-w-md max-w-[100vw] flex-col bg-[#faf9f7] shadow-2xl"
           >
             {/* Header */}
             <div className="relative flex-shrink-0 overflow-hidden px-5 py-4 sm:px-6" style={{ background: "linear-gradient(135deg,#041e16,#073328)" }}>
@@ -711,7 +711,7 @@ export default function CartSidebar({ onLockChange }) {
                       </Field>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-2 gap-2.5">
+                    <div className="mt-3 grid grid-cols-1 min-[380px]:grid-cols-2 gap-2.5">
                       {SERVICE_TYPES.map((t) => (
                         <OptionPill
                           key={t.id}
