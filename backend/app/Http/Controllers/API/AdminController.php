@@ -9,6 +9,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Models\TherapistAvailability;
 use App\Models\AuditLog;
+use App\Traits\ValidatesBookingCapacity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -22,6 +23,8 @@ use Spatie\Permission\Models\Role;
 
 class AdminController extends Controller
 {
+    use ValidatesBookingCapacity;
+
     /**
      * Display the Admin Dashboard metrics and stats.
      * Optimized with combined queries and Redis caching (60s TTL)
@@ -600,6 +603,20 @@ class AdminController extends Controller
 
         $appt = Appointment::findOrFail($id);
         $oldStatus = $appt->status;
+
+        // ── Availability guard: never assign a specialist who is already
+        // engaged during this booking's window (prevents double-booking). ──
+        if ($request->filled('therapist_id')) {
+            $appt->loadMissing('service');
+            $slotDuration = $appt->service ? max(15, (int) $appt->service->duration) : 60;
+            if ($this->therapistHasConflict((int) $request->therapist_id, $appt->datetime, $slotDuration, (int) $appt->id)) {
+                return response()->json([
+                    'message' => 'This specialist already has a booking during this time window. Choose another practitioner or reschedule first.',
+                    'errors' => ['therapist_id' => ['Specialist is engaged during the requested window.']],
+                ], 422);
+            }
+        }
+
         $appt->therapist_id = $request->therapist_id;
 
         // If therapist is assigned and status was Pending, auto-confirm the booking

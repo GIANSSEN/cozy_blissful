@@ -282,7 +282,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
             TOP HEADER BAR
         ════════════════════════════════════════ */}
         <header
-          className={`sticky top-0 z-30 px-3 sm:px-6 lg:px-8 backdrop-blur-xl transition-all duration-200 ${mobileSidebarOpen ? 'max-lg:invisible max-lg:opacity-0 max-lg:pointer-events-none' : ''}`}
+          className={`sticky top-0 z-30 px-3 sm:px-6 lg:px-8 backdrop-blur-xl transition-all duration-200 ${mobileSidebarOpen ? 'max-lg:pointer-events-none max-lg:opacity-0' : 'opacity-100 pointer-events-auto'}`}
           style={{
             background: isDark
               ? 'rgba(13,17,28,0.96)'
@@ -294,8 +294,8 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
           }}
         >
           {/* ── Mobile Search Active Bar (When search is open on mobile) ── */}
-          {mobileSearchOpen ? (
-            <div className="flex items-center h-14 gap-2 w-full sm:hidden">
+            {mobileSearchOpen ? (
+            <div className="flex items-center min-h-14 gap-2 w-full sm:hidden">
               <button
                 type="button"
                 onClick={() => {
@@ -405,7 +405,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
             </div>
           ) : (
             /* ── Main row ── */
-            <div className="flex items-center justify-between h-14 gap-2 sm:gap-3" role="toolbar" aria-label="Header Controls">
+            <div className="flex items-center justify-between min-h-14 gap-2 sm:gap-3" role="toolbar" aria-label="Header Controls">
 
               {/* Left: Hamburger + Brand + Title */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1 sm:mr-2">

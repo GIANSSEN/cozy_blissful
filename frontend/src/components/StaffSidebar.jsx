@@ -219,15 +219,19 @@ const StaffSidebar = ({ isOpen, onClose }) => {
         data-state={isOpen ? 'open' : 'closed'}
         className={`
           fixed lg:sticky left-0 top-0 h-[100dvh] max-h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased select-none
-          transition-transform duration-300 ease-out motion-reduce:transition-none w-[min(86vw,320px)] lg:w-60 xl:w-[272px]
-          ${isOpen ? 'translate-x-0 visible' : '-translate-x-full lg:translate-x-0 invisible lg:visible'}
+          transition-[transform,visibility] duration-300 ease-out motion-reduce:transition-none w-[min(86vw,280px)] sm:w-[min(86vw,320px)] lg:w-60 xl:w-[272px]
+          ${isOpen ? 'translate-x-0 visible pointer-events-auto' : '-translate-x-full lg:translate-x-0 invisible lg:visible pointer-events-none lg:pointer-events-auto'}
         `}
         style={{
           background: t.sidebar,
           borderRight: `1px solid ${t.border}`,
-          boxShadow: isDark ? '4px 0 40px rgba(0,0,0,0.45)' : '4px 0 24px rgba(0,0,0,0.06)',
+          boxShadow: isOpen
+            ? (isDark ? '4px 0 40px rgba(0,0,0,0.55)' : '4px 0 32px rgba(0,0,0,0.12)')
+            : 'none',
           overscrollBehavior: 'contain',
           touchAction: 'pan-y',
+          willChange: 'transform',
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
         }}
       >
         {/* ── Brand ── */}

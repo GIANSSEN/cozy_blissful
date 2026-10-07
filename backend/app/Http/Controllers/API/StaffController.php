@@ -13,9 +13,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BookingApprovedMail;
 use Illuminate\Support\Facades\Log;
+use App\Traits\ValidatesBookingCapacity;
 
 class StaffController extends Controller
 {
+    use ValidatesBookingCapacity;
     /**
      * Staff dashboard — summary of today's therapist workload.
      */
@@ -174,6 +176,19 @@ class StaffController extends Controller
 
         $appt = Appointment::findOrFail($id);
         $oldStatus = $appt->status;
+
+        // ── Availability guard: never assign an engaged specialist. ──
+        if ($request->filled('therapist_id')) {
+            $appt->loadMissing('service');
+            $slotDuration = $appt->service ? max(15, (int) $appt->service->duration) : 60;
+            if ($this->therapistHasConflict((int) $request->therapist_id, $appt->datetime, $slotDuration, (int) $appt->id)) {
+                return response()->json([
+                    'message' => 'This specialist already has a booking during this time window. Choose another practitioner or reschedule first.',
+                    'errors' => ['therapist_id' => ['Specialist is engaged during the requested window.']],
+                ], 422);
+            }
+        }
+
         $appt->therapist_id = $request->therapist_id;
 
         if ($request->therapist_id && $appt->status === 'Pending') {
@@ -418,6 +433,24 @@ class StaffController extends Controller
         }
 
         $oldDatetime = $appt->datetime->format('Y-m-d H:i:s');
+
+        // ── Capacity guard: a staff move must never double-book. ──
+        $appt->loadMissing('service');
+        $moveDuration = $appt->service ? max(15, (int) $appt->service->duration) : 60;
+        if ($appt->therapist_id) {
+            if ($this->therapistHasConflict((int) $appt->therapist_id, $parsedDatetime, $moveDuration, (int) $appt->id)) {
+                return response()->json([
+                    'message' => 'The assigned specialist already has a booking during the new time window. Pick another slot or reassign first.',
+                    'errors' => ['datetime' => ['Specialist time conflict for the requested window.']],
+                ], 422);
+            }
+        } elseif ($this->salonAtCapacity($parsedDatetime, $moveDuration, (int) $appt->id)) {
+            return response()->json([
+                'message' => 'All specialist slots are fully booked for the new time window. Please select an adjacent slot.',
+                'errors' => ['datetime' => ['Salon capacity reached for the requested window.']],
+            ], 422);
+        }
+
         $appt->datetime = $parsedDatetime;
         if ($request->filled('notes')) {
             $noteText = 'Rescheduled: ' . trim($request->notes);

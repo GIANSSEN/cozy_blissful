@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useTheme } from '../../context/ThemeContext';
@@ -934,7 +934,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
     const d = new Date(a.datetime);
     return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === dateKey;
   });
-  const dayGroups = useMemo(() => groupAppointments(dayRows), [appointments, dateKey]);
+  const dayGroups = useMemo(() => groupAppointments(dayRows), [dayRows]);
   const dayTreatmentCount = dayGroups.reduce((n, g) => n + g.items.length, 0);
 
   const prevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); onDateChange(d); };
@@ -1703,7 +1703,7 @@ const StatCardItem = ({ label, value, color, accent, Icon, pulse, isWide, isDark
 /*  TAB BUTTON ITEM                                                    */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const TabButtonItem = ({ tab, active, isDark, C, onClick }) => {
+const TabButtonItem = ({ tab, active, isDark, onClick }) => {
   const Icon = tab.icon;
   const [tabHov, setTabHov] = useState(false);
   return (
@@ -1789,7 +1789,6 @@ const TabButtonItem = ({ tab, active, isDark, C, onClick }) => {
 const AdminAppointments = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const navigate = useNavigate();
 
   const C = {
     textPrimary: isDark ? '#e8ecf3' : '#0f172a',
@@ -1832,7 +1831,7 @@ const AdminAppointments = () => {
 
   const showToast = useCallback((msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg), [toast]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [apptRes, therapistRes] = await Promise.all([
@@ -1847,9 +1846,9 @@ const AdminAppointments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   // Auto-open appointment from URL param (notification deep-link) — opens the whole visit
   useEffect(() => {
@@ -1974,8 +1973,6 @@ const AdminAppointments = () => {
   const inProgressCount = countVisits('In Progress');
   const pendingCount = countVisits('Pending');
   const awaitingSignoffCount = countVisits('Completed by Therapist');
-  const completedCount = appointments.filter(a => a.status === 'Completed').length;
-  const cancelledCount = appointments.filter(a => a.status === 'Cancelled').length;
 
   const searchData = useMemo(() => appointments.map((a, i) => ({
     label: a.service || 'Appointment',
@@ -2159,7 +2156,6 @@ const AdminAppointments = () => {
                 tab={tab}
                 active={activeTab === tab.id}
                 isDark={isDark}
-                C={C}
                 onClick={() => setSearchParams({ tab: tab.id })}
               />
             ))}

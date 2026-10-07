@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -10,15 +11,14 @@ import {
   ArrowRight,
   ShoppingBag,
   Banknote,
-  Smartphone,
-  Wallet,
-  Landmark,
   Building2,
   Home,
   BadgeCheck,
   Loader2,
 } from "lucide-react";
 import { useCart, peso } from "../../context/CartContext";
+import { useToast } from "../../context/ToastContext";
+import API from "../../api/axios";
 import { DatePickerInput } from "../ui/date-picker";
 import { TimePickerInput } from "../ui/time-picker";
 
@@ -38,11 +38,39 @@ const todayISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const makeRef = () => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let s = "";
-  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
-  return `CB-${s}`;
+/* Stash key for a validated-but-guest checkout waiting on sign-in. */
+const PENDING_KEY = "cb_pending_booking_v1";
+
+/* Salon hours — must match backend ClientController (9:00 AM – 9:00 PM). */
+const OPEN_MIN = 9 * 60;
+const CLOSE_MIN = 21 * 60;
+
+/* "1 hr" / "1.5 hrs" / "30 min" display strings → minutes. Falls back to 60. */
+const parseDurToMin = (dur) => {
+  if (typeof dur === "number" && Number.isFinite(dur)) return Math.max(15, Math.round(dur));
+  const s = String(dur || "");
+  const hrs = s.match(/([\d.]+)\s*hrs?/i);
+  if (hrs && Number.isFinite(Number(hrs[1]))) return Math.max(15, Math.round(Number(hrs[1]) * 60));
+  const mins = s.match(/(\d+)\s*min/i);
+  if (mins) return Math.max(15, Number(mins[1]));
+  return 60;
+};
+
+/* TimePicker "02:00 PM" → "14:00" for the backend datetime payload. */
+const to24h = (t) => {
+  const m = String(t || "").match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = Number(m[1]) % 12;
+  if (/pm/i.test(m[3])) h += 12;
+  return `${String(h).padStart(2, "0")}:${m[2]}`;
+};
+
+const to12h = (hhmm) => {
+  const [h, m] = String(hhmm || "").split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const mer = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${mer}`;
 };
 
 const EMPTY_FORM = {
@@ -189,21 +217,41 @@ const ItemRow = ({ item }) => {
 ══════════════════════════════════════════════════════════════════ */
 export default function CartSidebar({ onLockChange }) {
   const { items, isOpen, closeCart, clearCart, count, subtotal } = useCart();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [view, setView] = useState("cart");
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [order, setOrder] = useState(null);
   const panelRef = useRef(null);
+
+  /* Combined visit length in minutes (quantity-aware) for hours-fit checks. */
+  const totalDuration = items.reduce(
+    (n, i) => n + parseDurToMin(i.dur) * Math.max(1, Number(i.qty) || 1),
+    0
+  );
 
   const setField = (key, val) => {
     setForm((f) => ({ ...f, [key]: val }));
     setErrors((e) => (e[key] ? { ...e, [key]: null } : e));
   };
 
-  /* Reset checkout flow each time the sidebar is re-opened */
+  /* Reset checkout flow each time the sidebar is re-opened + restore a
+     sign-in-pending booking form saved before the login redirect. */
   useEffect(() => {
-    if (isOpen && view === "success") setView("cart");
+    if (!isOpen) return;
+    if (view === "success") setView("cart");
+    try {
+      const raw = localStorage.getItem(PENDING_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved && saved.form) setForm({ ...EMPTY_FORM, ...saved.form });
+      }
+    } catch {
+      /* corrupted stash — start fresh */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
@@ -225,9 +273,12 @@ export default function CartSidebar({ onLockChange }) {
     };
   }, [isOpen, closeCart, onLockChange]);
 
+  /* Mirrors backend POST /booking/store rules so the server never sees a
+     payload the UI could have rejected (names, PH mobile, hours-fit…). */
   const validate = () => {
     const e = {};
     if (!form.name.trim() || form.name.trim().length < 3) e.name = "Please enter your full name";
+    else if (form.name.trim().length > 150) e.name = "Name is too long (max 150 characters)";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) e.email = "Enter a valid email address";
     const phone = form.phone.replace(/[\s-]/g, "");
     if (!/^(\+639|09)\d{9}$/.test(phone)) e.phone = "Use a PH mobile number (09XXXXXXXXX)";
@@ -235,20 +286,127 @@ export default function CartSidebar({ onLockChange }) {
       e.address = "Home service requires your complete address";
     else if (form.address.trim() && form.address.trim().length > 0 && form.address.trim().length < 8)
       e.address = "Address looks too short";
+    else if (form.address.trim().length > 500) e.address = "Address is too long (max 500 characters)";
     if (!form.date) e.date = "Pick your preferred date";
     else if (form.date < todayISO()) e.date = "Date cannot be in the past";
+    const time24 = to24h(form.time);
     if (!form.time) e.time = "Pick a time slot";
+    else if (!time24) e.time = "Invalid time — pick a slot again";
+    else {
+      const [hh, mm] = time24.split(":").map(Number);
+      const startMin = hh * 60 + mm;
+      const visitMin = Math.max(15, totalDuration || 60);
+      if (startMin < OPEN_MIN || startMin + visitMin > CLOSE_MIN) {
+        const lastStart = to12h(
+          `${String(Math.floor((CLOSE_MIN - visitMin) / 60)).padStart(2, "0")}:${String((CLOSE_MIN - visitMin) % 60).padStart(2, "0")}`
+        );
+        e.time =
+          CLOSE_MIN - visitMin < OPEN_MIN
+            ? "This visit is too long for one day — remove a service"
+            : `Must fit salon hours 9:00 AM – 9:00 PM (last start for ${visitMin} min: ${lastStart})`;
+      } else if (new Date(`${form.date}T${time24}:00`) <= new Date()) {
+        e.time = "That slot is already in the past — pick a later time";
+      }
+    }
+    if (form.notes.trim().length > 2000) e.notes = "Requests are too long (max 2000 characters)";
+    else if (/<[^>]*>/.test(form.notes)) e.notes = "Requests cannot contain HTML or links";
     setErrors(e);
     return Object.keys(e).filter((k) => e[k]).length === 0;
   };
 
-  const handleSubmit = () => {
+  const stashForLogin = () => {
+    try {
+      localStorage.setItem(PENDING_KEY, JSON.stringify({ form, savedAt: Date.now() }));
+    } catch {
+      /* storage unavailable — cart itself stays in-memory */
+    }
+    toast.info("Sign in to confirm your booking — your cart is saved.", { title: "Login required" });
+    closeCart();
+    navigate("/login", { state: { from: "/" } });
+  };
+
+  /* Real checkout: validate → resolve menu names to service IDs → live
+     slot check → POST /booking/store. Guests are routed through login
+     first (booking endpoints require a client session); nothing is faked. */
+  const handleSubmit = async () => {
     if (submitting) return;
+    setSubmitError("");
+    if (items.length === 0) return;
     if (!validate()) return;
+
+    if (!localStorage.getItem("token")) {
+      stashForLogin();
+      return;
+    }
+
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      const time24 = to24h(form.time);
+      const visitMin = Math.min(Math.max(15, totalDuration || 60), 480);
+
+      // 1. Resolve landing-menu names to backend service IDs.
+      let catalog = [];
+      try {
+        const dash = await API.get("/booking/dashboard");
+        catalog = dash.data?.available_services || [];
+      } catch (err) {
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          setSubmitting(false);
+          stashForLogin();
+          return;
+        }
+        throw err;
+      }
+      const byName = new Map(
+        catalog.map((s) => [String(s.name || "").trim().toLowerCase(), s])
+      );
+      const serviceIds = [];
+      const unmatched = [];
+      items.forEach((it) => {
+        const hit = byName.get(String(it.name || "").trim().toLowerCase());
+        if (!hit || !Number.isFinite(Number(hit.id))) {
+          unmatched.push(it.name);
+          return;
+        }
+        const qty = Math.max(1, Math.min(20, Number(it.qty) || 1));
+        for (let k = 0; k < qty; k += 1) serviceIds.push(Number(hit.id));
+      });
+      if (unmatched.length > 0) {
+        setSubmitError(
+          `We couldn't match ${unmatched.length === 1 ? "this service" : "these services"} to the live menu: ${unmatched.join(", ")}. Please book ${unmatched.length === 1 ? "it" : "them"} from your client dashboard after signing in.`
+        );
+        return;
+      }
+
+      // 2. Live slot check so two clients can't grab the same window.
+      const slotRes = await API.get("/booking/available-slots", {
+        params: { date: form.date, service_id: serviceIds[0], total_duration: visitMin },
+      });
+      const avail = slotRes.data?.available_slots || [];
+      if (!avail.includes(time24)) {
+        setErrors((prev) => ({ ...prev, time: "That slot just filled — pick another time" }));
+        toast.warning("That slot was just taken. Please pick another time.", { title: "Slot unavailable" });
+        return;
+      }
+
+      // 3. Create the booking (one row per service — grouped as one visit).
+      const res = await API.post("/booking/store", {
+        service_ids: serviceIds,
+        primary_service_id: serviceIds[0],
+        datetime: `${form.date}T${time24}:00`,
+        total_duration: visitMin,
+        notes: form.notes.trim(),
+        client_name: form.name.trim(),
+        client_phone: form.phone.trim(),
+        client_address: form.address.trim(),
+        payment_method: "cash",
+      });
+      const booking = res.data?.booking;
+      if (!booking || booking.id == null) throw new Error("empty-booking");
+
       setOrder({
-        ref: makeRef(),
+        ref: `#${String(booking.id).padStart(4, "0")}`,
         placedAt: new Date().toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }),
         name: form.name.trim(),
         email: form.email.trim(),
@@ -257,16 +415,43 @@ export default function CartSidebar({ onLockChange }) {
         date: form.date,
         time: form.time,
         serviceType: SERVICE_TYPES.find((t) => t.id === form.serviceType)?.label || "Visit Salon",
-        payment: PAYMENT_METHODS.find((p) => p.id === form.payment)?.label || "Cash on Visit",
+        payment: "Cash on Visit",
         notes: form.notes.trim(),
         itemCount: count,
-        total: subtotal,
+        total: Number(booking.service_price ?? subtotal),
         services: items.map((i) => `${i.name} ×${i.qty}`),
       });
       clearCart();
-      setSubmitting(false);
+      try {
+        localStorage.removeItem(PENDING_KEY);
+      } catch {
+        /* ignore */
+      }
       setView("success");
-    }, 900);
+      toast.success("Booking request received! We will confirm your slot shortly.", { title: "Request sent" });
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        setSubmitting(false);
+        stashForLogin();
+        return;
+      }
+      const serverMsg = err?.response?.data?.message;
+      const fieldErrs = err?.response?.data?.errors;
+      if (status === 422 && fieldErrs && typeof fieldErrs === "object") {
+        const mapped = {};
+        if (fieldErrs.datetime) {
+          mapped.time = Array.isArray(fieldErrs.datetime) ? fieldErrs.datetime[0] : String(fieldErrs.datetime);
+        }
+        if (fieldErrs.notes) {
+          mapped.notes = Array.isArray(fieldErrs.notes) ? fieldErrs.notes[0] : String(fieldErrs.notes);
+        }
+        if (Object.keys(mapped).length > 0) setErrors((prev) => ({ ...prev, ...mapped }));
+      }
+      setSubmitError(serverMsg || "Could not reach the booking server. Check your connection and try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const goBrowse = () => {
@@ -581,13 +766,14 @@ export default function CartSidebar({ onLockChange }) {
                       </p>
                     </div>
                     <div className="mt-3">
-                      <Field label="Special Requests (optional)">
+                      <Field label="Special Requests (optional)" error={errors.notes}>
                         <textarea
                           rows={2}
                           value={form.notes}
                           onChange={(e) => setField("notes", e.target.value)}
                           placeholder="Allergies, preferred therapist gender, pregnant/senior considerations…"
-                          className={`${inputCls(false)} resize-none`}
+                          aria-invalid={!!errors.notes}
+                          className={`${inputCls(errors.notes)} resize-none`}
                         />
                       </Field>
                     </div>
@@ -616,6 +802,19 @@ export default function CartSidebar({ onLockChange }) {
                 </div>
 
                 <div className="flex-shrink-0 border-t border-slate-200/80 bg-white px-5 pb-[max(1.15rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
+                  <AnimatePresence>
+                    {submitError && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        role="alert"
+                        className="mb-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[11px] font-bold leading-relaxed text-red-600"
+                      >
+                        {submitError}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
                   <motion.button
                     type="button"
                     whileTap={submitting ? undefined : { scale: 0.97 }}
@@ -637,6 +836,7 @@ export default function CartSidebar({ onLockChange }) {
                   </motion.button>
                   <p className="mt-2 text-center text-[9.5px] font-semibold text-slate-400">
                     Free cancellation up to 3 hours before your schedule.
+                    {!localStorage.getItem("token") && " You'll sign in to confirm — your cart is saved."}
                   </p>
                 </div>
               </>

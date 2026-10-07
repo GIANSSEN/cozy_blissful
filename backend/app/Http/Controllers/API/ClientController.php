@@ -343,8 +343,11 @@ class ClientController extends Controller
             $user->update(['phone' => $request->client_phone]);
         }
 
-        // Validate and sanitize payment method
-        $validMethods = ['cash', 'gcash', 'maya'];
+        // Validate and sanitize payment method.
+        // Accepts every channel the client UIs offer (cash / GCash / Maya /
+        // QR Ph / Online) — the same set the settlement flow records, so the
+        // booking-time choice is never silently rewritten to cash.
+        $validMethods = ['cash', 'gcash', 'maya', 'qrph', 'online'];
         $chosenMethod = in_array(strtolower($request->payment_method ?? 'cash'), $validMethods)
             ? strtolower($request->payment_method)
             : 'cash';

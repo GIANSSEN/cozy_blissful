@@ -64,7 +64,10 @@ export default function CashSettlementModal({
   // `appt` may be a grouped visit ({ ids, items, totalPrice, ... }) or a single row.
   const grp = appt?.ids ? appt : null;
   const groupIds = grp ? grp.ids : (appt?.id != null ? [appt.id] : []);
-  const groupItems = grp ? grp.items : (appt ? [appt] : []);
+  const groupItems = useMemo(
+    () => (grp ? grp.items : (appt ? [appt] : [])),
+    [appt, grp],
+  );
   const fee = useMemo(() => {
     if (grp) {
       const total = Number(grp.totalPrice || 0);
@@ -74,7 +77,7 @@ export default function CashSettlementModal({
     if (sum > 0) return sum;
     const v = Number(appt?.service_price ?? appt?.amount_paid ?? 0);
     return Number.isFinite(v) && v > 0 ? v : 0;
-  }, [appt, grp]);
+  }, [appt, grp, groupItems]);
 
   // Read-only: channel the client chose at booking time. Never editable here.
   const displayMethod = useMemo(
