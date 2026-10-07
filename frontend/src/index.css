@@ -598,3 +598,74 @@ input:autofill {
   background: rgba(6, 44, 34, 0.2);
   border-radius: 9999px;
 }
+
+/* ── Cozy Blissful Global Modal Architecture ─────────────────────────────
+   Unified bulletproof modal centering & responsiveness across all devices:
+   - Outer backdrop: fixed scroll container (overflow-y: auto)
+   - Inner wrapper: flex-direction column, min-height 100%, safe horizontal alignment
+   - Dialog sheet: margin: auto (collapses safely when taller than viewport so header never clips)
+   - Max height: min(90vh, calc(100dvh - 32px)) with pinned header/footer and scrollable body
+   ────────────────────────────────────────────────────────────────────────── */
+.cb-modal-backdrop,
+.cb-settle-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  box-sizing: border-box !important;
+}
+
+.cb-modal-inner,
+.cb-settle-inner {
+  min-height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px) !important;
+  box-sizing: border-box !important;
+}
+
+.cb-modal-sheet,
+.cb-settle-sheet {
+  width: 100% !important;
+  max-height: min(90vh, calc(100dvh - 32px)) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: auto !important;
+  overflow: hidden !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .cb-modal-inner,
+  .cb-settle-inner {
+    padding: 10px 8px !important;
+  }
+  .cb-modal-sheet,
+  .cb-settle-sheet {
+    max-width: 100% !important;
+    max-height: calc(100dvh - 20px) !important;
+    border-radius: 16px !important;
+  }
+}
+
+@media (max-height: 600px) {
+  .cb-modal-inner,
+  .cb-settle-inner {
+    padding: 8px !important;
+  }
+  .cb-modal-sheet,
+  .cb-settle-sheet {
+    max-height: calc(100dvh - 16px) !important;
+  }
+}

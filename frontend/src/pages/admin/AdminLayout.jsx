@@ -258,11 +258,13 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
 
   return (
     <div
-      className="flex min-h-screen relative"
+      className="flex h-screen max-h-screen relative overflow-hidden"
       style={{
         background: isDark ? '#0f1420' : '#f2f4f7',
         color: isDark ? '#e8ecf3' : '#1a1d23',
         fontFamily: "'Inter', sans-serif",
+        height: '100dvh',
+        maxHeight: '100dvh',
       }}
     >
       {/* ── Skip to Content ── */}
@@ -276,7 +278,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
       <Sidebar isOpen={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
       {/* ── Right canvas ── */}
-      <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip">
+      <div className="flex-1 flex flex-col min-h-0 h-full min-w-0 overflow-hidden">
 
         {/* ════════════════════════════════════════
             TOP HEADER BAR

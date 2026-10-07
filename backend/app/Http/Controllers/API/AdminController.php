@@ -599,21 +599,34 @@ class AdminController extends Controller
     {
         $request->validate([
             'therapist_id' => 'nullable|exists:users,id',
+            'force_assign' => 'sometimes|boolean',
+            'force' => 'sometimes|boolean',
         ]);
 
         $appt = Appointment::findOrFail($id);
         $oldStatus = $appt->status;
 
-        // ── Availability guard: never assign a specialist who is already
-        // engaged during this booking's window (prevents double-booking). ──
+        // ── Admin authority: mandatory / forced assignment override. ──
+        // Normal path blocks double-booking. When the admin explicitly
+        // confirms (force_assign=true), we allow assigning the specialist
+        // even if already booked in that window OR not on the day's
+        // availability roster — logged as an override in audit trail.
+        $force = $request->boolean('force_assign') || $request->boolean('force');
+        $forcedOverride = false;
+
         if ($request->filled('therapist_id')) {
             $appt->loadMissing('service');
             $slotDuration = $appt->service ? max(15, (int) $appt->service->duration) : 60;
             if ($this->therapistHasConflict((int) $request->therapist_id, $appt->datetime, $slotDuration, (int) $appt->id)) {
-                return response()->json([
-                    'message' => 'This specialist already has a booking during this time window. Choose another practitioner or reschedule first.',
-                    'errors' => ['therapist_id' => ['Specialist is engaged during the requested window.']],
-                ], 422);
+                if (!$force) {
+                    return response()->json([
+                        'message' => 'This specialist already has a booking during this time window. As admin you may force-assign anyway — resend with force_assign: true to confirm the override.',
+                        'errors' => ['therapist_id' => ['Specialist is engaged during the requested window.']],
+                        'conflict' => true,
+                        'can_force' => true,
+                    ], 422);
+                }
+                $forcedOverride = true;
             }
         }
 
@@ -622,6 +635,11 @@ class AdminController extends Controller
         // If therapist is assigned and status was Pending, auto-confirm the booking
         if ($request->therapist_id && $appt->status === 'Pending') {
             $appt->status = 'Confirmed';
+        }
+
+        if ($forcedOverride) {
+            $overrideNote = 'Admin override: forced assignment despite overlap / off-schedule by ' . (auth()->user()?->name ?? 'System Admin');
+            $appt->notes = $appt->notes ? $appt->notes . ' | ' . $overrideNote : $overrideNote;
         }
 
         $appt->save();
@@ -649,7 +667,7 @@ class AdminController extends Controller
         $actor = auth()->user()?->name ?? 'System Admin';
         $actorRole = auth()->user()?->roles?->first()?->name ?? 'admin';
 
-        AuditLog::log('update', 'Appointment', "Assigned therapist '" . ($appt->therapist?->name ?? 'Therapist') . "' to booking #{$appt->id}", [
+        AuditLog::log('update', 'Appointment', ($forcedOverride ? "[ADMIN OVERRIDE] Force-assigned therapist '" : "Assigned therapist '") . ($appt->therapist?->name ?? 'Therapist') . "' to booking #{$appt->id}" . ($forcedOverride ? ' despite conflict/off-schedule' : ''), [
             'actor' => $actor,
             'actor_role' => $actorRole,
             'module' => 'Bookings',
@@ -657,14 +675,16 @@ class AdminController extends Controller
             'metadata' => [
                 'appointment_id' => $appt->id,
                 'therapist_id' => $appt->therapist_id,
-                'status' => $appt->status
+                'status' => $appt->status,
+                'forced_override' => $forcedOverride,
             ]
         ]);
 
         $this->clearDashboardCache();
 
         return response()->json([
-            'message' => 'Therapist assigned successfully',
+            'message' => $forcedOverride ? 'Therapist force-assigned by admin (override logged).' : 'Therapist assigned successfully',
+            'forced_override' => $forcedOverride,
             'appointment' => [
                 'id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',
@@ -938,6 +958,8 @@ class AdminController extends Controller
         $request->validate([
             'datetime' => 'required|date|after:now',
             'notes' => 'nullable|string|max:500',
+            'force_assign' => 'sometimes|boolean',
+            'force' => 'sometimes|boolean',
         ]);
 
         $appt = Appointment::findOrFail($id);
@@ -950,29 +972,44 @@ class AdminController extends Controller
 
         $oldDatetime = $appt->datetime->format('Y-m-d H:i:s');
 
-        // ── Capacity guard: an admin move must never double-book ─────────
-        // Mirrors the client booking rules (per-therapist conflict when a
-        // specialist is attached, salon-wide capacity otherwise).
+        // ── Admin override: allow forced move even at capacity / conflict. ──
+        $force = $request->boolean('force_assign') || $request->boolean('force');
+        $forcedOverride = false;
+
         $appt->loadMissing('service');
         $moveDuration = $appt->service ? max(15, (int) $appt->service->duration) : 60;
         if ($appt->therapist_id) {
             if ($this->therapistHasConflict((int) $appt->therapist_id, $parsedDatetime, $moveDuration, (int) $appt->id)) {
-                return response()->json([
-                    'message' => 'The assigned specialist already has a booking during the new time window. Pick another slot or reassign first.',
-                    'errors' => ['datetime' => ['Specialist time conflict for the requested window.']],
-                ], 422);
+                if (!$force) {
+                    return response()->json([
+                        'message' => 'The assigned specialist already has a booking during the new time window. As admin you may force-move anyway — resend with force_assign: true.',
+                        'errors' => ['datetime' => ['Specialist time conflict for the requested window.']],
+                        'conflict' => true,
+                        'can_force' => true,
+                    ], 422);
+                }
+                $forcedOverride = true;
             }
         } elseif ($this->salonAtCapacity($parsedDatetime, $moveDuration, (int) $appt->id)) {
-            return response()->json([
-                'message' => 'All specialist slots are fully booked for the new time window. Please select an adjacent slot.',
-                'errors' => ['datetime' => ['Salon capacity reached for the requested window.']],
-            ], 422);
+            if (!$force) {
+                return response()->json([
+                    'message' => 'All specialist slots are fully booked for the new time window. As admin you may force-move anyway — resend with force_assign: true.',
+                    'errors' => ['datetime' => ['Salon capacity reached for the requested window.']],
+                    'conflict' => true,
+                    'can_force' => true,
+                ], 422);
+            }
+            $forcedOverride = true;
         }
 
         $appt->datetime = $parsedDatetime;
         if ($request->filled('notes')) {
             $noteText = 'Rescheduled: ' . trim($request->notes);
             $appt->notes = $appt->notes ? $appt->notes . ' | ' . $noteText : $noteText;
+        }
+        if ($forcedOverride) {
+            $overrideNote = 'Admin override: forced reschedule despite conflict/capacity by ' . (auth()->user()?->name ?? 'System Admin');
+            $appt->notes = $appt->notes ? $appt->notes . ' | ' . $overrideNote : $overrideNote;
         }
 
         // Reset reminder timestamps
@@ -982,7 +1019,7 @@ class AdminController extends Controller
 
         $appt->load(['client', 'therapist', 'service']);
 
-        AuditLog::log('update', 'Appointment', "Admin rescheduled booking #{$appt->id} from {$oldDatetime} to {$appt->datetime->format('Y-m-d H:i:s')}", [
+        AuditLog::log('update', 'Appointment', ($forcedOverride ? '[ADMIN OVERRIDE] ' : '') . "Admin rescheduled booking #{$appt->id} from {$oldDatetime} to {$appt->datetime->format('Y-m-d H:i:s')}" . ($forcedOverride ? ' despite conflict/capacity' : ''), [
             'actor' => auth()->user()?->name ?? 'System Admin',
             'actor_role' => 'admin',
             'module' => 'Bookings',
@@ -991,14 +1028,16 @@ class AdminController extends Controller
                 'appointment_id' => $appt->id,
                 'old_datetime' => $oldDatetime,
                 'new_datetime' => $appt->datetime->format('Y-m-d H:i:s'),
-                'notes' => $request->notes ?? null
+                'notes' => $request->notes ?? null,
+                'forced_override' => $forcedOverride,
             ]
         ]);
 
         $this->clearDashboardCache();
 
         return response()->json([
-            'message' => 'Appointment rescheduled successfully',
+            'message' => $forcedOverride ? 'Appointment force-rescheduled by admin (override logged).' : 'Appointment rescheduled successfully',
+            'forced_override' => $forcedOverride,
             'appointment' => [
                 'id' => $appt->id,
                 'client_name' => $appt->client ? $appt->client->name : 'Client',

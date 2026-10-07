@@ -241,15 +241,16 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
     >
       <div
         className="cb-modal-inner"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100%', width: '100%', padding: 'clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px)', boxSizing: 'border-box' }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
       <motion.div
         className="cb-modal-sheet"
-        initial={{ scale: 0.95, y: 24, opacity: 0 }}
+        initial={{ scale: 0.96, y: 16, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 560, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        exit={{ scale: 0.96, y: 16, opacity: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 560, maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0, boxSizing: 'border-box' }}
       >
         {/* Header — one visit, not one row */}
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
@@ -450,6 +451,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   const [selectedTherapistId, setSelectedTherapistId] = useState(appt.therapist_id || '');
   const [submitting, setSubmitting] = useState(false);
   const [assignError, setAssignError] = useState('');
+  const [conflictPrompt, setConflictPrompt] = useState(null);
   useDialogBehavior(onClose);
 
   const C = {
@@ -489,7 +491,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     if (!selectedTherapistId && availableTherapists.length > 0) setSelectedTherapistId(availableTherapists[0].id);
   }, [availableTherapists, selectedTherapistId]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, forced = false) => {
     e?.preventDefault?.();
     if (!selectedTherapistId) {
       setAssignError('Please select a practitioner from the list before confirming.');
@@ -497,11 +499,25 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     }
     setSubmitting(true);
     setAssignError('');
+    setConflictPrompt(null);
     try {
-      await onConfirmAssign(view.ids, selectedTherapistId);
+      // If no therapists are available on this date, admin is explicitly
+      // assigning an active practitioner to make service happen.
+      const shouldForce = forced || availableTherapists.length === 0;
+      const res = await onConfirmAssign(view.ids, selectedTherapistId, shouldForce);
+      if (res?.conflict && res?.canForce) {
+        setConflictPrompt(res.message || 'This specialist has an overlapping booking or is off-schedule.');
+        setSubmitting(false);
+        return;
+      }
       onClose();
     } catch (err) {
-      setAssignError(err?.response?.data?.message || 'Failed to assign practitioner. Please try again.');
+      const data = err?.response?.data;
+      if (data?.conflict && data?.can_force) {
+        setConflictPrompt(data.message || 'This specialist has a booking or is off-schedule in this window.');
+      } else {
+        setAssignError(data?.message || 'Failed to assign practitioner. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -515,12 +531,13 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
         role="button"
         tabIndex={0}
         aria-pressed={isSelected}
-        onClick={() => { setSelectedTherapistId(t.id); setAssignError(''); }}
+        onClick={() => { setSelectedTherapistId(t.id); setAssignError(''); setConflictPrompt(null); }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setSelectedTherapistId(t.id);
             setAssignError('');
+            setConflictPrompt(null);
           }
         }}
         onMouseEnter={() => setHovered(true)}
@@ -564,13 +581,16 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     >
       <div
         className="cb-modal-inner"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100%', width: '100%', padding: 'clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px)', boxSizing: 'border-box' }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
       <motion.div
         className="cb-modal-sheet"
-        initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        initial={{ scale: 0.96, y: 16, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.96, y: 16, opacity: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 520, maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0, boxSizing: 'border-box' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -632,6 +652,41 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
               </div>
             )}
 
+            {conflictPrompt && (
+              <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <AlertCircle size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 900, color: '#d97706', margin: 0 }}>
+                      Schedule Overlap / Busy Window
+                    </p>
+                    <p style={{ fontSize: 11.5, fontWeight: 600, color: C.textSecondary, margin: '2px 0 0', lineHeight: 1.4 }}>
+                      {conflictPrompt} As administrator, you have authority to force-assign to make this service happen.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 2 }}>
+                  <HoverButton
+                    type="button"
+                    onClick={() => setConflictPrompt(null)}
+                    baseStyle={{ padding: '7px 12px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 11, fontWeight: 700 }}
+                    hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}
+                  >
+                    Select Another
+                  </HoverButton>
+                  <HoverButton
+                    type="button"
+                    onClick={() => handleSubmit(null, true)}
+                    disabled={submitting}
+                    baseStyle={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#059669,#047857)', color: '#ffffff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 5, boxShadow: '0 2px 8px rgba(5,150,105,0.3)' }}
+                    hoverStyle={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}
+                  >
+                    <Zap size={13} style={{ color: '#6ee7b7' }} /> Force-Assign &amp; Make Service Happen
+                  </HoverButton>
+                </div>
+              </div>
+            )}
+
             {availableTherapists.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <p style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#059669', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
@@ -640,9 +695,11 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
                 {availableTherapists.map(t => <TherapistCard key={t.id} t={t} showAvailBadge />)}
               </div>
             ) : (
-              <div style={{ padding: 14, borderRadius: 16, fontSize: 11, fontWeight: 600, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', color: C.textSecondary, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <AlertCircle size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
-                <span>No therapists have listed availability for <strong>{apptDateStr}</strong>. Select any active practitioner below.</span>
+              <div style={{ padding: 14, borderRadius: 16, fontSize: 11.5, fontWeight: 600, background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.25)', color: C.textSecondary, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <Zap size={16} style={{ color: '#059669', flexShrink: 0, marginTop: 2 }} />
+                <span>
+                  No therapists have listed availability for <strong>{apptDateStr}</strong>. Choose any active practitioner below to <strong>assign and make this service happen</strong> (admin authority).
+                </span>
               </div>
             )}
 
@@ -732,13 +789,16 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
     >
       <div
         className="cb-modal-inner"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100%', width: '100%', padding: 'clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px)', boxSizing: 'border-box' }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
       <motion.div
         className="cb-modal-sheet"
-        initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        initial={{ scale: 0.96, y: 16, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.96, y: 16, opacity: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0, boxSizing: 'border-box' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#7f1d1d,#991b1b)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -908,13 +968,16 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
     >
       <div
         className="cb-modal-inner"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: 'clamp(12px,3vh,24px) clamp(10px,3vw,20px)' }}
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100%', width: '100%', padding: 'clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px)', boxSizing: 'border-box' }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
       <motion.div
         className="cb-modal-sheet"
-        initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        initial={{ scale: 0.96, y: 16, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.96, y: 16, opacity: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 20, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto', overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0, boxSizing: 'border-box' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#1e3a8a,#3b55e6)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1682,8 +1745,8 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
 
                   {isInProgress && (
                     <>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#0284c7', background: isDark ? 'rgba(14,165,233,0.14)' : 'rgba(14,165,233,0.09)', border: '1px solid rgba(14,165,233,0.28)' }}>
-                        <Zap size={13} /> Ongoing visit — therapist completes it
+                      <span className="booking-card-notice" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#0284c7', background: isDark ? 'rgba(14,165,233,0.14)' : 'rgba(14,165,233,0.09)', border: '1px solid rgba(14,165,233,0.28)' }}>
+                        <Zap size={13} style={{ flexShrink: 0 }} /> Ongoing visit — therapist completes it
                       </span>
                       <HoverButton
                         onClick={() => onSelectAppt && onSelectAppt(g)}
@@ -1967,25 +2030,33 @@ const AdminAppointments = () => {
 
   const toIds = (idOrIds) => Array.isArray(idOrIds) ? idOrIds : [idOrIds];
 
-  const handleAssignTherapist = async (idOrIds, therapistId) => {
+  const handleAssignTherapist = async (idOrIds, therapistId, forceAssign = false) => {
     const ids = toIds(idOrIds);
     try {
       let lastName = 'Assigned';
       let lastStatus = 'Confirmed';
+      let wasForced = forceAssign;
       const results = await Promise.all(
-        ids.map(apptId => API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId }))
+        ids.map(apptId => API.post(`/admin/appointments/${apptId}/assign`, { therapist_id: therapistId, ...(forceAssign ? { force_assign: true } : {}) }))
       );
       if (results.length > 0) {
         const last = results[results.length - 1];
         lastName = last.data?.appointment?.therapist_name || lastName;
         lastStatus = last.data?.appointment?.status || lastStatus;
+        wasForced = last.data?.forced_override || wasForced;
       }
-      showToast(ids.length > 1 ? `Visit confirmed — ${ids.length} treatments assigned in 1 go!` : (lastStatus ? 'Therapist assigned — booking confirmed!' : 'Therapist assigned!'));
+      showToast(wasForced ? `Admin override — ${lastName} force-assigned even though busy/off-schedule!` : (ids.length > 1 ? `Visit confirmed — ${ids.length} treatments assigned in 1 go!` : (lastStatus ? 'Therapist assigned — booking confirmed!' : 'Therapist assigned!')));
       setAppointments(prev => prev.map(a => ids.includes(a.id)
         ? { ...a, therapist_id: therapistId, therapist_name: lastName, status: lastStatus }
         : a));
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to assign therapist';
+      const data = err?.response?.data;
+      // Admin authority: offer mandatory force-assign even if busy / off-schedule.
+      if (data?.conflict && data?.can_force && !forceAssign) {
+        const ok = window.confirm(`${data?.message || 'This specialist is already booked in that window.'}\n\nAs admin, do you want to FORCE-ASSIGN this therapist anyway (mandatory override, logged in audit trail)?`);
+        if (ok) return handleAssignTherapist(idOrIds, therapistId, true);
+      }
+      const msg = data?.message || 'Failed to assign therapist';
       showToast(msg, 'error');
     }
   };
@@ -2004,16 +2075,22 @@ const AdminAppointments = () => {
     }
   };
 
-  const handleReschedule = async (idOrIds, newDateTime, note) => {
+  const handleReschedule = async (idOrIds, newDateTime, note, forceAssign = false) => {
     const ids = toIds(idOrIds);
     try {
-      await Promise.all(
-        ids.map(apptId => API.post(`/admin/appointments/${apptId}/reschedule`, { datetime: newDateTime, notes: note }))
+      const results = await Promise.all(
+        ids.map(apptId => API.post(`/admin/appointments/${apptId}/reschedule`, { datetime: newDateTime, notes: note, ...(forceAssign ? { force_assign: true } : {}) }))
       );
-      showToast(ids.length > 1 ? `Visit rescheduled — ${ids.length} treatments moved to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}` : `Rescheduled to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`);
+      const wasForced = results.some(r => r.data?.forced_override) || forceAssign;
+      showToast(wasForced ? `Admin override — visit force-moved to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}!` : (ids.length > 1 ? `Visit rescheduled — ${ids.length} treatments moved to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}` : `Rescheduled to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`));
       setAppointments(prev => prev.map(a => ids.includes(a.id) ? { ...a, datetime: newDateTime, notes: note ? `${a.notes || ''} | Rescheduled: ${note}` : a.notes, status: 'Confirmed' } : a));
     } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to reschedule', 'error');
+      const data = err?.response?.data;
+      if (data?.conflict && data?.can_force && !forceAssign) {
+        const ok = window.confirm(`${data?.message || 'Slot is already full.'}\n\nAs admin, do you want to FORCE-MOVE anyway (mandatory override, logged)?`);
+        if (ok) return handleReschedule(idOrIds, newDateTime, note, true);
+      }
+      showToast(data?.message || 'Failed to reschedule', 'error');
     }
   };
 
@@ -2182,6 +2259,11 @@ const AdminAppointments = () => {
             justify-content: center !important;
             min-height: 44px !important;
           }
+          .booking-card-notice {
+            grid-column: 1 / -1 !important;
+            text-align: center;
+            justify-content: center !important;
+          }
           .therapist-done-actions {
             display: grid !important;
             grid-template-columns: auto 1fr;
@@ -2198,6 +2280,9 @@ const AdminAppointments = () => {
           }
           .booking-card-actions > * {
             width: 100% !important;
+          }
+          .booking-card-notice {
+            grid-column: 1 / -1 !important;
           }
           .therapist-done-actions {
             grid-template-columns: 1fr;
@@ -2239,62 +2324,66 @@ const AdminAppointments = () => {
 
         /* ── Modal Responsive Centered Styling ── */
         /*
-         * INNER-WRAPPER PATTERN (Radix UI / Headless UI standard)
+         * INNER-WRAPPER PATTERN with margin: auto (Bulletproof)
          * ─────────────────────────────────────────────────────────
-         * .cb-modal-backdrop  → position:fixed scroll container (no flex/center)
-         * .cb-modal-inner     → min-height:100% flex centering wrapper
-         * .cb-modal-sheet     → the actual dialog card
+         * .cb-modal-backdrop  → position:fixed scroll container (overflow-y: auto)
+         * .cb-modal-inner     → flex-direction: column, min-height: 100%
+         * .cb-modal-sheet     → margin: auto, max-height: min(90vh, calc(100dvh - 32px))
          *
-         * Why this works where justify-content:center + overflow-y:auto fails:
-         *   flex justify-content:center places the overflowing child at a
-         *   NEGATIVE top offset that overflow-y:auto cannot scroll back to.
-         *   With .cb-modal-inner min-height:100%, when content > viewport,
-         *   the inner div grows and the OUTER backdrop scrolls from y=0, so
-         *   the header is always reachable.
+         * When sheet fits viewport, margin: auto centers it vertically & horizontally.
+         * When sheet is taller than short viewport, margin-top: auto collapses to 0,
+         * so the dark green header is NEVER clipped or placed at negative Y.
          */
         .cb-modal-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 100;
-          overflow-y: auto;
-          overflow-x: hidden;
-          overscroll-behavior: contain;
-          background: rgba(15, 23, 42, 0.72);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 100 !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          overscroll-behavior: contain !important;
+          background: rgba(15, 23, 42, 0.75) !important;
+          backdrop-filter: blur(8px) !important;
+          -webkit-backdrop-filter: blur(8px) !important;
+          box-sizing: border-box !important;
         }
         .cb-modal-inner {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 100%;
-          padding: clamp(12px, 3vh, 24px) clamp(10px, 3vw, 20px);
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          min-height: 100% !important;
+          width: 100% !important;
+          padding: clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px) !important;
+          box-sizing: border-box !important;
         }
         .cb-modal-sheet {
           width: 100% !important;
           max-height: min(90vh, calc(100dvh - 32px)) !important;
+          margin: auto !important;
           border-radius: 20px !important;
           display: flex !important;
           flex-direction: column !important;
           overflow: hidden !important;
           box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+          box-sizing: border-box !important;
+          flex-shrink: 0 !important;
         }
         @media (max-width: 640px) {
           .cb-modal-inner {
-            padding: 12px 10px;
-            align-items: flex-start;
+            padding: 10px 8px !important;
           }
           .cb-modal-sheet {
-            max-height: none !important;
+            max-width: 100% !important;
+            max-height: calc(100dvh - 20px) !important;
             border-radius: 16px !important;
           }
         }
         @media (max-height: 600px) {
           .cb-modal-inner {
-            align-items: flex-start;
+            padding: 8px !important;
           }
           .cb-modal-sheet {
-            max-height: none !important;
+            max-height: calc(100dvh - 16px) !important;
           }
         }
 

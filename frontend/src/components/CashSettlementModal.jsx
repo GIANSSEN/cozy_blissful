@@ -208,21 +208,29 @@ export default function CashSettlementModal({
           backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
         }
         .cb-settle-inner {
-          display: flex; align-items: center; justify-content: center;
-          min-height: 100%;
-          padding: 16px 12px;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          min-height: 100%; width: 100%;
+          padding: clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px);
+          box-sizing: border-box;
         }
         .cb-settle-sheet {
           width: 100%; max-width: 560px;
-          max-height: min(90dvh, calc(100dvh - 32px));
+          max-height: min(90vh, calc(100dvh - 32px));
+          margin: auto;
           display: flex; flex-direction: column;
           overflow: hidden;
           border-radius: 24px;
           box-shadow: 0 25px 60px -15px rgba(0,0,0,0.55);
+          box-sizing: border-box;
+          flex-shrink: 0;
         }
         @media (max-width: 640px) {
-          .cb-settle-inner { align-items: flex-start; padding: 12px 8px; }
-          .cb-settle-sheet { max-height: none; border-radius: 16px; }
+          .cb-settle-inner { padding: 10px 8px; }
+          .cb-settle-sheet { max-height: calc(100dvh - 20px); border-radius: 16px; }
+        }
+        @media (max-height: 600px) {
+          .cb-settle-inner { padding: 8px; }
+          .cb-settle-sheet { max-height: calc(100dvh - 16px); }
         }
         .cb-settle-body {
           flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; min-height: 0;
@@ -244,7 +252,7 @@ export default function CashSettlementModal({
         @media (max-width: 560px) {
           .cb-settle-sheet {
             max-width: 100%; border-radius: 20px;
-            max-height: min(92dvh, calc(100dvh - 20px));
+            max-height: calc(100dvh - 20px);
           }
           .cb-settle-body { padding: 16px 16px 20px; }
           .cb-settle-footer { padding-left: 16px; padding-right: 16px; }
@@ -262,18 +270,28 @@ export default function CashSettlementModal({
 
       <div
         className="cb-settle-inner"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100%', width: '100%', padding: 'clamp(12px, 2.5vh, 24px) clamp(10px, 2.5vw, 20px)', boxSizing: 'border-box' }}
         onClick={(e) => e.target === e.currentTarget && !submitting && onClose?.()}
       >
       <motion.div
-        initial={{ scale: 0.96, y: 28, opacity: 0 }}
+        initial={{ scale: 0.96, y: 16, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.96, y: 28, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+        exit={{ scale: 0.96, y: 16, opacity: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className="cb-settle-sheet"
         style={{
           background: isDark ? 'linear-gradient(145deg, #161f30, #0f1725)' : 'linear-gradient(145deg, #ffffff, #faf8f5)',
           border: isDark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
           color: t.text,
+          width: '100%',
+          maxWidth: 560,
+          maxHeight: 'min(90vh, calc(100dvh - 32px))',
+          margin: 'auto',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          boxSizing: 'border-box',
+          flexShrink: 0,
         }}
       >
         <div
