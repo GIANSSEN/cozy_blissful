@@ -1164,14 +1164,14 @@ const TherapistDashboard = () => {
                       Accept assignment for <strong className="text-slate-800">{modal.data?.title}</strong>.
                     </p>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-700 border border-slate-200/70 space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Compensation:</span>
-                      <span className="font-bold text-emerald-800">{modal.data?.compensation}</span>
+                  <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-700 border border-slate-200/70 space-y-1.5 cursor-default">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400 flex-shrink-0">Compensation:</span>
+                      <span className="font-bold text-emerald-800 text-right tabular-nums whitespace-nowrap">{modal.data?.compensation}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Scheduled:</span>
-                      <span className="font-medium text-slate-700">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400 flex-shrink-0">Scheduled:</span>
+                      <span className="font-medium text-slate-700 text-right tabular-nums">
                         {modal.data?.datetime && new Date(modal.data.datetime).toLocaleString()}
                       </span>
                     </div>

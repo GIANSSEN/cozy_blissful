@@ -23,7 +23,44 @@ function buildUnsubscribeHeaders(bookingId, email) {
   };
 }
 
+/**
+ * Normalize single-service OR multi-service payloads into ONE email model.
+ * Accepts legacy { serviceName, bookingId } or new { services: [...], bookingIds: [...] }.
+ */
+function normalizeBookingData(data) {
+  const services = Array.isArray(data.services) && data.services.length
+    ? data.services.map((s, i) => ({
+      index: i + 1,
+      name: s.name || 'Spa Service',
+      price: s.price || '₱0.00',
+      duration: s.duration || 60,
+    }))
+    : [{
+      index: 1,
+      name: data.serviceName || 'Spa Service',
+      price: data.totalPrice || '₱0.00',
+      duration: data.totalDuration || 60,
+    }];
+
+  const bookingIds = Array.isArray(data.bookingIds) && data.bookingIds.length
+    ? data.bookingIds
+    : [data.bookingId];
+  const pad = (id) => `#CB-${String(id).padStart(5, '0')}`;
+
+  return {
+    ...data,
+    services,
+    serviceCount: services.length,
+    isMultiService: services.length > 1,
+    serviceNames: services.map((s) => s.name).join(', '),
+    bookingIds,
+    bookingRefs: bookingIds.map(pad).join(', '),
+    primaryBookingId: bookingIds[0],
+  };
+}
+
 export async function sendApprovalEmail(data) {
+  const normalized = normalizeBookingData(data);
   const {
     clientName,
     clientEmail,
@@ -35,31 +72,24 @@ export async function sendApprovalEmail(data) {
     totalPrice,
     salonAddress,
     notes
-  } = data;
-  
+  } = normalized;
+
   if (!clientEmail) {
     throw new Error('Client email is required');
   }
-  
-  emailLogger.info({ bookingId, clientEmail, type: 'approval' }, 'Preparing approval email');
-  
-  const html = renderTemplate('booking_approval', {
-    clientName,
-    serviceName,
-    appointmentDate,
-    appointmentTime,
-    therapistName,
-    bookingId,
-    totalPrice,
-    salonAddress,
-    notes
-  });
+
+  emailLogger.info({ bookingId: normalized.primaryBookingId, serviceCount: normalized.serviceCount, clientEmail, type: 'approval' }, 'Preparing approval email (one per booking group)');
+
+  const html = renderTemplate('booking_approval', normalized);
   
   const text = generatePlaintextFallback(html) || createMinimalPlaintext(data, 'approval');
   
   const messageId = generateMessageId();
-  const unsubscribeHeaders = buildUnsubscribeHeaders(bookingId, clientEmail);
-  
+  const unsubscribeHeaders = buildUnsubscribeHeaders(normalized.primaryBookingId, clientEmail);
+  const approvalSubject = normalized.isMultiService
+    ? `Booking Received (${normalized.bookingRefs}) – ${normalized.serviceCount} services on ${appointmentDate}`
+    : `Booking Received (${`#CB-${String(normalized.primaryBookingId).padStart(5, '0')}`}) – ${serviceName} on ${appointmentDate}`;
+
   const mailOptions = {
     from: {
       name: config.sender.fromName,
@@ -70,7 +100,7 @@ export async function sendApprovalEmail(data) {
       address: clientEmail
     },
     replyTo: config.sender.replyTo,
-    subject: `Booking Received (${`#CB-${String(bookingId).padStart(5, '0')}`}) – ${serviceName} on ${appointmentDate}`,
+    subject: approvalSubject,
     text,
     html,
     headers: {
@@ -84,14 +114,14 @@ export async function sendApprovalEmail(data) {
     messageId,
     // Attach .ics calendar invite
     icalEvent: {
-      filename: `booking-${bookingId}.ics`,
+      filename: `booking-${normalized.primaryBookingId}.ics`,
       method: 'REQUEST',
       content: generateICalEvent({
         type: 'approval',
-        bookingId,
+        bookingId: normalized.primaryBookingId,
         clientName,
         clientEmail,
-        serviceName,
+        serviceName: normalized.serviceNames,
         appointmentDate,
         appointmentTime,
         therapistName,
@@ -99,27 +129,29 @@ export async function sendApprovalEmail(data) {
       })
     }
   };
-  
+
   // Sign with DKIM
   signMessage(mailOptions);
-  
+
   const result = await sendWithRetry(mailOptions);
-  
-  emailLogger.info({ 
-    bookingId, 
-    clientEmail, 
-    messageId: result.messageId 
+
+  emailLogger.info({
+    bookingId: normalized.primaryBookingId,
+    clientEmail,
+    messageId: result.messageId
   }, 'Approval email sent');
-  
+
   return {
     success: true,
     messageId: result.messageId,
-    bookingId,
+    bookingId: normalized.primaryBookingId,
+    bookingIds: normalized.bookingIds,
     type: 'approval'
   };
 }
 
 export async function sendConfirmationEmail(data) {
+  const normalized = normalizeBookingData(data);
   const {
     clientName,
     clientEmail,
@@ -127,33 +159,26 @@ export async function sendConfirmationEmail(data) {
     appointmentDate,
     appointmentTime,
     therapistName,
-    bookingId,
     totalPrice,
     salonAddress
-  } = data;
-  
+  } = normalized;
+
   if (!clientEmail) {
     throw new Error('Client email is required');
   }
-  
-  emailLogger.info({ bookingId, clientEmail, type: 'confirmation' }, 'Preparing confirmation email');
-  
-  const html = renderTemplate('booking_confirmation', {
-    clientName,
-    serviceName,
-    appointmentDate,
-    appointmentTime,
-    therapistName,
-    bookingId,
-    totalPrice,
-    salonAddress
-  });
+
+  emailLogger.info({ bookingId: normalized.primaryBookingId, serviceCount: normalized.serviceCount, clientEmail, type: 'confirmation' }, 'Preparing confirmation email (one per booking group)');
+
+  const html = renderTemplate('booking_confirmation', normalized);
   
   const text = generatePlaintextFallback(html) || createMinimalPlaintext(data, 'confirmation');
   
   const messageId = generateMessageId();
-  const unsubscribeHeaders = buildUnsubscribeHeaders(bookingId, clientEmail);
-  
+  const unsubscribeHeaders = buildUnsubscribeHeaders(normalized.primaryBookingId, clientEmail);
+  const confirmSubject = normalized.isMultiService
+    ? `Booking Approved (${normalized.bookingRefs}) – ${normalized.serviceCount} services – ${config.salon.name}`
+    : `Booking Approved (${`#CB-${String(normalized.primaryBookingId).padStart(5, '0')}`}) – ${config.salon.name}`;
+
   const mailOptions = {
     from: {
       name: config.sender.fromName,
@@ -164,7 +189,7 @@ export async function sendConfirmationEmail(data) {
       address: clientEmail
     },
     replyTo: config.sender.replyTo,
-    subject: `Booking Approved (${`#CB-${String(bookingId).padStart(5, '0')}`}) – ${config.salon.name}`,
+    subject: confirmSubject,
     text,
     html,
     headers: {
@@ -177,14 +202,14 @@ export async function sendConfirmationEmail(data) {
     },
     messageId,
     icalEvent: {
-      filename: `booking-${bookingId}.ics`,
+      filename: `booking-${normalized.primaryBookingId}.ics`,
       method: 'REQUEST',
       content: generateICalEvent({
         type: 'confirmation',
-        bookingId,
+        bookingId: normalized.primaryBookingId,
         clientName,
         clientEmail,
-        serviceName,
+        serviceName: normalized.serviceNames,
         appointmentDate,
         appointmentTime,
         therapistName,
@@ -192,21 +217,22 @@ export async function sendConfirmationEmail(data) {
       })
     }
   };
-  
+
   signMessage(mailOptions);
-  
+
   const result = await sendWithRetry(mailOptions);
-  
-  emailLogger.info({ 
-    bookingId, 
-    clientEmail, 
-    messageId: result.messageId 
+
+  emailLogger.info({
+    bookingId: normalized.primaryBookingId,
+    clientEmail,
+    messageId: result.messageId
   }, 'Confirmation email sent');
-  
+
   return {
     success: true,
     messageId: result.messageId,
-    bookingId,
+    bookingId: normalized.primaryBookingId,
+    bookingIds: normalized.bookingIds,
     type: 'confirmation'
   };
 }

@@ -11,7 +11,7 @@ import {
   Clock, AlertCircle,
   UserCheck, Gift, Hourglass,
   FileText, UserCog,
-  History, Star, ListOrdered, CalendarDays, Shield, Archive, Loader2,
+  History, Star, CalendarDays, Shield, Archive, Loader2,
 } from 'lucide-react';
 import ConfirmModal from './ui/ConfirmModal';
 import { triggerBrowserLoading } from './ui/TopProgressBar';
@@ -48,7 +48,6 @@ const MENU = [
     subs: [
       { label: 'User Profiles', tab: 'profiles', path: '/admin/users', accent: '#3b55e6' },
       { label: 'Work Schedules', tab: 'schedules', path: '/admin/users', accent: '#b45309' },
-      { label: 'Therapist Queue', tab: 'queue', path: '/admin/users', accent: '#0891b2' },
       { label: 'Permissions', tab: 'rbac', path: '/admin/users', accent: '#0a3d30' },
     ],
   },
@@ -91,7 +90,7 @@ const MENU = [
 const SUB_ICON = {
   calendar: Calendar, pending: Clock, requests: AlertCircle,
   profiles: UserCheck, reviews: Star,
-  schedules: CalendarDays, queue: ListOrdered, rbac: Shield,
+  schedules: CalendarDays, rbac: Shield,
   services: ShoppingBag, offers: Gift, categories: Hourglass,
 };
 
@@ -275,7 +274,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         aria-label="Admin Navigation"
         id="admin-sidebar"
         data-state={isOpen ? 'open' : 'closed'}
-        className={`fixed lg:sticky left-0 top-0 h-[100dvh] max-h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased transition-[transform,visibility] duration-300 ease-out motion-reduce:transition-none w-[min(86vw,280px)] sm:w-[min(86vw,320px)] lg:w-60 xl:w-[272px] select-none ${
+        className={`fixed lg:static left-0 top-0 h-[100dvh] lg:h-full max-h-[100dvh] lg:max-h-full flex flex-col shrink-0 grow-0 basis-auto z-[100] lg:z-30 antialiased transition-[transform,visibility] duration-300 ease-out motion-reduce:transition-none w-[min(86vw,280px)] sm:w-[min(86vw,320px)] lg:w-60 xl:w-[272px] lg:shrink-0 select-none ${
           isOpen
             ? 'translate-x-0 visible pointer-events-auto'
             : '-translate-x-full lg:translate-x-0 invisible lg:visible pointer-events-none lg:pointer-events-auto'

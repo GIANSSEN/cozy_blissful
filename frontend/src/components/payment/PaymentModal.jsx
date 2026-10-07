@@ -200,18 +200,18 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
           {/* Scrollable Body */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4" style={{ scrollbarWidth: 'none' }}>
 
-            {/* Amount Due */}
+            {/* Amount Due — label left, values right-aligned tabular */}
             <div
-              className="rounded-2xl p-4 flex items-center justify-between"
+              className="rounded-2xl p-4 flex items-center justify-between gap-3 cursor-default"
               style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}
             >
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Amount Due</p>
-                <p className="text-2xl font-black text-emerald-900 mt-0.5">{formattedPrice}</p>
+                <p className="text-2xl font-black text-emerald-900 mt-0.5 tabular-nums whitespace-nowrap">{formattedPrice}</p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Appointment</p>
-                <p className="text-xs font-semibold text-slate-700 mt-0.5">
+                <p className="text-xs font-semibold text-slate-700 mt-0.5 tabular-nums whitespace-nowrap">
                   #{String(appointment?.id || 1).padStart(5, '0')}
                 </p>
               </div>

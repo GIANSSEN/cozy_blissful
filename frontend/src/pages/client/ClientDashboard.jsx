@@ -39,9 +39,13 @@ const B = {
 };
 
 // Luxury Card Container
-const LuxuryCard = ({ children, className = '', style = {}, ...props }) => (
+// NOTE: static by default — no hover lift/border inside cards & modals.
+// Hover affordance lives ONLY on truly interactive grid controls
+// (service cards, date chips, slot buttons, filter buttons).
+// Pass `interactive` only when the whole card itself is clickable.
+const LuxuryCard = ({ children, className = '', style = {}, interactive = false, ...props }) => (
   <div
-    className={`rounded-3xl bg-white border border-[rgba(191,161,95,0.22)] shadow-[0_8px_30px_rgba(6,44,34,0.05)] hover:shadow-[0_12px_36px_rgba(6,44,34,0.1)] hover:border-[rgba(191,161,95,0.45)] transition-all duration-200 ${className}`}
+    className={`rounded-3xl bg-white border border-[rgba(191,161,95,0.22)] shadow-[0_8px_30px_rgba(6,44,34,0.05)] transition-all duration-200 ${interactive ? 'hover:shadow-[0_12px_36px_rgba(6,44,34,0.1)] hover:border-[rgba(191,161,95,0.45)] cursor-pointer' : 'cursor-default'} ${className}`}
     style={{ ...style }}
     {...props}
   >
@@ -916,50 +920,62 @@ const ReviewStep = ({
               ))}
             </div>
 
-            {/* Schedule Info Box */}
+            {/* Schedule Info Box — label left, value right-aligned tabular */}
             <div className="bg-black/25 rounded-2xl p-3 space-y-2 border border-white/10">
-              <div className="flex items-center gap-2 text-xs">
-                <Calendar className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
-                <span className="text-white font-medium text-[11px]">{dateLabel}</span>
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-2 min-w-0">
+                  <Calendar className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
+                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Date</span>
+                </span>
+                <span className="text-white font-medium text-[11px] text-right tabular-nums truncate max-w-[60%]">{dateLabel}</span>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <Clock className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
-                <span className="text-white font-semibold text-[11px]">{timeLabel}</span>
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
+                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Time</span>
+                </span>
+                <span className="text-white font-semibold text-[11px] text-right tabular-nums whitespace-nowrap">{timeLabel}</span>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <UserCheck className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
-                <span className="text-emerald-100 text-[11px]">
-                  Specialist: <strong className="text-amber-200">Concierge Matching</strong>
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-2">
+                  <UserCheck className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
+                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Specialist</span>
+                </span>
+                <span className="text-emerald-100 text-[11px] text-right">
+                  <strong className="text-amber-200">Concierge Matching</strong>
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <Zap className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
-                <span className="text-emerald-100 text-[11px] font-medium">Total Duration: {totalDuration} mins</span>
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-[#e8cc8a] flex-shrink-0" />
+                  <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">Duration</span>
+                </span>
+                <span className="text-emerald-100 text-[11px] font-medium text-right tabular-nums whitespace-nowrap">{totalDuration} mins</span>
               </div>
             </div>
 
-            {/* Itemized Price Breakdown */}
+            {/* Itemized Price Breakdown — values right-aligned tabular */}
             <div className="space-y-2 pt-1 text-xs border-t border-white/10">
-              <div className="flex items-center justify-between text-emerald-100/80">
+              <div className="flex items-center justify-between gap-3 text-emerald-100/80">
                 <span>Treatment Subtotal ({services.length} items)</span>
-                <span className="font-semibold text-white">{formattedTotalPrice}</span>
+                <span className="font-semibold text-white tabular-nums whitespace-nowrap text-right">{formattedTotalPrice}</span>
               </div>
-              <div className="flex items-center justify-between text-emerald-100/80">
+              <div className="flex items-center justify-between gap-3 text-emerald-100/80">
                 <span>Salon Reservation Fee</span>
-                <span className="font-bold text-[#e8cc8a]">₱0.00 (Complimentary)</span>
+                <span className="font-bold text-[#e8cc8a] tabular-nums whitespace-nowrap text-right">₱0.00 (Complimentary)</span>
               </div>
-              <div className="flex items-center justify-between text-emerald-100/80">
+              <div className="flex items-center justify-between gap-3 text-emerald-100/80">
                 <span>Value Added Tax (VAT)</span>
-                <span className="text-emerald-200 text-[10px]">Included</span>
+                <span className="text-emerald-200 text-[10px] text-right">Included</span>
               </div>
 
-              <div className="pt-2.5 border-t border-white/15 flex items-baseline justify-between">
-                <div>
+              <div className="pt-2.5 border-t border-white/15 flex items-baseline justify-between gap-3">
+                <div className="min-w-0">
                   <span className="text-xs uppercase tracking-wider font-bold text-emerald-200">Total Due</span>
                   <p className="text-[10px] text-emerald-300/70 font-medium">{paymentMethod === 'cash' ? 'To settle in cash upon visit' : 'To settle online or upon visit'}</p>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-[#e8cc8a] tracking-tight">{formattedTotalPrice}</span>
+                <div className="text-right flex-shrink-0">
+                  <span className="text-2xl font-black text-[#e8cc8a] tracking-tight tabular-nums whitespace-nowrap">{formattedTotalPrice}</span>
                 </div>
               </div>
             </div>
@@ -1037,13 +1053,16 @@ const ConfirmationStep = ({ booking, onDone, onPayOnline }) => {
         <div className="min-w-0">
           {services.map((svc, idx) => (
             <div key={svc.id || idx} className="mb-2 pb-2 border-b border-slate-100 last:border-0 last:pb-0">
-              <p className="text-sm font-black text-slate-800 break-words">{svc.name}</p>
-              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
-                <Clock className="w-3 h-3" /> {svc.duration || booking?.service_duration} mins &bull; ₱{Number(svc.price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-black text-slate-800 break-words min-w-0 flex-1">{svc.name}</p>
+                <span className="text-xs font-black text-emerald-900 whitespace-nowrap tabular-nums flex-shrink-0 text-right">₱{Number(svc.price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 tabular-nums">
+                <Clock className="w-3 h-3 flex-shrink-0" /> {svc.duration || booking?.service_duration} mins
               </p>
             </div>
           ))}
-          <p className="text-xs text-slate-500 mt-0.5 break-words">{booking?.datetime}</p>
+          <p className="text-xs text-slate-500 mt-0.5 break-words tabular-nums">{booking?.datetime}</p>
         </div>
 
         {formattedTotalPrice && (
@@ -1206,14 +1225,19 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
         <div className="p-6 space-y-4 flex-1 overflow-y-auto no-scrollbar">
           <div className="rounded-2xl p-4 space-y-2 bg-red-50/60 border border-red-200/60">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Session Details</p>
-            <p className="font-black text-slate-800 text-sm">#{String(booking.id).padStart(5,'0')} — {booking.service}</p>
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <Calendar className="w-3.5 h-3.5 text-red-600" />
-              <span>{fmtDate(booking.datetime)}</span>
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-black text-slate-800 text-sm min-w-0 flex-1">{booking.service}</p>
+              <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-red-100 flex-shrink-0 tabular-nums">#{String(booking.id).padStart(5,'0')}</span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <Clock className="w-3.5 h-3.5 text-red-600" />
-              <span>{fmtTime(booking.datetime)}</span>
+            <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
+              <span className="flex items-center gap-2 min-w-0">
+                <Calendar className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
+                <span className="truncate">{fmtDate(booking.datetime)}</span>
+              </span>
+              <span className="flex items-center gap-2 flex-shrink-0 tabular-nums text-right">
+                <Clock className="w-3.5 h-3.5 text-red-600 flex-shrink-0" />
+                <span className="whitespace-nowrap">{fmtTime(booking.datetime)}</span>
+              </span>
             </div>
           </div>
 
@@ -1343,9 +1367,12 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
         <div className="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto no-scrollbar">
           <div className="rounded-2xl p-3.5 space-y-1.5 bg-slate-50 border border-slate-200/80">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Schedule</p>
-            <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-              <Clock className="w-3.5 h-3.5 text-emerald-800 flex-shrink-0" />
-              <span className="break-words">{fmtApptDateTime(booking.datetime)}</span>
+            <div className="flex items-center justify-between gap-3 text-xs text-slate-700 font-medium">
+              <span className="flex items-center gap-1.5 min-w-0 flex-1">
+                <Clock className="w-3.5 h-3.5 text-emerald-800 flex-shrink-0" />
+                <span className="break-words">{fmtApptDateTime(booking.datetime)}</span>
+              </span>
+              <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200 flex-shrink-0 tabular-nums whitespace-nowrap">#{String(booking.id).padStart(5,'0')}</span>
             </div>
           </div>
 
@@ -2229,7 +2256,7 @@ const ClientDashboard = () => {
                     { code: 'CBWELCOME20', title: '20% Off Welcome Session', desc: 'Valid on your first appointment booking', exp: 'Ongoing' },
                     { code: 'MIDWEEK150',  title: '₱150 Off Midweek Calm',  desc: 'Applicable Wednesday & Thursday appointments', exp: 'Active' },
                   ].map((voucher) => (
-                    <LuxuryCard key={voucher.code} className="p-4 flex flex-col justify-between hover:border-[#bfa15f]/60 transition-all">
+                    <LuxuryCard key={voucher.code} className="p-4 flex flex-col justify-between transition-all">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-bold uppercase tracking-widest text-[#8c7033]">Voucher Code</span>
@@ -2342,16 +2369,18 @@ const ClientDashboard = () => {
                                 )}
                               </div>
                               <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-black text-slate-800 text-base leading-snug">{b.service}</p>
-                                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-bold">
-                                    #{String(b.id).padStart(5, '0')}
-                                  </span>
-                                  {b.service_price && (
-                                    <span className="text-[11px] font-black text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                                      ₱{Number(b.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="font-black text-slate-800 text-base leading-snug min-w-0 flex-1">{b.service}</p>
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-bold tabular-nums whitespace-nowrap">
+                                      #{String(b.id).padStart(5, '0')}
                                     </span>
-                                  )}
+                                    {b.service_price && (
+                                      <span className="text-[11px] font-black text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 tabular-nums whitespace-nowrap">
+                                        ₱{Number(b.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
 
                                 {/* Specialist Assignment */}

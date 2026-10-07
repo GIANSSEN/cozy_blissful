@@ -4,11 +4,11 @@ namespace App\Mail;
 
 use App\Models\Appointment;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Collection;
 
 class AppointmentReminderMail extends Mailable
 {
@@ -16,38 +16,83 @@ class AppointmentReminderMail extends Mailable
 
     public string $clientName;
     public string $serviceName;
+    public string $serviceNames;
+    /** @var array<int, array{name:string, price:string, duration:int}> */
+    public array $services = [];
+    public int $serviceCount = 1;
     public string $appointmentDate;
     public string $appointmentTime;
     public string $therapistName;
     public string $hoursUntil;
     public int $bookingId;
+    /** @var int[] */
+    public array $bookingIds = [];
+    public string $bookingRefs = '';
     public string $totalPrice;
+    public int $totalDuration = 0;
     public string $salonAddress;
 
-    public function __construct(Appointment $appointment, string $hoursUntil = '24')
+    /**
+     * @param Appointment|Collection|array $appointments Single row or whole group — ONE email.
+     */
+    public function __construct(Appointment|Collection|array $appointments, string $hoursUntil = '24')
     {
-        $this->clientName      = $appointment->client?->name ?? 'Valued Client';
-        $this->serviceName     = $appointment->service?->name ?? 'Spa Service';
-        $this->appointmentDate = $appointment->datetime->format('l, F j, Y');
-        $this->appointmentTime = $appointment->datetime->format('g:i A');
-        $this->therapistName   = $appointment->therapist?->name ?? 'Our Specialist';
-        $this->hoursUntil      = $hoursUntil;
-        $this->bookingId       = $appointment->id;
-        $this->totalPrice      = $appointment->service ? '₱' . number_format((float)$appointment->service->price, 2) : 'N/A';
-        $this->salonAddress    = config('app.salon_address', 'Cozy Blissful Spa & Wellness, Metro Manila');
+        $group = $appointments instanceof Appointment
+            ? collect([$appointments])
+            : collect($appointments);
+
+        $group = $group->values();
+        $first = $group->first();
+        $first->loadMissing(['client', 'therapist', 'service']);
+
+        $this->clientName = $first->client?->name ?? 'Valued Client';
+        $this->appointmentDate = $first->datetime->format('l, F j, Y');
+        $this->appointmentTime = $first->datetime->format('g:i A');
+        $this->therapistName = $first->therapist?->name ?? 'Our Specialist';
+        $this->hoursUntil = $hoursUntil;
+        $this->bookingId = $first->id;
+        $this->bookingIds = $group->pluck('id')->all();
+        $this->bookingRefs = $group->map(fn ($a) => '#CB-' . str_pad($a->id, 5, '0', STR_PAD_LEFT))->implode(', ');
+        $this->salonAddress = config('app.salon_address', 'Cozy Blissful Spa & Wellness, Metro Manila');
+
+        $total = 0;
+        $duration = 0;
+        $names = [];
+        $rows = [];
+        foreach ($group as $appt) {
+            $appt->loadMissing('service');
+            $svc = $appt->service;
+            $price = $svc ? (float) $svc->price : 0;
+            $dur = $svc ? (int) $svc->duration : 60;
+            $total += $price;
+            $duration += $dur;
+            $names[] = $svc?->name ?? 'Spa Service';
+            $rows[] = [
+                'name' => $svc?->name ?? 'Spa Service',
+                'price' => '₱' . number_format($price, 2),
+                'duration' => $dur,
+            ];
+        }
+
+        $this->services = $rows;
+        $this->serviceCount = count($rows);
+        $this->serviceNames = implode(', ', $names);
+        $this->serviceName = $this->serviceCount === 1 ? $names[0] : $names[0] . ' (+' . ($this->serviceCount - 1) . ' more)';
+        $this->totalPrice = '₱' . number_format($total, 2);
+        $this->totalDuration = $duration;
     }
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: '⏰ Reminder: Your ' . $this->serviceName . ' session is in ' . $this->hoursUntil . ' hours!',
-        );
+        $subject = $this->serviceCount > 1
+            ? '⏰ Reminder: Your ' . $this->serviceCount . ' sessions (' . $this->bookingRefs . ') start in ' . $this->hoursUntil . ' hours!'
+            : '⏰ Reminder: Your ' . $this->serviceName . ' session is in ' . $this->hoursUntil . ' hours!';
+
+        return new Envelope(subject: $subject);
     }
 
     public function content(): Content
     {
-        return new Content(
-            view: 'emails.appointment_reminder',
-        );
+        return new Content(view: 'emails.appointment_reminder');
     }
 }

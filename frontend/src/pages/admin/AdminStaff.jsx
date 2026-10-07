@@ -7,7 +7,7 @@ import API from '../../api/axios';
 import {
   Users, Calendar, AlertCircle,
   Shield, Lock, Save, CheckCircle2,
-  Crown, Stethoscope, UserCheck, UserCog, User, ListOrdered,
+  Crown, Stethoscope, UserCheck, UserCog, User,
 } from 'lucide-react';
 
 /* ── RBAC initial state including staff role ────────────────────── */
@@ -119,21 +119,11 @@ const AdminStaff = () => {
 
   const getPageTitle = () => {
     switch (activeTab) {
-      case 'queue': return 'Therapist Queue';
       case 'rbac': return 'System Permissions';
       case 'profiles':
       default: return 'Attendance & Profiles';
     }
   };
-
-  /* Mock therapist queue — next-in-line order for walk-in / unassigned bookings */
-  const mockQueue = therapists.map((t, idx) => ({
-    id: t.id,
-    name: t.name,
-    specialty: t.specialty,
-    position: idx + 1,
-    status: idx === 0 ? 'Next Up' : 'Waiting',
-  }));
 
   const toggleRbac = (role, permission) => {
     const meta = ROLE_META[role];
@@ -241,47 +231,6 @@ const AdminStaff = () => {
           </div>
         )}
 
-        {/* ── Therapist Queue Tab ── */}
-        {activeTab === 'queue' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Next-In-Line Queue</h2>
-              <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-100">
-                {mockQueue.length} In Queue
-              </span>
-            </div>
-
-            {mockQueue.length === 0 ? (
-              <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center shadow-sm">
-                <ListOrdered className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="font-bold text-slate-700">No therapists in queue</p>
-                <p className="text-xs text-slate-400 mt-1">Therapists awaiting walk-in assignment will appear here.</p>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {mockQueue.map(q => (
-                  <div key={q.id} className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm flex items-center justify-between gap-4 hover:shadow-md transition">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg,#062c22,#0f5040)' }}>
-                        #{q.position}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-800 text-sm leading-tight">{q.name}</h4>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{q.specialty}</p>
-                      </div>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                      q.status === 'Next Up' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'
-                    }`}>
-                      {q.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── RBAC Tab ─ Enhanced ── */}
         {activeTab === 'rbac' && (

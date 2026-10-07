@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LogIn, UserPlus, User, Mail, Lock, Eye, EyeOff,
   AlertCircle, Clock, ShieldCheck, Check, X,
-  ArrowLeft, CheckCircle2, Gift, Zap, Sparkles,
+  CheckCircle2, Gift, Zap, Sparkles,
   Star, MapPin, MessageCircle, BadgeCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -686,16 +686,6 @@ export default function AuthPortal({ initialTab = 'login' }) {
     >
       <SpaBackdrop />
 
-      {/* ── Floating back-to-home: always reachable on every device ── */}
-      <Link
-        to="/"
-        aria-label="Back to home page"
-        className="absolute z-20 top-3 left-3 sm:top-4 sm:left-4 inline-flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-full text-[11.5px] font-bold text-white/85 hover:text-white bg-white/10 hover:bg-white/20 border border-white/15 backdrop-blur-md active:scale-95 transition-all touch-manipulation min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]"
-      >
-        <ArrowLeft className="w-3.5 h-3.5 text-[#e8cc8a]" aria-hidden="true" />
-        <span className="hidden min-[420px]:inline">Home</span>
-      </Link>
-
       {/* ── Full-viewport centered card ── */}
       <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 py-3 overflow-hidden">
         <motion.div
@@ -811,20 +801,13 @@ export default function AuthPortal({ initialTab = 'login' }) {
               {/* ── Brand header ── */}
               <div className="flex flex-col items-center text-center mb-4">
                 <div
-                  className="w-13 h-13 rounded-xl flex items-center justify-center mb-2 relative"
+                  className="rounded-xl mb-2 relative overflow-hidden"
                   style={{
                     width: 52, height: 52,
-                    background: 'linear-gradient(135deg,#0a3d30 0%,#062b22 100%)',
                     boxShadow: '0 6px 18px rgba(10,61,48,0.2), 0 0 0 1px rgba(191,161,95,0.3)',
                   }}
                 >
-                  <img src="/cb-logo.jpg" alt="Cozy Blissful logo" className="w-10 h-10 rounded-lg object-cover" />
-                  <span
-                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center"
-                    style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)' }}
-                  >
-                    <Sparkles className="w-1.5 h-1.5 text-[#041e16]" />
-                  </span>
+                  <img src="/cb-logo.jpg" alt="Cozy Blissful logo" className="w-full h-full rounded-xl object-cover" />
                 </div>
 
                 <p className="text-[9.5px] font-extrabold tracking-[0.2em] uppercase" style={{ color: '#bfa15f' }}>

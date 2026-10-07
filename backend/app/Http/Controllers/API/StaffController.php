@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BookingApprovedMail;
+use App\Support\BookingGroup;
 use Illuminate\Support\Facades\Log;
 use App\Traits\ValidatesBookingCapacity;
 
@@ -196,13 +197,26 @@ class StaffController extends Controller
         }
 
         $appt->save();
-        $appt->load(['client', 'therapist', 'service']);
 
+        // Confirm sibling rows from the same multi-service checkout together,
+        // so ONE staff action confirms the whole group.
+        $group = BookingGroup::for($appt);
+        if ($appt->status === 'Confirmed') {
+            $group = BookingGroup::confirmGroup($appt, $appt->therapist_id ? (int) $appt->therapist_id : null);
+            $appt->load(['client', 'therapist', 'service']);
+        } else {
+            $appt->load(['client', 'therapist', 'service']);
+        }
+
+        // ONE consolidated approved-email per booking group (never per service).
         if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed' && $appt->client && $appt->client->email) {
-            try {
-                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
-            } catch (\Exception $e) {
-                Log::error('Failed to send booking approved email: ' . $e->getMessage());
+            if (! BookingGroup::alreadyMailed($appt)) {
+                try {
+                    Mail::to($appt->client->email)->send(new BookingApprovedMail($group));
+                    BookingGroup::markMailed($appt);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send booking approved email: ' . $e->getMessage());
+                }
             }
         }
 
@@ -268,11 +282,15 @@ class StaffController extends Controller
 
         $appt->load(['client', 'therapist', 'service']);
 
+        // ONE consolidated approved-email per booking group (never per service).
         if ($oldStatus !== 'Confirmed' && $request->status === 'Confirmed' && $appt->client && $appt->client->email) {
-            try {
-                Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
-            } catch (\Exception $e) {
-                Log::error('Failed to send booking approved email: ' . $e->getMessage());
+            if (! BookingGroup::alreadyMailed($appt)) {
+                try {
+                    Mail::to($appt->client->email)->send(new BookingApprovedMail(BookingGroup::for($appt)));
+                    BookingGroup::markMailed($appt);
+                } catch (\Exception $e) {
+                    Log::error('Failed to send booking approved email: ' . $e->getMessage());
+                }
             }
         }
 

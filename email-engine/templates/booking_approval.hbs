@@ -26,9 +26,13 @@
       .detail-label, .detail-value { display: block !important; width: 100% !important; text-align: left !important; }
       .detail-label { margin-bottom: 2px !important; }
       .detail-value { margin-bottom: 12px !important; padding-top: 0 !important; }
-      .btn { display: block !important; width: 100% !important; box-sizing: border-box; padding: 15px 20px !important; }
-      .btn-ghost { display: block !important; width: 100% !important; box-sizing: border-box; }
-      .stack-td { display: block !important; width: 100% !important; }
+      .btn { display: block !important; width: 100% !important; box-sizing: border-box; padding: 15px 20px !important; text-align:center !important; }
+      .btn-ghost { display: block !important; width: 100% !important; box-sizing: border-box; text-align:center !important; }
+      .detail-label { padding-bottom: 0 !important; border-bottom: none !important; }
+      .detail-value { padding-top: 2px !important; text-align: left !important; }
+      .svc-name, .svc-price { display: block !important; width: 100% !important; text-align: left !important; }
+      .svc-price { padding-top: 0 !important; padding-bottom: 10px !important; }
+      .stack-td { display: block !important; width: 100% !important; text-align:left !important; }
       .step-num { margin-bottom: 8px !important; }
       .footer-pad { padding: 22px 20px !important; }
     }
@@ -50,9 +54,9 @@
   </style>
 </head>
 <body class="body-bg" style="margin:0;padding:0;background-color:#f5f0e8;font-family:Arial,Helvetica,sans-serif;">
-  {{!-- Preheader (hidden preview text) --}}
+  {{!-- Preheader (hidden preview text) : one email per booking group --}}
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">
-    {{ clientName }}, your {{ serviceName }} on {{ appointmentDate }} at {{ appointmentTime }} is confirmed. Booking {{ formatBookingId bookingId }}.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+    {{ clientName }}, your {{#if isMultiService}}{{ serviceCount }} services ({{ serviceNames }}){{else}}{{ serviceName }}{{/if}} on {{ appointmentDate }} at {{ appointmentTime }} {{#if isMultiService}}are{{else}}is{{/if}} confirmed. {{#if bookingRefs}}{{ bookingRefs }}{{else}}{{ formatBookingId bookingId }}{{/if}}.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="outer-bg" style="background-color:#f5f0e8;">
@@ -81,46 +85,61 @@
             <td class="content-pad" style="padding:34px 36px 30px;background-color:#ffffff;">
               <h1 class="greeting" style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:#062c22;line-height:1.35;">You're all set, {{ clientName }}.</h1>
               <p class="intro" style="margin:0 0 24px;font-size:14px;color:#5b5b5b;line-height:1.7;">
-                Your <strong style="color:#062c22;">{{ serviceName }}</strong> session is confirmed.
+                {{#if isMultiService}}Your <strong style="color:#062c22;">{{ serviceCount }} services in one visit</strong> are confirmed.{{else}}Your <strong style="color:#062c22;">{{ serviceName }}</strong> session is confirmed.{{/if}}
                 Specialist <strong style="color:#062c22;">{{ therapistName }}</strong> will see you at the time below. Please arrive 5 minutes early.
               </p>
 
-              <!-- Confirmed details -->
+              <!-- Confirmed details : ONE email, ALL services listed -->
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" class="details-box" style="background-color:#faf8f3;border:1px solid #ece3d0;border-radius:12px;margin-bottom:20px;">
                 <tr>
-                  <td style="padding:14px 20px 4px;font-size:10px;font-weight:700;color:#a08c5b;letter-spacing:0.14em;">CONFIRMED DETAILS</td>
+                  <td style="padding:14px 20px 4px;font-size:10px;font-weight:700;color:#a08c5b;letter-spacing:0.14em;">CONFIRMED DETAILS{{#if isMultiService}} — {{ serviceCount }} SERVICES, ONE VISIT{{/if}}</td>
                 </tr>
                 <tr>
                   <td style="padding:0 20px 16px;">
                     <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
-                        <td class="detail-label" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;width:38%;vertical-align:top;">BOOKING ID</td>
-                        <td class="detail-value" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ formatBookingId bookingId }}</td>
+                        <td class="detail-label stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;width:38%;vertical-align:top;">BOOKING ID{{#if isMultiService}}S{{/if}}</td>
+                        <td class="detail-value stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{#if bookingRefs}}{{ bookingRefs }}{{else}}{{ formatBookingId bookingId }}{{/if}}</td>
                       </tr>
                       <tr>
-                        <td class="detail-label" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">SERVICE</td>
-                        <td class="detail-value" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ serviceName }}</td>
+                        <td class="detail-label stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">DATE</td>
+                        <td class="detail-value stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ appointmentDate }}</td>
                       </tr>
                       <tr>
-                        <td class="detail-label" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">DATE</td>
-                        <td class="detail-value" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ appointmentDate }}</td>
+                        <td class="detail-label stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">TIME</td>
+                        <td class="detail-value stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ appointmentTime }}</td>
                       </tr>
                       <tr>
-                        <td class="detail-label" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">TIME</td>
-                        <td class="detail-value" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ appointmentTime }}</td>
+                        <td class="detail-label stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">LOCATION</td>
+                        <td class="detail-value stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;color:#333333;text-align:right;vertical-align:top;">{{ salonAddress }}</td>
                       </tr>
                       <tr>
-                        <td class="detail-label" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">PRICE</td>
-                        <td class="detail-value" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ totalPrice }}</td>
+                        <td class="detail-label stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;border-bottom:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">THERAPIST</td>
+                        <td class="detail-value stack-td" style="padding:9px 0;border-top:1px solid #ece3d0;border-bottom:1px solid #ece3d0;font-size:13px;color:#333333;text-align:right;vertical-align:top;">{{ therapistName }}</td>
                       </tr>
-                      <tr>
-                        <td class="detail-label" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">LOCATION</td>
-                        <td class="detail-value" style="padding:9px 0;border-top:1px solid #ece3d0;font-size:13px;color:#333333;text-align:right;vertical-align:top;">{{ salonAddress }}</td>
-                      </tr>
-                      <tr>
-                        <td class="detail-label" style="padding:9px 0;border-top:1px solid #ece3d0;border-bottom:1px solid #ece3d0;font-size:11px;font-weight:700;color:#8a8a8a;letter-spacing:0.06em;vertical-align:top;">THERAPIST</td>
-                        <td class="detail-value" style="padding:9px 0;border-top:1px solid #ece3d0;border-bottom:1px solid #ece3d0;font-size:13px;color:#333333;text-align:right;vertical-align:top;">{{ therapistName }}</td>
-                      </tr>
+                    </table>
+                    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px;border:1px solid #ece3d0;border-radius:10px;background-color:#ffffff;">
+                      <tr><td style="padding:10px 14px 0;font-size:10px;font-weight:700;color:#a08c5b;letter-spacing:0.12em;">YOUR SERVICES ({{#if serviceCount}}{{ serviceCount }}{{else}}1{{/if}})</td></tr>
+                      <tr><td style="padding:0 14px 10px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                          {{#each services}}
+                          <tr>
+                            <td class="svc-name" style="padding:8px 0;border-top:1px solid #ece3d0;font-size:13px;color:#062c22;vertical-align:top;"><strong>{{ index }}. {{ name }}</strong><br /><span style="font-size:12px;color:#8a8a8a;">{{ duration }} min</span></td>
+                            <td class="svc-price" style="padding:8px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;vertical-align:top;">{{ price }}</td>
+                          </tr>
+                          {{/each}}
+                          {{#unless services}}
+                          <tr>
+                            <td class="svc-name" style="padding:8px 0;border-top:1px solid #ece3d0;font-size:13px;color:#062c22;"><strong>1. {{ serviceName }}</strong></td>
+                            <td class="svc-price" style="padding:8px 0;border-top:1px solid #ece3d0;font-size:13px;font-weight:700;color:#062c22;text-align:right;">{{ totalPrice }}</td>
+                          </tr>
+                          {{/unless}}
+                          <tr>
+                            <td class="stack-td" style="padding:10px 0;border-top:2px solid #062c22;font-size:12px;font-weight:800;color:#062c22;">TOTAL</td>
+                            <td class="stack-td" style="padding:10px 0;border-top:2px solid #062c22;font-size:15px;font-weight:800;color:#062c22;text-align:right;">{{ totalPrice }}</td>
+                          </tr>
+                        </table>
+                      </td></tr>
                     </table>
                   </td>
                 </tr>

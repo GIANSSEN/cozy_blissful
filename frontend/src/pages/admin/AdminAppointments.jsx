@@ -86,6 +86,28 @@ const stripBillingBlock = (notes) => {
     .trim();
 };
 
+/* Split the raw notes into contact rows + free-text note so pending cards
+   render Phone / Address as aligned label→value rows (like the Therapist
+   Done / Active Treatment cards) instead of one crammed line. */
+const parseContactParts = (notes) => {
+  if (!notes) return { phone: '', address: '', noteText: '' };
+  const raw = String(notes);
+  const phoneMatch = raw.match(/Phone:\s*([^\n]+?)(?=\s*Address:|\s*Billing Name:|$)/i);
+  const addressMatch = raw.match(/Address:\s*([^\n]+)/i);
+  const noteText = raw
+    .replace(/\[Billing & Contact Info\]/gi, '')
+    .replace(/Billing Name:\s*[^\n]+/gi, '')
+    .replace(/Phone:\s*[^\n]+/gi, '')
+    .replace(/Address:\s*[^\n]+/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return {
+    phone: (phoneMatch?.[1] || '').trim(),
+    address: (addressMatch?.[1] || '').trim(),
+    noteText,
+  };
+};
+
 const groupAppointments = (list = []) => {
   const map = new Map();
   for (const a of list) {
@@ -305,14 +327,17 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
               Treatments in this visit ({view.items.length})
             </p>
             {view.items.map((it) => (
-              <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(148,163,184,0.15)' }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 13, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{it.service}</p>
+              <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderTop: '1px solid rgba(148,163,184,0.15)', cursor: 'default' }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 900, color: C.textPrimary, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.service}</p>
                   <p style={{ fontSize: 11, fontWeight: 600, color: C.textMuted, margin: '2px 0 0' }}>
-                    {it.service_duration ? `${it.service_duration} min` : ''}{it.service_duration && it.service_price ? ' · ' : ''}{it.service_price ? `₱${Number(it.service_price).toLocaleString()}` : ''}
+                    {it.service_duration ? `${it.service_duration} min` : ''}
                   </p>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace', flexShrink: 0 }}>#{String(it.id).padStart(4, '0')}</span>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 900, color: C.textPrimary, margin: 0, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{it.service_price ? `₱${Number(it.service_price).toLocaleString()}` : '—'}</p>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums' }}>#{String(it.id).padStart(4, '0')}</span>
+                </div>
               </div>
             ))}
             {view.totalPrice > 0 && (
@@ -390,29 +415,7 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
             </>
           )}
 
-          {/* CONFIRMED: Reassign + Reschedule */}
-          {view.status === 'Confirmed' && (
-            <>
-              {onOpenAccept && (
-                <HoverButton
-                  onClick={() => { onClose(); onOpenAccept(group || primary); }}
-                  baseStyle={{ padding: '10px 14px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#059669', background: 'rgba(5,150,105,0.1)', border: '1px solid rgba(5,150,105,0.25)', display: 'flex', alignItems: 'center', gap: 5 }}
-                  hoverStyle={{ background: 'rgba(5,150,105,0.2)', borderColor: 'rgba(5,150,105,0.45)' }}
-                >
-                  <UserCheck size={14} /> Reassign
-                </HoverButton>
-              )}
-              {onOpenReschedule && (
-                <HoverButton
-                  onClick={() => { onClose(); onOpenReschedule(group || primary); }}
-                  baseStyle={{ padding: '10px 14px', borderRadius: 14, fontSize: 12, fontWeight: 900, color: '#2563eb', background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', gap: 5 }}
-                  hoverStyle={{ background: 'rgba(37,99,235,0.2)', borderColor: 'rgba(37,99,235,0.45)' }}
-                >
-                  <RotateCcw size={14} /> Reschedule
-                </HoverButton>
-              )}
-            </>
-          )}
+
 
           {view.status === 'Completed by Therapist' && onComplete && (
             <HoverButton
@@ -627,9 +630,9 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
             </div>
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {view.items.map((it) => (
-                <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12 }}>
-                  <span style={{ fontWeight: 800, color: C.textPrimary }}>• {it.service}</span>
-                  <span style={{ fontWeight: 700, color: C.textSecondary }}>{it.service_duration ? `${it.service_duration}m` : ''}{it.service_price ? ` · ₱${Number(it.service_price).toLocaleString()}` : ''}</span>
+                <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12, cursor: 'default' }}>
+                  <span style={{ fontWeight: 800, color: C.textPrimary, minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>• {it.service}</span>
+                  <span style={{ fontWeight: 700, color: C.textSecondary, flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{it.service_duration ? `${it.service_duration}m` : ''}{it.service_price ? ` · ₱${Number(it.service_price).toLocaleString()}` : ''}</span>
                 </div>
               ))}
               {(view.totalDuration > 0 || view.totalPrice > 0) && (
@@ -899,6 +902,7 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   const [reasonNote, setReasonNote] = useState('');
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [conflictPrompt, setConflictPrompt] = useState(null);
   useDialogBehavior(onClose);
 
   // Whole-visit duration drives the salon-hours fit check (all treatments move together).
@@ -949,13 +953,29 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, forced = false) => {
+    e?.preventDefault?.();
     if (!validate()) return;
     setSubmitting(true);
-    await onConfirmReschedule(rview.ids, `${newDate} ${newTime}:00`, reasonNote);
-    setSubmitting(false);
-    onClose();
+    setConflictPrompt(null);
+    try {
+      const res = await onConfirmReschedule(rview.ids, `${newDate} ${newTime}:00`, reasonNote, forced);
+      if (res?.conflict && res?.canForce) {
+        setConflictPrompt(res.message || 'Slot already has scheduled sessions.');
+        setSubmitting(false);
+        return;
+      }
+      onClose();
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.conflict && data?.can_force) {
+        setConflictPrompt(data.message || 'Slot is already full.');
+      } else {
+        setErrors(prev => ({ ...prev, general: data?.message || 'Failed to reschedule.' }));
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -1001,6 +1021,41 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
               <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{rview.client_name}</p>
               <p style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', margin: '2px 0 0' }}>{fmtDate(rview.datetime)} at {fmt12(rview.datetime)}</p>
             </div>
+
+            {conflictPrompt && (
+              <div style={{ padding: '12px 14px', borderRadius: 14, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <AlertCircle size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 900, color: '#d97706', margin: 0 }}>
+                      Schedule Conflict / Full Slot
+                    </p>
+                    <p style={{ fontSize: 11.5, fontWeight: 600, color: C.textSecondary, margin: '2px 0 0', lineHeight: 1.4 }}>
+                      {conflictPrompt} As administrator, you have authority to force-move this visit anyway.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 2 }}>
+                  <HoverButton
+                    type="button"
+                    onClick={() => setConflictPrompt(null)}
+                    baseStyle={{ padding: '7px 12px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 11, fontWeight: 700 }}
+                    hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}
+                  >
+                    Change Time
+                  </HoverButton>
+                  <HoverButton
+                    type="button"
+                    onClick={() => handleSubmit(null, true)}
+                    disabled={submitting}
+                    baseStyle={{ padding: '7px 14px', borderRadius: 10, border: 'none', background: '#2563eb', color: '#ffffff', fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 5, boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}
+                    hoverStyle={{ background: '#1d4ed8' }}
+                  >
+                    <Zap size={13} style={{ color: '#bfdbfe' }} /> Force-Reschedule
+                  </HoverButton>
+                </div>
+              </div>
+            )}
 
             <div className="cb-modal-grid-2col">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1055,7 +1110,8 @@ const HOUR_SLOTS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelectAppt }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const dateKey = selectedDate.toISOString().split('T')[0];
+  const toLocalKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const dateKey = toLocalKey(selectedDate);
   const [calPickerOpen, setCalPickerOpen] = useState(false);
   const pickerRef = useRef(null);
 
@@ -1084,7 +1140,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
     if (!a.datetime) return false;
     if (!['Pending', 'Confirmed', 'In Progress', 'Completed by Therapist'].includes(a.status)) return false;
     const d = new Date(a.datetime);
-    return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === dateKey;
+    return !isNaN(d.getTime()) && toLocalKey(d) === dateKey;
   });
   const dayGroups = useMemo(() => groupAppointments(dayRows), [dayRows]);
   const dayTreatmentCount = dayGroups.reduce((n, g) => n + g.items.length, 0);
@@ -1092,6 +1148,19 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
   const prevDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() - 1); onDateChange(d); };
   const nextDay = () => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); onDateChange(d); };
   const setToday = () => { onDateChange(new Date()); setCalPickerOpen(false); };
+
+  // ── Today button tracks the viewed date: highlighted when viewing today,
+  // dimmed/outlined when navigated away (click to jump back). ──
+  const nowRef = new Date();
+  const isViewingToday = selectedDate.getFullYear() === nowRef.getFullYear()
+    && selectedDate.getMonth() === nowRef.getMonth()
+    && selectedDate.getDate() === nowRef.getDate();
+  const todayBase = isViewingToday
+    ? { padding: '7px 16px', borderRadius: 10, fontWeight: 800, fontSize: 13, background: 'rgba(5,150,105,0.12)', color: '#059669', border: '1px solid rgba(5,150,105,0.25)' }
+    : { padding: '7px 16px', borderRadius: 10, fontWeight: 800, fontSize: 13, background: 'transparent', color: isDark ? '#34d399' : '#0a3d30', border: `1px solid ${isDark ? 'rgba(52,211,153,0.35)' : 'rgba(10,61,48,0.25)'}` };
+  const todayHover = isViewingToday
+    ? { background: 'rgba(5,150,105,0.22)', borderColor: 'rgba(5,150,105,0.45)', transform: 'translateY(-1px)' }
+    : { background: isDark ? 'rgba(52,211,153,0.12)' : 'rgba(10,61,48,0.07)', borderColor: isDark ? '#34d399' : '#0a3d30', transform: 'translateY(-1px)' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1101,8 +1170,8 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
             <HoverButton onClick={prevDay} baseStyle={{ padding: '7px 11px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, display: 'flex', alignItems: 'center' }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}>
               <ChevronLeft size={16} />
             </HoverButton>
-            <HoverButton onClick={setToday} baseStyle={{ padding: '7px 16px', borderRadius: 10, fontWeight: 800, fontSize: 13, background: 'rgba(5,150,105,0.12)', color: '#059669', border: '1px solid rgba(5,150,105,0.25)' }} hoverStyle={{ background: 'rgba(5,150,105,0.22)', borderColor: 'rgba(5,150,105,0.45)' }}>
-              Today
+            <HoverButton onClick={setToday} title={isViewingToday ? 'You are viewing today' : 'Jump back to today'} baseStyle={todayBase} hoverStyle={todayHover}>
+              {isViewingToday ? 'Today' : 'Go to Today'}
             </HoverButton>
             <HoverButton onClick={nextDay} baseStyle={{ padding: '7px 11px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, display: 'flex', alignItems: 'center' }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#f1f5f9', borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' }}>
               <ChevronRight size={16} />
@@ -1179,6 +1248,7 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
                           key={g.key}
                           type="button"
                           onClick={() => onSelectAppt(g)}
+                          className="cb-slot-btn"
                           style={{
                             flexShrink: 0, textAlign: 'left', padding: '10px 14px', borderRadius: 14, cursor: 'pointer', minWidth: 190, maxWidth: 300,
                             background: isInProgress ? 'linear-gradient(135deg,#0c4a6e,#075985)' : isConfirmed ? 'linear-gradient(135deg,#062c22,#0a3d30)' : C.cardBg,
@@ -1222,93 +1292,130 @@ const MasterCalendarView = ({ appointments, selectedDate, onDateChange, onSelect
 
 const PendingCardItem = ({ group, isDark, C, onOpenAccept, onOpenReject, onOpenDetail }) => {
   const g = group;
-  const contactLine = stripBillingBlock(g.notes);
+  // Same card language as Therapist Done / Active Treatment cards:
+  // accent bar + icon tile + visit title + status pill + labeled rows.
+  const visitTitle = g.items.length > 1 ? `${g.items.length} treatments · 1 visit` : (g.items[0]?.service || 'Visit');
+  const { phone, address, noteText } = parseContactParts(g.notes);
+  const hasContact = Boolean(phone || address || noteText);
   return (
     <motion.div
       key={g.key}
-      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
       style={{
+        position: 'relative',
         background: C.cardBg,
         border: `1px solid ${C.cardBorder}`,
-        borderRadius: 18, padding: '16px 18px',
-        display: 'flex', flexDirection: 'column', gap: 12,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        borderRadius: 18,
+        padding: '16px 18px 16px 22px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        overflow: 'hidden',
       }}
     >
-      {/* Row 1: client + schedule — shown once per visit */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'rgba(245,158,11,0.12)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Clock size={20} />
+      <div style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
+        background: 'linear-gradient(180deg,#d97706,#f59e0b)',
+      }} />
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+          background: 'rgba(245,158,11,0.12)', color: '#d97706',
+          border: '1px solid rgba(245,158,11,0.28)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Clock size={22} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{g.client_name}</p>
-            {g.items.length > 1 && (
-              <span style={{ fontSize: 11, fontWeight: 900, padding: '2px 10px', borderRadius: 999, background: '#062c22', color: '#e8cc8a' }}>
-                {g.items.length} services · 1 visit
-              </span>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{visitTitle}</p>
+            <span style={{
+              fontSize: 10, fontWeight: 800, padding: '2px 10px', borderRadius: 999,
+              background: 'rgba(245,158,11,0.14)', color: isDark ? '#fbbf24' : '#b45309',
+              border: '1px solid rgba(245,158,11,0.35)', letterSpacing: '0.05em',
+            }}>⏳ Pending Approval</span>
             <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>{groupRefLabel(g)}</span>
           </div>
-          {g.client_email && (
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0' }}>{g.client_email}</p>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, color: '#059669' }}>
-              <Calendar size={13} /> {fmtDate(g.datetime)} at {fmt12(g.datetime)}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 800, color: C.textSecondary, background: isDark ? '#1e293b' : '#f8fafc', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, padding: '2px 8px', borderRadius: 8 }}>
-              <Zap size={12} style={{ color: '#f59e0b' }} /> {g.totalDuration} min total
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 900, color: '#b45309', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', padding: '2px 8px', borderRadius: 8 }}>
-              ₱{g.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })} total
-            </span>
+
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
+            Client: <span style={{ fontWeight: 900, color: C.textPrimary }}>{g.client_name || '—'}</span>
+            {g.client_email ? <span style={{ fontWeight: 600, color: C.textMuted }}> · {g.client_email}</span> : null}
+          </p>
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '3px 0 0' }}>
+            Schedule: <span style={{ fontWeight: 900, color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(g.datetime)} at {fmt12(g.datetime)}</span>
+            <span style={{ fontWeight: 700, color: C.textMuted }}> · {g.totalDuration} min</span>
+          </p>
+
+          <div style={{ marginTop: 8, borderRadius: 12, border: `1px solid ${C.cardBorder}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', overflow: 'hidden' }}>
+            {g.items.map((it, idx) => (
+              <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 12px', borderTop: idx === 0 ? 'none' : `1px solid ${C.cardBorder}`, fontSize: 12, cursor: 'default' }}>
+                <span style={{ fontWeight: 800, color: C.textPrimary, minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{idx + 1}. {it.service}</span>
+                <span style={{ fontWeight: 700, color: C.textSecondary, flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                  {it.service_duration ? `${it.service_duration} min` : ''}{it.service_price ? ` · ₱${Number(it.service_price).toLocaleString()}` : ''}
+                </span>
+              </div>
+            ))}
           </div>
+          {g.totalPrice > 0 && (
+            <p style={{ fontSize: 13, fontWeight: 900, color: isDark ? '#fbbf24' : '#b45309', margin: '8px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+              Visit total: ₱{g.totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+            </p>
+          )}
+
+          {hasContact && (
+            <div style={{ marginTop: 8, borderRadius: 12, border: `1px solid ${C.noteBorder}`, background: C.noteBg, overflow: 'hidden' }}>
+              {phone && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 12px', fontSize: 12, cursor: 'default' }}>
+                  <span style={{ fontWeight: 800, color: C.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>Phone</span>
+                  <span style={{ fontWeight: 800, color: C.textPrimary, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{phone}</span>
+                </div>
+              )}
+              {address && (
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, padding: '7px 12px', fontSize: 12, cursor: 'default', borderTop: phone ? `1px solid ${C.noteBorder}` : 'none' }}>
+                  <span style={{ fontWeight: 800, color: C.textMuted, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0, paddingTop: 1 }}>Address</span>
+                  <span style={{ fontWeight: 700, color: C.textSecondary, textAlign: 'right', lineHeight: 1.5, overflowWrap: 'anywhere' }}>{address}</span>
+                </div>
+              )}
+              {noteText && (
+                <div style={{ padding: '7px 12px', fontSize: 11, fontStyle: 'italic', color: C.textSecondary, lineHeight: 1.6, borderTop: (phone || address) ? `1px solid ${C.noteBorder}` : 'none', overflowWrap: 'anywhere' }}>
+                  “{noteText.length > 200 ? `${noteText.slice(0, 200)}…` : noteText}”
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Row 2: treatments in this visit */}
-      <div style={{ borderRadius: 12, border: `1px solid ${C.cardBorder}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', overflow: 'hidden' }}>
-        {g.items.map((it, idx) => (
-          <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 12px', borderTop: idx === 0 ? 'none' : `1px solid ${C.cardBorder}` }}>
-            <span style={{ fontSize: 12, fontWeight: 800, color: C.textPrimary }}>{idx + 1}. {it.service}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, flexShrink: 0 }}>
-              {it.service_duration ? `${it.service_duration} min` : ''}{it.service_price ? ` · ₱${Number(it.service_price).toLocaleString()}` : ''}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {contactLine && (
-        <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: 0, padding: '8px 12px', borderRadius: 10, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
-          {contactLine.length > 160 ? `${contactLine.slice(0, 160)}…` : contactLine}
-        </p>
-      )}
-
-      {/* Row 3: exactly 3 clear actions — Details (view), Decline (secondary), Accept & Assign (primary) */}
-      <div className="booking-card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div
+        className="booking-card-actions"
+        style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+      >
         <HoverButton
           onClick={() => onOpenDetail && onOpenDetail(g)}
-          baseStyle={{ display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 14px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: C.textSecondary, background: 'transparent', border: `1px solid ${C.cardBorder}` }}
-          hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}
+          baseStyle={{ display: 'inline-flex', alignItems: 'center', height: 40, padding: '0 16px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: C.textSecondary, background: 'transparent', border: `1px solid ${C.cardBorder}`, whiteSpace: 'nowrap' }}
+          hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.07)' : '#f1f5f9' }}
         >
           View details
         </HoverButton>
+        {/* spacer pushes Decline + Accept to the right */}
+        <div style={{ flex: 1 }} />
         <HoverButton
           id={`reject-btn-${g.ids[0]}`}
           onClick={() => onOpenReject(g)}
-          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 14px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', whiteSpace: 'nowrap' }}
           hoverStyle={{ background: 'rgba(239,68,68,0.16)' }}
         >
-          <X size={15} /> Decline{ g.ids.length > 1 ? ` all (${g.ids.length})` : '' }
+          <X size={14} /> Decline{g.ids.length > 1 ? ` all (${g.ids.length})` : ''}
         </HoverButton>
         <HoverButton
           id={`accept-btn-${g.ids[0]}`}
           onClick={() => onOpenAccept(g)}
-          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 18px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#fff', background: '#059669', border: 'none' }}
-          hoverStyle={{ background: '#047857' }}
+          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '10px 18px', borderRadius: 12, fontSize: 12, fontWeight: 900, color: '#fff', background: 'linear-gradient(135deg,#059669,#047857)', border: 'none', boxShadow: '0 3px 12px rgba(5,150,105,0.3)', whiteSpace: 'nowrap' }}
+          hoverStyle={{ boxShadow: '0 5px 18px rgba(5,150,105,0.45)', background: 'linear-gradient(135deg,#047857,#065f46)' }}
         >
-          <Check size={15} /> Accept & Assign{ g.ids.length > 1 ? ` · ${g.ids.length} in 1 go` : '' }
+          <Check size={14} /> Accept & Assign{g.ids.length > 1 ? ` · ${g.ids.length} in 1 go` : ''}
         </HoverButton>
       </div>
     </motion.div>
@@ -1439,9 +1546,9 @@ const TherapistDoneCard = ({ group, isDark, C, onSettle, onDetail }) => {
           </p>
           <div style={{ marginTop: 8, borderRadius: 12, border: `1px solid ${C.cardBorder}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc', overflow: 'hidden' }}>
             {g.items.map((it, idx) => (
-              <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 12px', borderTop: idx === 0 ? 'none' : `1px solid ${C.cardBorder}`, fontSize: 12 }}>
-                <span style={{ fontWeight: 800, color: C.textPrimary }}>{it.service}</span>
-                <span style={{ fontWeight: 700, color: C.textSecondary }}>₱{Number(it.service_price || 0).toLocaleString()}</span>
+              <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 12px', borderTop: idx === 0 ? 'none' : `1px solid ${C.cardBorder}`, fontSize: 12, cursor: 'default' }}>
+                <span style={{ fontWeight: 800, color: C.textPrimary, minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.service}</span>
+                <span style={{ fontWeight: 700, color: C.textSecondary, flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>₱{Number(it.service_price || 0).toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -1603,16 +1710,16 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
   }, [appointments, search]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, width: '100%', maxWidth: '100%' }}>
 
       {/* Search bar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ flex: '1 1 240px', maxWidth: 440, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 16, background: C.inputBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between', minWidth: 0, width: '100%', maxWidth: '100%' }}>
+        <div style={{ flex: '1 1 240px', minWidth: 0, maxWidth: 440, display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 16, background: C.inputBg, border: `1px solid ${C.cardBorder}`, boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
           <Search size={15} style={{ color: C.textMuted, flexShrink: 0 }} />
           <input
             type="text" placeholder="Search active sessions..." value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: C.textPrimary }}
+            style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', fontSize: 12, fontWeight: 600, color: C.textPrimary }}
           />
           {search && (
             <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, display: 'flex' }}>
@@ -1632,7 +1739,7 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
           <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '8px 0 0' }}>Accept a pending booking and assign a therapist — it will appear here.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'grid', gap: 12, minWidth: 0, width: '100%', maxWidth: '100%' }}>
           {confirmed.map(g => {
             const isInProgress = g.status === 'In Progress';
             const isConfirmed = g.status === 'Confirmed';
@@ -1648,9 +1755,11 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                   borderRadius: 18, padding: '16px 18px',
                   display: 'flex', flexDirection: 'column', gap: 12,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                  minWidth: 0, width: '100%', maxWidth: '100%',
+                  boxSizing: 'border-box', overflow: 'hidden',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, minWidth: 0, width: '100%', maxWidth: '100%' }}>
                   <div style={{
                     width: 44, height: 44, borderRadius: 14, flexShrink: 0,
                     background: isInProgress ? 'rgba(14,165,233,0.12)' : 'rgba(5,150,105,0.10)',
@@ -1714,16 +1823,6 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                           <UserCheck size={13} style={{ color: '#059669' }} /> Reassign
                         </HoverButton>
                       )}
-                      {onOpenReschedule && (
-                        <HoverButton
-                          onClick={() => onOpenReschedule(g)}
-                          title="Reschedule the whole visit"
-                          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, color: C.textPrimary, background: C.pillBg, border: `1px solid ${C.cardBorder}` }}
-                          hoverStyle={{ background: isDark ? '#2a3a4a' : '#e2e8f0' }}
-                        >
-                          <RotateCcw size={13} style={{ color: '#2563eb' }} /> Reschedule
-                        </HoverButton>
-                      )}
                       <HoverButton
                         onClick={() => onSelectAppt && onSelectAppt(g)}
                         title="View details"
@@ -1732,20 +1831,22 @@ const ConfirmedSessionsTab = ({ appointments, onOpenReassign, onOpenReschedule, 
                       >
                         View details
                       </HoverButton>
-                      <HoverButton
-                        onClick={() => onOpenCancel(g)}
-                        title="Cancel whole visit"
-                        baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
-                        hoverStyle={{ background: 'rgba(239,68,68,0.16)' }}
-                      >
-                        <X size={14} /> Cancel visit
-                      </HoverButton>
+                      {onOpenCancel && (
+                        <HoverButton
+                          onClick={() => onOpenCancel(g)}
+                          title="Cancel whole visit"
+                          baseStyle={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
+                          hoverStyle={{ background: 'rgba(239,68,68,0.16)' }}
+                        >
+                          <X size={14} /> Cancel visit
+                        </HoverButton>
+                      )}
                     </>
                   )}
 
                   {isInProgress && (
                     <>
-                      <span className="booking-card-notice" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '0 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#0284c7', background: isDark ? 'rgba(14,165,233,0.14)' : 'rgba(14,165,233,0.09)', border: '1px solid rgba(14,165,233,0.28)' }}>
+                      <span className="booking-card-notice" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '8px 12px', borderRadius: 12, fontSize: 12, fontWeight: 800, color: '#0284c7', background: isDark ? 'rgba(14,165,233,0.14)' : 'rgba(14,165,233,0.09)', border: '1px solid rgba(14,165,233,0.28)', minWidth: 0, maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.4 }}>
                         <Zap size={13} style={{ flexShrink: 0 }} /> Ongoing visit — therapist completes it
                       </span>
                       <HoverButton
@@ -1777,71 +1878,78 @@ const StatCardItem = ({ label, value, color, accent, Icon, pulse, isWide, isDark
     <div
       id={`stat-card-${label.replace(/\s+/g, '-').toLowerCase()}`}
       style={{
-        /* All stat cards share the same neutral non-interactive look regardless of pulse */
-        background: isDark ? 'linear-gradient(145deg, #141927 0%, #0f1420 100%)' : '#ffffff',
+        background: isDark
+          ? `linear-gradient(145deg, #141927 0%, #0f1420 100%)`
+          : `linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)`,
         border: `1px solid ${C.cardBorder}`,
-        borderRadius: 16,
-        padding: isWide ? '14px 14px' : '10px 10px',
-        minHeight: isWide ? 80 : 70,
+        borderRadius: 18,
+        padding: isWide ? '16px 16px' : '12px 14px',
+        minHeight: isWide ? 84 : 76,
         display: 'flex',
         alignItems: 'center',
-        gap: isWide ? 10 : 8,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+        gap: isWide ? 14 : 10,
+        boxShadow: (isDark ? '0 2px 10px rgba(0,0,0,0.18)' : '0 2px 8px rgba(0,0,0,0.05)'),
         cursor: 'default',
         userSelect: 'none',
         pointerEvents: 'none',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div
-        style={{
-          width: isWide ? 40 : 34,
-          height: isWide ? 40 : 34,
-          borderRadius: 12,
-          flexShrink: 0,
-          background: pulse ? (isDark ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.15)') : accent,
-          color: pulse ? '#f59e0b' : color,
-          border: `1px solid ${pulse ? 'rgba(245,158,11,0.3)' : `${color}25`}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
-        }}
-      >
-        <Icon size={isWide ? 19 : 16} />
+      {/* icon container */}
+      <div style={{
+        width: isWide ? 44 : 38,
+        height: isWide ? 44 : 38,
+        borderRadius: 14,
+        flexShrink: 0,
+        background: accent,
+        color: color,
+        border: `1.5px solid ${color}30`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxShadow: `0 4px 14px ${color}20`,
+        position: 'relative',
+        zIndex: 1,
+      }}>
+        <Icon size={isWide ? 20 : 17} />
       </div>
-      <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <p
-          style={{
-            fontSize: isWide ? 10 : 9,
-            fontWeight: 800,
-            letterSpacing: '0.03em',
-            textTransform: 'uppercase',
-            color: C.textMuted,
-            margin: 0,
-            lineHeight: 1.25,
-            wordBreak: 'break-word',
-          }}
-        >
+      {/* text */}
+      <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+        <p style={{
+          fontSize: isWide ? 10.5 : 9.5,
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: C.textMuted,
+          margin: 0,
+          lineHeight: 1.2,
+          wordBreak: 'break-word',
+        }}>
           {label}
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-          <p style={{ fontSize: isWide ? 22 : 18, fontWeight: 900, color: pulse ? '#f59e0b' : color, margin: 0, lineHeight: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
+          <p style={{
+            fontSize: isWide ? 26 : 22,
+            fontWeight: 900,
+            color: color,
+            margin: 0, lineHeight: 1,
+            letterSpacing: '-0.02em',
+          }}>
             {value}
           </p>
           {pulse && (
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 800,
-                color: isDark ? '#fbbf24' : '#92400e',
-                background: isDark ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.15)',
-                border: isDark ? '1px solid rgba(245,158,11,0.35)' : '1px solid rgba(217,119,6,0.3)',
-                padding: '1px 5px',
-                borderRadius: 5,
-                letterSpacing: '0.02em',
-                lineHeight: 1.3,
-              }}
-            >
+            <span style={{
+              fontSize: 9,
+              fontWeight: 900,
+              color: isDark ? '#fbbf24' : '#92400e',
+              background: isDark ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.12)',
+              border: `1px solid ${isDark ? 'rgba(245,158,11,0.4)' : 'rgba(217,119,6,0.3)'}`,
+              padding: '2px 6px',
+              borderRadius: 6,
+              letterSpacing: '0.05em',
+              animation: 'pulse-badge 1.6s cubic-bezier(0.4,0,0.6,1) infinite',
+            }}>
               Action
             </span>
           )}
@@ -1872,25 +1980,27 @@ const TabButtonItem = ({ tab, active, isDark, onClick }) => {
       onMouseUp={() => setTabPressed(false)}
       style={{
         width: '100%',
-        minHeight: 42,
+        minHeight: 44,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        borderRadius: 12,
-        padding: '9px 10px',
+        gap: 7,
+        borderRadius: 14,
+        padding: '10px 12px',
         fontSize: 12.5,
         fontWeight: 800,
         cursor: 'pointer',
-        transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: tabPressed ? 'scale(0.97)' : 'none',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: tabPressed ? 'scale(0.96)' : tabHov && !active ? 'scale(1.01)' : 'none',
         border: active
-          ? (isDark ? '1px solid rgba(52,211,153,0.5)' : '1px solid #047857')
+          ? (isDark ? '1px solid rgba(52,211,153,0.45)' : '1px solid rgba(5,150,105,0.4)')
           : '1px solid transparent',
         background: active
-          ? (isDark ? 'linear-gradient(135deg, rgba(16,185,129,0.22) 0%, rgba(5,150,105,0.16) 100%)' : '#059669')
+          ? (isDark
+              ? 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(5,150,105,0.18) 100%)'
+              : 'linear-gradient(135deg, #059669 0%, #047857 100%)')
           : tabHov
-            ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+            ? (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)')
             : 'transparent',
         color: active
           ? (isDark ? '#34d399' : '#ffffff')
@@ -1898,7 +2008,7 @@ const TabButtonItem = ({ tab, active, isDark, onClick }) => {
             ? (isDark ? '#f1f5f9' : '#0f172a')
             : (isDark ? '#94a3b8' : '#64748b'),
         boxShadow: active
-          ? (isDark ? '0 2px 12px rgba(16,185,129,0.25)' : '0 2px 10px rgba(5,150,105,0.25)')
+          ? (isDark ? '0 4px 16px rgba(16,185,129,0.22), inset 0 1px 0 rgba(255,255,255,0.08)' : '0 4px 14px rgba(5,150,105,0.28)')
           : 'none',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
@@ -1909,33 +2019,32 @@ const TabButtonItem = ({ tab, active, isDark, onClick }) => {
       <Icon size={15} style={{ flexShrink: 0 }} />
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tab.label}</span>
       {tab.badge !== undefined && tab.badge > 0 && (
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 900,
-            padding: '1px 7px',
-            borderRadius: 999,
-            flexShrink: 0,
-            background: active
-              ? (isDark ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.25)')
-              : tab.pulse
-                ? 'rgba(245,158,11,0.25)'
-                : (tab.id === 'pending' ? 'rgba(217,119,6,0.22)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
-            color: active
-              ? (isDark ? '#a7f3d0' : '#ffffff')
-              : tab.pulse
-                ? '#b45309'
-                : (tab.id === 'pending' ? '#fbbf24' : isDark ? '#94a3b8' : '#64748b'),
-            border: active
-              ? (isDark ? '1px solid rgba(52,211,153,0.45)' : '1px solid rgba(255,255,255,0.3)')
-              : tab.pulse
-                ? '1px solid rgba(245,158,11,0.5)'
-                : (tab.id === 'pending' ? '1px solid rgba(217,119,6,0.4)' : '1px solid transparent'),
-            minWidth: 18,
-            textAlign: 'center',
-            animation: tab.pulse && !active ? 'pulse-badge 1.6s cubic-bezier(0.4,0,0.6,1) infinite' : 'none',
-          }}
-        >
+        <span style={{
+          fontSize: 10,
+          fontWeight: 900,
+          padding: '2px 7px',
+          borderRadius: 999,
+          flexShrink: 0,
+          background: active
+            ? (isDark ? 'rgba(52,211,153,0.28)' : 'rgba(255,255,255,0.22)')
+            : tab.pulse
+              ? 'rgba(245,158,11,0.22)'
+              : (tab.id === 'pending' ? 'rgba(217,119,6,0.18)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'),
+          color: active
+            ? (isDark ? '#a7f3d0' : '#ffffff')
+            : tab.pulse
+              ? '#b45309'
+              : (tab.id === 'pending' ? '#fbbf24' : isDark ? '#94a3b8' : '#64748b'),
+          border: active
+            ? (isDark ? '1px solid rgba(52,211,153,0.4)' : '1px solid rgba(255,255,255,0.28)')
+            : tab.pulse
+              ? '1px solid rgba(245,158,11,0.45)'
+              : (tab.id === 'pending' ? '1px solid rgba(217,119,6,0.35)' : '1px solid transparent'),
+          minWidth: 20,
+          textAlign: 'center',
+          lineHeight: 1.3,
+          animation: tab.pulse && !active ? 'pulse-badge 1.6s cubic-bezier(0.4,0,0.6,1) infinite' : 'none',
+        }}>
           {tab.badge}
         </span>
       )}
@@ -1952,12 +2061,15 @@ const AdminAppointments = () => {
   const isDark = theme === 'dark';
 
   const C = {
-    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
-    textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted: isDark ? '#94a3b8' : '#334155',
-    cardBg: isDark ? '#141927' : '#ffffff',
-    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
-    pillBg: isDark ? '#1e2a3a' : '#f1f5f9',
+    textPrimary:    isDark ? '#e8ecf3'                  : '#0f172a',
+    textSecondary:  isDark ? '#c9d1e0'                  : '#1e293b',
+    textMuted:      isDark ? '#94a3b8'                  : '#475569',
+    cardBg:         isDark ? '#141927'                  : '#ffffff',
+    cardBorder:     isDark ? 'rgba(255,255,255,0.09)'   : 'rgba(0,0,0,0.09)',
+    pillBg:         isDark ? '#1a2335'                  : '#f1f5f9',
+    noteBg:         isDark ? 'rgba(255,255,255,0.04)'   : '#f8fafc',
+    noteBorder:     isDark ? 'rgba(255,255,255,0.07)'   : 'rgba(0,0,0,0.07)',
+    surfaceBg:      isDark ? '#0f1520'                  : '#f8fafc',
   };
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -2045,19 +2157,23 @@ const AdminAppointments = () => {
         lastStatus = last.data?.appointment?.status || lastStatus;
         wasForced = last.data?.forced_override || wasForced;
       }
-      showToast(wasForced ? `Admin override — ${lastName} force-assigned even though busy/off-schedule!` : (ids.length > 1 ? `Visit confirmed — ${ids.length} treatments assigned in 1 go!` : (lastStatus ? 'Therapist assigned — booking confirmed!' : 'Therapist assigned!')));
+      showToast(wasForced ? `Admin override — ${lastName} assigned to make service happen!` : (ids.length > 1 ? `Visit confirmed — ${ids.length} treatments assigned in 1 go!` : (lastStatus ? 'Therapist assigned — booking confirmed!' : 'Therapist assigned!')));
       setAppointments(prev => prev.map(a => ids.includes(a.id)
         ? { ...a, therapist_id: therapistId, therapist_name: lastName, status: lastStatus }
         : a));
+      return { success: true };
     } catch (err) {
       const data = err?.response?.data;
-      // Admin authority: offer mandatory force-assign even if busy / off-schedule.
       if (data?.conflict && data?.can_force && !forceAssign) {
-        const ok = window.confirm(`${data?.message || 'This specialist is already booked in that window.'}\n\nAs admin, do you want to FORCE-ASSIGN this therapist anyway (mandatory override, logged in audit trail)?`);
-        if (ok) return handleAssignTherapist(idOrIds, therapistId, true);
+        return {
+          conflict: true,
+          canForce: true,
+          message: data?.message || 'This specialist has another booking or is off-schedule in this window.',
+        };
       }
       const msg = data?.message || 'Failed to assign therapist';
       showToast(msg, 'error');
+      throw err;
     }
   };
 
@@ -2084,13 +2200,18 @@ const AdminAppointments = () => {
       const wasForced = results.some(r => r.data?.forced_override) || forceAssign;
       showToast(wasForced ? `Admin override — visit force-moved to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}!` : (ids.length > 1 ? `Visit rescheduled — ${ids.length} treatments moved to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}` : `Rescheduled to ${fmtDate(newDateTime)} at ${fmt12(newDateTime)}`));
       setAppointments(prev => prev.map(a => ids.includes(a.id) ? { ...a, datetime: newDateTime, notes: note ? `${a.notes || ''} | Rescheduled: ${note}` : a.notes, status: 'Confirmed' } : a));
+      return { success: true };
     } catch (err) {
       const data = err?.response?.data;
       if (data?.conflict && data?.can_force && !forceAssign) {
-        const ok = window.confirm(`${data?.message || 'Slot is already full.'}\n\nAs admin, do you want to FORCE-MOVE anyway (mandatory override, logged)?`);
-        if (ok) return handleReschedule(idOrIds, newDateTime, note, true);
+        return {
+          conflict: true,
+          canForce: true,
+          message: data?.message || 'Slot is already full.',
+        };
       }
       showToast(data?.message || 'Failed to reschedule', 'error');
+      throw err;
     }
   };
 
@@ -2169,7 +2290,7 @@ const AdminAppointments = () => {
     { label: 'Upcoming Scheduled', value: confirmedOnlyCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CalendarCheck, tab: 'confirmed' },
     { label: 'Pending Queue', value: pendingCount, color: '#d97706', accent: 'rgba(217,119,6,0.12)', Icon: Clock, tab: 'pending' },
     { label: 'In Treatment Now', value: inProgressCount, color: '#0284c7', accent: 'rgba(14,165,233,0.12)', Icon: Zap, tab: 'confirmed' },
-    { label: 'Awaiting Sign-off', value: awaitingSignoffCount, color: '#b45309', accent: awaitingSignoffCount > 0 ? 'rgba(245,158,11,0.22)' : 'rgba(245,158,11,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, tab: 'requests' },
+    { label: 'Awaiting Sign-off', value: awaitingSignoffCount, color: '#b45309', accent: 'rgba(180,83,9,0.12)', Icon: AlertCircle, pulse: awaitingSignoffCount > 0, tab: 'requests' },
   ];
 
   const TABS = [
@@ -2188,6 +2309,13 @@ const AdminAppointments = () => {
       onSearchSelect={item => item.onSelect && item.onSelect()}
     >
       <style>{`
+        /* ── Bookings page root never pushes the sidebar ── */
+        .cb-booking-stat-grid,
+        .cb-tab-scroll-container {
+          min-width: 0;
+          width: 100%;
+          max-width: 100%;
+        }
         /* ── Stat Cards Grid ── */
         .cb-booking-stat-grid {
           display: grid;
@@ -2408,7 +2536,7 @@ const AdminAppointments = () => {
         }
       `}</style>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, width: '100%', maxWidth: '100%' }}>
 
         {/* Stat Cards — display only, non-interactive */}
         <div className="cb-booking-stat-grid">
@@ -2488,7 +2616,11 @@ const AdminAppointments = () => {
             <AcceptAssignModal
               appt={acceptTarget} therapists={therapists}
               onClose={() => setAcceptTarget(null)}
-              onConfirmAssign={async (id, tid) => { await handleAssignTherapist(id, tid); setAcceptTarget(null); }}
+              onConfirmAssign={async (id, tid, force) => {
+                const res = await handleAssignTherapist(id, tid, force);
+                if (res?.success) setAcceptTarget(null);
+                return res;
+              }}
             />
           )}
         </AnimatePresence>
@@ -2508,7 +2640,11 @@ const AdminAppointments = () => {
             <RescheduleModal
               request={rescheduleTarget}
               onClose={() => setRescheduleTarget(null)}
-              onConfirmReschedule={async (id, dt, note) => { await handleReschedule(id, dt, note); setRescheduleTarget(null); }}
+              onConfirmReschedule={async (id, dt, note, force) => {
+                const res = await handleReschedule(id, dt, note, force);
+                if (res?.success) setRescheduleTarget(null);
+                return res;
+              }}
             />
           )}
         </AnimatePresence>

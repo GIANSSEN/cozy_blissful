@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use App\Mail\BookingApprovedMail;
+use App\Support\BookingGroup;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -644,13 +645,19 @@ class AdminController extends Controller
 
         $appt->save();
 
+        // Confirm sibling rows from the same multi-service checkout together.
+        if ($appt->status === 'Confirmed') {
+            BookingGroup::confirmGroup($appt, $appt->therapist_id ? (int) $appt->therapist_id : null);
+        }
+
         $appt->load(['client', 'therapist', 'service']);
 
         if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed') {
-            // Send email
-            if ($appt->client && $appt->client->email) {
+            // ONE consolidated email per booking group — never per service.
+            if ($appt->client && $appt->client->email && ! BookingGroup::alreadyMailed($appt)) {
                 try {
-                    Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
+                    Mail::to($appt->client->email)->send(new BookingApprovedMail(BookingGroup::for($appt)));
+                    BookingGroup::markMailed($appt);
                 } catch (\Exception $e) {
                     Log::error('Failed to send booking approved email: ' . $e->getMessage());
                 }
@@ -747,9 +754,11 @@ class AdminController extends Controller
         $appt->load(['client', 'therapist', 'service']);
 
         if ($oldStatus !== 'Confirmed' && $appt->status === 'Confirmed') {
-            if ($appt->client && $appt->client->email) {
+            // ONE consolidated email per booking group — never per service.
+            if ($appt->client && $appt->client->email && ! BookingGroup::alreadyMailed($appt)) {
                 try {
-                    Mail::to($appt->client->email)->send(new BookingApprovedMail($appt));
+                    Mail::to($appt->client->email)->send(new BookingApprovedMail(BookingGroup::for($appt)));
+                    BookingGroup::markMailed($appt);
                 } catch (\Exception $e) {
                     Log::error('Failed to send booking approved email in updateStatus: ' . $e->getMessage());
                 }

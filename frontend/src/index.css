@@ -669,3 +669,57 @@ input:autofill {
     max-height: calc(100dvh - 16px) !important;
   }
 }
+
+/* ── Booking modal data alignment (Admin/Staff/Therapist/Client) ──────
+   Footer action bar: single-row flex on desktop, stacked on small phones.
+   2-col grid: New Date | New Time side-by-side, stacked on mobile.
+   Static detail rows inside modals are intentionally NON-hoverable —
+   hover affordance lives ONLY on grid/card controls BEFORE a modal opens. */
+.cb-modal-footer-actions {
+  display: flex !important;
+  gap: 10px !important;
+  align-items: stretch !important;
+  justify-content: flex-end !important;
+}
+.cb-modal-footer-actions > * {
+  min-height: 44px !important;
+}
+@media (max-width: 480px) {
+  .cb-modal-footer-actions {
+    flex-direction: column !important;
+  }
+  .cb-modal-footer-actions > * {
+    width: 100% !important;
+    flex: unset !important;
+  }
+}
+
+.cb-modal-grid-2col {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 12px !important;
+  align-items: start !important;
+}
+@media (max-width: 480px) {
+  .cb-modal-grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Data-grid slot buttons (calendar BEFORE modal): hover lift is wanted here */
+.cb-slot-btn {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease !important;
+}
+.cb-slot-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 18px rgba(6, 44, 34, 0.16) !important;
+}
+/* Static rows inside an open modal: never hoverable, values right-aligned */
+.cb-modal-sheet [data-static-row] {
+  cursor: default !important;
+}
+.cb-modal-sheet [data-static-row]:hover {
+  background: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+}

@@ -399,9 +399,11 @@ class ClientController extends Controller
             return $created;
         });
 
-        // Load relationships for response and email
+        // Load relationships for response and email (ONE email for the whole group)
+        foreach ($appointments as $appt) {
+            $appt->load(['client', 'therapist', 'service']);
+        }
         $firstAppt = $appointments[0];
-        $firstAppt->load(['client', 'therapist', 'service']);
 
         // Prepare multi-service response
         $serviceData = $services->map(function ($svc) {
@@ -415,9 +417,10 @@ class ClientController extends Controller
 
         $totalPrice = $services->sum('price');
 
+        // ── Single consolidated Gmail per checkout (multi-service included) ──
         if ($user->email) {
             try {
-                Mail::to($user->email)->send(new BookingConfirmationMail($firstAppt));
+                Mail::to($user->email)->send(new BookingConfirmationMail(collect($appointments)));
             } catch (\Exception $e) {
                 Log::error('Failed to send booking confirmation email: ' . $e->getMessage());
             }

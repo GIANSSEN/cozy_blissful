@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\AppointmentReminderMail;
 use App\Models\Appointment;
+use App\Support\BookingGroup;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -19,82 +20,59 @@ class SendAppointmentReminders extends Command
     /**
      * The console command description.
      */
-    protected $description = 'Send appointment reminder emails to clients with upcoming sessions (24hr and 2hr windows).';
+    protected $description = 'Send appointment reminder emails to clients with upcoming sessions (24hr and 2hr windows). One email per booking group.';
 
     public function handle(): void
     {
         $now = Carbon::now();
 
-        // ─── 24-HOUR REMINDER WINDOW ─────────────────────────────────────────
-        $window24Start = $now->copy()->addHours(23)->addMinutes(30);
-        $window24End   = $now->copy()->addHours(24)->addMinutes(30);
+        $this->sendWindowReminders($now->copy()->addHours(23)->addMinutes(30), $now->copy()->addHours(24)->addMinutes(30), '24', 'reminder_24h_sent_at');
+        $this->sendWindowReminders($now->copy()->addHours(1)->addMinutes(30), $now->copy()->addHours(2)->addMinutes(30), '2', 'reminder_2h_sent_at');
 
-        $appointments24h = Appointment::with(['client', 'therapist', 'service'])
+        $this->info('✅ Done. Reminders processed (one email per booking group).');
+    }
+
+    private function sendWindowReminders(Carbon $start, Carbon $end, string $hoursUntil, string $flagColumn): void
+    {
+        $appointments = Appointment::with(['client', 'therapist', 'service'])
             ->whereIn('status', ['Confirmed', 'Pending'])
-            ->whereBetween('datetime', [$window24Start, $window24End])
-            ->whereNull('reminder_24h_sent_at') // Prevent duplicate sends
+            ->whereBetween('datetime', [$start, $end])
+            ->whereNull($flagColumn) // Prevent duplicate sends
+            ->orderBy('datetime')
             ->get();
 
-        foreach ($appointments24h as $appointment) {
-            /** @var Appointment $appointment */
-            if ($appointment->client && $appointment->client->email) {
-                try {
-                    Mail::to($appointment->client->email)
-                        ->send(new AppointmentReminderMail($appointment, '24'));
+        // Group by client+datetime: one Gmail per multi-service checkout.
+        $groups = BookingGroup::groupMany($appointments);
+        $sent = 0;
 
-                    // Mark as sent so we don't send again
-                    $appointment->update(['reminder_24h_sent_at' => now()]);
+        foreach ($groups as $group) {
+            /** @var Appointment $first */
+            $first = $group->first();
+            if (! $first->client || ! $first->client->email) {
+                continue;
+            }
 
-                    $this->info("24h reminder sent to: {$appointment->client->email} (Booking #{$appointment->id})");
-                    Log::info('24h reminder sent', [
-                        'appointment_id' => $appointment->id,
-                        'client_email'   => $appointment->client->email,
-                    ]);
-                } catch (\Exception $e) {
-                    $this->error("Failed to queue 24h reminder for booking #{$appointment->id}: {$e->getMessage()}");
-                    Log::error('24h reminder failed', [
-                        'appointment_id' => $appointment->id,
-                        'error'          => $e->getMessage(),
-                    ]);
-                }
+            try {
+                Mail::to($first->client->email)->send(new AppointmentReminderMail($group, $hoursUntil));
+
+                // Mark every sibling so the group never re-sends.
+                Appointment::whereIn('id', $group->pluck('id'))->update([$flagColumn => now()]);
+
+                $sent++;
+                $this->info("{$hoursUntil}h reminder sent to: {$first->client->email} ({$group->count()} service(s): {$group->pluck('id')->implode(', ')})");
+                Log::info("{$hoursUntil}h group reminder sent", [
+                    'appointment_ids' => $group->pluck('id')->all(),
+                    'client_email' => $first->client->email,
+                ]);
+            } catch (\Exception $e) {
+                $this->error("Failed to send {$hoursUntil}h reminder for bookings {$group->pluck('id')->implode(', ')}: {$e->getMessage()}");
+                Log::error("{$hoursUntil}h group reminder failed", [
+                    'appointment_ids' => $group->pluck('id')->all(),
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
-        // ─── 2-HOUR REMINDER WINDOW ──────────────────────────────────────────
-        $window2Start = $now->copy()->addHours(1)->addMinutes(30);
-        $window2End   = $now->copy()->addHours(2)->addMinutes(30);
-
-        $appointments2h = Appointment::with(['client', 'therapist', 'service'])
-            ->whereIn('status', ['Confirmed', 'Pending'])
-            ->whereBetween('datetime', [$window2Start, $window2End])
-            ->whereNull('reminder_2h_sent_at')
-            ->get();
-
-        foreach ($appointments2h as $appointment) {
-            /** @var Appointment $appointment */
-            if ($appointment->client && $appointment->client->email) {
-                try {
-                    Mail::to($appointment->client->email)
-                        ->send(new AppointmentReminderMail($appointment, '2'));
-
-                    $appointment->update(['reminder_2h_sent_at' => now()]);
-
-                    $this->info("2h reminder sent to: {$appointment->client->email} (Booking #{$appointment->id})");
-                    Log::info('2h reminder sent', [
-                        'appointment_id' => $appointment->id,
-                        'client_email'   => $appointment->client->email,
-                    ]);
-                } catch (\Exception $e) {
-                    $this->error("Failed to queue 2h reminder for booking #{$appointment->id}: {$e->getMessage()}");
-                    Log::error('2h reminder failed', [
-                        'appointment_id' => $appointment->id,
-                        'error'          => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
-
-        $total = $appointments24h->count() + $appointments2h->count();
-        $this->info("✅ Done. {$total} reminder(s) queued.");
+        $this->info("{$hoursUntil}h window: {$sent} group email(s) sent.");
     }
 }

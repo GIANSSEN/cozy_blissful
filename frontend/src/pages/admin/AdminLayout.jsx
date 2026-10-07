@@ -284,7 +284,7 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
             TOP HEADER BAR
         ════════════════════════════════════════ */}
         <header
-          className={`sticky top-0 z-30 px-3 sm:px-6 lg:px-8 backdrop-blur-xl transition-all duration-200 ${mobileSidebarOpen ? 'max-lg:pointer-events-none max-lg:opacity-0' : 'opacity-100 pointer-events-auto'}`}
+          className={`flex-shrink-0 sticky top-0 z-30 px-3 sm:px-6 lg:px-8 backdrop-blur-xl transition-all duration-200 ${mobileSidebarOpen ? 'max-lg:pointer-events-none max-lg:opacity-0' : 'opacity-100 pointer-events-auto'}`}
           style={{
             background: isDark
               ? 'rgba(13,17,28,0.96)'
@@ -931,10 +931,13 @@ const AdminLayout = ({ children, title = 'Admin', subtitle, icon: PageIcon, sear
         {/* ── Page Content ── */}
         <main
           id="main-content"
-          className="flex-1 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 max-w-7xl w-full mx-auto min-w-0 overflow-x-clip"
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-5 lg:px-8 py-4 sm:py-6 w-full min-w-0"
           tabIndex={-1}
+          style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
         >
-          {children}
+          <div className="max-w-7xl w-full mx-auto min-w-0">
+            {children}
+          </div>
         </main>
       </div>
 
