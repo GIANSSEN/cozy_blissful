@@ -135,23 +135,30 @@ const groupRefLabel = (g) => {
 /*  REUSABLE HOVER BUTTON                                              */
 /* ─────────────────────────────────────────────────────────────────── */
 
-const HoverButton = ({ onClick, children, baseStyle, hoverStyle, title, disabled = false, id }) => {
+const HoverButton = ({ onClick, children, baseStyle, hoverStyle, title, disabled = false, id, type = 'button' }) => {
   const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
   return (
     <button
       id={id}
-      type="button"
-      onClick={onClick}
+      type={type}
+      onClick={disabled ? undefined : onClick}
       disabled={disabled}
       title={title}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => !disabled && setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setPressed(false); }}
+      onFocus={() => !disabled && setHovered(true)}
+      onBlur={() => { setHovered(false); setPressed(false); }}
+      onMouseDown={() => !disabled && setPressed(true)}
+      onMouseUp={() => setPressed(false)}
       style={{
         ...baseStyle,
         ...(hovered && !disabled ? hoverStyle : {}),
-        transition: 'all 0.18s ease',
+        transform: pressed && !disabled ? 'scale(0.98)' : (hovered && !disabled && hoverStyle?.transform ? hoverStyle.transform : 'none'),
+        transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
         opacity: disabled ? 0.5 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
+        touchAction: 'manipulation',
       }}
     >
       {children}
@@ -229,7 +236,8 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
       role="dialog"
       aria-modal="true"
       aria-label={`Booking details ${refLabel}`}
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
+      className="cb-modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
@@ -237,7 +245,7 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
         initial={{ scale: 0.95, y: 24, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '100%', maxWidth: 560, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 560, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
       >
         {/* Header — one visit, not one row */}
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
@@ -276,7 +284,7 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
 
         {/* Body — flex:1 + minHeight:0 so long visits scroll instead of
             sliding the practitioner card behind the sticky footer */}
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0, maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
           <div style={{ padding: 16, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client</p>
             <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{view.client_name}</p>
@@ -436,6 +444,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   const titleText = view.items.length > 1 ? `${view.items.length} treatments · 1 visit` : (primary.service || 'Booking');
   const [selectedTherapistId, setSelectedTherapistId] = useState(appt.therapist_id || '');
   const [submitting, setSubmitting] = useState(false);
+  const [assignError, setAssignError] = useState('');
   useDialogBehavior(onClose);
 
   const C = {
@@ -476,12 +485,21 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   }, [availableTherapists, selectedTherapistId]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedTherapistId) return;
+    e?.preventDefault?.();
+    if (!selectedTherapistId) {
+      setAssignError('Please select a practitioner from the list before confirming.');
+      return;
+    }
     setSubmitting(true);
-    await onConfirmAssign(view.ids, selectedTherapistId);
-    setSubmitting(false);
-    onClose();
+    setAssignError('');
+    try {
+      await onConfirmAssign(view.ids, selectedTherapistId);
+      onClose();
+    } catch (err) {
+      setAssignError(err?.response?.data?.message || 'Failed to assign practitioner. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const TherapistCard = ({ t, showAvailBadge = false }) => {
@@ -489,16 +507,30 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     const [hovered, setHovered] = useState(false);
     return (
       <div
-        onClick={() => setSelectedTherapistId(t.id)}
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
+        onClick={() => { setSelectedTherapistId(t.id); setAssignError(''); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setSelectedTherapistId(t.id);
+            setAssignError('');
+          }
+        }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onFocus={() => setHovered(true)}
+        onBlur={() => setHovered(false)}
         style={{
           padding: '12px 14px', borderRadius: 16, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: isSelected ? 'linear-gradient(135deg,#062c22,#0a3d30)' : hovered ? (isDark ? '#162030' : '#f0fdf4') : C.cardBg,
-          border: `1px solid ${isSelected ? '#10b981' : hovered ? 'rgba(16,185,129,0.4)' : C.cardBorder}`,
-          boxShadow: isSelected ? '0 4px 14px rgba(16,185,129,0.2)' : '0 2px 6px rgba(0,0,0,0.04)',
+          border: `1px solid ${isSelected ? '#10b981' : hovered ? 'rgba(16,185,129,0.5)' : C.cardBorder}`,
+          boxShadow: isSelected ? '0 4px 14px rgba(16,185,129,0.25)' : hovered ? '0 3px 10px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.03)',
+          transform: isSelected ? 'scale(1.01)' : hovered ? 'translateY(-1px)' : 'none',
           transition: 'all 0.18s ease',
+          outline: 'none',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -518,12 +550,18 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Booking dialog" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Booking dialog"
+      className="cb-modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <motion.div
         className="cb-modal-sheet"
         initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 520, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#062c22,#0a3d30)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -542,7 +580,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
           </div>
         </div>
 
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           <div style={{ padding: 14, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>
               <span>Client visit · {view.items.length} treatment{view.items.length > 1 ? 's' : ''}</span>
@@ -579,6 +617,12 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
               <UserCheck size={14} style={{ color: '#059669' }} /> Select Practitioner
             </label>
 
+            {assignError && (
+              <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <AlertCircle size={14} style={{ flexShrink: 0 }} /> {assignError}
+              </div>
+            )}
+
             {availableTherapists.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <p style={{ fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#059669', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
@@ -610,7 +654,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
           </HoverButton>
           <HoverButton
             onClick={handleSubmit}
-            disabled={!selectedTherapistId || submitting}
+            disabled={submitting}
             baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#062c22,#0f5040)', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 14px rgba(6,44,34,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             hoverStyle={{ boxShadow: '0 6px 20px rgba(6,44,34,0.45)', transform: 'translateY(-1px)' }}
           >
@@ -669,12 +713,18 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Booking dialog" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Booking dialog"
+      className="cb-modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <motion.div
         className="cb-modal-sheet"
         initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '100%', maxWidth: 460, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#7f1d1d,#991b1b)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -691,53 +741,55 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
-          <div style={{ padding: 14, borderRadius: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#dc2626', margin: 0 }}>Client visit · {view.items.length} treatment{view.items.length > 1 ? 's' : ''}</p>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{view.client_name}</p>
-            <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '2px 0 0' }}>{fmtDate(view.datetime)} at {fmt12(view.datetime)}</p>
-            {view.items.length > 1 && (
-              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '6px 0 0' }}>
-                {view.items.map((it) => it.service).join(' + ')}
-              </p>
-            )}
-          </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+            <div style={{ padding: 14, borderRadius: 16, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#dc2626', margin: 0 }}>Client visit · {view.items.length} treatment{view.items.length > 1 ? 's' : ''}</p>
+              <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{view.client_name}</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, margin: '2px 0 0' }}>{fmtDate(view.datetime)} at {fmt12(view.datetime)}</p>
+              {view.items.length > 1 && (
+                <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '6px 0 0' }}>
+                  {view.items.map((it) => it.service).join(' + ')}
+                </p>
+              )}
+            </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Decline Reason *</label>
-            <textarea
-              value={reason} rows={3}
-              onChange={(e) => { setReason(e.target.value); if (error) setError(''); }}
-              placeholder="Select a preset or type a custom reason..."
-              style={{ width: '100%', padding: 12, borderRadius: 14, fontSize: 12, fontWeight: 600, color: C.textPrimary, background: C.inputBg, border: `1px solid ${error ? '#ef4444' : C.cardBorder}`, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
-            />
-            {error && <p style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', margin: 0 }}>{error}</p>}
-          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Decline Reason *</label>
+              <textarea
+                value={reason} rows={3}
+                onChange={(e) => { setReason(e.target.value); if (error) setError(''); }}
+                placeholder="Select a preset or type a custom reason..."
+                style={{ width: '100%', padding: 12, borderRadius: 14, fontSize: 12, fontWeight: 600, color: C.textPrimary, background: C.inputBg, border: `1px solid ${error ? '#ef4444' : C.cardBorder}`, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+              />
+              {error && <p style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', margin: 0 }}>{error}</p>}
+            </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Quick Presets</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {presets.map(p => (
-                <HoverButton
-                  key={p} onClick={() => { setReason(p); setError(''); }}
-                  baseStyle={{ fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 10, background: reason === p ? '#dc2626' : C.presetBg, color: reason === p ? '#ffffff' : C.textSecondary, border: reason === p ? '1px solid #b91c1c' : `1px solid ${C.cardBorder}` }}
-                  hoverStyle={{ background: reason === p ? '#b91c1c' : (isDark ? '#2a3a4a' : '#e2e8f0') }}
-                >
-                  {p}
-                </HoverButton>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Quick Presets</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {presets.map(p => (
+                  <HoverButton
+                    key={p} onClick={() => { setReason(p); setError(''); }}
+                    baseStyle={{ fontSize: 11, fontWeight: 700, padding: '6px 12px', borderRadius: 10, background: reason === p ? '#dc2626' : C.presetBg, color: reason === p ? '#ffffff' : C.textSecondary, border: reason === p ? '1px solid #b91c1c' : `1px solid ${C.cardBorder}` }}
+                    hoverStyle={{ background: reason === p ? '#b91c1c' : (isDark ? '#2a3a4a' : '#e2e8f0') }}
+                  >
+                    {p}
+                  </HoverButton>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="cb-modal-footer-actions" style={{ paddingTop: 10, borderTop: `1px solid ${C.cardBorder}` }}>
+          <div className="cb-modal-footer-actions" style={{ padding: '14px 20px', borderTop: `1px solid ${C.cardBorder}`, background: C.cardBg, flexShrink: 0 }}>
             <HoverButton onClick={onClose} baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900 }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}>
               Keep Pending
             </HoverButton>
             <HoverButton
+              type="submit"
               disabled={submitting}
               baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: 'none', background: '#dc2626', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 12px rgba(220,38,38,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               hoverStyle={{ background: '#b91c1c', boxShadow: '0 6px 18px rgba(220,38,38,0.45)' }}
-              onClick={handleSubmit}
             >
               {submitting ? 'Rejecting…' : <><XCircle size={16} /> Confirm Decline</>}
             </HoverButton>
@@ -823,12 +875,18 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Booking dialog" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Booking dialog"
+      className="cb-modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.72)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <motion.div
         className="cb-modal-sheet"
         initial={{ scale: 0.95, y: 24, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 24, opacity: 0 }}
-        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 24px 60px rgba(0,0,0,0.4)', width: '100%', maxWidth: 460, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}
+        style={{ background: C.modalBg, border: `1px solid ${C.cardBorder}`, borderRadius: 24, boxShadow: '0 25px 60px -15px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)', width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'min(90vh, calc(100dvh - 32px))', margin: 'auto' }}
       >
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg,#1e3a8a,#3b55e6)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -845,45 +903,47 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1 }}>
-          <div style={{ padding: 14, borderRadius: 16, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#2563eb', margin: 0 }}>Current visit schedule</p>
-            <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{rview.client_name}</p>
-            <p style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', margin: '2px 0 0' }}>{fmtDate(rview.datetime)} at {fmt12(rview.datetime)}</p>
-          </div>
-
-          <div className="cb-modal-grid-2col">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Date *</label>
-              <DatePickerInput value={newDate} onChange={d => { setNewDate(d); setErrors({}); }} placeholder="mm/dd/yyyy" isDark={isDark} />
-              {errors.newDate && <p style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', margin: 0 }}>{errors.newDate}</p>}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+            <div style={{ padding: 14, borderRadius: 16, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' }}>
+              <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#2563eb', margin: 0 }}>Current visit schedule</p>
+              <p style={{ fontSize: 15, fontWeight: 900, color: C.textPrimary, margin: '4px 0 0' }}>{rview.client_name}</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#2563eb', margin: '2px 0 0' }}>{fmtDate(rview.datetime)} at {fmt12(rview.datetime)}</p>
             </div>
+
+            <div className="cb-modal-grid-2col">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Date *</label>
+                <DatePickerInput value={newDate} onChange={d => { setNewDate(d); setErrors({}); }} placeholder="mm/dd/yyyy" isDark={isDark} />
+                {errors.newDate && <p style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', margin: 0 }}>{errors.newDate}</p>}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Time *</label>
+                <input
+                  type="time" value={newTime} min="09:00" max="21:00" step={1800}
+                  onChange={e => { setNewTime(e.target.value); setErrors({}); }}
+                  style={{ padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, background: C.inputBg, color: C.textPrimary, border: `1px solid ${errors.newTime ? '#ef4444' : C.cardBorder}`, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                />
+                {errors.newTime && <p style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', margin: 0 }}>{errors.newTime}</p>}
+              </div>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Time *</label>
-              <input
-                type="time" value={newTime} min="09:00" max="21:00" step={1800}
-                onChange={e => { setNewTime(e.target.value); setErrors({}); }}
-                style={{ padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, background: C.inputBg, color: C.textPrimary, border: `1px solid ${errors.newTime ? '#ef4444' : C.cardBorder}`, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-              />
-              {errors.newTime && <p style={{ fontSize: 10, fontWeight: 800, color: '#ef4444', margin: 0 }}>{errors.newTime}</p>}
+              <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Admin Note (Optional)</label>
+              <input type="text" placeholder="e.g. Approved per client request" value={reasonNote} onChange={e => setReasonNote(e.target.value)}
+                style={{ padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600, background: C.inputBg, color: C.textPrimary, border: `1px solid ${C.cardBorder}`, outline: 'none' }} />
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Admin Note (Optional)</label>
-            <input type="text" placeholder="e.g. Approved per client request" value={reasonNote} onChange={e => setReasonNote(e.target.value)}
-              style={{ padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600, background: C.inputBg, color: C.textPrimary, border: `1px solid ${C.cardBorder}`, outline: 'none' }} />
-          </div>
-
-          <div className="cb-modal-footer-actions" style={{ paddingTop: 10, borderTop: `1px solid ${C.cardBorder}` }}>
+          <div className="cb-modal-footer-actions" style={{ padding: '14px 20px', borderTop: `1px solid ${C.cardBorder}`, background: C.cardBg, flexShrink: 0 }}>
             <HoverButton onClick={onClose} baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 900 }} hoverStyle={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9' }}>
               Cancel
             </HoverButton>
             <HoverButton
+              type="submit"
               disabled={submitting}
               baseStyle={{ flex: 1, padding: 12, borderRadius: 14, border: 'none', background: '#2563eb', color: '#ffffff', fontSize: 12, fontWeight: 900, boxShadow: '0 4px 12px rgba(37,99,235,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               hoverStyle={{ background: '#1d4ed8', boxShadow: '0 6px 18px rgba(37,99,235,0.45)' }}
-              onClick={handleSubmit}
             >
               {submitting ? 'Saving…' : <><CheckCircle size={16} /> Save New Schedule</>}
             </HoverButton>
@@ -2111,12 +2171,38 @@ const AdminAppointments = () => {
           }
         }
 
-        /* ── Modal Responsive Width ── */
+        /* ── Modal Responsive Centered Styling ── */
+        .cb-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px 12px;
+          background: rgba(15, 23, 42, 0.72);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          overflow-y: auto;
+          overscroll-behavior: contain;
+        }
+        .cb-modal-sheet {
+          margin: auto !important;
+          width: 100% !important;
+          max-height: min(90vh, calc(100dvh - 32px)) !important;
+          border-radius: 24px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          overflow: hidden !important;
+          box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+        }
         @media (max-width: 540px) {
+          .cb-modal-backdrop {
+            padding: 12px 8px;
+          }
           .cb-modal-sheet {
-            border-radius: 24px 24px 0 0 !important;
-            align-self: flex-end !important;
-            max-height: 96vh !important;
+            max-height: min(92dvh, calc(100dvh - 20px)) !important;
+            border-radius: 20px !important;
           }
         }
 

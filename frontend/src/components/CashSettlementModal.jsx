@@ -202,22 +202,24 @@ export default function CashSettlementModal({
     >
       <style>{`
         .cb-settle-overlay {
-          position: fixed; inset: 0; z-index: 60;
+          position: fixed; inset: 0; z-index: 100;
           display: flex; align-items: center; justify-content: center;
-          padding: 16px;
-          background: rgba(2, 6, 23, 0.72);
+          padding: 16px 12px;
+          background: rgba(2, 6, 23, 0.75);
           backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+          overflow-y: auto; overscroll-behavior: contain;
         }
         .cb-settle-sheet {
+          margin: auto;
           width: 100%; max-width: 560px;
-          max-height: min(92dvh, 860px);
+          max-height: min(90dvh, calc(100dvh - 32px));
           display: flex; flex-direction: column;
           overflow: hidden;
           border-radius: 24px;
           box-shadow: 0 25px 60px -15px rgba(0,0,0,0.55);
         }
         .cb-settle-body {
-          flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
+          flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; min-height: 0;
           -webkit-overflow-scrolling: touch;
           padding: 18px 20px;
           display: flex; flex-direction: column; gap: 14px;
@@ -234,10 +236,10 @@ export default function CashSettlementModal({
           display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
         }
         @media (max-width: 560px) {
-          .cb-settle-overlay { padding: 0; align-items: flex-end; }
+          .cb-settle-overlay { padding: 12px 8px; }
           .cb-settle-sheet {
-            max-width: 100%; border-radius: 24px 24px 0 0;
-            max-height: 96dvh;
+            max-width: 100%; border-radius: 20px;
+            max-height: min(92dvh, calc(100dvh - 20px));
           }
           .cb-settle-body { padding: 16px 16px 20px; }
           .cb-settle-footer { padding-left: 16px; padding-right: 16px; }
