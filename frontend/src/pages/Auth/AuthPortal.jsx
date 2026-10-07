@@ -606,9 +606,23 @@ export default function AuthPortal({ initialTab = 'login' }) {
     if (res.rateLimited) { setRateLimit(res.retryAfter || 3600); }
     else if (res.errors) {
       const m = {};
-      Object.keys(res.errors).forEach(k => { m[k] = res.errors[k][0]; });
+      Object.keys(res.errors).forEach(k => { m[k] = Array.isArray(res.errors[k]) ? res.errors[k][0] : String(res.errors[k]); });
       setLoginErrors(m);
-    } else { setError(res.error || 'Wrong email or password. Please try again.'); }
+      // Show the same specific message in the top banner so users
+      // instantly see whether the email or the password was wrong.
+      setError(res.error || Object.values(m)[0]);
+    } else {
+      const msg = res.error || 'Login failed. Please try again.';
+      setError(msg);
+      // Map generic server text to the correct field so the input
+      // highlights even when the backend sends no `errors` object.
+      const lower = msg.toLowerCase();
+      if (lower.includes('password')) {
+        setLoginErrors({ password: msg });
+      } else if (lower.includes('email') || lower.includes('account') || lower.includes('not found')) {
+        setLoginErrors({ email: msg });
+      }
+    }
     setSubmitting(false);
   };
 

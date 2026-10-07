@@ -25,7 +25,7 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        // Enhanced validation
+        // Enhanced validation with field-specific messages
         $validated = $request->validate([
             'email' => [
                 'required',
@@ -39,21 +39,47 @@ class AuthController extends Controller
                 'min:8',
                 'max:255',
             ],
+        ], [
+            'email.required' => 'Email address is required.',
+            'email.email' => 'Invalid email format. Example: maria@email.com.',
+            'email.max' => 'Email address is too long.',
+            'password.required' => 'Password is required.',
+            'password.min' => 'Incorrect password. Password must be at least 8 characters.',
+            'password.max' => 'Password is too long.',
         ]);
 
         // Sanitize email input
         $email = strtolower(trim($validated['email']));
 
-        // Attempt authentication
-        if (!Auth::attempt(['email' => $email, 'password' => $validated['password']])) {
-            // Log failed login attempt
-            Log::warning('Failed login attempt', [
+        // Specific lookup so we can return field-specific messages
+        // (email not found vs. wrong password).
+        $existingUser = User::where('email', $email)->first();
+
+        if (!$existingUser) {
+            Log::warning('Failed login attempt — email not found', [
                 'email' => $email,
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
 
-            AuditLog::log('login', 'Authentication', "Failed login attempt for email '{$email}'", [
+            return response()->json([
+                'message' => 'No account found with this email address. Please check your email or create a new account.',
+                'errors' => [
+                    'email' => ['No account found with this email address.'],
+                ],
+                'field' => 'email',
+            ], 401);
+        }
+
+        if (!Hash::check($validated['password'], $existingUser->password)) {
+            // Log failed login attempt
+            Log::warning('Failed login attempt — incorrect password', [
+                'email' => $email,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            AuditLog::log('login', 'Authentication', "Failed login attempt for email '{$email}' (incorrect password)", [
                 'actor' => $email,
                 'actor_role' => 'guest',
                 'module' => 'Auth',
@@ -62,15 +88,22 @@ class AuthController extends Controller
                 'metadata' => [
                     'email' => $email,
                     'user_agent' => $request->userAgent(),
-                    'status' => 'failed'
+                    'status' => 'failed',
+                    'reason' => 'incorrect_password'
                 ]
             ]);
 
-            // Generic error message to prevent user enumeration
             return response()->json([
-                'message' => 'Invalid login credentials.'
+                'message' => 'Incorrect password. Please try again or click Forgot password to reset it.',
+                'errors' => [
+                    'password' => ['Incorrect password. Please try again.'],
+                ],
+                'field' => 'password',
             ], 401);
         }
+
+        // Credentials are valid — establish the session.
+        Auth::login($existingUser);
 
         $user = User::where('email', $email)->firstOrFail();
 

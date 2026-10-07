@@ -43,7 +43,17 @@ const methodMeta = (value) => {
   }
 };
 
-const SETTLEABLE = ['Confirmed', 'In Progress', 'Completed by Therapist'];
+/* Only visits the therapist has concluded may be signed off here.
+   This mirrors the backend guard exactly (AdminController::settleCashPayment
+   and StaffController::settleCashPayment accept ONLY 'Completed by Therapist').
+   'In Progress' sessions belong to the therapist — settling them early would
+   422 on the server, so the button stays disabled with an explanation. */
+const SETTLEABLE = ['Completed by Therapist'];
+
+const safeMinId = (ids) => {
+  const nums = (Array.isArray(ids) ? ids : [ids]).map(Number).filter(Number.isFinite);
+  return nums.length ? Math.min(...nums) : 0;
+};
 
 export default function CashSettlementModal({
   appt,
@@ -116,8 +126,8 @@ export default function CashSettlementModal({
   const therapist = grp?.therapist_name || appt?.therapist_name || appt?.therapist || 'Assigned Therapist';
   const duration = grp?.totalDuration ? `${grp.totalDuration} min total` : (appt?.service_duration ? `${appt.service_duration} min` : '');
   const bookingNo = grp
-    ? `#${String(Math.min(...grp.ids)).padStart(5, '0')}${grp.ids.length > 1 ? ` · ${grp.ids.length} treatments` : ''}`
-    : `#${String(appt?.id ?? 0).padStart(5, '0')}`;
+    ? `#${String(safeMinId(grp.ids)).padStart(4, '0')}${grp.ids.length > 1 ? ` · ${grp.ids.length} treatments` : ''}`
+    : `#${String(Number(appt?.id) || 0).padStart(4, '0')}`;
   const paymentStatus = String(appt?.payment_status || 'unpaid').toLowerCase();
   const alreadyPaid = paymentStatus === 'paid';
   const amountPaid = Number(appt?.amount_paid || 0);

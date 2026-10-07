@@ -162,12 +162,41 @@ const HoverButton = ({ onClick, children, baseStyle, hoverStyle, title, disabled
 
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  APPOINTMENT DETAIL MODAL (CONTEXTUAL ACTIONS)                       */
+/*  SHARED DIALOG BEHAVIOR — ESC to close, body scroll-lock, safe-area   */
+/*  Every booking popup uses this so keyboard, mobile, and screen-reader */
+/*  behavior stays identical across Detail / Assign / Decline / Move.    */
 /* ─────────────────────────────────────────────────────────────────── */
+
+const useDialogBehavior = (onClose, disabled = false) => {
+  useEffect(() => {
+    if (disabled) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose, disabled]);
+};
+
+/* Salon hours (24h) — single source shared by reschedule validation. */
+const SALON_OPEN_HOUR = 9;
+const SALON_CLOSE_HOUR = 21;
+
+const toMinutes = (hhmm) => {
+  const [h, m] = String(hhmm || '').split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return NaN;
+  return h * 60 + m;
+};
 
 const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenReschedule, onComplete }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  useDialogBehavior(onClose);
   // Accept either a single appointment or a grouped visit. Group wins when present.
   const view = group || (appt ? {
     ids: [appt.id], items: [appt], client_name: appt.client_name || appt.client,
@@ -179,9 +208,10 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
   if (!view) return null;
   const primary = view.items[0] || {};
   const ss = getStatusStyle(view.status, isDark);
-  const refLabel = view.ids.length > 1
-    ? `#${String(Math.min(...view.ids)).padStart(4, '0')} · ${view.ids.length} treatments, 1 visit`
-    : `#${String(view.ids[0]).padStart(4, '0')}`;
+  // Single source for the visit reference — groupRefLabel already yields
+  // "#0008 · 3 treatments" (or "#0001" for singles), so the header adds
+  // "· 1 visit" exactly once. Never duplicate the visit count.
+  const refLabel = groupRefLabel(view);
 
   const C = {
     textPrimary: isDark ? '#e8ecf3' : '#0f172a',
@@ -196,7 +226,10 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Booking details ${refLabel}`}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
@@ -214,7 +247,7 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
                 Booking Details · {refLabel} · 1 visit
               </span>
               <h3 style={{ fontSize: 19, fontWeight: 900, color: '#ffffff', margin: '4px 0 0', lineHeight: 1.3 }}>
-                {view.items.length > 1 ? `${view.items.length} treatments in one visit` : (primary.service || 'Booking')}
+                {view.items.length > 1 ? `${primary.service || 'Treatment'} + ${view.items.length - 1} more` : (primary.service || 'Booking')}
               </h3>
             </div>
             <HoverButton
@@ -241,10 +274,11 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
           </div>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '60vh', overflowY: 'auto' }}>
+        {/* Body — flex:1 + minHeight:0 so long visits scroll instead of
+            sliding the practitioner card behind the sticky footer */}
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0, maxHeight: '60vh', overflowY: 'auto', overscrollBehavior: 'contain' }}>
           <div style={{ padding: 16, borderRadius: 16, background: C.cardBg, border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client — one record for the whole visit</p>
+            <p style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client</p>
             <p style={{ fontSize: 16, fontWeight: 900, color: C.textPrimary, margin: 0 }}>{view.client_name}</p>
             {view.client_email && (
               <p style={{ fontSize: 12, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0 0' }}>
@@ -402,6 +436,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   const titleText = view.items.length > 1 ? `${view.items.length} treatments · 1 visit` : (primary.service || 'Booking');
   const [selectedTherapistId, setSelectedTherapistId] = useState(appt.therapist_id || '');
   const [submitting, setSubmitting] = useState(false);
+  useDialogBehavior(onClose);
 
   const C = {
     textPrimary: isDark ? '#e8ecf3' : '#0f172a',
@@ -413,16 +448,32 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
     footerBg: isDark ? '#0f1420' : '#f8fafc',
   };
 
-  const apptDateStr = appt.datetime
-    ? appt.datetime.split(' ')[0] || new Date(appt.datetime).toISOString().split('T')[0]
-    : '';
+  const apptDateStr = useMemo(() => {
+    if (!appt.datetime) return '';
+    const raw = String(appt.datetime);
+    const ymd = raw.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return '';
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, [appt.datetime]);
 
-  const availableTherapists = therapists.filter(t => t.availabilities && Array.isArray(t.availabilities) && t.availabilities.includes(apptDateStr));
-  const unavailableTherapists = therapists.filter(t => !t.availabilities || !Array.isArray(t.availabilities) || !t.availabilities.includes(apptDateStr));
+  const { availableTherapists, unavailableTherapists } = useMemo(() => {
+    const available = [];
+    const unavailable = [];
+    for (const t of therapists) {
+      if (t.availabilities && Array.isArray(t.availabilities) && t.availabilities.includes(apptDateStr)) available.push(t);
+      else unavailable.push(t);
+    }
+    return { availableTherapists: available, unavailableTherapists: unavailable };
+  }, [therapists, apptDateStr]);
 
   useEffect(() => {
     if (!selectedTherapistId && availableTherapists.length > 0) setSelectedTherapistId(availableTherapists[0].id);
-  }, [availableTherapists]);
+  }, [availableTherapists, selectedTherapistId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -467,7 +518,7 @@ const AcceptAssignModal = ({ appt, therapists, onClose, onConfirmAssign }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+    <div role="dialog" aria-modal="true" aria-label="Booking dialog" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div
         className="cb-modal-sheet"
@@ -584,6 +635,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  useDialogBehavior(onClose);
 
   const C = {
     textPrimary: isDark ? '#e8ecf3' : '#0f172a',
@@ -617,7 +669,7 @@ const RejectModal = ({ appt, onClose, onConfirmReject }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+    <div role="dialog" aria-modal="true" aria-label="Booking dialog" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div
         className="cb-modal-sheet"
@@ -711,6 +763,14 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   const [reasonNote, setReasonNote] = useState('');
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  useDialogBehavior(onClose);
+
+  // Whole-visit duration drives the salon-hours fit check (all treatments move together).
+  const visitMinutes = Number(
+    rview.totalDuration
+    ?? (Array.isArray(rview.items) ? rview.items.reduce((n, it) => n + Number(it.service_duration || 0), 0) : 0)
+    ?? 0
+  ) || 60;
 
   const C = {
     textPrimary: isDark ? '#e8ecf3' : '#0f172a',
@@ -730,8 +790,25 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   const validate = () => {
     const errs = {};
     if (!newDate) errs.newDate = 'Select a new date';
-    else { const sel = new Date(`${newDate}T${newTime}`); if (sel < new Date()) errs.newDate = 'Date/time cannot be in the past'; }
     if (!newTime) errs.newTime = 'Select a time';
+    if (newDate && newTime) {
+      const sel = new Date(`${newDate}T${newTime}`);
+      if (Number.isNaN(sel.getTime())) {
+        errs.newDate = 'Invalid date or time';
+      } else if (sel <= new Date()) {
+        errs.newDate = 'Date/time must be in the future';
+      } else {
+        // Mirror salon operating hours (9:00 AM – 9:00 PM): the whole visit,
+        // including every treatment back-to-back, must fit inside the day.
+        const startMin = toMinutes(newTime);
+        const endMin = startMin + visitMinutes;
+        if (!Number.isFinite(startMin) || startMin < SALON_OPEN_HOUR * 60 || endMin > SALON_CLOSE_HOUR * 60) {
+          errs.newTime = `Must fit salon hours 9:00 AM – 9:00 PM (${visitMinutes} min visit)`;
+        } else if (Number(String(newTime).split(':')[1]) % 30 !== 0) {
+          errs.newTime = 'Pick a time on the hour or half hour';
+        }
+      }
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -746,7 +823,7 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)' }}
+    <div role="dialog" aria-modal="true" aria-label="Booking dialog" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 12px', background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(6px)', overflowY: 'auto', overscrollBehavior: 'contain' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div
         className="cb-modal-sheet"
@@ -784,7 +861,7 @@ const RescheduleModal = ({ request, onClose, onConfirmReschedule }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>New Time *</label>
               <input
-                type="time" value={newTime}
+                type="time" value={newTime} min="09:00" max="21:00" step={1800}
                 onChange={e => { setNewTime(e.target.value); setErrors({}); }}
                 style={{ padding: '10px 12px', borderRadius: 12, fontSize: 12, fontWeight: 700, background: C.inputBg, color: C.textPrimary, border: `1px solid ${errors.newTime ? '#ef4444' : C.cardBorder}`, outline: 'none', width: '100%', boxSizing: 'border-box' }}
               />
@@ -1877,7 +1954,7 @@ const AdminAppointments = () => {
           status: 'Completed',
           payment_status: 'paid',
           payment_method: normalizedMethod,
-          amount_paid: shareById[a.id] ?? lastPaid,
+          amount_paid: shareById[a.id] ?? Number(payload?.amount_paid || 0),
           paid_at: new Date().toISOString(),
         }
         : a));

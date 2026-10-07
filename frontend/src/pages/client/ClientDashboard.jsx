@@ -41,7 +41,7 @@ const B = {
 // Luxury Card Container
 const LuxuryCard = ({ children, className = '', style = {}, ...props }) => (
   <div
-    className={`rounded-3xl bg-white border border-[rgba(191,161,95,0.22)] shadow-[0_8px_30px_rgba(6,44,34,0.05)] transition-all duration-200 ${className}`}
+    className={`rounded-3xl bg-white border border-[rgba(191,161,95,0.22)] shadow-[0_8px_30px_rgba(6,44,34,0.05)] hover:shadow-[0_12px_36px_rgba(6,44,34,0.1)] hover:border-[rgba(191,161,95,0.45)] transition-all duration-200 ${className}`}
     style={{ ...style }}
     {...props}
   >
@@ -97,14 +97,16 @@ const statusStyle = (status) => {
 
 // ─── STEP INDICATOR ─────────────────────────────────────────────────────────
 const StepIndicator = ({ step }) => (
-  <div className="flex items-center justify-center gap-1.5 mb-6">
+  <div className="flex items-center justify-center gap-1 sm:gap-1.5 mb-6" role="list" aria-label="Booking steps">
     {STEP_LABELS.map((label, i) => {
       const isActive = i === step;
       const isDone = i < step;
       return (
         <React.Fragment key={i}>
-          <div className="flex flex-col items-center gap-1 min-w-0">
+          <div className="flex flex-col items-center gap-1 min-w-0" role="listitem">
             <div
+              aria-current={isActive ? 'step' : undefined}
+              aria-label={`Step ${i + 1}: ${label}${isDone ? ' (completed)' : isActive ? ' (current)' : ''}`}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-black transition-all duration-300 flex-shrink-0"
               style={{
                 background: isDone
@@ -124,7 +126,8 @@ const StepIndicator = ({ step }) => (
           </div>
           {i < STEP_LABELS.length - 1 && (
             <div
-              className="w-5 sm:w-14 h-0.5 mb-0 sm:mb-4 mx-0.5 rounded-full transition-all duration-300 flex-shrink-0"
+              aria-hidden="true"
+              className="w-4 sm:w-14 h-0.5 mx-0.5 rounded-full transition-all duration-300 flex-shrink-0"
               style={{ background: i < step ? 'linear-gradient(90deg,#bfa15f,#e8cc8a)' : 'rgba(0,0,0,0.08)' }}
             />
           )}
@@ -254,10 +257,10 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
               type="button"
               onClick={() => onToggle(s.id)}
               aria-pressed={isSelected}
-              className={`text-left rounded-2xl p-4 transition-colors duration-150 cursor-pointer flex flex-col justify-between border ${
+              className={`text-left rounded-2xl p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
                 isSelected
-                  ? 'border-[#bfa15f] text-white shadow-md ring-1 ring-[#bfa15f]/50'
-                  : 'border-slate-200/80 bg-white shadow-xs'
+                  ? 'border-[#bfa15f] text-white shadow-lg ring-1 ring-[#bfa15f]/50 scale-[1.01]'
+                  : 'border-slate-200/80 bg-white shadow-xs hover:border-[#bfa15f]/60 hover:shadow-md hover:scale-[1.005]'
               }`}
               style={{
                 background: isSelected
@@ -387,8 +390,11 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
   const availableList = Array.isArray(slots?.available_slots) && slots.available_slots.length > 0
     ? slots.available_slots
     : allSlots.filter((s) => !(slots?.booked_slots || []).includes(s));
-  const availableSet = useMemo(() => new Set(availableList), [slots?.available_slots, slots?.all_slots, slots?.booked_slots]); // eslint-disable-line react-hooks/exhaustive-deps
-  const bookedSet = useMemo(() => new Set(slots?.booked_slots || []), [slots?.booked_slots]);
+  // Stringify deps so memo correctly updates when slot arrays change by reference
+  const availableListKey = availableList.join(',');
+  const bookedListKey = (slots?.booked_slots || []).join(',');
+  const availableSet = useMemo(() => new Set(availableList), [availableListKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bookedSet = useMemo(() => new Set(slots?.booked_slots || []), [bookedListKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const morningSlots = allSlots.filter((s) => categorizeSlot(s) === 'morning');
   const afternoonSlots = allSlots.filter((s) => categorizeSlot(s) === 'afternoon');
@@ -486,13 +492,13 @@ const DateTimePicker = ({ selectedDate, onDateSelect, selectedTime, onTimeSelect
                 aria-label={`${weekday} ${month} ${dayNum}${isSelected ? ' (selected)' : ''}`}
                 className={`snap-start flex-shrink-0 w-16 sm:w-[4.5rem] min-h-[76px] py-3 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 cursor-pointer border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
                   isSelected
-                    ? 'border-[#bfa15f] text-white shadow-md shadow-emerald-950/20 ring-2 ring-[#bfa15f]/60'
-                    : 'border-slate-200/80 bg-white hover:bg-slate-50 text-slate-700 hover:border-[#bfa15f]/60 active:scale-[0.97]'
+                    ? 'border-[#bfa15f] text-white shadow-md shadow-emerald-950/20 ring-2 ring-[#bfa15f]/60 scale-[1.05]'
+                    : 'border-slate-200/80 bg-white hover:bg-amber-50/40 text-slate-700 hover:border-[#bfa15f]/60 hover:scale-[1.04] hover:shadow-md active:scale-[0.97]'
                 }`}
                 style={{
                   background: isSelected
                     ? 'linear-gradient(135deg, #062c22 0%, #0a3d30 100%)'
-                    : '#ffffff',
+                    : undefined,
                 }}
               >
                 <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-emerald-200' : 'text-slate-400'}`}>
@@ -880,7 +886,7 @@ const ReviewStep = ({
         </div>
 
         {/* Right Column: Order Summary (5 cols, sticky) */}
-        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-0">
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-[72px]">
           <div
             className="rounded-3xl p-5 space-y-4 text-white shadow-xl"
             style={{
@@ -1133,6 +1139,20 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Lock scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Escape to close
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !loading) onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [loading, onClose]);
+
   const handleCancel = async () => {
     setLoading(true);
     setError('');
@@ -1147,23 +1167,21 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
     }
   };
 
-  const fmtDate = (dt) => {
-    const d = new Date(dt);
-    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-  };
-  const fmtTime = (dt) => {
-    const d = new Date(dt);
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  };
+  // Use the safe parser so malformed datetimes never throw
+  const fmtDate = (dt) => fmtApptDate(dt, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const fmtTime = (dt) => fmtApptTime(dt);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cancel-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto no-scrollbar"
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
       <motion.div
         initial={{ scale: 0.94, opacity: 0, y: 16 }}
@@ -1181,7 +1199,7 @@ const CancelModal = ({ booking, onClose, onSuccess }) => {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <h2 className="text-white font-black text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>Cancel Appointment</h2>
+          <h2 id="cancel-modal-title" className="text-white font-black text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>Cancel Appointment</h2>
           <p className="text-red-200/80 text-xs mt-0.5">This action will release your scheduled treatment slot</p>
         </div>
 
@@ -1595,7 +1613,8 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
       exit={{ opacity: 0 }}
       role="dialog"
       aria-modal="true"
-      aria-label="Book a sanctuary session"
+      aria-labelledby="booking-wizard-title"
+      aria-describedby="booking-wizard-step-desc"
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 overflow-y-auto no-scrollbar"
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => e.target === e.currentTarget && step < 3 && !submitting && onClose()}
@@ -1607,17 +1626,17 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
         transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         className={`w-full ${
           step === 2 ? 'max-w-4xl' : step === 3 ? 'max-w-xl' : 'max-w-2xl'
-        } max-h-[96dvh] sm:max-h-[90vh] my-auto flex flex-col rounded-t-3xl sm:rounded-[2.2rem] overflow-hidden transition-all duration-300 shadow-2xl bg-white border border-[rgba(191,161,95,0.3)]`}
+        } max-h-[96dvh] sm:max-h-[90vh] my-auto flex flex-col rounded-t-3xl sm:rounded-[2.2rem] overflow-hidden shadow-2xl bg-white border border-[rgba(191,161,95,0.3)]`}
       >
         {/* Fixed Header */}
         <div className="flex-shrink-0 px-5 sm:px-7 pt-5 pb-3 border-b border-slate-100 bg-white">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
               <div>
-                <h2 className="text-base sm:text-lg font-black text-slate-900 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+                <h2 id="booking-wizard-title" className="text-base sm:text-lg font-black text-slate-900 leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
                   Book a Sanctuary Session
                 </h2>
-                <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold">
+                <p id="booking-wizard-step-desc" className="text-[10px] sm:text-[11px] text-slate-400 font-semibold" aria-live="polite">
                   Step {step + 1} of {STEP_LABELS.length} • <span className="text-emerald-900 font-bold">{STEP_LABELS[step]}</span>
                 </p>
               </div>
@@ -1708,8 +1727,14 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
         {/* Fixed Footer */}
         {step < 3 && (
           <div className="flex-shrink-0 px-4 sm:px-7 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] border-t border-slate-100 bg-slate-50/90 backdrop-blur-sm">
+            {submitting && (
+              <div className="mb-2 text-[11px] text-slate-500 flex items-center gap-1.5" role="status" aria-live="polite">
+                <span className="w-3.5 h-3.5 border-2 border-slate-300 border-t-emerald-700 rounded-full animate-spin flex-shrink-0" />
+                Securing your booking — please wait…
+              </div>
+            )}
             {error && (
-              <div className="mb-3 p-2.5 rounded-xl flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200" role="alert">
+              <div className="mb-3 p-2.5 rounded-xl flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200" role="alert" aria-live="assertive">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600 mt-px" />
                 <span className="font-medium break-words">{error}</span>
               </div>
@@ -1975,11 +2000,14 @@ const ClientDashboard = () => {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <button
                 type="button"
+                id="book-treatment-main-btn"
                 onClick={() => setShowWizard(true)}
-                className="px-6 py-3.5 rounded-2xl text-xs sm:text-sm font-black text-[#041e16] flex items-center justify-center gap-2 transition-all duration-200 hover:brightness-110 active:scale-95 shadow-xl cursor-pointer"
+                aria-haspopup="dialog"
+                aria-label="Open booking wizard to book a treatment"
+                className="px-6 py-3.5 rounded-2xl text-xs sm:text-sm font-black text-[#041e16] flex items-center justify-center gap-2 transition-all duration-200 hover:brightness-110 hover:scale-[1.03] active:scale-95 shadow-xl cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bfa15f] min-h-[48px]"
                 style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
               >
-                <Plus className="w-4 h-4" /> Book a Treatment
+                <Plus className="w-4 h-4 flex-shrink-0" /> Book a Treatment
               </button>
             </div>
           </div>
@@ -2065,15 +2093,17 @@ const ClientDashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <button
             type="button"
+            id="filter-active-btn"
             onClick={() => setBookingFilter('active')}
-            className={`p-4 rounded-3xl text-left transition-all cursor-pointer border flex items-center gap-3.5 ${
+            aria-pressed={bookingFilter === 'active'}
+            className={`p-4 rounded-3xl text-left transition-all duration-200 cursor-pointer border flex items-center gap-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
               bookingFilter === 'active'
-                ? 'bg-emerald-950 text-white border-emerald-800 shadow-md ring-2 ring-emerald-600/50'
-                : 'bg-white text-slate-800 border-slate-200 hover:border-[#bfa15f] shadow-xs'
+                ? 'bg-emerald-950 text-white border-emerald-800 shadow-md ring-2 ring-emerald-600/50 scale-[1.02]'
+                : 'bg-white text-slate-800 border-slate-200 hover:border-[#bfa15f] hover:shadow-md hover:scale-[1.02] shadow-xs'
             }`}
           >
             <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
                 bookingFilter === 'active' ? 'bg-white/15 text-[#e8cc8a]' : 'bg-emerald-50 text-emerald-800'
               }`}
             >
@@ -2083,21 +2113,23 @@ const ClientDashboard = () => {
               <p className={`text-[10px] font-bold uppercase tracking-wider ${bookingFilter === 'active' ? 'text-emerald-200' : 'text-slate-400'}`}>
                 Active Bookings
               </p>
-              <p className="text-lg font-black truncate">{activeCount} Sessions</p>
+              <p className="text-base sm:text-lg font-black truncate">{activeCount} Sessions</p>
             </div>
           </button>
 
           <button
             type="button"
+            id="filter-completed-btn"
             onClick={() => setBookingFilter('completed')}
-            className={`p-4 rounded-3xl text-left transition-all cursor-pointer border flex items-center gap-3.5 ${
+            aria-pressed={bookingFilter === 'completed'}
+            className={`p-4 rounded-3xl text-left transition-all duration-200 cursor-pointer border flex items-center gap-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${
               bookingFilter === 'completed'
-                ? 'bg-emerald-950 text-white border-emerald-800 shadow-md ring-2 ring-emerald-600/50'
-                : 'bg-white text-slate-800 border-slate-200 hover:border-[#bfa15f] shadow-xs'
+                ? 'bg-emerald-950 text-white border-emerald-800 shadow-md ring-2 ring-emerald-600/50 scale-[1.02]'
+                : 'bg-white text-slate-800 border-slate-200 hover:border-[#bfa15f] hover:shadow-md hover:scale-[1.02] shadow-xs'
             }`}
           >
             <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-colors ${
                 bookingFilter === 'completed' ? 'bg-white/15 text-[#e8cc8a]' : 'bg-emerald-50 text-emerald-800'
               }`}
             >
@@ -2107,24 +2139,27 @@ const ClientDashboard = () => {
               <p className={`text-[10px] font-bold uppercase tracking-wider ${bookingFilter === 'completed' ? 'text-emerald-200' : 'text-slate-400'}`}>
                 Completed
               </p>
-              <p className="text-lg font-black truncate">{completedCount} Treatments</p>
+              <p className="text-base sm:text-lg font-black truncate">{completedCount} Treatments</p>
             </div>
           </button>
 
-          <LuxuryCard className="p-4 flex items-center gap-3.5">
+          <LuxuryCard className="p-4 flex items-center gap-3.5 cursor-default">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-amber-50 text-amber-700">
               <Award className="w-5 h-5 text-amber-600" />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loyalty Club</p>
-              <p className="text-lg font-black text-amber-800">{stamps} / 10 Stamps</p>
+              <p className="text-base sm:text-lg font-black text-amber-800 truncate">{stamps} / 10 Stamps</p>
             </div>
           </LuxuryCard>
 
-          <LuxuryCard className="p-4 flex items-center gap-3.5">
+          <LuxuryCard className="p-4 flex items-center gap-3.5 cursor-default">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 bg-slate-50 text-slate-600">
+              <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
+            </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VIP Tier</p>
-              <p className="text-lg font-black text-slate-800">Gold Sanctuary</p>
+              <p className="text-base sm:text-lg font-black text-slate-800 truncate">Gold Sanctuary</p>
             </div>
           </LuxuryCard>
         </div>
@@ -2260,7 +2295,8 @@ const ClientDashboard = () => {
                     <button
                       type="button"
                       onClick={() => setShowWizard(true)}
-                      className="mt-2 px-6 py-2.5 rounded-2xl text-xs font-black text-[#041e16] transition hover:brightness-110 cursor-pointer shadow-md"
+                      aria-label="Open booking wizard"
+                      className="mt-2 px-6 py-2.5 rounded-2xl text-xs font-black text-[#041e16] transition hover:brightness-110 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bfa15f] min-h-[44px]"
                       style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)' }}
                     >
                       Book Treatment Now
@@ -2495,7 +2531,8 @@ const ClientDashboard = () => {
                               <button
                                 type="button"
                                 onClick={() => setShowWizard(true)}
-                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#041e16] transition hover:brightness-110 cursor-pointer shadow-xs"
+                                aria-label="Book a new treatment"
+                                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-[#041e16] transition hover:brightness-110 hover:scale-[1.03] active:scale-95 cursor-pointer shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bfa15f] min-h-[36px]"
                                 style={{ background: 'linear-gradient(135deg,#bfa15f,#e8cc8a)' }}
                               >
                                 Book Again

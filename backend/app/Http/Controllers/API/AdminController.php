@@ -932,6 +932,26 @@ class AdminController extends Controller
         }
 
         $oldDatetime = $appt->datetime->format('Y-m-d H:i:s');
+
+        // ── Capacity guard: an admin move must never double-book ─────────
+        // Mirrors the client booking rules (per-therapist conflict when a
+        // specialist is attached, salon-wide capacity otherwise).
+        $appt->loadMissing('service');
+        $moveDuration = $appt->service ? max(15, (int) $appt->service->duration) : 60;
+        if ($appt->therapist_id) {
+            if ($this->therapistHasConflict((int) $appt->therapist_id, $parsedDatetime, $moveDuration, (int) $appt->id)) {
+                return response()->json([
+                    'message' => 'The assigned specialist already has a booking during the new time window. Pick another slot or reassign first.',
+                    'errors' => ['datetime' => ['Specialist time conflict for the requested window.']],
+                ], 422);
+            }
+        } elseif ($this->salonAtCapacity($parsedDatetime, $moveDuration, (int) $appt->id)) {
+            return response()->json([
+                'message' => 'All specialist slots are fully booked for the new time window. Please select an adjacent slot.',
+                'errors' => ['datetime' => ['Salon capacity reached for the requested window.']],
+            ], 422);
+        }
+
         $appt->datetime = $parsedDatetime;
         if ($request->filled('notes')) {
             $noteText = 'Rescheduled: ' . trim($request->notes);

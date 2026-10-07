@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -137,16 +137,56 @@ const Sidebar = ({ isOpen, onClose }) => {
     setOpenTitle(found ? found.title : null);
   }, [location.pathname]);
 
-  /* Lock background scroll while the mobile drawer is open */
+  const handleToggle = (title) => {
+    setOpenTitle((prev) => (prev === title ? null : title));
+  };
+
+  /* Lock background scroll while the mobile drawer is open.
+     Listens to viewport changes so rotating / resizing to desktop
+     never leaves the body permanently locked. */
+  useEffect(() => {
+    if (!isOpen) return;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 1023.98px)');
+    const applyLock = () => {
+      if (mq.matches) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    };
+    const prev = document.body.style.overflow;
+    applyLock();
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', applyLock);
+    } else if (typeof mq.addListener === 'function') {
+      mq.addListener(applyLock);
+    }
+    return () => {
+      document.body.style.overflow = prev;
+      if (typeof mq.removeEventListener === 'function') {
+        mq.removeEventListener('change', applyLock);
+      } else if (typeof mq.removeListener === 'function') {
+        mq.removeListener(applyLock);
+      }
+    };
+  }, [isOpen]);
+
+  /* Close on Escape + move focus into the drawer when it opens (mobile only) */
+  const closeBtnRef = useRef(null);
   useEffect(() => {
     if (!isOpen) return;
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(max-width: 1023.98px)');
-    if (!mq.matches) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [isOpen]);
+    if (mq.matches) {
+      closeBtnRef.current?.focus({ preventScroll: true });
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape' && onClose) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -211,6 +251,9 @@ const Sidebar = ({ isOpen, onClose }) => {
           #admin-sidebar .sb-item:not(.sb-active):hover { background: var(--sb-hover) !important; }
           #admin-sidebar .sb-danger:not(.sb-active):hover { background: var(--sb-danger) !important; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          #admin-sidebar { transition: none !important; }
+        }
       `}</style>
       {/* Mobile backdrop */}
       <AnimatePresence>
@@ -220,8 +263,9 @@ const Sidebar = ({ isOpen, onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[90] lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
             onClick={onClose}
+            aria-hidden="true"
           />
         )}
       </AnimatePresence>
@@ -230,7 +274,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         role="navigation"
         aria-label="Admin Navigation"
         id="admin-sidebar"
-        className={`fixed lg:sticky top-0 h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased transition-transform duration-300 ease-out w-[min(86vw,320px)] lg:w-60 xl:w-[272px] select-none ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        data-state={isOpen ? 'open' : 'closed'}
+        className={`fixed lg:sticky left-0 top-0 h-[100dvh] max-h-[100dvh] flex flex-col shrink-0 z-[100] lg:z-30 antialiased transition-transform duration-300 ease-out motion-reduce:transition-none w-[min(86vw,320px)] lg:w-60 xl:w-[272px] select-none ${isOpen ? 'translate-x-0 visible' : '-translate-x-full lg:translate-x-0 invisible lg:visible'}`}
         style={{
           background: t.sidebar,
           borderRight: `1px solid ${t.border}`,
@@ -261,7 +306,7 @@ const Sidebar = ({ isOpen, onClose }) => {
           </button>
 
           <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-            <button onClick={toggleTheme}
+            <button type="button" onClick={toggleTheme}
               aria-label={isDark ? 'Switch to Light mode' : 'Switch to Dark mode'}
               className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               style={{ background: t.hover, color: t.txtMuted }}
@@ -269,6 +314,8 @@ const Sidebar = ({ isOpen, onClose }) => {
               {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
             <button
+              ref={closeBtnRef}
+              type="button"
               aria-label="Close sidebar navigation"
               className="lg:hidden w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 touch-manipulation cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none"
               style={{
@@ -292,11 +339,12 @@ const Sidebar = ({ isOpen, onClose }) => {
               onChange={e => setSearch(e.target.value)}
               placeholder="Search menus…"
               aria-label="Filter navigation menu"
-              className="flex-1 bg-transparent text-[12px] outline-none min-w-0"
+              type="search"
+              className="flex-1 bg-transparent text-[16px] sm:text-[12px] outline-none min-w-0"
               style={{ color: t.txt }}
             />
             {search && (
-              <button onClick={() => setSearch('')} aria-label="Clear search input" style={{ color: t.txtMuted }}>
+              <button type="button" onClick={() => setSearch('')} aria-label="Clear search input" style={{ color: t.txtMuted }}>
                 <X className="w-3 h-3" />
               </button>
             )}
@@ -358,6 +406,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             return (
               <div key={cat.title}>
                 <button
+                  type="button"
                   onClick={() => handleToggle(cat.title)}
                   aria-expanded={isOpenNow}
                   aria-controls={subId}
