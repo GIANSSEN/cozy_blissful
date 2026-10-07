@@ -641,22 +641,6 @@ function AddEditUserModal({ user, onClose, onSave }) {
   const passwordsMatch = form.password && form.confirmPassword && form.password === form.confirmPassword;
   const passwordsMismatch = form.password && form.confirmPassword && form.password !== form.confirmPassword;
 
-  // Dropdown options for status selection
-  const statusDropdownOptions = [
-    {
-      value: 'active',
-      label: 'Active (On Duty & Bookable)',
-      badgeColor: '#10b981',
-      description: 'Account is operational and eligible for appointment scheduling',
-    },
-    {
-      value: 'inactive',
-      label: 'Inactive (Deactivated / Off Duty)',
-      badgeColor: '#94a3b8',
-      description: 'Account is temporarily suspended from scheduling and queue rotation',
-    },
-  ];
-
   const errorCount = Object.keys(errors).length;
   const titleId = isEdit ? 'edit-member-title' : 'add-member-title';
   const descId = isEdit ? 'edit-member-desc' : 'add-member-desc';
@@ -677,7 +661,7 @@ function AddEditUserModal({ user, onClose, onSave }) {
                 {isEdit ? 'Edit Team Member Profile' : 'Onboard New Team Member'}
               </h2>
               <p id={descId} className="text-[11px] sm:text-xs mt-0.5" style={{ color: C.txtMuted }}>
-                {isEdit ? 'Update credentials, commission and role permissions.' : 'Create a new therapist or staff coordinator account. Admin roles are blocked here.'}
+                {isEdit ? 'Update credentials and role permissions.' : 'Create a new therapist or staff coordinator account. Admin roles are blocked here.'}
               </p>
             </div>
           </div>
@@ -905,46 +889,6 @@ function AddEditUserModal({ user, onClose, onSave }) {
                 })}
               </div>
             </div>
-          </div>
-
-          {/* Status & Compensation Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Status Dropdown */}
-            <LuxurySelect
-              id="form-status-select"
-              label="Account Status"
-              icon={CheckCircle2}
-              value={form.status}
-              onChange={v => set('status', v)}
-              options={statusDropdownOptions}
-              isDark={C.isDark}
-              portal={false}
-            />
-
-            {/* Commission for Therapist or Fixed Salary for Staff */}
-            {form.role === 'therapist' ? (
-              <LuxurySelect
-                id="form-commission-select"
-                label="Commission Split Tier"
-                icon={TrendingUp}
-                value={form.commRate}
-                onChange={v => set('commRate', Number(v))}
-                options={COMMISSION_TIERS}
-                isDark={C.isDark}
-                portal={false}
-              />
-            ) : (
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  <TrendingUp className="w-3.5 h-3.5 text-blue-500" /> Compensation Mode
-                </label>
-                <div className="p-2.5 rounded-xl border flex items-center justify-between"
-                  style={{ background: C.inner, borderColor: C.inputBdr }}>
-                  <span className="text-xs font-bold" style={{ color: C.txt }}>Fixed Staff Salary</span>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400">Monthly Payroll</span>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Security Credentials Section */}

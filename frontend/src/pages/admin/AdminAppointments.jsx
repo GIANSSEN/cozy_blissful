@@ -375,7 +375,7 @@ const DetailModal = ({ appt, group, onClose, onOpenAccept, onOpenReject, onOpenR
             <div style={{ padding: 14, borderRadius: 16, background: isDark ? 'rgba(14,165,233,0.12)' : '#f0f9ff', border: '1.5px solid rgba(14,165,233,0.3)', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <p style={{ fontSize: 12, fontWeight: 900, color: isDark ? '#38bdf8' : '#0369a1', margin: 0 }}>Session Ongoing with Therapist</p>
               <p style={{ fontSize: 11, color: isDark ? '#e0f2fe' : '#0c4a6e', margin: 0, lineHeight: 1.6 }}>
-                Specialist <strong>{view.therapist_name || 'Assigned Therapist'}</strong> is currently with the client. Only the therapist can mark this session as done from their panel — it will then move to Therapist Done for your verification.
+                Specialist <strong>{view.therapist_name || 'Assigned Therapist'}</strong> is currently with the client. Only the therapist can mark this session as done from their panel — it will then move to Completed Sessions for your verification.
               </p>
             </div>
           )}
@@ -1530,7 +1530,7 @@ const TherapistDoneCard = ({ group, isDark, C, onSettle, onDetail }) => {
               fontSize: 10, fontWeight: 800, padding: '2px 10px', borderRadius: 999,
               background: 'rgba(5,150,105,0.14)', color: '#059669',
               border: '1px solid rgba(5,150,105,0.28)', letterSpacing: '0.05em'
-            }}>✓ Therapist Done</span>
+            }}>✓ Completed Session</span>
             <span style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, fontFamily: 'monospace' }}>{groupRefLabel(g)}</span>
           </div>
 
@@ -1616,7 +1616,7 @@ const TherapistDoneTab = ({ appointments, onSettle, onDetail }) => {
             Visits ready for sign-off ({doneGroups.length})
           </h3>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, margin: '4px 0 0' }}>
-            {doneTreatments} treatment{doneTreatments !== 1 ? 's' : ''} marked done by therapist · Verify the whole visit once to close.
+            {doneTreatments} treatment{doneTreatments !== 1 ? 's' : ''} completed by therapist · Verify the whole visit once to close.
           </p>
         </div>
         {doneGroups.length > 0 && (
@@ -2297,7 +2297,7 @@ const AdminAppointments = () => {
     { id: 'calendar', label: 'Schedule Calendar', icon: CalendarDays },
     { id: 'pending', label: 'Pending Queue', icon: Clock, badge: pendingCount },
     { id: 'confirmed', label: 'Active Treatments', icon: CheckCircle2, badge: confirmedOnlyCount + inProgressCount },
-    { id: 'requests', label: 'Therapist Done', icon: CheckCircle, badge: awaitingSignoffCount, pulse: awaitingSignoffCount > 0 },
+    { id: 'requests', label: 'Completed Sessions', icon: CheckCircle, badge: awaitingSignoffCount, pulse: awaitingSignoffCount > 0 },
   ];
 
   return (

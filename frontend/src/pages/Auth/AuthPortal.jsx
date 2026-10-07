@@ -475,7 +475,7 @@ let authCardSeen = false;
 export default function AuthPortal({ initialTab = 'login' }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, register, logout, token, user, role } = useAuth();
+  const { login, register, logout } = useAuth();
 
   // Parse URL params once on mount
   const initParams = useMemo(() => {
@@ -510,10 +510,21 @@ export default function AuthPortal({ initialTab = 'login' }) {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Login fields
-  const [loginEmail,  setLoginEmail]  = useState(() => location.state?.email || localStorage.getItem('remember_email') || '');
-  const [loginPw,     setLoginPw]     = useState('');
-  const [rememberMe,  setRememberMe]  = useState(() => !!localStorage.getItem('remember_email'));
+  // Remember Me state: only active if remember_me flag is explicitly enabled
+  const isRemembered = Boolean(
+    localStorage.getItem('remember_me') === 'true' &&
+    localStorage.getItem('remember_email')
+  );
+
+  // Login fields: autofill credentials only if remember_me is enabled
+  const [rememberMe,  setRememberMe]  = useState(isRemembered);
+  const [loginEmail,  setLoginEmail]  = useState(() => {
+    if (location.state?.email) return location.state.email;
+    return isRemembered ? (localStorage.getItem('remember_email') || '') : '';
+  });
+  const [loginPw,     setLoginPw]     = useState(() => {
+    return isRemembered ? (localStorage.getItem('remember_password') || '') : '';
+  });
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [loginErrors, setLoginErrors] = useState({});
 
@@ -558,11 +569,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
     }
   }, [location.search]);
 
-  // ── Redirect already-authenticated users ──────────────────────────────────
-  useEffect(() => {
-    if (token && user && role) redirect(role);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user, role]);
+  // Note: No automatic redirect on mount so user/admin never get autologged into portals without submitting
 
   // ── Mark card seen (tab switches remount via route change) ─────────────────
   useEffect(() => { authCardSeen = true; }, []);
@@ -598,11 +605,22 @@ export default function AuthPortal({ initialTab = 'login' }) {
     if (Object.keys(errs).length) { setLoginErrors(errs); return; }
 
     setSubmitting(true);
-    if (rememberMe) localStorage.setItem('remember_email', loginEmail.trim());
-    else localStorage.removeItem('remember_email');
+    if (rememberMe) {
+      localStorage.setItem('remember_me', 'true');
+      localStorage.setItem('remember_email', loginEmail.trim());
+      localStorage.setItem('remember_password', loginPw);
+    } else {
+      localStorage.removeItem('remember_me');
+      localStorage.removeItem('remember_email');
+      localStorage.removeItem('remember_password');
+    }
 
     const res = await login(loginEmail.trim(), loginPw);
-    if (res.success) { setLoginPw(''); redirect(res.role); return; }
+    if (res.success) {
+      if (!rememberMe) setLoginPw('');
+      redirect(res.role);
+      return;
+    }
     if (res.rateLimited) { setRateLimit(res.retryAfter || 3600); }
     else if (res.errors) {
       const m = {};
@@ -650,7 +668,6 @@ export default function AuthPortal({ initialTab = 'login' }) {
     if (res.success) {
       await logout();
       setRegisteredEmail(regEmail.trim());
-      localStorage.setItem('remember_email', regEmail.trim());
       setSuccessModal(true);
       setSubmitting(false);
       return;
@@ -902,7 +919,21 @@ export default function AuthPortal({ initialTab = 'login' }) {
 
                       <div className="flex items-center justify-between mt-0.5">
                         <label htmlFor="remember-me" className="inline-flex items-center gap-1.5 cursor-pointer select-none touch-manipulation">
-                          <input id="remember-me" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-3.5 h-3.5 rounded cursor-pointer accent-[#bfa15f]" />
+                          <input
+                            id="remember-me"
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setRememberMe(checked);
+                              if (!checked) {
+                                localStorage.removeItem('remember_me');
+                                localStorage.removeItem('remember_email');
+                                localStorage.removeItem('remember_password');
+                              }
+                            }}
+                            className="w-3.5 h-3.5 rounded cursor-pointer accent-[#bfa15f]"
+                          />
                           <span className="text-[11.5px] font-medium text-slate-400">Remember me</span>
                         </label>
                         <Link to="/forgot-password" className="text-[11.5px] font-semibold hover:underline underline-offset-2" style={{ color: '#8c7033' }}>

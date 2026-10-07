@@ -10,7 +10,8 @@ import {
   Archive, Calendar, Clock, CheckCircle, XCircle,
   Mail, FileText, Eye, Search, X, Download, Upload,
   CalendarCheck, FileSpreadsheet, Info, Zap,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ArrowUpDown, RotateCcw,
+  CalendarDays, Users,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -21,24 +22,24 @@ const getStatusStyle = (status, isDark = false) => {
   switch (status) {
     case 'Completed':
       return {
-        bg: isDark ? 'rgba(99, 102, 241, 0.22)' : 'rgba(99, 102, 241, 0.12)',
-        color: isDark ? '#a5b4fc' : '#4338ca',
-        border: isDark ? 'rgba(165, 180, 252, 0.4)' : 'rgba(67, 56, 202, 0.3)',
-        dot: isDark ? '#a5b4fc' : '#4f46e5'
+        bg: isDark ? 'rgba(5,150,105,0.22)' : 'rgba(5,150,105,0.12)',
+        color: isDark ? '#6ee7b7' : '#047857',
+        border: isDark ? 'rgba(110,231,183,0.4)' : 'rgba(4,120,87,0.3)',
+        dot: isDark ? '#6ee7b7' : '#059669',
       };
     case 'Cancelled':
       return {
-        bg: isDark ? 'rgba(239, 68, 68, 0.22)' : 'rgba(239, 68, 68, 0.12)',
+        bg: isDark ? 'rgba(239,68,68,0.22)' : 'rgba(239,68,68,0.12)',
         color: isDark ? '#f87171' : '#b91c1c',
-        border: isDark ? 'rgba(248, 113, 113, 0.4)' : 'rgba(185, 28, 28, 0.3)',
-        dot: isDark ? '#f87171' : '#dc2626'
+        border: isDark ? 'rgba(248,113,113,0.4)' : 'rgba(185,28,28,0.3)',
+        dot: isDark ? '#f87171' : '#dc2626',
       };
     default:
       return {
-        bg: isDark ? 'rgba(148, 163, 184, 0.22)' : 'rgba(100, 116, 139, 0.12)',
+        bg: isDark ? 'rgba(148,163,184,0.22)' : 'rgba(100,116,139,0.12)',
         color: isDark ? '#cbd5e1' : '#334155',
-        border: isDark ? 'rgba(203, 213, 225, 0.4)' : 'rgba(51, 65, 85, 0.3)',
-        dot: isDark ? '#cbd5e1' : '#64748b'
+        border: isDark ? 'rgba(203,213,225,0.4)' : 'rgba(51,65,85,0.3)',
+        dot: isDark ? '#cbd5e1' : '#64748b',
       };
   }
 };
@@ -55,10 +56,24 @@ const fmtDate = (dt) => {
   return isNaN(d.getTime()) ? String(dt) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-const PAGE_SIZE = 12;
+const toDate = (dt) => {
+  if (!dt) return null;
+  const d = new Date(dt);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const startOfDay = (d) => {
+  const c = new Date(d);
+  c.setHours(0, 0, 0, 0);
+  return c;
+};
+
+const PAGE_SIZE_OPTIONS = [8, 12, 24];
+const DEFAULT_PAGE_SIZE = 12;
 
 /* ─────────────────────────────────────────────────────────────────── */
-/*  READ-ONLY DETAIL MODAL — responsive, accessible, scroll-locked      */
+/*  READ-ONLY DETAIL MODAL — uses global cb-modal architecture          */
+/*  320px → 480px → 768px+ · safe-area + dvh aware · scroll-locked      */
 /* ─────────────────────────────────────────────────────────────────── */
 
 const HistoryDetailModal = ({ record, onClose }) => {
@@ -66,22 +81,24 @@ const HistoryDetailModal = ({ record, onClose }) => {
   const isDark = theme === 'dark';
   const ss = getStatusStyle(record.status, isDark);
   const panelRef = useRef(null);
+  const prevFocusRef = useRef(null);
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#64748b',
-    modalBg:       isDark ? '#141927' : '#ffffff',
-    cardBg:        isDark ? '#0f1420' : '#f8fafc',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    noteBg:        isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
-    noteBorder:    isDark ? 'rgba(245,158,11,0.2)' : 'rgba(253,230,138,1)',
+    textMuted: isDark ? '#94a3b8' : '#64748b',
+    modalBg: isDark ? '#141927' : '#ffffff',
+    cardBg: isDark ? '#0f1420' : '#f8fafc',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    noteBg: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(254,252,232,1)',
+    noteBorder: isDark ? 'rgba(245,158,11,0.2)' : 'rgba(253,230,138,1)',
   };
 
   const isCancelled = record.status === 'Cancelled';
 
-  /* Scroll-lock + Escape key listener */
+  /* Scroll-lock + Escape + focus restore */
   useEffect(() => {
+    prevFocusRef.current = document.activeElement;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const t = setTimeout(() => panelRef.current?.focus(), 60);
@@ -91,11 +108,10 @@ const HistoryDetailModal = ({ record, onClose }) => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', onKey);
       clearTimeout(t);
+      if (prevFocusRef.current?.focus) prevFocusRef.current.focus({ preventScroll: true });
     };
   }, [onClose]);
 
-  // Clean remarks and separate contact/billing if attached.
-  // Handles both `&` and `&amp;` variants written by different backend versions.
   const notesText = record.notes || '';
   const BILLING_DELIMITERS = [
     '[Billing & Contact Info]',
@@ -114,7 +130,6 @@ const HistoryDetailModal = ({ record, onClose }) => {
     }
   }
 
-  // Fallback: if notes contain Phone:/Address: inline (no bracket delimiter), split there.
   if (!billingInfo && /Phone:\s*\d/.test(notesText)) {
     const phoneIdx = notesText.search(/Phone:\s*\d/);
     if (phoneIdx > 0) {
@@ -125,214 +140,185 @@ const HistoryDetailModal = ({ record, onClose }) => {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
-        background: 'rgba(15, 23, 42, 0.72)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        overflowY: 'auto',
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      className="cb-modal-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget || e.target.dataset?.backdrop === 'inner') onClose(); }}
     >
-      <motion.div
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="history-modal-title"
-        aria-describedby="history-modal-meta"
-        initial={{ y: 20, opacity: 0, scale: 0.96 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 20, opacity: 0, scale: 0.96 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-        style={{
-          width: '100%',
-          maxWidth: '520px',
-          background: C.modalBg,
-          border: `1px solid ${C.cardBorder}`,
-          borderRadius: '24px',
-          boxShadow: isDark
-            ? '0 25px 60px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)'
-            : '0 25px 60px -15px rgba(15,23,42,0.22), 0 0 0 1px rgba(0,0,0,0.05)',
-          maxHeight: 'min(90vh, 760px)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          margin: 'auto',
-          outline: 'none',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{
-          padding: '18px 20px',
-          background: isCancelled
-            ? 'linear-gradient(135deg,#450a0a,#7f1d1d)'
-            : 'linear-gradient(135deg,#1e1b4b,#312e81)',
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 12, flexShrink: 0,
-                background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
-                color: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Archive size={18} aria-hidden="true" />
+      <div className="cb-modal-inner" data-backdrop="inner" onClick={(e) => { if (e.target.dataset?.backdrop === 'inner') onClose(); }}>
+        <motion.div
+          ref={panelRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="history-modal-title"
+          aria-describedby="history-modal-meta"
+          initial={{ y: 20, opacity: 0, scale: 0.96 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 20, opacity: 0, scale: 0.96 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="cb-modal-sheet"
+          style={{
+            maxWidth: 560,
+            background: C.modalBg,
+            border: `1px solid ${C.cardBorder}`,
+            outline: 'none',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div style={{
+            padding: '18px 20px',
+            background: isCancelled
+              ? 'linear-gradient(135deg,#450a0a,#7f1d1d)'
+              : 'linear-gradient(135deg,#062c22,#0f5040 60%,#1a6b52)',
+            flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+                  background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Archive size={18} aria-hidden="true" />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#fde68a' }}>
+                    Session Archive · Read Only
+                  </span>
+                  <h3 id="history-modal-title" style={{ fontSize: 17, fontWeight: 900, color: '#ffffff', margin: '2px 0 0', overflowWrap: 'break-word' }}>
+                    {record.service}
+                  </h3>
+                </div>
               </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#c7d2fe' }}>
-                  Session Archive · Read Only
+              <button
+                onClick={onClose}
+                aria-label="Close details"
+                style={{
+                  width: 44, height: 44, borderRadius: 12, border: 'none',
+                  background: 'rgba(255,255,255,0.12)', color: '#ffffff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+
+            <div id="history-modal-meta" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#fef3c7', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Calendar size={13} aria-hidden="true" /> {fmtDate(record.datetime) || '—'} at {fmt12(record.datetime) || '—'}
+              </span>
+              {record.service_duration && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, color: '#fef3c7',
+                  background: 'rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: 999,
+                  border: '1px solid rgba(255,255,255,0.15)', display: 'inline-flex', alignItems: 'center', gap: 3,
+                }}>
+                  <Clock size={11} aria-hidden="true" /> {record.service_duration} min
                 </span>
-                <h3 id="history-modal-title" style={{ fontSize: 17, fontWeight: 900, color: '#ffffff', margin: '2px 0 0', overflowWrap: 'break-word' }}>
-                  {record.service}
-                </h3>
+              )}
+              <span style={{
+                fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
+                background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`,
+                display: 'inline-flex', alignItems: 'center',
+              }}>
+                {record.status}
+              </span>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="cb-scroll" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+            <div className="cb-modal-grid-2col">
+              <div style={{
+                padding: '12px 14px', borderRadius: 14, background: C.cardBg,
+                border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0,
+              }}>
+                <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client</p>
+                <p style={{ fontSize: 14, fontWeight: 900, color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
+                  {record.client_name || record.client || 'Valued Client'}
+                </p>
+                {record.client_email && (
+                  <p style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 5, margin: '2px 0 0', overflowWrap: 'break-word' }}>
+                    <Mail size={12} aria-hidden="true" style={{ color: '#059669', flexShrink: 0 }} />
+                    <span style={{ minWidth: 0, wordBreak: 'break-all' }}>{record.client_email}</span>
+                  </p>
+                )}
+              </div>
+
+              <div style={{
+                padding: '12px 14px', borderRadius: 14, background: C.cardBg,
+                border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0,
+              }}>
+                <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Practitioner</p>
+                <p style={{ fontSize: 14, fontWeight: 900, color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
+                  {record.therapist_name || 'Unassigned'}
+                </p>
+                {record.service_price && (
+                  <p style={{ fontSize: 11, fontWeight: 800, color: '#b45309', display: 'flex', alignItems: 'center', gap: 4, margin: '2px 0 0' }}>
+                    <Zap size={12} aria-hidden="true" style={{ color: '#b45309', flexShrink: 0 }} />
+                    Fee: ₱{Number(record.service_price).toLocaleString()}
+                  </p>
+                )}
               </div>
             </div>
+
+            {userRemarks ? (
+              <div style={{ padding: '12px 14px', borderRadius: 14, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
+                <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#b45309', margin: 0 }}>Session Remarks</p>
+                <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.5, overflowWrap: 'break-word' }}>{userRemarks}</p>
+              </div>
+            ) : (
+              <div style={{ padding: '10px 14px', borderRadius: 14, background: C.cardBg, border: `1px solid ${C.cardBorder}` }}>
+                <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Session Remarks</p>
+                <p style={{ fontSize: 11, fontWeight: 500, color: C.textMuted, margin: '3px 0 0', fontStyle: 'italic' }}>No remarks recorded.</p>
+              </div>
+            )}
+
+            {billingInfo && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 12,
+                background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                border: `1px solid ${C.cardBorder}`,
+              }}>
+                <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Contact &amp; Billing Info</p>
+                <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '3px 0 0', lineHeight: 1.4, overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
+                  {billingInfo}
+                </p>
+              </div>
+            )}
+
+            <div style={{
+              padding: '10px 12px', borderRadius: 12,
+              background: isDark ? 'rgba(5,150,105,0.08)' : 'rgba(6,44,34,0.05)',
+              border: '1px dashed rgba(5,150,105,0.35)', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <Info size={14} aria-hidden="true" style={{ color: '#059669', flexShrink: 0 }} />
+              <p style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, margin: 0 }}>
+                Archived records are read-only. Use Export to download data.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer — stacked full-width on ≤480px via global class */}
+          <div className="cb-modal-footer-actions cb-safe-bottom" style={{
+            padding: '12px 20px', borderTop: `1px solid ${C.cardBorder}`,
+            background: C.cardBg,
+          }}>
             <button
-              onClick={onClose}
-              aria-label="Close details"
+              type="button" onClick={onClose} aria-label="Close details"
               style={{
-                width: 36, height: 36, borderRadius: 10, border: 'none',
-                background: 'rgba(255,255,255,0.12)', color: '#ffffff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'background 0.15s ease', flexShrink: 0,
+                padding: '8px 22px', borderRadius: 12, border: `1px solid ${C.cardBorder}`,
+                background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
+                color: C.textPrimary, fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                flex: '1 1 auto',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
             >
-              <X size={16} aria-hidden="true" />
+              Close
             </button>
           </div>
-
-          <div id="history-modal-meta" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e0e7ff', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Calendar size={13} aria-hidden="true" /> {fmtDate(record.datetime) || '—'} at {fmt12(record.datetime) || '—'}
-            </span>
-            {record.service_duration && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, color: '#c7d2fe',
-                background: 'rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: 999,
-                border: '1px solid rgba(255,255,255,0.15)', display: 'inline-flex', alignItems: 'center', gap: 3,
-              }}>
-                <Clock size={11} aria-hidden="true" /> {record.service_duration} min
-              </span>
-            )}
-            <span style={{
-              fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
-              background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`,
-              display: 'inline-flex', alignItems: 'center',
-            }}>
-              {record.status}
-            </span>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="cb-scroll" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0 }}>
-          {/* Client & Practitioner cards side by side on >= 400px, stacked on very small */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
-            {/* Client Card */}
-            <div style={{
-              padding: '12px 14px', borderRadius: 14, background: C.cardBg,
-              border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 3,
-            }}>
-              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Client</p>
-              <p style={{ fontSize: 14, fontWeight: 900, color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
-                {record.client_name || record.client || 'Valued Client'}
-              </p>
-              {record.client_email && (
-                <p style={{ fontSize: 11, fontWeight: 700, color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 5, margin: '2px 0 0', overflowWrap: 'break-word' }}>
-                  <Mail size={12} aria-hidden="true" style={{ color: '#059669', flexShrink: 0 }} />
-                  <span style={{ minWidth: 0, wordBreak: 'break-all' }}>{record.client_email}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Practitioner Card */}
-            <div style={{
-              padding: '12px 14px', borderRadius: 14, background: C.cardBg,
-              border: `1px solid ${C.cardBorder}`, display: 'flex', flexDirection: 'column', gap: 3,
-            }}>
-              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Practitioner</p>
-              <p style={{ fontSize: 14, fontWeight: 900, color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
-                {record.therapist_name || 'Unassigned'}
-              </p>
-              {record.service_price && (
-                <p style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4, margin: '2px 0 0' }}>
-                  <Zap size={12} aria-hidden="true" style={{ color: '#f59e0b', flexShrink: 0 }} />
-                  Fee: ₱{Number(record.service_price).toLocaleString()}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* User Remarks if present */}
-          {userRemarks ? (
-            <div style={{ padding: '12px 14px', borderRadius: 14, background: C.noteBg, border: `1px solid ${C.noteBorder}` }}>
-              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#d97706', margin: 0 }}>Session Remarks</p>
-              <p style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, margin: '4px 0 0', lineHeight: 1.45, overflowWrap: 'break-word' }}>{userRemarks}</p>
-            </div>
-          ) : (
-            <div style={{ padding: '10px 14px', borderRadius: 14, background: C.cardBg, border: `1px solid ${C.cardBorder}` }}>
-              <p style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Session Remarks</p>
-              <p style={{ fontSize: 11, fontWeight: 500, color: C.textMuted, margin: '3px 0 0', fontStyle: 'italic' }}>No remarks recorded.</p>
-            </div>
-          )}
-
-          {/* Contact & Billing info if extracted */}
-          {billingInfo && (
-            <div style={{
-              padding: '10px 14px', borderRadius: 12,
-              background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: `1px solid ${C.cardBorder}`,
-            }}>
-              <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted, margin: 0 }}>Contact &amp; Billing Info</p>
-              <p style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary, margin: '3px 0 0', lineHeight: 1.4, overflowWrap: 'break-word', whiteSpace: 'pre-wrap' }}>
-                {billingInfo}
-              </p>
-            </div>
-          )}
-
-          {/* Notice banner */}
-          <div style={{
-            padding: '10px 12px', borderRadius: 12,
-            background: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)',
-            border: '1px dashed rgba(99,102,241,0.3)', display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <Info size={14} aria-hidden="true" style={{ color: '#6366f1', flexShrink: 0 }} />
-            <p style={{ fontSize: 10, fontWeight: 700, color: C.textMuted, margin: 0 }}>
-              Archived records are read-only. Use the Export button to download data.
-            </p>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: '12px 20px', borderTop: `1px solid ${C.cardBorder}`,
-          background: C.cardBg, display: 'flex', justifyContent: 'flex-end', flexShrink: 0,
-        }}>
-          <button
-            type="button" onClick={onClose} aria-label="Close details"
-            style={{
-              padding: '8px 22px', borderRadius: 12, border: `1px solid ${C.cardBorder}`,
-              background: isDark ? 'rgba(255,255,255,0.06)' : '#f1f5f9',
-              color: C.textPrimary, fontSize: 12, fontWeight: 800, cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
-          >
-            Close
-          </button>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 };
@@ -349,17 +335,17 @@ const AdminHistory = () => {
   const fileInputRef = useRef(null);
 
   const C = {
-    textPrimary:   isDark ? '#e8ecf3' : '#0f172a',
+    textPrimary: isDark ? '#e8ecf3' : '#0f172a',
     textSecondary: isDark ? '#c9d1e0' : '#1e293b',
-    textMuted:     isDark ? '#94a3b8' : '#334155',
-    cardBg:        isDark ? '#141927' : '#ffffff',
-    cardBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
-    headerBg:      isDark ? '#1a2236' : '#e2e8f0',
-    rowBorder:     isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
-    pillBg:        isDark ? '#1e2a3a' : '#f1f5f9',
-    pillBorder:    isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)',
-    inputBg:       isDark ? '#0f1420' : '#ffffff',
-    rowHover:      isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)',
+    textMuted: isDark ? '#94a3b8' : '#334155',
+    cardBg: isDark ? '#141927' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)',
+    headerBg: isDark ? '#1a2236' : '#eef2f0',
+    rowBorder: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
+    pillBg: isDark ? '#1e2a3a' : '#f1f5f9',
+    pillBorder: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)',
+    inputBg: isDark ? '#0f1420' : '#ffffff',
+    rowHover: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(6,44,34,0.04)',
   };
 
   const [records, setRecords] = useState([]);
@@ -368,8 +354,12 @@ const AdminHistory = () => {
   const [loadError, setLoadError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('Completed');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [therapistFilter, setTherapistFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   useEffect(() => {
     document.title = 'History | Cozy Blissful Admin';
@@ -407,7 +397,7 @@ const AdminHistory = () => {
   useEffect(() => { loadData(); }, [loadData]);
 
   /* Reset pagination whenever the view changes */
-  useEffect(() => { setPage(1); }, [search, statusFilter, records, imported]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, dateFilter, therapistFilter, sortOrder, records, imported, pageSize]);
 
   /* Combined view: live archived records + session-only imported rows */
   const allRecords = useMemo(() => [
@@ -415,31 +405,84 @@ const AdminHistory = () => {
     ...imported.map((r, i) => ({ ...r, id: r.id ?? `imp-${i}`, imported: true })),
   ], [records, imported]);
 
+  const therapistOptions = useMemo(() => {
+    const set = new Set();
+    allRecords.forEach((r) => {
+      const n = (r.therapist_name || '').trim();
+      if (n && n !== 'Unassigned') set.add(n);
+    });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [allRecords]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return allRecords.filter((a) => {
-      const matchS = statusFilter === 'All' || a.status === statusFilter;
-      const matchQ = !q ||
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 6);
+    const monthStart = new Date(todayStart);
+    monthStart.setDate(monthStart.getDate() - 29);
+
+    const out = allRecords.filter((a) => {
+      if (statusFilter !== 'All' && a.status !== statusFilter) return false;
+      if (therapistFilter !== 'all' && (a.therapist_name || 'Unassigned') !== therapistFilter) return false;
+
+      if (dateFilter !== 'all') {
+        const d = toDate(a.datetime);
+        if (!d) return false;
+        if (dateFilter === 'today' && d < todayStart) return false;
+        if (dateFilter === 'week' && d < weekStart) return false;
+        if (dateFilter === 'month' && d < monthStart) return false;
+      }
+
+      if (!q) return true;
+      return (
         (a.service || '').toLowerCase().includes(q) ||
         (a.client_name || a.client || '').toLowerCase().includes(q) ||
         (a.therapist_name || '').toLowerCase().includes(q) ||
-        String(a.id).toLowerCase().includes(q);
-      return matchS && matchQ;
+        String(a.id).toLowerCase().includes(q)
+      );
     });
-  }, [allRecords, search, statusFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    out.sort((x, y) => {
+      const dx = toDate(x.datetime)?.getTime() ?? 0;
+      const dy = toDate(y.datetime)?.getTime() ?? 0;
+      return sortOrder === 'newest' ? dy - dx : dx - dy;
+    });
+    return out;
+  }, [allRecords, search, statusFilter, dateFilter, therapistFilter, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageRecords = useMemo(() => {
-    const start = (safePage - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, safePage]);
+    const start = (safePage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, safePage, pageSize]);
+  const rangeStart = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(filtered.length, safePage * pageSize);
 
   const completedCount = allRecords.filter((a) => a.status === 'Completed').length;
   const cancelledCount = allRecords.filter((a) => a.status === 'Cancelled').length;
   const revenue = allRecords
     .filter((a) => a.status === 'Completed')
     .reduce((sum, a) => sum + (parseFloat(a.service_price) || 0), 0);
+
+  const hasActiveFilters = search.trim() !== '' || statusFilter !== 'All' || dateFilter !== 'all' || therapistFilter !== 'all';
+  const resetAll = () => {
+    setSearch('');
+    setStatusFilter('All');
+    setDateFilter('all');
+    setTherapistFilter('all');
+    setSortOrder('newest');
+    setPage(1);
+  };
+
+  /* Windowed page numbers for sm+ */
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const win = new Set([1, totalPages, safePage - 1, safePage, safePage + 1]);
+    return [...win].filter((n) => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+  }, [totalPages, safePage]);
 
   /* ── EXPORT TO EXCEL (xlsx loaded on demand) ── */
   const handleExport = async () => {
@@ -530,7 +573,22 @@ const AdminHistory = () => {
     toast.success?.('Imported rows cleared');
   };
 
-  const FILTERS = ['Completed', 'Cancelled', 'All'];
+  const STATUS_FILTERS = ['Completed', 'Cancelled', 'All'];
+  const DATE_FILTERS = [
+    { id: 'all', label: 'All time' },
+    { id: 'today', label: 'Today' },
+    { id: 'week', label: 'Last 7 days' },
+    { id: 'month', label: 'Last 30 days' },
+  ];
+
+  const pillStyle = (active) => ({
+    minHeight: 44,
+    border: active ? '1px solid #062c22' : `1px solid ${C.pillBorder}`,
+    background: active ? '#062c22' : C.pillBg,
+    color: active ? '#fef3c7' : C.textSecondary,
+    boxShadow: active ? '0 2px 8px rgba(6,44,34,0.25)' : 'none',
+    cursor: 'pointer',
+  });
 
   const renderStatusBadge = (status) => {
     const ss = getStatusStyle(status, isDark);
@@ -556,43 +614,39 @@ const AdminHistory = () => {
       subtitle="Read-only archive of completed & cancelled sessions — with Excel import / export"
       icon={Archive}
     >
-      <div className="space-y-4 sm:space-y-6 min-w-0">
-        {/* ── Summary Metric Cards: 2-col mobile → 4-col md+ (pure CSS, no CLS) ── */}
+      <div className="space-y-4 sm:space-y-5 min-w-0 pb-6">
+        {/* ── Summary Metric Cards: 2-col on phones → 4-col on lg ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3" role="region" aria-label="Archive summary">
           {[
-            { label: 'Archived Sessions', value: allRecords.length, color: '#6366f1', accent: 'rgba(99,102,241,0.12)', Icon: Archive },
-            { label: 'Completed',         value: completedCount,    color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CheckCircle },
-            { label: 'Cancelled',         value: cancelledCount,    color: '#dc2626', accent: 'rgba(239,68,68,0.12)', Icon: XCircle },
-            { label: 'Revenue (₱)',       value: revenue.toLocaleString(), color: '#bfa15f', accent: 'rgba(191,161,95,0.15)', Icon: CalendarCheck },
+            { label: 'Archived Sessions', value: allRecords.length, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: Archive },
+            { label: 'Completed', value: completedCount, color: '#059669', accent: 'rgba(5,150,105,0.12)', Icon: CheckCircle },
+            { label: 'Cancelled', value: cancelledCount, color: '#dc2626', accent: 'rgba(239,68,68,0.12)', Icon: XCircle },
+            { label: 'Revenue (₱)', value: revenue.toLocaleString(), color: '#b45309', accent: 'rgba(191,161,95,0.18)', Icon: CalendarCheck },
           ].map(({ label, value, color, accent, Icon }) => (
             <div key={label} className="rounded-2xl lg:rounded-[20px] p-3 sm:p-4 flex items-center gap-2 sm:gap-3 min-w-0" style={{
               background: C.cardBg,
               border: `1px solid ${C.cardBorder}`,
               boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
             }}>
-              <div aria-hidden="true" className="w-9 h-9 sm:w-11 sm:h-11 rounded-[10px] sm:rounded-[14px] shrink-0 flex items-center justify-center" style={{
-                background: accent, color,
-              }}>
+              <div aria-hidden="true" className="w-9 h-9 sm:w-11 sm:h-11 rounded-[10px] sm:rounded-[14px] shrink-0 flex items-center justify-center" style={{ background: accent, color }}>
                 <Icon size={18} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide truncate" style={{
-                  color: C.textMuted, lineHeight: 1.2,
-                }} title={label}>{label}</p>
+                <p className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide truncate" style={{ color: C.textMuted, lineHeight: 1.2 }} title={label}>{label}</p>
                 <p className="text-xl sm:text-2xl font-black leading-none truncate tabular-nums" style={{ color, marginTop: 2 }} title={String(value)}>{value}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* ── Toolbar: stacks on mobile, single row on lg ── */}
-        <div className="rounded-[20px] p-3 sm:p-4 flex flex-col gap-3" style={{
+        {/* ── Toolbar card ── */}
+        <section aria-label="Archive filters and actions" className="rounded-[20px] p-3 sm:p-4 flex flex-col gap-3" style={{
           background: C.cardBg, border: `1px solid ${C.cardBorder}`,
           boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
         }}>
-          <div className="flex flex-col md:flex-row md:items-center gap-2.5">
-            {/* Search — 16px on mobile prevents iOS zoom, min 44px tall */}
-            <div role="search" className="flex items-center gap-2.5 px-3.5 rounded-[14px] min-h-[44px] flex-1 w-full md:min-w-[220px]" style={{
+          {/* Search + sort */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+            <div role="search" className="flex items-center gap-2.5 px-3.5 rounded-[14px] min-h-[44px] flex-1 w-full sm:min-w-[220px]" style={{
               background: C.inputBg, border: `1px solid ${C.cardBorder}`,
             }}>
               <Search size={16} aria-hidden="true" style={{ color: C.textMuted, flexShrink: 0 }} />
@@ -603,7 +657,7 @@ const AdminHistory = () => {
                 placeholder="Search client, therapist, service, ID…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 bg-transparent border-none outline-none text-base md:text-xs font-semibold min-w-0"
+                className="flex-1 bg-transparent border-none outline-none text-base sm:text-sm font-semibold min-w-0"
                 style={{ color: C.textPrimary }}
               />
               {search && (
@@ -618,31 +672,103 @@ const AdminHistory = () => {
               )}
             </div>
 
-            {/* Status filter pills — 44px targets, aria-pressed */}
-            <div role="group" aria-label="History status filter" className="flex items-center gap-1.5 flex-wrap">
-              {FILTERS.map((f) => {
-                const active = statusFilter === f;
-                return (
-                  <button
-                    key={f}
-                    onClick={() => setStatusFilter(f)}
-                    aria-pressed={active}
-                    className="rounded-xl text-[11px] font-extrabold whitespace-nowrap px-4"
-                    style={{
-                      minHeight: 44,
-                      border: active ? '1px solid #6366f1' : `1px solid ${C.pillBorder}`,
-                      background: active ? '#6366f1' : C.pillBg,
-                      color: active ? '#fff' : C.textSecondary,
-                      boxShadow: active ? '0 2px 8px rgba(99,102,241,0.25)' : 'none',
-                      cursor: 'pointer',
-                    }}
-                  >{f}</button>
-                );
-              })}
+            <button
+              onClick={() => setSortOrder((s) => (s === 'newest' ? 'oldest' : 'newest'))}
+              aria-label={`Sort by date, currently ${sortOrder === 'newest' ? 'newest first' : 'oldest first'}. Activate to switch.`}
+              title={sortOrder === 'newest' ? 'Newest first — tap for oldest' : 'Oldest first — tap for newest'}
+              className="flex items-center justify-center gap-1.5 rounded-[14px] text-xs font-black px-4 shrink-0"
+              style={{ minHeight: 44, color: C.textSecondary, background: C.pillBg, border: `1px solid ${C.pillBorder}`, cursor: 'pointer' }}
+            >
+              <ArrowUpDown size={15} aria-hidden="true" />
+              {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
+            </button>
+          </div>
+
+          {/* Status pills — horizontal scroll on phones, wrap on desktop */}
+          <div role="group" aria-label="History status filter" className="flex gap-1.5 overflow-x-auto sm:flex-wrap sm:overflow-visible pb-1 sm:pb-0 -mx-1 px-1" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}>
+            {STATUS_FILTERS.map((f) => {
+              const active = statusFilter === f;
+              return (
+                <button
+                  key={f}
+                  onClick={() => setStatusFilter(f)}
+                  aria-pressed={active}
+                  className="rounded-xl text-[11px] font-extrabold whitespace-nowrap px-4 shrink-0 snap-start"
+                  style={pillStyle(active)}
+                >{f}</button>
+              );
+            })}
+            <span aria-hidden="true" className="hidden sm:block w-px self-stretch mx-1" style={{ background: C.rowBorder }} />
+            {DATE_FILTERS.map((d) => {
+              const active = dateFilter === d.id;
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => setDateFilter(d.id)}
+                  aria-pressed={active}
+                  className="rounded-xl text-[11px] font-extrabold whitespace-nowrap px-4 shrink-0 snap-start flex items-center gap-1.5"
+                  style={{
+                    minHeight: 44,
+                    border: active ? '1px solid #bfa15f' : `1px solid ${C.pillBorder}`,
+                    background: active ? 'rgba(191,161,95,0.16)' : 'transparent',
+                    color: active ? (isDark ? '#fde68a' : '#92400e') : C.textMuted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {d.id === 'all' ? null : <CalendarDays size={13} aria-hidden="true" />}
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Therapist + page size + reset */}
+          <div className="flex flex-col min-[520px]:flex-row min-[520px]:items-center gap-2">
+            <label className="flex items-center gap-2 flex-1 min-w-0 rounded-[14px] px-3.5" style={{ minHeight: 44, background: C.inputBg, border: `1px solid ${C.cardBorder}` }}>
+              <Users size={15} aria-hidden="true" style={{ color: C.textMuted, flexShrink: 0 }} />
+              <span className="sr-only">Filter by therapist</span>
+              <select
+                value={therapistFilter}
+                onChange={(e) => setTherapistFilter(e.target.value)}
+                aria-label="Filter by therapist"
+                className="flex-1 bg-transparent border-none outline-none text-xs font-bold min-w-0 cursor-pointer"
+                style={{ color: C.textPrimary, minHeight: 44 }}
+              >
+                <option value="all">All therapists</option>
+                {therapistOptions.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 rounded-[14px] px-3.5" style={{ minHeight: 44, background: C.pillBg, border: `1px solid ${C.pillBorder}` }}>
+                <span className="text-[11px] font-extrabold whitespace-nowrap" style={{ color: C.textMuted }}>Per page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  aria-label="Records per page"
+                  className="bg-transparent border-none outline-none text-xs font-black cursor-pointer"
+                  style={{ color: C.textSecondary, minHeight: 44 }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </label>
+              {hasActiveFilters && (
+                <button
+                  onClick={resetAll}
+                  className="flex items-center justify-center gap-1.5 rounded-[14px] text-[11px] font-black px-4"
+                  style={{ minHeight: 44, color: C.textSecondary, background: 'transparent', border: `1px solid ${C.cardBorder}`, cursor: 'pointer' }}
+                >
+                  <RotateCcw size={13} aria-hidden="true" /> Reset
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Import / Export — full-width stacked on <380px, side-by-side above */}
+          {/* Import / Export */}
           <div className="flex flex-col min-[420px]:flex-row min-[420px]:items-center gap-2">
             <input
               ref={fileInputRef}
@@ -654,12 +780,15 @@ const AdminHistory = () => {
               tabIndex={-1}
             />
             <p className="sr-only" id="import-hint">Import is view-only. Nothing is written to the database.</p>
-            <div className="flex flex-col min-[420px]:flex-row gap-2 min-[420px]:ml-auto w-full min-[420px]:w-auto">
+            <p aria-live="polite" className="text-[11px] font-bold flex-1 min-w-0 truncate" style={{ color: C.textMuted, margin: 0 }}>
+              {filtered.length} result{filtered.length !== 1 ? 's' : ''}{hasActiveFilters ? ' (filtered)' : ''} · {allRecords.length} archived
+            </p>
+            <div className="flex flex-col min-[420px]:flex-row gap-2 w-full min-[420px]:w-auto">
               <button
                 onClick={() => fileInputRef.current?.click()}
                 aria-describedby="import-hint"
                 title="Import records from an Excel file (view only — nothing is written to the database)"
-                className="flex items-center justify-center gap-1.5 rounded-[14px] text-xs font-black px-4 flex-1 min-[420px]:flex-none"
+                className="flex items-center justify-center gap-1.5 rounded-[14px] text-xs font-black px-4 flex-1 min-[420px]:flex-none active:scale-[0.98]"
                 style={{
                   minHeight: 44,
                   color: '#2563eb', background: 'rgba(37,99,235,0.1)',
@@ -669,7 +798,7 @@ const AdminHistory = () => {
               <button
                 onClick={handleExport}
                 title="Export the current archive view to an Excel (.xlsx) file"
-                className="flex items-center justify-center gap-1.5 rounded-[14px] text-xs font-black px-4 flex-1 min-[420px]:flex-none"
+                className="flex items-center justify-center gap-1.5 rounded-[14px] text-xs font-black px-4 flex-1 min-[420px]:flex-none active:scale-[0.98]"
                 style={{
                   minHeight: 44,
                   color: '#fff',
@@ -680,7 +809,6 @@ const AdminHistory = () => {
             </div>
           </div>
 
-          {/* Imported rows notice */}
           {imported.length > 0 && (
             <div className="w-full flex flex-col sm:flex-row sm:items-center gap-2 p-2.5 rounded-xl" style={{
               background: isDark ? 'rgba(37,99,235,0.1)' : 'rgba(37,99,235,0.06)',
@@ -693,19 +821,27 @@ const AdminHistory = () => {
               <button
                 onClick={handleClearImported}
                 className="rounded-[10px] text-[10px] font-black whitespace-nowrap px-3 shrink-0"
-                style={{
-                  minHeight: 44, color: '#2563eb', background: 'transparent',
-                  border: '1px solid rgba(37,99,235,0.35)', cursor: 'pointer',
-                }}
+                style={{ minHeight: 44, color: '#2563eb', background: 'transparent', border: '1px solid rgba(37,99,235,0.35)', cursor: 'pointer' }}
               >Clear Imported</button>
             </div>
           )}
-        </div>
+        </section>
 
         {/* ── Content states ── */}
         {loading ? (
-          <div style={{ paddingTop: 48, paddingBottom: 48 }} role="status" aria-busy="true" aria-label="Loading history records">
-            <LoadingSpinner message="Loading session archive..." />
+          <div className="flex flex-col gap-2.5" role="status" aria-busy="true" aria-label="Loading history records">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3" aria-hidden="true">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl p-3 sm:p-4 h-[76px] sm:h-[84px] shimmer" style={{ border: `1px solid ${C.cardBorder}` }} />
+              ))}
+            </div>
+            <div className="rounded-[20px] p-3 sm:p-4 flex flex-col gap-2.5" style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}` }} aria-hidden="true">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="rounded-xl h-[64px] shimmer" />
+              ))}
+            </div>
+            <span className="sr-only">Loading session archive…</span>
+            <div className="flex justify-center py-2"><LoadingSpinner message="Loading session archive..." /></div>
           </div>
         ) : loadError ? (
           <div className="p-8 sm:p-12 text-center rounded-3xl" role="alert" style={{
@@ -717,8 +853,8 @@ const AdminHistory = () => {
             <p className="text-xs font-semibold" style={{ color: C.textMuted, margin: '8px 0 0', overflowWrap: 'break-word' }}>{loadError}</p>
             <button
               onClick={loadData}
-              className="mt-4 rounded-xl text-xs font-black px-6"
-              style={{ minHeight: 44, background: '#6366f1', color: '#fff', border: 'none', cursor: 'pointer' }}
+              className="mt-4 rounded-xl text-xs font-black px-6 active:scale-[0.98]"
+              style={{ minHeight: 44, background: '#062c22', color: '#fef3c7', border: 'none', cursor: 'pointer' }}
             >Retry</button>
           </div>
         ) : allRecords.length === 0 ? (
@@ -744,15 +880,10 @@ const AdminHistory = () => {
             <p className="text-xs font-semibold" style={{ color: C.textMuted, margin: '8px 0 0' }}>Try a different keyword or reset the filters.</p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center mt-4">
               <button
-                onClick={() => setSearch('')}
-                className="rounded-xl text-xs font-black px-6"
-                style={{ minHeight: 44, background: 'transparent', color: C.textSecondary, border: `1px solid ${C.cardBorder}`, cursor: 'pointer' }}
-              >Clear search</button>
-              <button
-                onClick={() => { setSearch(''); setStatusFilter('All'); }}
-                className="rounded-xl text-xs font-black px-6"
-                style={{ minHeight: 44, background: '#6366f1', color: '#fff', border: 'none', cursor: 'pointer' }}
-              >Reset filters</button>
+                onClick={resetAll}
+                className="rounded-xl text-xs font-black px-6 active:scale-[0.98]"
+                style={{ minHeight: 44, background: '#062c22', color: '#fef3c7', border: 'none', cursor: 'pointer' }}
+              >Reset all filters</button>
             </div>
           </div>
         ) : (
@@ -760,30 +891,30 @@ const AdminHistory = () => {
             background: C.cardBg, border: `1px solid ${C.cardBorder}`,
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
           }}>
-            {/* ── Mobile card stack (<md) ── */}
+            {/* ── Mobile / small-tablet card list (<md) ── */}
             <div className="md:hidden divide-y" role="list" aria-label="Archived sessions" style={{ borderColor: C.rowBorder }}>
               {pageRecords.map((appt) => (
                 <article
                   key={`${appt.imported ? 'imp' : 'sys'}-${appt.id}`}
                   role="listitem"
-                  onClick={() => setSelectedRecord(appt)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedRecord(appt); } }}
                   tabIndex={0}
                   aria-label={`${appt.service}, ${appt.client_name || appt.client}, ${appt.status}`}
-                  className="p-4 flex flex-col gap-2.5 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 active:opacity-90"
+                  onClick={() => setSelectedRecord(appt)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedRecord(appt); } }}
+                  className="p-4 flex flex-col gap-2.5 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700 active:bg-black/[0.02]"
                   style={{ background: appt.imported ? (isDark ? 'rgba(37,99,235,0.05)' : 'rgba(37,99,235,0.03)') : 'transparent' }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-[11px] font-black font-mono" style={{ color: C.textMuted }}>
+                    <span className="text-[11px] font-black font-mono tabular-nums" style={{ color: C.textMuted }}>
                       #{String(appt.id).padStart(4, '0')}
                     </span>
                     {renderStatusBadge(appt.status)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[15px] font-black leading-snug" style={{ color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }} title={appt.client_name || appt.client}>
+                    <p className="text-[15px] font-black leading-snug" style={{ color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
                       {appt.client_name || appt.client}
                     </p>
-                    <p className="text-xs font-bold" style={{ color: C.textSecondary, margin: '2px 0 0', overflowWrap: 'break-word' }} title={appt.service}>
+                    <p className="text-xs font-bold" style={{ color: C.textSecondary, margin: '2px 0 0', overflowWrap: 'break-word' }}>
                       {appt.service}
                     </p>
                   </div>
@@ -804,12 +935,13 @@ const AdminHistory = () => {
                     <span className="text-[11px] font-semibold truncate" style={{ color: C.textMuted }}>
                       {(appt.therapist_name || 'Unassigned')}{appt.service_duration ? ` · ${appt.service_duration} min` : ''}{appt.service_price ? ` · ₱${appt.service_price}` : ''}
                     </span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedRecord(appt); }}
-                      aria-label={`View record ${appt.id} (read only)`}
+                    <span
+                      role="button"
+                      tabIndex={-1}
+                      aria-hidden="true"
                       className="rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-extrabold shrink-0 px-3"
-                      style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: `1px solid ${C.cardBorder}`, color: C.textSecondary, cursor: 'pointer' }}
-                    ><Eye size={15} aria-hidden="true" /> View</button>
+                      style={{ minWidth: 44, minHeight: 44, background: 'transparent', border: `1px solid ${C.cardBorder}`, color: C.textSecondary }}
+                    ><Eye size={15} aria-hidden="true" /> View</span>
                   </div>
                 </article>
               ))}
@@ -819,28 +951,28 @@ const AdminHistory = () => {
             <div className="hidden md:block">
               <div
                 role="region" aria-label="Archived sessions table. Scroll horizontally on tablet to see all columns."
-                tabIndex={0} className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+                tabIndex={0} className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700 cb-scroll"
                 style={{ WebkitOverflowScrolling: 'touch' }}
               >
-                <div role="table" aria-label="Session history" aria-rowcount={filtered.length} className="min-w-[860px] lg:min-w-0">
-                  <div role="row" className="grid md:grid-cols-[80px_1.4fr_1.2fr_120px_100px_52px] lg:grid-cols-[90px_1.2fr_1.2fr_1.4fr_150px_110px_90px] sticky top-0 z-10" style={{
+                <div role="table" aria-label="Session history" aria-rowcount={filtered.length} className="min-w-[880px] xl:min-w-0">
+                  <div role="row" className="grid md:grid-cols-[84px_1.4fr_1.4fr_140px_110px_56px] lg:grid-cols-[90px_1.2fr_1.1fr_1.4fr_150px_115px_88px]" style={{
                     background: C.headerBg,
                     borderBottom: `1px solid ${C.rowBorder}`,
                     padding: '12px 16px', gap: 12,
                   }}>
                     {[
-                      { label: 'ID', showTherapist: false },
-                      { label: 'Client', showTherapist: false },
-                      { label: 'Therapist', showTherapist: true },
-                      { label: 'Service', showTherapist: false },
-                      { label: 'Date & Time', showTherapist: false },
-                      { label: 'Status', showTherapist: false },
-                      { label: 'View', showTherapist: false },
+                      { label: 'ID', hideBelowLg: false },
+                      { label: 'Client', hideBelowLg: false },
+                      { label: 'Therapist', hideBelowLg: true },
+                      { label: 'Service', hideBelowLg: false },
+                      { label: 'Date & Time', hideBelowLg: false },
+                      { label: 'Status', hideBelowLg: false },
+                      { label: 'View', hideBelowLg: false },
                     ].map((h) => (
                       <div
                         role="columnheader"
                         key={h.label}
-                        className={h.showTherapist ? 'hidden lg:block text-[10px] font-black uppercase tracking-[0.08em]' : 'text-[10px] font-black uppercase tracking-[0.08em]'}
+                        className={`${h.hideBelowLg ? 'hidden lg:block' : ''} text-[10px] font-black uppercase tracking-[0.08em]`}
                         style={{ color: C.textPrimary }}
                       >{h.label}</div>
                     ))}
@@ -856,7 +988,7 @@ const AdminHistory = () => {
                       animate={{ opacity: 1 }}
                       onClick={() => setSelectedRecord(appt)}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedRecord(appt); } }}
-                      className="grid md:grid-cols-[80px_1.4fr_1.2fr_120px_100px_52px] lg:grid-cols-[90px_1.2fr_1.2fr_1.4fr_150px_110px_90px] items-center cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 hover:brightness-[1.02]"
+                      className="grid md:grid-cols-[84px_1.4fr_1.4fr_140px_110px_56px] lg:grid-cols-[90px_1.2fr_1.1fr_1.4fr_150px_115px_88px] items-center cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700"
                       style={{
                         padding: '14px 16px', gap: 12,
                         borderBottom: `1px solid ${C.rowBorder}`,
@@ -866,7 +998,7 @@ const AdminHistory = () => {
                       onMouseLeave={(e) => { e.currentTarget.style.background = appt.imported ? (isDark ? 'rgba(37,99,235,0.05)' : 'rgba(37,99,235,0.03)') : 'transparent'; }}
                     >
                       <div role="cell" className="flex flex-col gap-1 min-w-0">
-                        <span className="text-[11px] font-black font-mono" style={{ color: C.textMuted }}>
+                        <span className="text-[11px] font-black font-mono tabular-nums" style={{ color: C.textMuted }}>
                           #{String(appt.id).padStart(4, '0')}
                         </span>
                         {appt.imported && (
@@ -884,17 +1016,8 @@ const AdminHistory = () => {
                         <p className="text-[13px] font-black truncate" style={{ color: C.textPrimary, margin: 0 }} title={appt.client_name || appt.client}>
                           {appt.client_name || appt.client}
                         </p>
-                        {appt.client_email ? (
-                          <p className="hidden lg:block text-[10px] font-semibold truncate" style={{ color: C.textMuted, margin: '2px 0 0' }} title={appt.client_email}>
-                            {appt.client_email}
-                          </p>
-                        ) : (
-                          <p className="hidden lg:block text-[10px] font-semibold truncate" style={{ color: C.textMuted, margin: '2px 0 0' }} title={appt.therapist_name || 'Unassigned'}>
-                            {appt.therapist_name || 'Unassigned'}
-                          </p>
-                        )}
-                        <p className="lg:hidden text-[10px] font-semibold truncate" style={{ color: C.textMuted, margin: '2px 0 0' }} title={appt.therapist_name || 'Unassigned'}>
-                          {appt.therapist_name || 'Unassigned'}
+                        <p className="text-[10px] font-semibold truncate" style={{ color: C.textMuted, margin: '2px 0 0' }} title={appt.client_email || appt.therapist_name || 'Unassigned'}>
+                          {appt.client_email || appt.therapist_name || 'Unassigned'}
                         </p>
                       </div>
 
@@ -909,7 +1032,7 @@ const AdminHistory = () => {
                           {appt.service}
                         </p>
                         {appt.service_duration && (
-                          <p className="text-[10px] font-semibold" style={{ color: C.textMuted, margin: '2px 0 0' }}>
+                          <p className="text-[10px] font-semibold tabular-nums" style={{ color: C.textMuted, margin: '2px 0 0' }}>
                             {appt.service_duration} min{appt.service_price ? ` • ₱${appt.service_price}` : ''}
                           </p>
                         )}
@@ -917,7 +1040,7 @@ const AdminHistory = () => {
 
                       <div role="cell" className="min-w-0">
                         <p className="text-xs font-black" style={{ color: C.textPrimary, margin: 0 }}>{fmtDate(appt.datetime) || '—'}</p>
-                        <p className="text-[10px] font-bold" style={{ color: C.textMuted, margin: '2px 0 0' }}>{fmt12(appt.datetime) || '—'}</p>
+                        <p className="text-[10px] font-bold tabular-nums" style={{ color: C.textMuted, margin: '2px 0 0' }}>{fmt12(appt.datetime) || '—'}</p>
                       </div>
 
                       <div role="cell">
@@ -943,37 +1066,62 @@ const AdminHistory = () => {
               </div>
             </div>
 
-            {/* Table footer + pagination */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between p-3 sm:px-4" style={{ borderTop: `1px solid ${C.rowBorder}` }}>
-              <p className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: C.textMuted, margin: 0 }}>
-                <FileText size={13} aria-hidden="true" />
-                Showing {pageRecords.length} of {filtered.length} · {allRecords.length} archived total
+            {/* Footer + responsive pagination */}
+            <div className="flex flex-col gap-2.5 p-3 sm:px-4 cb-safe-bottom" style={{ borderTop: `1px solid ${C.rowBorder}` }}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
+                <p aria-live="polite" className="text-[11px] font-bold flex items-center gap-1.5" style={{ color: C.textMuted, margin: 0 }}>
+                  <FileText size={13} aria-hidden="true" />
+                  Showing {rangeStart}–{rangeEnd} of {filtered.length} · {allRecords.length} archived total
+                </p>
+                {totalPages > 1 && (
+                  <nav aria-label="History pages" className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={safePage <= 1}
+                      aria-label="Previous page"
+                      className="rounded-xl flex items-center justify-center disabled:opacity-40 active:scale-[0.97]"
+                      style={{ minWidth: 44, minHeight: 44, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, cursor: 'pointer' }}
+                    ><ChevronLeft size={16} aria-hidden="true" /></button>
+                    <div className="hidden sm:flex items-center gap-1">
+                      {pageNumbers.map((n, idx, arr) => {
+                        const prev = arr[idx - 1];
+                        const gap = prev != null && n - prev > 1;
+                        return (
+                          <React.Fragment key={n}>
+                            {gap && <span aria-hidden="true" className="text-[11px] font-black px-1" style={{ color: C.textMuted }}>…</span>}
+                            <button
+                              onClick={() => setPage(n)}
+                              aria-label={`Go to page ${n}`}
+                              aria-current={n === safePage ? 'page' : undefined}
+                              className="rounded-xl text-[11px] font-black tabular-nums"
+                              style={{
+                                minWidth: 44, minHeight: 44, padding: '0 10px', cursor: 'pointer',
+                                background: n === safePage ? '#062c22' : 'transparent',
+                                color: n === safePage ? '#fef3c7' : C.textSecondary,
+                                border: n === safePage ? '1px solid #062c22' : `1px solid ${C.cardBorder}`,
+                              }}
+                            >{n}</button>
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                    <span aria-live="polite" className="sm:hidden text-[11px] font-black tabular-nums px-1" style={{ color: C.textSecondary }}>
+                      {safePage} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={safePage >= totalPages}
+                      aria-label="Next page"
+                      className="rounded-xl flex items-center justify-center disabled:opacity-40 active:scale-[0.97]"
+                      style={{ minWidth: 44, minHeight: 44, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, cursor: 'pointer' }}
+                    ><ChevronRight size={16} aria-hidden="true" /></button>
+                  </nav>
+                )}
+              </div>
+              <p className="text-[11px] font-semibold" style={{ color: C.textMuted, margin: 0 }}>
+                Archive is view-only — records are managed automatically by the booking workflow.
               </p>
-              {totalPages > 1 && (
-                <nav aria-label="History pages" className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={safePage <= 1}
-                    aria-label="Previous page"
-                    className="rounded-xl flex items-center justify-center disabled:opacity-40"
-                    style={{ minWidth: 44, minHeight: 44, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, cursor: 'pointer' }}
-                  ><ChevronLeft size={16} aria-hidden="true" /></button>
-                  <span aria-live="polite" className="text-[11px] font-black tabular-nums px-1" style={{ color: C.textSecondary }}>
-                    {safePage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={safePage >= totalPages}
-                    aria-label="Next page"
-                    className="rounded-xl flex items-center justify-center disabled:opacity-40"
-                    style={{ minWidth: 44, minHeight: 44, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.textSecondary, cursor: 'pointer' }}
-                  ><ChevronRight size={16} aria-hidden="true" /></button>
-                </nav>
-              )}
             </div>
-            <p className="px-3 pb-3 sm:px-4 text-[11px] font-semibold" style={{ color: C.textMuted, margin: 0 }}>
-              Archive is view-only — records are managed automatically by the booking workflow.
-            </p>
           </div>
         )}
 
