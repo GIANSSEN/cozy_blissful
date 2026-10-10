@@ -92,8 +92,11 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState('');
 
-  const price = Number(appointment?.service_price || appointment?.service?.price || 0);
-  const serviceName = appointment?.service_name || appointment?.service?.name || appointment?.service || 'Spa Treatment';
+  const price = Number(appointment?.total_price || appointment?.service_price || appointment?.service?.price || 0);
+  const isMulti = appointment?.is_multi_service || (appointment?.services && appointment?.services.length > 1);
+  const serviceName = isMulti
+    ? `Multi-Service Package (${appointment.services.length} Treatments)`
+    : (appointment?.service_name || appointment?.service?.name || appointment?.service || 'Spa Treatment');
   const formattedPrice = price > 0
     ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
     : '—';
@@ -216,6 +219,26 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
                 </p>
               </div>
             </div>
+
+            {/* Multi-Service Itemized Breakdown */}
+            {isMulti && appointment?.services?.length > 1 && (
+              <div className="rounded-2xl p-3.5 bg-amber-50/80 border border-amber-200/70 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-amber-900">
+                  <span>Included Services ({appointment.services.length})</span>
+                  <span>{appointment.service_duration} min</span>
+                </div>
+                <div className="divide-y divide-amber-200/50">
+                  {appointment.services.map((svc, idx) => (
+                    <div key={svc.id || idx} className="py-1.5 flex items-center justify-between">
+                      <span className="font-semibold text-slate-800">{svc.name} <span className="text-[10px] text-slate-500">({svc.duration}m)</span></span>
+                      <span className="font-bold text-slate-900 tabular-nums">
+                        ₱{Number(svc.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Payment Method Cards */}
             <div className="space-y-2">

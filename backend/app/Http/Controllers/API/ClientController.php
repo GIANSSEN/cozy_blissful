@@ -32,26 +32,64 @@ class ClientController extends Controller
             ->orderBy('datetime', 'desc')
             ->get();
 
-        $bookings = $appointments->map(function ($appt) {
-            return [
-                'id'               => $appt->id,
-                'booking_group_id' => $appt->booking_group_id,
-                'therapist_name'   => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
-                'therapist_id'     => $appt->therapist_id,
-                'service'          => $appt->service ? $appt->service->name : 'Custom Service',
-                'service_id'       => $appt->service_id,
-                'service_price'    => $appt->service ? (float) $appt->service->price : null,
-                'service_duration' => $appt->service ? (int) $appt->service->duration : null,
-                'datetime'         => $appt->datetime->format('Y-m-d H:i:s'),
-                'status'           => $appt->status,
-                'notes'            => $appt->notes,
-                'payment_status'   => $appt->payment_status ?? 'unpaid',
-                'payment_method'   => $appt->payment_method ?? 'cash',
-                'amount_paid'      => $appt->amount_paid ? (float) $appt->amount_paid : null,
-                'paid_at'          => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
-                'paymongo_session_id' => $appt->paymongo_session_id,
-            ];
+        // Group appointments by booking_group_id so multi-service packages appear as ONE logical record.
+        // Single appointments with null booking_group_id remain their own distinct record.
+        $grouped = $appointments->groupBy(function ($appt) {
+            return $appt->booking_group_id ?: ('single_' . $appt->id);
         });
+
+        $bookings = $grouped->map(function ($group) {
+            $first = $group->first();
+            $isMulti = $group->count() > 1;
+
+            $totalPrice = (float) $group->sum(fn($a) => (float) ($a->service->price ?? 0));
+            $totalDuration = (int) $group->sum(fn($a) => (int) ($a->service->duration ?? 60));
+            $totalPaid = (float) $group->sum(fn($a) => (float) ($a->amount_paid ?? 0));
+
+            $allPaid = $group->every(fn($a) => $a->payment_status === 'paid');
+            $anyAwaiting = $group->contains(fn($a) => $a->payment_status === 'awaiting_payment');
+            $paymentStatus = $allPaid ? 'paid' : ($anyAwaiting ? 'awaiting_payment' : 'unpaid');
+
+            $servicesList = $group->map(function ($a) {
+                return [
+                    'id'               => $a->id,
+                    'service_id'       => $a->service_id,
+                    'name'             => $a->service ? $a->service->name : 'Custom Service',
+                    'price'            => $a->service ? (float) $a->service->price : 0,
+                    'duration'         => $a->service ? (int) $a->service->duration : 60,
+                    'category'         => $a->service ? $a->service->category : null,
+                    'therapist_name'   => $a->therapist ? $a->therapist->name : 'Awaiting Assignment',
+                    'payment_status'   => $a->payment_status ?? 'unpaid',
+                ];
+            })->values()->toArray();
+
+            $serviceNames = $group->map(fn($a) => $a->service ? $a->service->name : 'Custom Service')->values();
+            $serviceLabel = $serviceNames->implode(', ');
+
+            return [
+                'id'                  => $first->id,
+                'appointment_ids'     => $group->pluck('id')->values()->toArray(),
+                'booking_group_id'    => $first->booking_group_id,
+                'is_multi_service'    => $isMulti,
+                'services_count'      => $group->count(),
+                'therapist_name'      => $first->therapist ? $first->therapist->name : 'Awaiting Assignment',
+                'therapist_id'        => $first->therapist_id,
+                'service'             => $serviceLabel,
+                'services'            => $servicesList,
+                'service_id'          => $first->service_id,
+                'service_price'       => $totalPrice,
+                'total_price'         => $totalPrice,
+                'service_duration'    => $totalDuration,
+                'datetime'            => $first->datetime->format('Y-m-d H:i:s'),
+                'status'              => $first->status,
+                'notes'               => $first->notes,
+                'payment_status'      => $paymentStatus,
+                'payment_method'      => $first->payment_method ?? 'cash',
+                'amount_paid'         => $totalPaid > 0 ? $totalPaid : ($allPaid ? $totalPrice : null),
+                'paid_at'             => $first->paid_at ? $first->paid_at->format('Y-m-d H:i:s') : null,
+                'paymongo_session_id' => $first->paymongo_session_id,
+            ];
+        })->values();
 
         // Fetch active services
         $availableServices = Service::where('status', 'active')->get()->map(function ($s) {
@@ -419,9 +457,16 @@ class ClientController extends Controller
             ], 422);
         }
 
-        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($appt) {
-            $appt->status = 'Cancelled';
-            $appt->save();
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($appt, $user) {
+            if ($appt->booking_group_id) {
+                Appointment::where('booking_group_id', $appt->booking_group_id)
+                    ->where('client_id', $user->id)
+                    ->update(['status' => 'Cancelled']);
+                $appt->status = 'Cancelled';
+            } else {
+                $appt->status = 'Cancelled';
+                $appt->save();
+            }
             return $appt;
         });
 
@@ -463,6 +508,10 @@ class ClientController extends Controller
             return response()->json(['message' => 'Invalid date time format.'], 422);
         }
 
+        $duration = $appt->booking_group_id
+            ? (int) Appointment::where('booking_group_id', $appt->booking_group_id)->with('service')->get()->sum(fn($a) => (int) ($a->service->duration ?? 60))
+            : ($appt->service ? (int) $appt->service->duration : 60);
+
         $targetTherapistId = $request->has('therapist_id') ? $request->therapist_id : $appt->therapist_id;
 
         if ($targetTherapistId) {
@@ -481,14 +530,29 @@ class ClientController extends Controller
             }
         }
 
-        // Update datetime and reset reminder flags
-        $appt->datetime = $parsedDatetime;
-        if ($request->has('therapist_id')) {
-            $appt->therapist_id = $request->therapist_id;
-        }
-        $appt->reminder_24h_sent_at = null;
-        $appt->reminder_2h_sent_at = null;
-        $appt->save();
+        // Update datetime and reset reminder flags across all siblings in group
+        \Illuminate\Support\Facades\DB::transaction(function () use ($appt, $user, $parsedDatetime, $targetTherapistId, $request) {
+            $updateData = [
+                'datetime' => $parsedDatetime,
+                'reminder_24h_sent_at' => null,
+                'reminder_2h_sent_at' => null,
+            ];
+            if ($request->has('therapist_id')) {
+                $updateData['therapist_id'] = $targetTherapistId;
+            }
+
+            if ($appt->booking_group_id) {
+                Appointment::where('booking_group_id', $appt->booking_group_id)
+                    ->where('client_id', $user->id)
+                    ->update($updateData);
+                $appt->datetime = $parsedDatetime;
+                if ($request->has('therapist_id')) {
+                    $appt->therapist_id = $targetTherapistId;
+                }
+            } else {
+                $appt->update($updateData);
+            }
+        });
 
         return response()->json([
             'message' => 'Appointment rescheduled successfully!',

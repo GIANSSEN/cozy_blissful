@@ -2341,7 +2341,18 @@ const ClientDashboard = () => {
                               </div>
                               <div className="space-y-1">
                                 <div className="flex items-start justify-between gap-2">
-                                  <p className="font-black text-slate-800 text-base leading-snug min-w-0 flex-1">{b.service}</p>
+                                  <div className="min-w-0 flex-1">
+                                    {b.services?.length > 1 ? (
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="font-black text-slate-800 text-base leading-snug">Multi-Service Wellness Package</p>
+                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                          {b.services.length} Services Bundle
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <p className="font-black text-slate-800 text-base leading-snug">{b.service}</p>
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-1.5 flex-shrink-0">
                                     <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-bold tabular-nums whitespace-nowrap">
                                       #{String(b.id).padStart(5, '0')}
@@ -2383,11 +2394,38 @@ const ClientDashboard = () => {
                                     <>
                                       <span aria-hidden="true">·</span>
                                       <span className="flex items-center gap-1 text-amber-800 font-semibold">
-                                        <Zap className="w-3 h-3 text-amber-600" /> {b.service_duration} min
+                                        <Zap className="w-3 h-3 text-amber-600" /> {b.service_duration} min total
                                       </span>
                                     </>
                                   )}
                                 </div>
+
+                                {/* Itemized Treatment Breakdown for Multi-Service Bundle */}
+                                {b.services?.length > 1 && (
+                                  <div className="mt-2.5 p-3 sm:p-3.5 rounded-2xl bg-[#faf6ee] border border-[#bfa15f]/30 space-y-2">
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#8c7033]">
+                                      <span className="flex items-center gap-1.5">
+                                        <Scissors className="w-3.5 h-3.5 text-[#bfa15f]" /> Included Therapies & Services ({b.services.length})
+                                      </span>
+                                      <span>Total: {b.service_duration} min</span>
+                                    </div>
+                                    <div className="divide-y divide-[#bfa15f]/20">
+                                      {b.services.map((svc, idx) => (
+                                        <div key={svc.id || idx} className="py-1.5 flex items-center justify-between text-xs">
+                                          <div className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#bfa15f]"></span>
+                                            <span className="font-bold text-slate-800">{svc.name}</span>
+                                            <span className="text-[10px] text-slate-500">({svc.duration} min)</span>
+                                          </div>
+                                          <span className="font-black text-slate-800 tabular-nums">
+                                            ₱{Number(svc.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
                                 {clientDisplayNotes(b.notes) && <p className="text-[11px] text-slate-500 italic pt-0.5 break-words">📋 Notes: {clientDisplayNotes(b.notes)}</p>}
                               </div>
                             </div>
@@ -2486,7 +2524,7 @@ const ClientDashboard = () => {
                                   className="w-full sm:w-auto sm:flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-extrabold text-white bg-sky-700 hover:bg-sky-800 transition cursor-pointer shadow-xs min-h-[44px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
                                 >
                                   <Wallet className="w-3.5 h-3.5 flex-shrink-0" />
-                                  <span className="text-center leading-snug">Pay Online with {clientMethodLabel(b.payment_method)}</span>
+                                  <span className="text-center leading-snug">Pay Online with {clientMethodLabel(b.payment_method)} (₱{Number(b.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })})</span>
                                 </button>
                               )}
                               {b.payment_status !== 'paid' && normalizeClientMethod(b.payment_method) === 'cash' && (
