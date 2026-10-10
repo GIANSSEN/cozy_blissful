@@ -18,6 +18,7 @@ class Appointment extends Model
         'datetime',
         'status',
         'notes',
+        'booking_group_id',
         'payment_status',
         'payment_method',
         'paymongo_session_id',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -26,42 +27,70 @@ class PaymentController extends Controller
     public function createCheckoutSession(Request $request)
     {
         $request->validate([
-            'appointment_id'       => 'required|integer|exists:appointments,id',
-            'payment_method_types' => 'required|array|min:1',
+            // Accept a single appointment_id (legacy) OR an array of ids (multi-service group)
+            'appointment_id'        => 'nullable|integer|exists:appointments,id',
+            'appointment_ids'        => 'nullable|array|min:1',
+            'appointment_ids.*'      => 'integer|exists:appointments,id',
+            'payment_method_types'  => 'required|array|min:1',
             'payment_method_types.*' => 'in:gcash,paymaya,qrph,dob,dob_ubp',
-            'frontend_url'         => 'nullable|string',
+            'frontend_url'          => 'nullable|string',
         ]);
 
-        $appointment = Appointment::with('service', 'client')->findOrFail($request->appointment_id);
+        // Resolve the appointment(s) to pay for
+        $ids = $request->input('appointment_ids')
+            ?? ($request->filled('appointment_id') ? [$request->appointment_id] : []);
 
-        // Authorization: only the owner can initiate payment
-        if ((int) $appointment->client_id !== (int) auth()->id()) {
-            return response()->json(['message' => 'Forbidden.'], 403);
+        if (empty($ids)) {
+            return response()->json(['message' => 'No appointment selected for payment.'], 422);
         }
 
-        if ($appointment->payment_status === 'paid') {
-            return response()->json(['message' => 'This appointment is already fully paid.'], 422);
+        $appointments = Appointment::with('service', 'client')->whereIn('id', $ids)->get();
+
+        if ($appointments->isEmpty()) {
+            return response()->json(['message' => 'Appointment(s) not found.'], 404);
         }
 
-        $price       = (float) ($appointment->service->price ?? 0);
-        $amountCents = (int) round($price * 100); // PayMongo uses centavos (smallest unit)
+        // Authorization: all appointments must belong to the authenticated client
+        foreach ($appointments as $appt) {
+            if ((int) $appt->client_id !== (int) auth()->id()) {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+        }
 
-        if ($amountCents < 10000) {
-            $amountCents = 10000; // PayMongo minimum is ₱100.00 = 10,000 centavos
+        // If any is already paid, reject
+        if ($appointments->contains('payment_status', 'paid')) {
+            return response()->json(['message' => 'One or more appointments are already fully paid.'], 422);
+        }
+
+        // If they share a booking_group_id, load ALL siblings automatically
+        $groupId = $appointments->first()->booking_group_id;
+        if ($groupId) {
+            $appointments = Appointment::with('service', 'client')
+                ->where('booking_group_id', $groupId)
+                ->where('client_id', auth()->id())
+                ->get();
+        }
+
+        $primaryAppt = $appointments->first();
+        $client      = $primaryAppt->client;
+
+        // Total amount = sum of all service prices in the group
+        $totalCents = $appointments->sum(fn($a) => (int) round((float) ($a->service->price ?? 0) * 100));
+        if ($totalCents < 10000) {
+            $totalCents = 10000; // PayMongo minimum ₱100.00
         }
 
         $frontendUrl = $request->input('frontend_url') ?: config('services.paymongo.frontend_url') ?: env('FRONTEND_URL', 'http://localhost:5174');
         $frontendUrl = rtrim($frontendUrl, '/');
-        $successUrl  = $frontendUrl . '/payment/success?appointment_id=' . $appointment->id;
-        $cancelUrl   = $frontendUrl . '/payment/cancel?appointment_id='  . $appointment->id;
+        $successUrl  = $frontendUrl . '/payment/success?appointment_id=' . $primaryAppt->id;
+        $cancelUrl   = $frontendUrl . '/payment/cancel?appointment_id=' . $primaryAppt->id;
 
-        $refNum = 'CB-' . str_pad($appointment->id, 5, '0', STR_PAD_LEFT) . '-' . time();
+        $refNum = 'CB-' . str_pad($primaryAppt->id, 5, '0', STR_PAD_LEFT) . '-' . time();
 
-        // Normalize phone to E.164 format (+63XXXXXXXXXX) required by PayMongo
-        $rawPhone = $appointment->client->phone ?? '';
-        $phone = preg_replace('/[^0-9+]/', '', $rawPhone);
+        // Normalize phone to E.164
+        $rawPhone = $client->phone ?? '';
+        $phone    = preg_replace('/[^0-9+]/', '', $rawPhone);
         if ($phone && !str_starts_with($phone, '+')) {
-            // Convert 09XXXXXXXX → +639XXXXXXXX
             if (str_starts_with($phone, '09') && strlen($phone) === 11) {
                 $phone = '+63' . substr($phone, 1);
             } elseif (str_starts_with($phone, '9') && strlen($phone) === 10) {
@@ -71,34 +100,35 @@ class PaymentController extends Controller
             }
         }
 
+        // Build line items — one row per service for a clear PayMongo receipt
+        $lineItems = $appointments->map(fn($a) => [
+            'currency'    => 'PHP',
+            'amount'      => (int) round((float) ($a->service->price ?? 0) * 100),
+            'name'        => $a->service->name ?? 'Spa Treatment',
+            'quantity'    => 1,
+            'description' => sprintf('%s — %s', $a->service->name ?? 'Spa Treatment', $a->datetime->format('D, M j Y g:i A')),
+        ])->values()->toArray();
+
+        $description = $appointments->count() === 1
+            ? 'Cozy Blissful Spa — Appointment #' . str_pad($primaryAppt->id, 5, '0', STR_PAD_LEFT)
+            : 'Cozy Blissful Spa — ' . $appointments->count() . '-Service Package (Group ' . substr($groupId ?? $primaryAppt->id, 0, 8) . ')';
+
         $payload = [
             'data' => [
                 'attributes' => [
                     'billing' => [
-                        'name'  => $appointment->client->name   ?? 'Client',
-                        'email' => $appointment->client->email  ?? '',
+                        'name'  => $client->name  ?? 'Client',
+                        'email' => $client->email ?? '',
                         'phone' => $phone ?: null,
                     ],
                     'send_email_receipt' => true,
                     'show_description'   => true,
                     'show_line_items'    => true,
-                    'line_items' => [
-                        [
-                            'currency'    => 'PHP',
-                            'amount'      => $amountCents,
-                            'name'        => $appointment->service->name ?? 'Spa Treatment',
-                            'quantity'    => 1,
-                            'description' => sprintf(
-                                '%s — %s',
-                                $appointment->service->name ?? 'Spa Treatment',
-                                $appointment->datetime->format('D, M j Y g:i A')
-                            ),
-                        ],
-                    ],
+                    'line_items'         => $lineItems,
                     'payment_method_types' => $request->payment_method_types,
                     'success_url'          => $successUrl,
                     'cancel_url'           => $cancelUrl,
-                    'description'          => 'Cozy Blissful Spa — Appointment #' . str_pad($appointment->id, 5, '0', STR_PAD_LEFT),
+                    'description'          => $description,
                     'reference_number'     => $refNum,
                 ],
             ],
@@ -113,31 +143,32 @@ class PaymentController extends Controller
                 Log::error('PayMongo createCheckoutSession failed', [
                     'status'  => $response->status(),
                     'body'    => $response->body(),
-                    'appt_id' => $appointment->id,
+                    'ids'     => $appointments->pluck('id')->toArray(),
                 ]);
-
                 $pmErrors = $response->json('errors') ?? [];
                 $firstMsg = !empty($pmErrors) ? ($pmErrors[0]['detail'] ?? 'Payment gateway error.') : $response->body();
-                return response()->json([
-                    'message' => $firstMsg,
-                    'errors'  => $pmErrors,
-                ], 422);
+                return response()->json(['message' => $firstMsg, 'errors' => $pmErrors], 422);
             }
 
             $session = $response->json('data');
 
-            // Mark appointment as awaiting online payment and save session id
-            $appointment->update([
-                'payment_status'      => 'awaiting_payment',
-                'payment_method'      => 'online',
-                'paymongo_session_id' => $session['id'],
-            ]);
+            // Stamp paymongo_session_id on ALL appointments in the group so
+            // the webhook / verify can resolve any of them back to the group.
+            DB::transaction(function () use ($appointments, $session) {
+                $appointments->each(fn($a) => $a->update([
+                    'payment_status'      => 'awaiting_payment',
+                    'payment_method'      => 'online',
+                    'paymongo_session_id' => $session['id'],
+                ]));
+            });
 
             return response()->json([
-                'checkout_url'   => $session['attributes']['checkout_url'],
-                'session_id'     => $session['id'],
-                'appointment_id' => $appointment->id,
-                'reference'      => $refNum,
+                'checkout_url'    => $session['attributes']['checkout_url'],
+                'session_id'      => $session['id'],
+                'appointment_id'  => $primaryAppt->id,
+                'appointment_ids' => $appointments->pluck('id')->values(),
+                'reference'       => $refNum,
+                'total_amount'    => $totalCents / 100,
             ]);
 
         } catch (\Exception $e) {
@@ -193,7 +224,7 @@ class PaymentController extends Controller
                     ->get($this->baseUrl . '/checkout_sessions/' . $appointment->paymongo_session_id);
 
                 if ($sessRes->successful()) {
-                    $sData = $sessRes->json('data');
+                    $sData    = $sessRes->json('data');
                     $payments = $sData['attributes']['payments'] ?? [];
                     $piStatus = $sData['attributes']['payment_intent']['attributes']['status'] ?? '';
 
@@ -208,15 +239,20 @@ class PaymentController extends Controller
                     }
 
                     if ($isPaid) {
-                        $paidAmount = isset($sData['attributes']['line_items'][0]['amount'])
-                            ? (float) ($sData['attributes']['line_items'][0]['amount'] / 100)
+                        $paidAmount = isset($sData['attributes']['line_items'])
+                            ? collect($sData['attributes']['line_items'])->sum('amount') / 100
                             : (float) ($appointment->service->price ?? 0);
 
-                        $appointment->update([
-                            'payment_status' => 'paid',
-                            'amount_paid'    => $paidAmount,
-                            'paid_at'        => now(),
-                        ]);
+                        $methodUsed = $payments[0]['attributes']['source']['type']
+                            ?? ($appointment->payment_method ?: 'online');
+
+                        // Mark ALL siblings in the group as paid
+                        $this->markGroupPaid(
+                            $appointment->paymongo_session_id,
+                            (float) $paidAmount,
+                            $methodUsed
+                        );
+
                         $appointment->refresh();
                     }
                 }
@@ -271,30 +307,43 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        $paidAmount = (float) ($appointment->service->price ?? 0);
-        $method     = $request->input('payment_method', 'gcash');
+        $method = $request->input('payment_method', 'gcash');
 
-        $appointment->update([
-            'payment_status' => 'paid',
-            'payment_method' => $method,
-            'amount_paid'    => $paidAmount,
-            'paid_at'        => now(),
-        ]);
+        // Load all siblings in the group and pay them all
+        $siblings = $appointment->booking_group_id
+            ? Appointment::with('service')->where('booking_group_id', $appointment->booking_group_id)->get()
+            : collect([$appointment]);
 
-        Log::info('Appointment marked as paid via Test Payment Simulator', [
-            'appointment_id' => $appointment->id,
-            'amount'         => $paidAmount,
-            'method'         => $method,
+        $totalAmount = $siblings->sum(fn($a) => (float) ($a->service->price ?? 0));
+
+        DB::transaction(function () use ($siblings, $totalAmount, $method) {
+            // Each appointment records its own service price; total is on the first
+            $siblings->each(fn($a) => $a->update([
+                'payment_status' => 'paid',
+                'payment_method' => $method,
+                'amount_paid'    => (float) ($a->service->price ?? 0),
+                'paid_at'        => now(),
+            ]));
+        });
+
+        $appointment->refresh();
+
+        Log::info('Appointments marked as paid via Test Payment Simulator', [
+            'group_id' => $appointment->booking_group_id,
+            'ids'      => $siblings->pluck('id')->toArray(),
+            'total'    => $totalAmount,
+            'method'   => $method,
         ]);
 
         return response()->json([
-            'success'        => true,
-            'message'        => 'Test payment successfully confirmed!',
-            'payment_status' => 'paid',
-            'payment_method' => $method,
-            'amount_paid'    => $paidAmount,
-            'paid_at'        => $appointment->paid_at->toISOString(),
-            'appointment_id' => $appointment->id,
+            'success'         => true,
+            'message'         => 'Test payment successfully confirmed!',
+            'payment_status'  => 'paid',
+            'payment_method'  => $method,
+            'amount_paid'     => $totalAmount,
+            'paid_at'         => $appointment->paid_at->toISOString(),
+            'appointment_id'  => $appointment->id,
+            'appointment_ids' => $siblings->pluck('id')->values(),
         ]);
     }
 
@@ -365,34 +414,65 @@ class PaymentController extends Controller
             return null;
         }
 
-        // Extract amount properly from payments list, line_items, or amount field
-        $amountCents = $resource['attributes']['payments'][0]['attributes']['amount']
-            ?? ($resource['attributes']['line_items'][0]['amount']
+        // Extract total amount from line_items (all services), payments array, or fallback
+        $lineItemsTotal = isset($resource['attributes']['line_items'])
+            ? collect($resource['attributes']['line_items'])->sum('amount')
+            : null;
+
+        $amountCents = $lineItemsTotal
+            ?? ($resource['attributes']['payments'][0]['attributes']['amount']
             ?? ($resource['attributes']['amount']
             ?? null));
-
-        $paidAmount = $amountCents !== null
-            ? (float) ($amountCents / 100)
-            : (float) ($appointment->service->price ?? 0);
 
         $methodUsed = $resource['attributes']['payments'][0]['attributes']['source']['type']
             ?? ($resource['attributes']['payment_method_used']
             ?? ($appointment->payment_method ?: 'gcash'));
 
-        $appointment->update([
-            'payment_status' => 'paid',
-            'payment_method' => $methodUsed,
-            'amount_paid'    => $paidAmount,
-            'paid_at'        => now(),
-        ]);
+        // Mark ALL siblings in the group as paid (single paymongo_session_id stamps all)
+        $this->markGroupPaid(
+            $sessionId ?? $appointment->paymongo_session_id,
+            $amountCents !== null ? (float) ($amountCents / 100) : null,
+            $methodUsed,
+            $appointment
+        );
 
-        Log::info('Appointment marked as paid via PayMongo webhook', [
-            'id'             => $appointment->id,
-            'amount'         => $paidAmount,
+        Log::info('Appointment group marked as paid via PayMongo webhook', [
+            'session_id'     => $sessionId,
+            'primary_id'     => $appointment->id,
             'payment_method' => $methodUsed,
         ]);
 
         return $appointment;
+    }
+
+    /**
+     * Mark all appointments sharing a paymongo_session_id (or booking_group_id) as paid.
+     * Each appointment records its own service price; totalAmount is the grand total.
+     */
+    private function markGroupPaid(
+        ?string $sessionId,
+        ?float $totalAmount,
+        string $method,
+        ?Appointment $fallbackAppt = null
+    ): void {
+        DB::transaction(function () use ($sessionId, $totalAmount, $method, $fallbackAppt) {
+            $siblings = $sessionId
+                ? Appointment::with('service')->where('paymongo_session_id', $sessionId)->get()
+                : collect($fallbackAppt ? [$fallbackAppt] : []);
+
+            if ($siblings->isEmpty() && $fallbackAppt) {
+                $siblings = collect([$fallbackAppt]);
+            }
+
+            $siblings->each(function ($a) use ($method) {
+                $a->update([
+                    'payment_status' => 'paid',
+                    'payment_method' => $method,
+                    'amount_paid'    => (float) ($a->service->price ?? 0),
+                    'paid_at'        => now(),
+                ]);
+            });
+        });
     }
 
     private function verifyWebhookSignature(?string $signature, string $body, string $secret): bool

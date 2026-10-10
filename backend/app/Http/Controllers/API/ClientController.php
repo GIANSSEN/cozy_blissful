@@ -8,14 +8,17 @@ use App\Models\Notification;
 use App\Models\Service;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\BookingConfirmationMail;
+use App\Traits\ValidatesBookingCapacity;
 
 class ClientController extends Controller
 {
+    use ValidatesBookingCapacity;
     /**
      * Display client bookings and active options.
      */
@@ -31,20 +34,22 @@ class ClientController extends Controller
 
         $bookings = $appointments->map(function ($appt) {
             return [
-                'id' => $appt->id,
-                'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
-                'therapist_id' => $appt->therapist_id,
-                'service' => $appt->service ? $appt->service->name : 'Custom Service',
-                'service_id' => $appt->service_id,
-                'service_price' => $appt->service ? (float) $appt->service->price : null,
+                'id'               => $appt->id,
+                'booking_group_id' => $appt->booking_group_id,
+                'therapist_name'   => $appt->therapist ? $appt->therapist->name : 'Awaiting Assignment',
+                'therapist_id'     => $appt->therapist_id,
+                'service'          => $appt->service ? $appt->service->name : 'Custom Service',
+                'service_id'       => $appt->service_id,
+                'service_price'    => $appt->service ? (float) $appt->service->price : null,
                 'service_duration' => $appt->service ? (int) $appt->service->duration : null,
-                'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
-                'status' => $appt->status,
-                'notes' => $appt->notes,
-                'payment_status' => $appt->payment_status ?? 'unpaid',
-                'payment_method' => $appt->payment_method ?? 'cash',
-                'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
-                'paid_at' => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
+                'datetime'         => $appt->datetime->format('Y-m-d H:i:s'),
+                'status'           => $appt->status,
+                'notes'            => $appt->notes,
+                'payment_status'   => $appt->payment_status ?? 'unpaid',
+                'payment_method'   => $appt->payment_method ?? 'cash',
+                'amount_paid'      => $appt->amount_paid ? (float) $appt->amount_paid : null,
+                'paid_at'          => $appt->paid_at ? $appt->paid_at->format('Y-m-d H:i:s') : null,
+                'paymongo_session_id' => $appt->paymongo_session_id,
             ];
         });
 
@@ -285,52 +290,15 @@ class ClientController extends Controller
         }
 
         // ── Concurrency & Capacity check (use total duration for capacity) ─────────────────────────────────────
-        $newStart = $parsedDatetime->copy();
-        $newEnd = $parsedDatetime->copy()->addMinutes($totalDuration);
-        $newStartMin = (int) $newStart->format('H') * 60 + (int) $newStart->format('i');
-        $newEndMin = $newStartMin + $totalDuration;
-
-        $existingAppointments = Appointment::with('service')
-            ->whereIn('status', ['Pending', 'Confirmed'])
-            ->whereDate('datetime', $parsedDatetime->toDateString())
-            ->get();
-
         if ($request->filled('therapist_id')) {
-            $therapistBusy = $existingAppointments->first(function ($appt) use ($request, $newStartMin, $newEndMin) {
-                if ((int) $appt->therapist_id !== (int) $request->therapist_id) {
-                    return false;
-                }
-                $startMin = (int) $appt->datetime->format('H') * 60 + (int) $appt->datetime->format('i');
-                $dur = $appt->service ? (int) $appt->service->duration : 60;
-                $endMin = $startMin + $dur;
-                return $newStartMin < $endMin && $newEndMin > $startMin;
-            });
-
-            if ($therapistBusy) {
+            if ($this->therapistHasConflict((int) $request->therapist_id, $parsedDatetime, $totalDuration)) {
                 return response()->json([
                     'message' => 'The selected specialist is not available at this time. Please pick another slot or choose Any Specialist.',
                     'errors' => ['datetime' => ['Specialist time conflict — therapist already has a booking during this window.']],
                 ], 422);
             }
         } else {
-            // Check overall salon capacity
-            $workingTherapistsCount = User::role('therapist')
-                ->whereHas('availabilities', fn($q) => $q->where('date', $parsedDatetime->toDateString()))
-                ->count();
-
-            if ($workingTherapistsCount === 0) {
-                $workingTherapistsCount = User::role('therapist')->count();
-            }
-            $capacity = max(1, $workingTherapistsCount);
-
-            $overlapCount = $existingAppointments->filter(function ($appt) use ($newStartMin, $newEndMin) {
-                $startMin = (int) $appt->datetime->format('H') * 60 + (int) $appt->datetime->format('i');
-                $dur = $appt->service ? (int) $appt->service->duration : 60;
-                $endMin = $startMin + $dur;
-                return $newStartMin < $endMin && $newEndMin > $startMin;
-            })->count();
-
-            if ($overlapCount >= $capacity) {
+            if ($this->salonAtCapacity($parsedDatetime, $totalDuration)) {
                 return response()->json([
                     'message' => 'All specialist slots are fully booked for this time window. Please select an adjacent time slot.',
                     'errors' => ['datetime' => ['Salon capacity reached for this time window.']],
@@ -352,47 +320,36 @@ class ClientController extends Controller
             ? strtolower($request->payment_method)
             : 'cash';
 
-        // Build structured notes with client billing & address details
-        $billingDetails = [];
-        if ($request->filled('client_name') && $request->client_name !== $user->name) {
-            $billingDetails[] = 'Billing Name: ' . trim($request->client_name);
-        }
-        if ($request->filled('client_phone')) {
-            $billingDetails[] = 'Phone: ' . trim($request->client_phone);
-        }
-        if ($request->filled('client_address')) {
-            $billingDetails[] = 'Address: ' . trim($request->client_address);
-        }
-
-        $combinedNotes = trim($request->notes ?? '');
-        if (!empty($billingDetails)) {
-            $billingBlock = "[Billing & Contact Info]\n" . implode("\n", $billingDetails);
-            $combinedNotes = $combinedNotes ? $combinedNotes . "\n\n" . $billingBlock : $billingBlock;
-        }
+        $combinedNotes = $this->formatBillingNotes($request, $user);
 
         // ── Create appointments within transaction ─────────────────────────
-        $appointments = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $services, $request, $parsedDatetime, $combinedNotes, $chosenMethod, $primaryService) {
+        // All sibling appointments share a booking_group_id so that payment,
+        // cancellation, and display can treat them as one logical booking.
+        $groupId = (string) Str::uuid();
+
+        $appointments = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $services, $request, $parsedDatetime, $combinedNotes, $chosenMethod, $groupId) {
             $created = [];
             foreach ($services as $svc) {
                 $appointment = Appointment::create([
-                    'client_id' => $user->id,
-                    'therapist_id' => $request->therapist_id,
-                    'service_id' => $svc->id,
-                    'datetime' => $parsedDatetime,
-                    'status' => 'Pending',
-                    'notes' => $combinedNotes,
-                    'payment_status' => 'unpaid',
-                    'payment_method' => $chosenMethod,
+                    'client_id'        => $user->id,
+                    'therapist_id'     => $request->therapist_id,
+                    'service_id'       => $svc->id,
+                    'datetime'         => $parsedDatetime,
+                    'status'           => 'Pending',
+                    'notes'            => $combinedNotes,
+                    'booking_group_id' => $groupId,
+                    'payment_status'   => 'unpaid',
+                    'payment_method'   => $chosenMethod,
                 ]);
                 $created[] = $appointment;
             }
 
-            // Create admin notification for new booking (single notification for the group)
+            // Single admin notification for the entire group
             $serviceNames = $services->pluck('name')->implode(', ');
             Notification::create([
-                'type' => 'new_booking',
-                'title' => 'New Booking Received',
-                'description' => $user->name . ' — ' . $serviceNames . ' on ' . $parsedDatetime->format('M d, g:i A'),
+                'type'           => 'new_booking',
+                'title'          => 'New Booking Received',
+                'description'    => $user->name . ' — ' . $serviceNames . ' on ' . $parsedDatetime->format('M d, g:i A'),
                 'appointment_id' => $created[0]->id,
             ]);
 
@@ -506,53 +463,17 @@ class ClientController extends Controller
             return response()->json(['message' => 'Invalid date time format.'], 422);
         }
 
-        $duration = $appt->service ? (int) $appt->service->duration : 60;
-        $newStartMin = (int) $parsedDatetime->format('H') * 60 + (int) $parsedDatetime->format('i');
-        $newEndMin = $newStartMin + $duration;
-
         $targetTherapistId = $request->has('therapist_id') ? $request->therapist_id : $appt->therapist_id;
 
-        $existingAppointments = Appointment::with('service')
-            ->whereIn('status', ['Pending', 'Confirmed'])
-            ->where('id', '!=', $appt->id)
-            ->whereDate('datetime', $parsedDatetime->toDateString())
-            ->get();
-
         if ($targetTherapistId) {
-            $therapistBusy = $existingAppointments->first(function ($other) use ($targetTherapistId, $newStartMin, $newEndMin) {
-                if ((int) $other->therapist_id !== (int) $targetTherapistId) {
-                    return false;
-                }
-                $otherStartMin = (int) $other->datetime->format('H') * 60 + (int) $other->datetime->format('i');
-                $otherDur = $other->service ? (int) $other->service->duration : 60;
-                $otherEndMin = $otherStartMin + $otherDur;
-                return $newStartMin < $otherEndMin && $newEndMin > $otherStartMin;
-            });
-
-            if ($therapistBusy) {
+            if ($this->therapistHasConflict((int) $targetTherapistId, $parsedDatetime, $duration, (int) $appt->id)) {
                 return response()->json([
                     'message' => 'The selected specialist is not available at this rescheduled time. Please choose another slot.',
                     'errors' => ['datetime' => ['Specialist time conflict for requested reschedule window.']],
                 ], 422);
             }
         } else {
-            $workingTherapistsCount = User::role('therapist')
-                ->whereHas('availabilities', fn($q) => $q->where('date', $parsedDatetime->toDateString()))
-                ->count();
-
-            if ($workingTherapistsCount === 0) {
-                $workingTherapistsCount = User::role('therapist')->count();
-            }
-            $capacity = max(1, $workingTherapistsCount);
-
-            $overlapCount = $existingAppointments->filter(function ($other) use ($newStartMin, $newEndMin) {
-                $otherStartMin = (int) $other->datetime->format('H') * 60 + (int) $other->datetime->format('i');
-                $otherDur = $other->service ? (int) $other->service->duration : 60;
-                $otherEndMin = $otherStartMin + $otherDur;
-                return $newStartMin < $otherEndMin && $newEndMin > $otherStartMin;
-            })->count();
-
-            if ($overlapCount >= $capacity) {
+            if ($this->salonAtCapacity($parsedDatetime, $duration, (int) $appt->id)) {
                 return response()->json([
                     'message' => 'All specialist slots are fully booked for this reschedule window. Please choose another time.',
                     'errors' => ['datetime' => ['Salon capacity reached for this reschedule window.']],
@@ -579,4 +500,30 @@ class ClientController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Build structured notes with client billing & address details.
+     */
+    private function formatBillingNotes(Request $request, $user): string
+    {
+        $billingDetails = [];
+        if ($request->filled('client_name') && $request->client_name !== $user->name) {
+            $billingDetails[] = 'Billing Name: ' . trim($request->client_name);
+        }
+        if ($request->filled('client_phone')) {
+            $billingDetails[] = 'Phone: ' . trim($request->client_phone);
+        }
+        if ($request->filled('client_address')) {
+            $billingDetails[] = 'Address: ' . trim($request->client_address);
+        }
+
+        $combinedNotes = trim($request->notes ?? '');
+        if (!empty($billingDetails)) {
+            $billingBlock = "[Billing & Contact Info]\n" . implode("\n", $billingDetails);
+            $combinedNotes = $combinedNotes ? $combinedNotes . "\n\n" . $billingBlock : $billingBlock;
+        }
+
+        return $combinedNotes;
+    }
 }
+

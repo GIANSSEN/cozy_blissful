@@ -18,7 +18,7 @@ import {
   CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
   CheckCircle2, Compass, Heart, MapPin,
   Banknote, Wallet, Receipt, User, Mail, Check,
-  Search, CheckCheck, ExternalLink
+  CheckCheck, ExternalLink
 } from 'lucide-react';
 
 // ─── LUXURY DESIGN SYSTEM TOKENS ─────────────────────────────────────────────
@@ -144,7 +144,6 @@ const StepIndicator = ({ step }) => (
 // ─── STEP 1: SERVICE SELECTOR (Multi-Select) ────────────────────────────────────
 const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
   const [activeCategory, setActiveCategory] = useState('All');
-  const [search, setSearch] = useState('');
 
   const categories = ['All', ...Array.from(new Set(services.map((s) => s.category).filter(Boolean)))];
 
@@ -157,15 +156,7 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
     return '✦';
   };
 
-  const filtered = services.filter((s) => {
-    const matchCat = activeCategory === 'All' || s.category === activeCategory;
-    const matchSearch =
-      !search.trim() ||
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.category && s.category.toLowerCase().includes(search.toLowerCase())) ||
-      (s.description && s.description.toLowerCase().includes(search.toLowerCase()));
-    return matchCat && matchSearch;
-  });
+  const filtered = services.filter((s) => activeCategory === 'All' || s.category === activeCategory);
 
   const totalDuration = selectedIds.reduce((sum, id) => {
     const svc = services.find((s) => s.id === id);
@@ -203,26 +194,6 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
         )}
       </div>
 
-      {/* Quick Search */}
-      <div className="relative w-full sm:w-64">
-        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search therapies, nails..."
-          className="w-full pl-8 pr-7 py-2 rounded-xl text-xs bg-white border border-slate-200 focus:border-[#bfa15f] focus:ring-2 focus:ring-[#bfa15f]/20 focus:outline-none transition shadow-xs"
-        />
-        {search && (
-          <button
-            type="button"
-            onClick={() => setSearch('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
-          >
-            ×
-          </button>
-        )}
-      </div>
 
       {/* Category Pills */}
       {categories.length > 1 && (
@@ -330,7 +301,7 @@ const ServiceCards = ({ services, selectedIds = [], onToggle }) => {
 
         {filtered.length === 0 && (
           <div className="col-span-full text-center py-10 text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            No therapies found matching your search.
+            No therapies found in this category.
           </div>
         )}
       </div>
