@@ -154,30 +154,8 @@ const ResetPassword = () => {
     >
       <SpaBackdrop />
 
-      {/* ── Floating back-to-home (same glass language as AuthPortal) ── */}
-      <div className="absolute top-0 left-0 right-0 z-20">
-        <div className="max-w-[920px] mx-auto w-full flex items-center justify-between px-3 sm:px-5 pt-3 sm:pt-4">
-          <Link
-            to="/login"
-            aria-label="Back to sign in"
-            className="inline-flex items-center gap-1.5 pl-2 pr-3 py-2 rounded-xl text-[12px] font-bold text-white/80 hover:text-white transition-all touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
-            style={{ background: 'rgba(4,16,10,0.55)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(191,161,95,0.25)' }}
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-[#e8cc8a]" />
-            Sign In
-          </Link>
-          <Link
-            to="/"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-white/60 hover:text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bfa15f]/60"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-          >
-            Back to Home
-          </Link>
-        </div>
-      </div>
-
       {/* ── Full-viewport centered card ── */}
-      <main className="relative z-10 flex-1 flex items-center justify-center w-full px-3 sm:px-5 pt-14 sm:pt-16 pb-4 overflow-hidden">
+      <main className="relative z-10 flex-1 flex items-center justify-center w-full p-4 sm:p-6 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
