@@ -11,7 +11,7 @@ import {
   UserCheck, AlertCircle, RefreshCw,
   Search, X, CheckCircle2,
   Copy, CheckCheck,
-  User, Phone, Handshake, Zap, Check,
+  User, Phone, Handshake, Zap, Check, Scissors,
 } from 'lucide-react';
 import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
 import ProfileMenu from '../../components/profile/ProfileMenu';
@@ -280,8 +280,12 @@ const TherapistDashboard = () => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const clientMatch = appt.client_name?.toLowerCase().includes(q);
-        const serviceMatch = appt.service?.toLowerCase().includes(q);
-        const idMatch = String(appt.id).includes(q);
+        const serviceMatch =
+          appt.service?.toLowerCase().includes(q) ||
+          appt.services?.some((s) => s.name?.toLowerCase().includes(q));
+        const idMatch =
+          String(appt.id).includes(q) ||
+          appt.appointment_ids?.some((id) => String(id).includes(q));
         return clientMatch || serviceMatch || idMatch;
       }
       return true;
@@ -640,16 +644,23 @@ const TherapistDashboard = () => {
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-black text-slate-900 text-sm sm:text-base leading-snug">
-                                    {appt.service}
+                                    {appt.is_multi_service ? 'Multi-Service Wellness Package' : appt.service}
                                   </span>
-                                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
-                                    #{String(appt.id).padStart(5, '0')}
+                                  {appt.is_multi_service && (
+                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                      {appt.services?.length || appt.services_count} Services Bundle
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md font-semibold">
+                                    {appt.appointment_ids?.length > 1
+                                      ? `IDs: #${appt.appointment_ids.map((id) => String(id).padStart(5, '0')).join(', #')}`
+                                      : `#${String(appt.id).padStart(5, '0')}`}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                                   <span className="flex items-center gap-1 font-medium">
                                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                    {appt.duration || 60} mins
+                                    {appt.duration || 60} mins {appt.is_multi_service && 'total'}
                                   </span>
                                   {appt.price > 0 && (
                                     <span className="font-bold text-emerald-800">
@@ -755,6 +766,32 @@ const TherapistDashboard = () => {
                                 </span>
                               </div>
 
+                              {/* Multi-Service Itemized Treatments */}
+                              {appt.services?.length > 1 && (
+                                <div className="rounded-xl p-3 bg-amber-50/70 border border-amber-200/60 space-y-1.5 text-xs">
+                                  <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-amber-900">
+                                    <span className="flex items-center gap-1.5">
+                                      <Scissors className="w-3.5 h-3.5 text-amber-700" /> Included Treatments ({appt.services.length})
+                                    </span>
+                                    <span>Total: {appt.duration} mins</span>
+                                  </div>
+                                  <div className="divide-y divide-amber-200/40">
+                                    {appt.services.map((svc, idx) => (
+                                      <div key={svc.id || idx} className="py-1 flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-2">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                          <span className="font-bold text-slate-800">{svc.name}</span>
+                                          <span className="text-[10px] text-slate-500">({svc.duration} mins)</span>
+                                        </div>
+                                        <span className="font-black text-slate-800 tabular-nums">
+                                          ₱{Number(svc.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {appt.notes && (
                                 <div className="rounded-xl px-3 py-2 text-[11px] text-amber-900 bg-amber-50/70 border border-amber-200/60 italic flex items-start gap-2">
                                   <span className="shrink-0 font-bold not-italic">📝 Client Note:</span>
@@ -773,7 +810,14 @@ const TherapistDashboard = () => {
                                   onClick={() =>
                                     setModal({
                                       type: 'start_session',
-                                      data: { id: appt.id, client_name: appt.client_name, service: appt.service, newStatus: 'In Progress' },
+                                      data: {
+                                        id: appt.id,
+                                        client_name: appt.client_name,
+                                        service: appt.is_multi_service
+                                          ? `Multi-Service Package (${appt.services?.map((s) => s.name).join(' + ')})`
+                                          : appt.service,
+                                        newStatus: 'In Progress',
+                                      },
                                     })
                                   }
                                   className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl text-xs font-extrabold text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-md"
@@ -799,7 +843,14 @@ const TherapistDashboard = () => {
                                   onClick={() =>
                                     setModal({
                                       type: 'complete_session',
-                                      data: { id: appt.id, client_name: appt.client_name, service: appt.service, newStatus: 'Completed by Therapist' },
+                                      data: {
+                                        id: appt.id,
+                                        client_name: appt.client_name,
+                                        service: appt.is_multi_service
+                                          ? `Multi-Service Package (${appt.services?.map((s) => s.name).join(' + ')})`
+                                          : appt.service,
+                                        newStatus: 'Completed by Therapist',
+                                      },
                                     })
                                   }
                                   className="w-full sm:w-auto px-5 py-2.5 min-h-[44px] rounded-xl text-xs font-black text-white transition-all duration-200 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-md"

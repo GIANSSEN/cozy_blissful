@@ -35,54 +35,113 @@ class TherapistController extends Controller
             ->sum('services.duration') / 60.0;
         $hoursWorked = round($hoursWorked, 1);
 
-        // 2. Fetch all appointments (both upcoming, in progress, awaiting admin confirmation, and completed) for full history view
-        $appointments = Appointment::with(['client', 'service'])
+        // 2. Fetch all appointments assigned to this therapist
+        $rawAppointments = Appointment::with(['client', 'service'])
             ->where('therapist_id', $user->id)
             ->whereIn('status', ['Pending', 'Confirmed', 'In Progress', 'Completed by Therapist', 'Completed'])
             ->orderBy('datetime', 'desc')
-            ->get()
-            ->map(function ($appt) {
-                return [
-                    'id' => $appt->id,
-                    'client_name' => $appt->client ? $appt->client->name : 'Client',
-                    'client_phone' => $appt->client && $appt->client->phone ? $appt->client->phone : 'Not provided',
-                    'service' => $appt->service ? $appt->service->name : 'Massage Service',
-                    'duration' => $appt->service ? $appt->service->duration : 60,
-                    'price' => $appt->service ? $appt->service->price : 0,
-                    'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
-                    'notes' => $appt->notes ?? '',
-                    'status' => $appt->status
-                ];
-            });
+            ->get();
 
-        // 3. Fetch jobs (unassigned appointments that match dates when this therapist is available)
-        // Let's get the list of availability dates for this therapist
+        // Group appointments by booking_group_id so multi-service packages show as ONE unified session card
+        $grouped = $rawAppointments->groupBy(function ($appt) {
+            return $appt->booking_group_id ?: ('single_' . $appt->id);
+        });
+
+        $appointments = $grouped->map(function ($group) {
+            $first = $group->first();
+            $isMulti = $group->count() > 1;
+
+            $totalPrice = (float) $group->sum(fn($a) => (float) ($a->service->price ?? 0));
+            $totalDuration = (int) $group->sum(fn($a) => (int) ($a->service->duration ?? 60));
+
+            // Consolidated Status determination:
+            if ($group->contains('status', 'In Progress')) {
+                $status = 'In Progress';
+            } elseif ($group->every('status', 'Completed')) {
+                $status = 'Completed';
+            } elseif ($group->every(fn($a) => in_array($a->status, ['Completed', 'Completed by Therapist']))) {
+                $status = 'Completed by Therapist';
+            } else {
+                $status = $first->status;
+            }
+
+            $servicesList = $group->map(function ($a) {
+                return [
+                    'id'       => $a->id,
+                    'name'     => $a->service ? $a->service->name : 'Massage Service',
+                    'duration' => $a->service ? (int) $a->service->duration : 60,
+                    'price'    => $a->service ? (float) $a->service->price : 0,
+                    'category' => $a->service ? $a->service->category : null,
+                    'status'   => $a->status,
+                ];
+            })->values()->toArray();
+
+            $serviceNames = $group->map(fn($a) => $a->service ? $a->service->name : 'Massage Service')->values();
+            $serviceLabel = $isMulti ? $serviceNames->implode(', ') : ($first->service ? $first->service->name : 'Massage Service');
+
+            $uniqueNotes = $group->pluck('notes')->filter()->unique()->implode(" | ");
+
+            return [
+                'id'               => $first->id,
+                'appointment_ids'  => $group->pluck('id')->sort()->values()->toArray(),
+                'booking_group_id' => $first->booking_group_id,
+                'is_multi_service' => $isMulti,
+                'services_count'   => $group->count(),
+                'client_name'      => $first->client ? $first->client->name : 'Client',
+                'client_phone'     => $first->client && $first->client->phone ? $first->client->phone : 'Not provided',
+                'service'          => $serviceLabel,
+                'services'         => $servicesList,
+                'duration'         => $totalDuration,
+                'price'            => $totalPrice,
+                'datetime'         => $first->datetime->format('Y-m-d H:i:s'),
+                'notes'            => $uniqueNotes,
+                'status'           => $status,
+                'payment_status'   => $first->payment_status ?? 'unpaid',
+            ];
+        })->values();
+
+        // 3. Fetch available jobs (unassigned appointments matching therapist availability)
         $availDates = TherapistAvailability::where('therapist_id', $user->id)->pluck('date')->toArray();
 
-        // Query pending, unassigned appointments
-        $availableJobsQuery = Appointment::with(['client', 'service'])
+        $rawAvailableJobs = Appointment::with(['client', 'service'])
             ->whereNull('therapist_id')
-            ->whereIn('status', ['Pending', 'Confirmed']);
-
-        // Filter: check if date matches one of therapist's availability dates
-        $availableJobs = $availableJobsQuery->get()
+            ->whereIn('status', ['Pending', 'Confirmed'])
+            ->get()
             ->filter(function ($appt) use ($availDates) {
                 $apptDate = $appt->datetime->format('Y-m-d');
                 return in_array($apptDate, $availDates);
-            })
-            ->map(function ($appt) {
-                return [
-                    'id' => $appt->id,
-                    'title' => ($appt->service ? $appt->service->name : 'Massage') . ' Needed',
-                    'description' => $appt->notes ?? 'Standard appointment booking.',
-                    'location' => 'Cozy Blissful - Main Clinic / Home Service',
-                    'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
-                    'duration' => $appt->service ? $appt->service->duration : 60,
-                    'compensation' => '₱' . number_format($appt->service ? (float)$appt->service->price : 749.00, 2),
-                    'client_name' => $appt->client ? $appt->client->name : 'Client',
-                ];
-            })
-            ->values();
+            });
+
+        $groupedJobs = $rawAvailableJobs->groupBy(function ($appt) {
+            return $appt->booking_group_id ?: ('single_' . $appt->id);
+        });
+
+        $availableJobs = $groupedJobs->map(function ($group) {
+            $first = $group->first();
+            $isMulti = $group->count() > 1;
+            $totalDuration = (int) $group->sum(fn($a) => (int) ($a->service->duration ?? 60));
+            $totalPrice = (float) $group->sum(fn($a) => (float) ($a->service->price ?? 0));
+            $serviceNames = $group->map(fn($a) => $a->service ? $a->service->name : 'Massage')->implode(', ');
+            $uniqueNotes = $group->pluck('notes')->filter()->unique()->implode(" | ");
+
+            return [
+                'id'              => $first->id,
+                'appointment_ids' => $group->pluck('id')->sort()->values()->toArray(),
+                'is_multi_service'=> $isMulti,
+                'services_count'  => $group->count(),
+                'title'           => $isMulti ? "Multi-Service Package ({$serviceNames}) Needed" : (($first->service ? $first->service->name : 'Massage') . ' Needed'),
+                'description'     => $uniqueNotes ?: 'Standard appointment booking.',
+                'location'        => 'Cozy Blissful - Main Clinic',
+                'datetime'        => $first->datetime->format('Y-m-d H:i:s'),
+                'duration'        => $totalDuration,
+                'compensation'    => '₱' . number_format($totalPrice > 0 ? $totalPrice : 749.00, 2),
+                'client_name'     => $first->client ? $first->client->name : 'Client',
+            ];
+        })->values();
+
+        // Count sessions accurately based on grouped sessions
+        $myAppointmentsCount = $appointments->whereIn('status', ['Pending', 'Confirmed', 'In Progress', 'Completed by Therapist'])->count();
+        $completedSessions = $appointments->whereIn('status', ['Completed by Therapist', 'Completed'])->count();
 
         return response()->json([
             'message' => 'Therapist dashboard and jobs retrieved successfully',
@@ -177,34 +236,51 @@ class TherapistController extends Controller
         if ($targetStatus === 'Completed' || $targetStatus === 'Completed by Therapist') {
             $targetStatus = 'Completed by Therapist';
         }
-        $appt->status = $targetStatus;
-        $appt->save();
+
+        // If part of a multi-service booking group, update all siblings assigned to this therapist!
+        $siblings = $appt->booking_group_id
+            ? Appointment::with('service')->where('booking_group_id', $appt->booking_group_id)
+                ->where('therapist_id', $user->id)
+                ->get()
+            : collect([$appt]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($siblings, $targetStatus) {
+            foreach ($siblings as $s) {
+                $s->status = $targetStatus;
+                $s->save();
+            }
+        });
 
         $appt->load(['client', 'service']);
+
+        $serviceDesc = $siblings->count() > 1
+            ? "{$siblings->count()} services package (" . $siblings->pluck('service.name')->filter()->implode(', ') . ")"
+            : ($appt->service?->name ?? 'Service');
 
         if ($targetStatus === 'In Progress') {
             Notification::create([
                 'type'           => 'in_progress',
                 'title'          => 'Session Started',
-                'description'    => "Therapist {$user->name} began session with " . ($appt->client?->name ?? 'Client') . ' (' . ($appt->service?->name ?? 'Service') . ')',
+                'description'    => "Therapist {$user->name} began session with " . ($appt->client?->name ?? 'Client') . ' (' . $serviceDesc . ')',
                 'appointment_id' => $appt->id,
             ]);
         } elseif ($targetStatus === 'Completed by Therapist') {
             Notification::create([
                 'type'           => 'completed_by_therapist',
                 'title'          => 'Session Concluded by Therapist',
-                'description'    => "Therapist {$user->name} completed session #{$appt->id} with " . ($appt->client?->name ?? 'Client') . '. Awaiting Admin verification.',
+                'description'    => "Therapist {$user->name} completed session #{$appt->id} (" . $serviceDesc . ') with ' . ($appt->client?->name ?? 'Client') . '. Awaiting Admin verification.',
                 'appointment_id' => $appt->id,
             ]);
         }
 
-        AuditLog::log('update', 'Appointment', "Therapist {$user->name} marked booking #{$appt->id} as {$targetStatus} (was {$oldStatus})", [
+        AuditLog::log('update', 'Appointment', "Therapist {$user->name} marked booking #{$appt->id} ({$serviceDesc}) as {$targetStatus} (was {$oldStatus})", [
             'actor' => $user->name,
             'actor_role' => 'therapist',
             'module' => 'Therapist Portal',
             'severity' => 'info',
             'metadata' => [
                 'appointment_id' => $appt->id,
+                'appointment_ids' => $siblings->pluck('id')->toArray(),
                 'old_status' => $oldStatus,
                 'new_status' => $targetStatus,
             ]
@@ -216,14 +292,15 @@ class TherapistController extends Controller
                 : 'Session status updated to In Progress',
             'appointment' => [
                 'id' => $appt->id,
+                'appointment_ids' => $siblings->pluck('id')->values()->toArray(),
                 'client_name' => $appt->client ? $appt->client->name : 'Client',
                 'client_phone' => $appt->client && $appt->client->phone ? $appt->client->phone : 'Not provided',
-                'service' => $appt->service ? $appt->service->name : 'Massage Service',
-                'duration' => $appt->service ? $appt->service->duration : 60,
-                'price' => $appt->service ? $appt->service->price : 0,
+                'service' => $siblings->count() > 1 ? $siblings->pluck('service.name')->implode(', ') : ($appt->service ? $appt->service->name : 'Massage Service'),
+                'duration' => (int) $siblings->sum(fn($s) => (int) ($s->service->duration ?? 60)),
+                'price' => (float) $siblings->sum(fn($s) => (float) ($s->service->price ?? 0)),
                 'datetime' => $appt->datetime->format('Y-m-d H:i:s'),
                 'notes' => $appt->notes ?? '',
-                'status' => $appt->status
+                'status' => $targetStatus,
             ]
         ]);
     }
@@ -234,7 +311,7 @@ class TherapistController extends Controller
     public function claimJob(Request $request, $id)
     {
         $user = $request->user();
-        $appt = Appointment::where('id', $id)
+        $appt = Appointment::with('service')->where('id', $id)
             ->whereNull('therapist_id')
             ->whereIn('status', ['Pending', 'Confirmed'])
             ->first();
@@ -245,18 +322,30 @@ class TherapistController extends Controller
             ], 404);
         }
 
-        $oldStatus = $appt->status;
-        $appt->therapist_id = $user->id;
-        $appt->status = 'Confirmed';
-        $appt->save();
+        // Claim all unassigned siblings in the booking group
+        $siblings = $appt->booking_group_id
+            ? Appointment::with('service')->where('booking_group_id', $appt->booking_group_id)
+                ->whereNull('therapist_id')
+                ->whereIn('status', ['Pending', 'Confirmed'])
+                ->get()
+            : collect([$appt]);
 
-        AuditLog::log('assign', 'Appointment', "Therapist '{$user->name}' claimed booking #{$appt->id}", [
+        \Illuminate\Support\Facades\DB::transaction(function () use ($siblings, $user) {
+            foreach ($siblings as $s) {
+                $s->therapist_id = $user->id;
+                $s->status = 'Confirmed';
+                $s->save();
+            }
+        });
+
+        AuditLog::log('assign', 'Appointment', "Therapist '{$user->name}' claimed booking #{$appt->id} (" . ($siblings->count() > 1 ? $siblings->count() . ' services bundle' : 'single service') . ')', [
             'actor' => $user->name,
             'actor_role' => 'therapist',
             'module' => 'Therapist Portal',
             'severity' => 'info',
             'metadata' => [
                 'appointment_id' => $appt->id,
+                'appointment_ids' => $siblings->pluck('id')->toArray(),
                 'therapist_id' => $user->id,
             ]
         ]);
