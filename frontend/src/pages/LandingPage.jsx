@@ -368,7 +368,7 @@ const FloatingActions = () => {
 
 /* ── Service Card with Spotlight + Add to Cart ──────────────────── */
 const Card = ({ s, i, cat, catKey }) => {
-  const { addItem, updateQty, items } = useCart();
+  const { addItem, updateQty, items, openCart } = useCart();
   const { toast } = useToast();
   const serviceId = `${catKey}:${s.name}`;
   const inCart = items.find((it) => it.id === serviceId);
@@ -381,6 +381,7 @@ const Card = ({ s, i, cat, catKey }) => {
       { key: catKey, label: cat.label, icon: cat.icon }
     );
     toast.success(`${s.name} added to your cart`, { title: "Added to Cart" });
+    openCart();
   };
 
   const handleInc = () => {

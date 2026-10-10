@@ -477,20 +477,39 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const location = useLocation();
   const { login, register, logout } = useAuth();
 
-  // Parse URL params once on mount
+  // Parse URL params or location state or pending booking on mount
   const initParams = useMemo(() => {
     const p = new URLSearchParams(location.search);
+    let email = cleanParam(p.get('prefill_email')) || cleanParam(location.state?.prefill_email);
+    let name  = cleanParam(p.get('prefill_name')) || cleanParam(location.state?.prefill_name);
+    let phone = cleanParam(p.get('prefill_phone')) || cleanParam(location.state?.prefill_phone);
+    const fromCart = Boolean(p.get('from_cart') || location.state?.from_cart);
+
+    if (!email || !name) {
+      try {
+        const raw = localStorage.getItem('cb_pending_booking_v1');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (!email && parsed?.form?.email) email = cleanParam(parsed.form.email);
+          if (!name && parsed?.form?.name) name = cleanParam(parsed.form.name);
+          if (!phone && parsed?.form?.phone) phone = cleanParam(parsed.form.phone);
+        }
+      } catch {}
+    }
+
     return {
-      email   : cleanParam(p.get('prefill_email')),
-      name    : cleanParam(p.get('prefill_name')),
+      email,
+      name,
+      phone,
       provider: cleanParam(p.get('provider')),
       error   : cleanParam(p.get('error')),
+      fromCart,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.search, location.state]);
 
   const deriveTab = useCallback(() => {
-    if (location.pathname === '/register' || initParams.email || initParams.name || initParams.provider) return 'register';
+    if (location.pathname === '/register' || initParams.email || initParams.name || initParams.provider || initParams.fromCart) return 'register';
     if (location.pathname === '/login') return 'login';
     return initialTab;
   }, [location.pathname, initParams, initialTab]);
@@ -500,6 +519,9 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const [rateLimit,  setRateLimit]  = useState(null);
   const [error,      setError]      = useState(initParams.error || null);
   const [notice,     setNotice]     = useState(() => {
+    if (initParams.fromCart || (initParams.email && (location.pathname === '/register' || location.state?.from_cart))) {
+      return '✨ Booking details saved! Name and email pre-filled — create your password to finalize your appointment.';
+    }
     if (initParams.provider) {
       const n = initParams.provider.charAt(0).toUpperCase() + initParams.provider.slice(1).toLowerCase();
       return initParams.email
@@ -516,10 +538,12 @@ export default function AuthPortal({ initialTab = 'login' }) {
     localStorage.getItem('remember_email')
   );
 
-  // Login fields: autofill credentials only if remember_me is enabled
+  // Login fields: autofill credentials only if remember_me is enabled or prefill available
   const [rememberMe,  setRememberMe]  = useState(isRemembered);
   const [loginEmail,  setLoginEmail]  = useState(() => {
     if (location.state?.email) return location.state.email;
+    if (location.state?.prefill_email) return location.state.prefill_email;
+    if (initParams.email) return initParams.email;
     return isRemembered ? (localStorage.getItem('remember_email') || '') : '';
   });
   const [loginPw,     setLoginPw]     = useState(() => {
@@ -529,8 +553,8 @@ export default function AuthPortal({ initialTab = 'login' }) {
   const [loginErrors, setLoginErrors] = useState({});
 
   // Register fields
-  const [regName,          setRegName]          = useState(initParams.name);
-  const [regEmail,         setRegEmail]         = useState(initParams.email);
+  const [regName,          setRegName]          = useState(initParams.name || '');
+  const [regEmail,         setRegEmail]         = useState(initParams.email || '');
   const [regPw,            setRegPw]            = useState('');
   const [regConfirmPw,     setRegConfirmPw]     = useState('');
   const [showRegPw,        setShowRegPw]        = useState(false);
@@ -666,7 +690,6 @@ export default function AuthPortal({ initialTab = 'login' }) {
     setRegPw(''); setRegConfirmPw('');
 
     if (res.success) {
-      await logout();
       setRegisteredEmail(regEmail.trim());
       setSuccessModal(true);
       setSubmitting(false);
@@ -988,7 +1011,7 @@ export default function AuthPortal({ initialTab = 'login' }) {
                         value={regEmail} placeholder="maria@email.com"
                         error={regErrors.email}
                         success={!!regEmail && !regErrors.email && EMAIL_RE.test(regEmail.trim())}
-                        readOnly={!!initParams.email && regEmail === initParams.email}
+                        readOnly={!!initParams.provider && regEmail === initParams.email}
                         onChange={(e) => { setRegEmail(e.target.value); if (regErrors.email) setRegErrors(p => ({ ...p, email: '' })); }}
                       />
 
@@ -1093,13 +1116,13 @@ export default function AuthPortal({ initialTab = 'login' }) {
                 Account created!
               </h3>
               <p className="text-[12.5px] text-slate-500 leading-relaxed mt-1.5 text-center">
-                Welcome to Cozy Blissful! Ready for <strong className="text-slate-800 break-all">{registeredEmail}</strong>.
+                Welcome to Cozy Blissful! Logged in as <strong className="text-slate-800 break-all">{registeredEmail}</strong>.
               </p>
 
               <div className="flex items-start gap-2 mt-4 p-2.5 rounded-xl bg-emerald-50 border border-emerald-100">
                 <Gift className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-px" />
                 <p className="text-[11.5px] text-emerald-800 leading-relaxed">
-                  <strong>Next:</strong> Sign in, pick a service &amp; book your session.
+                  <strong>You're all set!</strong> Your saved treatments are waiting in your sanctuary lounge.
                 </p>
               </div>
 
@@ -1107,14 +1130,12 @@ export default function AuthPortal({ initialTab = 'login' }) {
                 type="button"
                 onClick={() => {
                   setSuccessModal(false);
-                  switchTab('login');
-                  setNotice('Account ready! Sign in with your new password.');
-                  setLoginEmail(registeredEmail);
+                  redirect('client');
                 }}
-                className="w-full mt-4 py-3 min-h-[46px] rounded-xl font-black text-[14px] text-[#041e16] cursor-pointer hover:brightness-105 active:scale-[0.99] touch-manipulation transition-all"
+                className="w-full mt-4 py-3 min-h-[46px] rounded-xl font-black text-[14px] text-[#041e16] cursor-pointer hover:brightness-105 active:scale-[0.99] touch-manipulation transition-all flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)', boxShadow: '0 5px 18px rgba(191,161,95,0.4)' }}
               >
-                Sign In Now
+                <span>Proceed to Client Sanctuary</span>
               </button>
             </motion.div>
           </div>

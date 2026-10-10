@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useCart } from '../../context/CartContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import PaymentModal from '../../components/payment/PaymentModal';
 import RoleIdentityBadge from '../../components/profile/RoleIdentityBadge';
@@ -18,7 +19,7 @@ import {
   CalendarX, CalendarCheck, Ban, Info, ShieldCheck,
   CheckCircle2, Compass, Heart, MapPin,
   Banknote, Wallet, Receipt, User, Mail, Check,
-  CheckCheck, ExternalLink
+  CheckCheck, ExternalLink, Sparkles, ShoppingCart,
 } from 'lucide-react';
 
 // ─── LUXURY DESIGN SYSTEM TOKENS ─────────────────────────────────────────────
@@ -1432,7 +1433,7 @@ const RescheduleModal = ({ booking, onClose, onSuccess }) => {
 };
 
 // ─── BOOKING WIZARD MODAL ───────────────────────────────────────────────────
-const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
+const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment, initialDraft, initialCartItems }) => {
   const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [selectedServices, setSelectedServices] = useState([]);
@@ -1454,6 +1455,35 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
   const [submitting, setSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [error, setError] = useState('');
+
+  // Pre-fill selected services from cart items
+  useEffect(() => {
+    if (!data?.available_services || data.available_services.length === 0) return;
+    if (selectedServices.length === 0 && initialCartItems && initialCartItems.length > 0) {
+      const cartNames = new Set(
+        initialCartItems.map((ci) => String(ci.name || '').trim().toLowerCase())
+      );
+      const matched = data.available_services.filter((svc) =>
+        cartNames.has(String(svc.name || '').trim().toLowerCase())
+      );
+      if (matched.length > 0) {
+        setSelectedServices(matched);
+      }
+    }
+  }, [data?.available_services, initialCartItems, selectedServices.length]);
+
+  // Pre-fill date, time, notes, phone, address from cart draft
+  useEffect(() => {
+    if (initialDraft?.form) {
+      const f = initialDraft.form;
+      if (f.date) setSelectedDate((prev) => prev || f.date);
+      if (f.time) setSelectedTime((prev) => prev || f.time);
+      if (f.notes) setNotes((prev) => prev || f.notes);
+      if (f.name) setClientName((prev) => prev || f.name);
+      if (f.phone) setClientPhone((prev) => prev || f.phone);
+      if (f.address) setClientAddress((prev) => prev || f.address);
+    }
+  }, [initialDraft]);
 
   // Derived totals — MUST be declared before any effect that depends on them
   const totalDuration = useMemo(
@@ -1579,6 +1609,10 @@ const BookingWizard = ({ data, onClose, onSuccess, onOpenPayment }) => {
         payment_method: paymentMethod,
       });
       setConfirmedBooking(res.data.booking);
+      try {
+        localStorage.removeItem('cb_pending_booking_v1');
+        localStorage.removeItem('cb_cart_v1');
+      } catch {}
       setStep(3);
       onSuccess();
     } catch (err) {
@@ -1804,6 +1838,34 @@ const ClientDashboard = () => {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Recalled cart items & booking draft from landing page
+  const { items: cartItems, clearCart } = useCart();
+  const [pendingDraft, setPendingDraft] = useState(() => {
+    try {
+      const raw = localStorage.getItem('cb_pending_booking_v1');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const hasPendingCart = (cartItems && cartItems.length > 0) || (pendingDraft && pendingDraft.form);
+  const cartSubtotal = useMemo(() => {
+    return (cartItems || []).reduce(
+      (sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1),
+      0
+    );
+  }, [cartItems]);
+
+  const handleDismissPendingCart = () => {
+    clearCart();
+    try {
+      localStorage.removeItem('cb_pending_booking_v1');
+    } catch {}
+    setPendingDraft(null);
+    showToast('Saved cart dismissed.', 'info');
+  };
+
   const showToast = (msg, type = 'success') => toast[type]?.(msg) ?? toast.success(msg);
 
   // Therapist chat messages
@@ -2013,6 +2075,75 @@ const ClientDashboard = () => {
           {/* Ambient Glow */}
           <div className="absolute right-0 bottom-0 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ background: '#bfa15f' }} />
         </div>
+
+        {/* ── Recalled Treatments from Floating Cart ──────────────────── */}
+        {hasPendingCart && cartItems && cartItems.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-5 sm:p-6 rounded-3xl border bg-gradient-to-br from-amber-50/95 via-white to-emerald-50/70 shadow-sm relative overflow-hidden"
+            style={{ borderColor: 'rgba(191,161,95,0.45)' }}
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 bg-amber-200/60 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    Saved from Your Cart
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">
+                    {cartItems.length} treatment{cartItems.length !== 1 ? 's' : ''} ready to finalize
+                  </span>
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+                  Resume your reservation
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  {cartItems.map((item, idx) => (
+                    <span
+                      key={item.id || idx}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-slate-800 border border-amber-200 shadow-2xs"
+                    >
+                      <Scissors className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{item.name}</span>
+                      <span className="text-emerald-800 font-black">
+                        ₱{Number(item.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+                {pendingDraft?.form?.date && (
+                  <p className="text-xs text-slate-500 font-medium pt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span>📅 Preferred schedule: <strong className="text-slate-800">{pendingDraft.form.date}</strong> at <strong className="text-slate-800">{pendingDraft.form.time || 'Salon hours'}</strong></span>
+                    <span>• Total: <strong className="text-emerald-900 font-black">₱{cartSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></span>
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5 self-start md:self-center shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowWizard(true)}
+                  className="px-5 py-3 min-h-[44px] rounded-2xl text-xs sm:text-sm font-black text-[#041e16] flex items-center justify-center gap-2 transition-all duration-200 hover:brightness-110 active:scale-95 shadow-md cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg, #bfa15f 0%, #e8cc8a 100%)' }}
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-950" />
+                  <span>Complete Booking Now</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissPendingCart}
+                  className="p-3 min-h-[44px] rounded-2xl text-xs font-bold text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer border border-slate-200/80 bg-white"
+                  title="Clear saved cart"
+                  aria-label="Clear saved cart"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="absolute right-0 top-0 w-64 h-64 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ background: '#bfa15f' }} />
+          </motion.div>
+        )}
 
         {/* ── Spotlight: Next Upcoming Appointment (if active) ──────────── */}
         {nextSession && (
@@ -2732,9 +2863,16 @@ const ClientDashboard = () => {
         {showWizard && (
           <BookingWizard
             data={data}
+            initialDraft={pendingDraft}
+            initialCartItems={cartItems}
             onClose={() => setShowWizard(false)}
             onSuccess={() => {
               fetchDashboardData();
+              clearCart();
+              try {
+                localStorage.removeItem('cb_pending_booking_v1');
+              } catch {}
+              setPendingDraft(null);
               showToast('🎉 Booking registered! Reception desk is assigning your specialist.');
             }}
             onOpenPayment={(b) => setPaymentTarget(b)}

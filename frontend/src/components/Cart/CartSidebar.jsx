@@ -314,19 +314,35 @@ export default function CartSidebar({ onLockChange }) {
     return Object.keys(e).filter((k) => e[k]).length === 0;
   };
 
-  const stashForLogin = () => {
+  const stashForAuth = () => {
     try {
       localStorage.setItem(PENDING_KEY, JSON.stringify({ form, savedAt: Date.now() }));
     } catch {
       /* storage unavailable — cart itself stays in-memory */
     }
-    toast.info("Sign in to confirm your booking — your cart is saved.", { title: "Login required" });
+    toast.info("Your details and treatments are saved! Create your account to finalize your appointment.", {
+      title: "Account required",
+    });
     closeCart();
-    navigate("/login", { state: { from: "/" } });
+    const query = new URLSearchParams();
+    if (form.email) query.set("prefill_email", form.email.trim());
+    if (form.name) query.set("prefill_name", form.name.trim());
+    if (form.phone) query.set("prefill_phone", form.phone.trim());
+    query.set("from_cart", "1");
+
+    navigate(`/register?${query.toString()}`, {
+      state: {
+        from: "/client/dashboard",
+        from_cart: true,
+        prefill_email: form.email.trim(),
+        prefill_name: form.name.trim(),
+        prefill_phone: form.phone.trim(),
+      },
+    });
   };
 
   /* Real checkout: validate → resolve menu names to service IDs → live
-     slot check → POST /booking/store. Guests are routed through login
+     slot check → POST /booking/store. Guests are routed through registration/login
      first (booking endpoints require a client session); nothing is faked. */
   const handleSubmit = async () => {
     if (submitting) return;
@@ -335,7 +351,7 @@ export default function CartSidebar({ onLockChange }) {
     if (!validate()) return;
 
     if (!localStorage.getItem("token")) {
-      stashForLogin();
+      stashForAuth();
       return;
     }
 
@@ -353,7 +369,7 @@ export default function CartSidebar({ onLockChange }) {
         const status = err?.response?.status;
         if (status === 401 || status === 403) {
           setSubmitting(false);
-          stashForLogin();
+          stashForAuth();
           return;
         }
         throw err;
@@ -433,7 +449,7 @@ export default function CartSidebar({ onLockChange }) {
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
         setSubmitting(false);
-        stashForLogin();
+        stashForAuth();
         return;
       }
       const serverMsg = err?.response?.data?.message;
@@ -836,7 +852,7 @@ export default function CartSidebar({ onLockChange }) {
                   </motion.button>
                   <p className="mt-2 text-center text-[9.5px] font-semibold text-slate-400">
                     Free cancellation up to 3 hours before your schedule.
-                    {!localStorage.getItem("token") && " You'll sign in to confirm — your cart is saved."}
+                    {!localStorage.getItem("token") && " Proceed to create an account to finalize — your cart & info will auto-fill."}
                   </p>
                 </div>
               </>
