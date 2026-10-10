@@ -1277,22 +1277,22 @@ const AdminDashboard = () => {
         {/* ══ ROW 1: KPI METRICS GRID ═══════════════════════════════ */}
         <section aria-label="Key Performance Indicators"
           className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-          <KPI icon={Users}      label="Active Therapists" value={therapistCount || 22}  displayValue={null}
+          <KPI icon={Users}      label="Active Therapists" value={therapistCount}  displayValue={null}
             sub="On duty across operational suites" color={isDark ? '#34d399' : '#0a3d30'}
-            trend="+2" trendUp sparkData={SPARK.therapists} delay={0.04} t={t}
+            trend={therapistCount > 0 ? `${therapistCount} Active` : '0 Active'} trendUp={therapistCount > 0} sparkData={therapistCount > 0 ? SPARK.therapists : [0,0,0,0,0]} delay={0.04} t={t}
             onClick={() => setKpiModal(KPI_MODALS.therapists)} />
           <KPI icon={Activity}   label="Live Treatments"   value={sessions.length}        displayValue={null}
             sub="Active in-home sessions right now" color={t.warning}
-            trend="Live" trendUp sparkData={SPARK.sessions} delay={0.08} t={t}
+            trend={sessions.length > 0 ? "Live" : "Idle"} trendUp={sessions.length > 0} sparkData={sessions.length > 0 ? SPARK.sessions : [0,0,0,0,0]} delay={0.08} t={t}
             onClick={() => setKpiModal(KPI_MODALS.sessions)} />
-          <KPI icon={Calendar}   label="Total Bookings"    value={totalBookings || 1120}  displayValue={null}
+          <KPI icon={Calendar}   label="Total Bookings"    value={totalBookings}  displayValue={null}
             sub="Confirmed & scheduled treatments" color={t.info}
-            trend="+12%" trendUp sparkData={SPARK.bookings} delay={0.12} t={t}
+            trend={totalBookings > 0 ? "+12%" : "0"} trendUp={totalBookings > 0} sparkData={totalBookings > 0 ? SPARK.bookings : [0,0,0,0,0]} delay={0.12} t={t}
             onClick={() => setKpiModal(KPI_MODALS.bookings)} />
-          <KPI icon={DollarSign} label="Gross Revenue"     value={revenue || 90490}
-            displayValue={revenue > 0 ? `₱${(revenue).toLocaleString()}` : null}
+          <KPI icon={DollarSign} label="Gross Revenue"     value={revenue}
+            displayValue={`₱${Number(revenue || 0).toLocaleString()}`}
             sub="Total verified revenue collected" color={t.gold}
-            trend="+8.4%" trendUp sparkData={SPARK.revenue} delay={0.16} t={t}
+            trend={revenue > 0 ? "+8.4%" : "₱0"} trendUp={revenue > 0} sparkData={revenue > 0 ? SPARK.revenue : [0,0,0,0,0]} delay={0.16} t={t}
             onClick={() => setKpiModal(KPI_MODALS.revenue)} />
         </section>
 
@@ -1363,54 +1363,64 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="space-y-3 flex-1">
-                {sessions.map(s => {
-                  const pctColor = s.pct > 60 ? t.accent : s.pct > 30 ? t.warning : t.danger;
-                  return (
-                    <div key={s.id}
-                      tabIndex={0} role="button"
-                      aria-label={`${s.service} for ${s.client} by ${s.therapist}. ${s.pct}% complete. Press Enter to inspect.`}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSessionModal(s); } }}
-                      onClick={() => setSessionModal(s)}
-                      className="group p-3.5 sm:p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer border relative outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                      style={{ background: t.inner, borderColor: t.divider }}>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="relative shrink-0">
-                            <Ring pct={s.pct} color={pctColor} size={50} stroke={5} />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-[10px] font-black tabular-nums" style={{ color: pctColor }}>{s.pct}%</span>
+              <div className="space-y-3 flex-1 flex flex-col justify-center">
+                {sessions.length === 0 ? (
+                  <div className="py-12 text-center flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: t.accentAlpha }}>
+                      <WifiOff className="w-6 h-6" style={{ color: t.accent }} aria-hidden="true" />
+                    </div>
+                    <p className="text-sm font-bold" style={{ color: t.txt }}>No Active Salon Treatments</p>
+                    <p className="text-xs mt-1 max-w-xs" style={{ color: t.txtMuted }}>Active treatments in progress will appear here in real time once started.</p>
+                  </div>
+                ) : (
+                  sessions.map(s => {
+                    const pctColor = s.pct > 60 ? t.accent : s.pct > 30 ? t.warning : t.danger;
+                    return (
+                      <div key={s.id}
+                        tabIndex={0} role="button"
+                        aria-label={`${s.service} for ${s.client} by ${s.therapist}. ${s.pct}% complete. Press Enter to inspect.`}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSessionModal(s); } }}
+                        onClick={() => setSessionModal(s)}
+                        className="group p-3.5 sm:p-4 rounded-2xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer border relative outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                        style={{ background: t.inner, borderColor: t.divider }}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative shrink-0">
+                              <Ring pct={s.pct} color={pctColor} size={50} stroke={5} />
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-[10px] font-black tabular-nums" style={{ color: pctColor }}>{s.pct}%</span>
+                              </div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs sm:text-sm font-bold truncate" style={{ color: t.txt }}>
+                                {s.service}
+                                <span className="font-normal text-[11px] ml-1.5" style={{ color: t.txtMuted }}>({s.duration})</span>
+                              </p>
+                              <p className="text-[11px] mt-0.5 truncate" style={{ color: t.txtSub }}>
+                                Client: <strong style={{ color: t.txt }}>{s.client}</strong> · Specialist: <strong style={{ color: t.accent }}>{s.therapist}</strong>
+                              </p>
                             </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs sm:text-sm font-bold truncate" style={{ color: t.txt }}>
-                              {s.service}
-                              <span className="font-normal text-[11px] ml-1.5" style={{ color: t.txtMuted }}>({s.duration})</span>
-                            </p>
-                            <p className="text-[11px] mt-0.5 truncate" style={{ color: t.txtSub }}>
-                              Client: <strong style={{ color: t.txt }}>{s.client}</strong> · Specialist: <strong style={{ color: t.accent }}>{s.therapist}</strong>
-                            </p>
+                          <div className="flex sm:flex-col items-center sm:items-end justify-between gap-1.5 shrink-0">
+                            <Badge status={s.status} />
+                            <span className="text-[10px] font-semibold flex items-center gap-1" style={{ color: t.txtMuted }}>
+                              <Clock className="w-3 h-3" aria-hidden="true" /> {s.start} – {s.end}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex sm:flex-col items-center sm:items-end justify-between gap-1.5 shrink-0">
-                          <Badge status={s.status} />
-                          <span className="text-[10px] font-semibold flex items-center gap-1" style={{ color: t.txtMuted }}>
-                            <Clock className="w-3 h-3" aria-hidden="true" /> {s.start} – {s.end}
-                          </span>
+                        <div className="space-y-1.5">
+                          <Bar pct={s.pct} color={pctColor} t={t} height={5} />
+                          <div className="flex items-center justify-between text-[10px] font-medium" style={{ color: t.txtMuted }}>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-emerald-500" aria-hidden="true" /> {s.location}
+                            </span>
+                            <span className="group-hover:text-emerald-500 transition-colors font-semibold">Inspect →</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="space-y-1.5">
-                        <Bar pct={s.pct} color={pctColor} t={t} height={5} />
-                        <div className="flex items-center justify-between text-[10px] font-medium" style={{ color: t.txtMuted }}>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-emerald-500" aria-hidden="true" /> {s.location}
-                          </span>
-                          <span className="group-hover:text-emerald-500 transition-colors font-semibold">Inspect →</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </Card>
           </motion.section>
@@ -1436,23 +1446,33 @@ const AdminDashboard = () => {
                 </button>
               </div>
 
-              <div className="flex-1 space-y-1 overflow-hidden" role="feed" aria-label="Recent system events">
-                {activityFeed.map((item, i) => (
-                  <motion.article key={i}
-                    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.28 + i * 0.05 }}
-                    className="group flex items-start gap-2.5 py-2 px-2.5 rounded-xl hover:scale-[1.01] transition-all duration-150 cursor-default"
-                    style={{ background: i % 2 === 0 ? t.tableStripe : 'transparent' }}>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-150 group-hover:scale-110 shadow-sm"
-                      style={{ background: `${item.color}18`, border: `1px solid ${item.color}24` }}>
-                      <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} aria-hidden="true" />
+              <div className="flex-1 space-y-1 overflow-hidden flex flex-col justify-center" role="feed" aria-label="Recent system events">
+                {activityFeed.length === 0 ? (
+                  <div className="py-10 text-center flex flex-col items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ background: t.accentAlpha }}>
+                      <ShieldCheck className="w-5 h-5" style={{ color: t.accent }} aria-hidden="true" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold leading-snug truncate" style={{ color: t.txtSub }}>{item.text}</p>
-                      <p className="text-[9px] mt-0.5 font-bold" style={{ color: t.txtMuted }}>{item.time}</p>
-                    </div>
-                  </motion.article>
-                ))}
+                    <p className="text-xs font-bold" style={{ color: t.txt }}>No Audit Events</p>
+                    <p className="text-[10px] mt-0.5 text-center max-w-[200px]" style={{ color: t.txtMuted }}>System mutations, logins, and actions will stream here in real time.</p>
+                  </div>
+                ) : (
+                  activityFeed.map((item, i) => (
+                    <motion.article key={i}
+                      initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.28 + i * 0.05 }}
+                      className="group flex items-start gap-2.5 py-2 px-2.5 rounded-xl hover:scale-[1.01] transition-all duration-150 cursor-default"
+                      style={{ background: i % 2 === 0 ? t.tableStripe : 'transparent' }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-transform duration-150 group-hover:scale-110 shadow-sm"
+                        style={{ background: `${item.color}18`, border: `1px solid ${item.color}24` }}>
+                        <item.icon className="w-3.5 h-3.5" style={{ color: item.color }} aria-hidden="true" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold leading-snug truncate" style={{ color: t.txtSub }}>{item.text}</p>
+                        <p className="text-[9px] mt-0.5 font-bold" style={{ color: t.txtMuted }}>{item.time}</p>
+                      </div>
+                    </motion.article>
+                  ))
+                )}
               </div>
             </Card>
           </motion.section>
@@ -1506,15 +1526,19 @@ const AdminDashboard = () => {
               </div>
               <div className="mt-4 pt-3.5 space-y-2.5 border-t" style={{ borderColor: t.divider }}>
                 <p className="text-[9px] font-black uppercase tracking-wider mb-1" style={{ color: t.txtMuted }}>Revenue by Category</p>
-                {categoryBreakdown.map(s => (
-                  <div key={s.label}>
-                    <div className="flex items-center justify-between mb-1 text-xs">
-                      <span style={{ color: t.txtSub }}>{s.label}</span>
-                      <span className="font-bold tabular-nums" style={{ color: t.txt }}>{s.value}</span>
+                {categoryBreakdown.length === 0 ? (
+                  <p className="text-xs py-3 text-center" style={{ color: t.txtMuted }}>No category sales recorded yet</p>
+                ) : (
+                  categoryBreakdown.map(s => (
+                    <div key={s.label}>
+                      <div className="flex items-center justify-between mb-1 text-xs">
+                        <span style={{ color: t.txtSub }}>{s.label}</span>
+                        <span className="font-bold tabular-nums" style={{ color: t.txt }}>{s.value}</span>
+                      </div>
+                      <Bar pct={s.pct} color={s.color} t={t} height={5} />
                     </div>
-                    <Bar pct={s.pct} color={s.color} t={t} height={5} />
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </Card>
           </motion.section>
@@ -1583,10 +1607,10 @@ const AdminDashboard = () => {
               {/* Mini stats */}
               <div className="grid grid-cols-2 gap-2 pt-3 border-t" style={{ borderColor: t.divider }}>
                 {[
-                  { label: 'Avg Ticket',  value: stats.avg_ticket_size ? `₱${stats.avg_ticket_size.toLocaleString()}` : '₱850', color: t.warning },
-                  { label: 'Settlement', value: totalBookings > 0 ? `${Math.round(((stats.completed_bookings || 0) / totalBookings) * 100)}%` : '94.2%', color: t.info },
-                  { label: 'Clients',    value: clientsCount || 3,   color: t.pink    },
-                  { label: 'Total Vol.', value: totalBookings || bookingBreakdown.reduce((s, b) => s + b.count, 0), color: t.success },
+                  { label: 'Avg Ticket',  value: stats.avg_ticket_size ? `₱${stats.avg_ticket_size.toLocaleString()}` : '₱0', color: t.warning },
+                  { label: 'Settlement', value: totalBookings > 0 ? `${Math.round(((stats.completed_bookings || 0) / totalBookings) * 100)}%` : '0%', color: t.info },
+                  { label: 'Clients',    value: clientsCount,   color: t.pink    },
+                  { label: 'Total Vol.', value: totalBookings, color: t.success },
                 ].map(s => (
                   <div key={s.label} className="p-2 rounded-xl text-center border" style={{ background: t.inner, borderColor: t.innerBorder }}>
                     <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: t.txtMuted }}>{s.label}</p>
@@ -1776,14 +1800,22 @@ const AdminDashboard = () => {
             {/* Empty state */}
             {filteredAppointments.length === 0 ? (
               <div className="py-16 text-center px-4">
-                <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-25" style={{ color: t.txtMuted }} aria-hidden="true" />
-                <p className="text-sm font-black" style={{ color: t.txt }}>No appointments match your filters</p>
-                <p className="text-xs mt-1" style={{ color: t.txtMuted }}>Adjust your search terms or clear the status filter</p>
-                <button type="button" onClick={() => { setApptFilter('All'); setApptSearch(''); }}
-                  className="mt-4 px-4 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
-                  style={{ background: t.inner, border: t.innerBorder, color: t.accent }}>
-                  Reset Filters
-                </button>
+                <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30 text-emerald-500" aria-hidden="true" />
+                <p className="text-sm font-black" style={{ color: t.txt }}>
+                  {recentRows.length === 0 ? 'No appointments booked yet' : 'No appointments match your filters'}
+                </p>
+                <p className="text-xs mt-1" style={{ color: t.txtMuted }}>
+                  {recentRows.length === 0
+                    ? 'Client bookings will appear in this management roster in real time.'
+                    : 'Adjust your search terms or clear the status filter'}
+                </p>
+                {recentRows.length > 0 && (
+                  <button type="button" onClick={() => { setApptFilter('All'); setApptSearch(''); }}
+                    className="mt-4 px-4 py-1.5 text-xs font-bold rounded-xl cursor-pointer transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                    style={{ background: t.inner, border: t.innerBorder, color: t.accent }}>
+                    Reset Filters
+                  </button>
+                )}
               </div>
             ) : (
               <>
