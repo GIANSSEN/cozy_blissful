@@ -176,7 +176,7 @@ class AdminController extends Controller
                 ->sum('services.price');
         }
 
-        $avgTicket = $paidCount > 0 ? ($totalRevenue / $paidCount) : ((float) (Service::avg('price') ?: 850.0));
+        $avgTicket = $paidCount > 0 ? ($totalRevenue / $paidCount) : 0.0;
 
         // Get user counts in parallel
         $activeTherapists = User::role('therapist')->count();
@@ -251,21 +251,38 @@ class AdminController extends Controller
      */
     private function dashboardCustomerFunnel(int $totalBookings, int $confirmedCount, int $completedCount): array
     {
-        $bookingReqCount = max(1, $totalBookings);
-        $serviceClicks = max(45, (int) round($bookingReqCount * 3.9));
-        $pageVisits = max(100, (int) round($serviceClicks * 2.15));
+        if ($totalBookings === 0) {
+            return [
+                'steps' => [
+                    ['step' => 'Page Visits', 'count' => '0', 'pct' => 0],
+                    ['step' => 'Service Clicks', 'count' => '0', 'pct' => 0],
+                    ['step' => 'Bookings Requested', 'count' => '0', 'pct' => 0],
+                    ['step' => 'Bookings Confirmed', 'count' => '0', 'pct' => 0],
+                    ['step' => 'Completed Treatment', 'count' => '0', 'pct' => 0],
+                ],
+                'analytics' => [
+                    ['label' => 'Overall Conversion', 'value' => '0.0%', 'color' => '#10b981'],
+                    ['label' => 'Booking Request Rate', 'value' => '0.0%', 'color' => '#34d399'],
+                    ['label' => 'Treatment Fulfilment', 'value' => '0.0%', 'color' => '#6366f1'],
+                ],
+            ];
+        }
+
+        $bookingReqCount = $totalBookings;
+        $serviceClicks = (int) round($bookingReqCount * 3.9);
+        $pageVisits = (int) round($serviceClicks * 2.15);
 
         $overallConversionRate = round(($completedCount / max(1, $pageVisits)) * 100, 1);
         $bookingRequestRate = round(($totalBookings / max(1, $pageVisits)) * 100, 1);
-        $treatmentFulfilment = round(($completedCount / max(1, $confirmedCount)) * 100, 1);
+        $treatmentFulfilment = $confirmedCount > 0 ? round(($completedCount / $confirmedCount) * 100, 1) : 0.0;
 
         return [
             'steps' => [
                 ['step' => 'Page Visits', 'count' => number_format($pageVisits), 'pct' => 100],
-                ['step' => 'Service Clicks', 'count' => number_format($serviceClicks), 'pct' => (int) round(($serviceClicks / $pageVisits) * 100)],
-                ['step' => 'Bookings Requested', 'count' => number_format($totalBookings), 'pct' => (int) round(($totalBookings / $pageVisits) * 100)],
-                ['step' => 'Bookings Confirmed', 'count' => number_format($confirmedCount), 'pct' => (int) round(($confirmedCount / $pageVisits) * 100)],
-                ['step' => 'Completed Treatment', 'count' => number_format($completedCount), 'pct' => (int) round(($completedCount / $pageVisits) * 100)],
+                ['step' => 'Service Clicks', 'count' => number_format($serviceClicks), 'pct' => (int) round(($serviceClicks / max(1, $pageVisits)) * 100)],
+                ['step' => 'Bookings Requested', 'count' => number_format($totalBookings), 'pct' => (int) round(($totalBookings / max(1, $pageVisits)) * 100)],
+                ['step' => 'Bookings Confirmed', 'count' => number_format($confirmedCount), 'pct' => (int) round(($confirmedCount / max(1, $pageVisits)) * 100)],
+                ['step' => 'Completed Treatment', 'count' => number_format($completedCount), 'pct' => (int) round(($completedCount / max(1, $pageVisits)) * 100)],
             ],
             'analytics' => [
                 ['label' => 'Overall Conversion', 'value' => "{$overallConversionRate}%", 'color' => '#10b981'],
@@ -291,8 +308,8 @@ class AdminController extends Controller
                 ->count();
         });
 
-        $clientRetentionRate = $registeredClients > 0 ? round(($repeatClientsCount / $registeredClients) * 100, 1) : 88.4;
-        $staffRetentionRate = $activeTherapists > 0 ? round((($activeTherapists - $breakCount) / $activeTherapists) * 100, 1) : 95.0;
+        $clientRetentionRate = $registeredClients > 0 && $repeatClientsCount > 0 ? round(($repeatClientsCount / $registeredClients) * 100, 1) : 0.0;
+        $staffRetentionRate = $activeTherapists > 0 ? round((($activeTherapists - $breakCount) / $activeTherapists) * 100, 1) : 0.0;
 
         return [
             ['label' => 'Avg Ticket Size', 'value' => '₱' . number_format($avgTicket), 'color' => '#f59e0b'],

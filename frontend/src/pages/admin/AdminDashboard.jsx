@@ -98,20 +98,8 @@ const SPARK = {
   revenue:    [6200, 7400, 8100, 7600, 9200, 8400, 9800],
 };
 
-const FALLBACK_SESSIONS = [
-  { id: 1, client: 'Sarah Martinez', therapist: 'Jacky Adlawan', service: 'Swedish Massage',    duration: '60 min', start: '09:00 PM', end: '10:00 PM', pct: 75, location: 'Suite 101', status: 'In Progress' },
-  { id: 2, client: 'David Lim',      therapist: 'Quenay Samson', service: 'Swedish & Hilot',    duration: '90 min', start: '09:15 PM', end: '10:45 PM', pct: 50, location: 'Suite 104', status: 'In Progress' },
-  { id: 3, client: 'Patricia Go',    therapist: 'Jade Ferrer',   service: 'Mani & Pedi Spa',    duration: '60 min', start: '09:30 PM', end: '10:30 PM', pct: 20, location: 'Nail Lounge', status: 'Starting'    },
-];
-
-const FALLBACK_APPOINTMENTS = [
-  { id: 1, client: 'Sarah Martinez', service: 'Swedish Massage',    therapist: 'Jacky Adlawan', time: '09:00 PM', loc: 'Suite 101',  status: 'In Progress', payment_status: 'paid',   notes: 'Prefers lavender aromatherapy.' },
-  { id: 2, client: 'David Lim',      service: 'Swedish & Hilot',    therapist: 'Quenay Samson', time: '09:15 PM', loc: 'Suite 104',  status: 'In Progress', payment_status: 'paid',   notes: 'Focus on lower back tension.' },
-  { id: 3, client: 'Patricia Go',    service: 'Mani & Pedi Spa',    therapist: 'Jade Ferrer',   time: '09:30 PM', loc: 'Nail Lounge',status: 'Starting',    payment_status: 'paid',   notes: 'Organic gel polish preferred.' },
-  { id: 4, client: 'Carlos Reyes',   service: 'Deep Tissue Ritual', therapist: 'Lily Hermosa',  time: '11:00 PM', loc: 'Suite 102',  status: 'Confirmed',   payment_status: 'paid',   notes: 'Post-workout recovery session.' },
-  { id: 5, client: 'Alicia Santos',  service: 'Nail Gel Overlay',   therapist: 'Allysa Banlaoi',time: '10:00 AM', loc: 'Suite 105',  status: 'Pending',     payment_status: 'unpaid', notes: 'First-time client; soft pink gel.' },
-  { id: 6, client: 'Elena Gomez',    service: 'Aromatherapy Bliss', therapist: 'Jacky Adlawan', time: '02:30 PM', loc: 'Suite 103',  status: 'Completed',   payment_status: 'paid',   notes: 'Settled via GCash.' },
-];
+const FALLBACK_SESSIONS = [];
+const FALLBACK_APPOINTMENTS = [];
 
 /* ═══════════════════════════════════════════════════════════════════
    PRIMITIVE MICRO-COMPONENTS
@@ -951,8 +939,7 @@ const AdminDashboard = () => {
   const revenue        = stats.total_revenue     || 0;
 
   const sessions = useMemo(() => {
-    const live = (data?.active_sessions || []);
-    return live.length > 0 ? live : FALLBACK_SESSIONS;
+    return data?.active_sessions || [];
   }, [data]);
 
   const recentRows = useMemo(() => {
@@ -976,7 +963,7 @@ const AdminDashboard = () => {
         };
       });
     }
-    return FALLBACK_APPOINTMENTS;
+    return [];
   }, [data]);
 
   const filteredAppointments = useMemo(() => {
@@ -1004,22 +991,15 @@ const AdminDashboard = () => {
 
   /* ─── Real-time Booking Breakdown ────────────────────────────────── */
   const bookingBreakdown = useMemo(() => {
-    if (data?.booking_breakdown) {
-      const b = data.booking_breakdown;
-      const confirmed = Number(b.confirmed || 0);
-      const pending   = Number(b.pending || 0);
-      const cancelled = Number(b.cancelled || 0);
-      const sum = confirmed + pending + cancelled || 1;
-      return [
-        { label: 'Confirmed', count: confirmed, pct: Math.round((confirmed / sum) * 100), color: t.info },
-        { label: 'Pending',   count: pending,   pct: Math.round((pending / sum) * 100),   color: t.warning },
-        { label: 'Cancelled', count: cancelled, pct: Math.round((cancelled / sum) * 100), color: t.danger },
-      ];
-    }
+    const b = data?.booking_breakdown;
+    const confirmed = Number(b?.confirmed || 0);
+    const pending   = Number(b?.pending || 0);
+    const cancelled = Number(b?.cancelled || 0);
+    const sum = confirmed + pending + cancelled;
     return [
-      { label: 'Confirmed', count: 68, pct: 68, color: t.info },
-      { label: 'Pending',   count: 24, pct: 24, color: t.warning },
-      { label: 'Cancelled', count: 8,  pct: 8,  color: t.danger },
+      { label: 'Confirmed', count: confirmed, pct: sum > 0 ? Math.round((confirmed / sum) * 100) : 0, color: t.info },
+      { label: 'Pending',   count: pending,   pct: sum > 0 ? Math.round((pending / sum) * 100) : 0,   color: t.warning },
+      { label: 'Cancelled', count: cancelled, pct: sum > 0 ? Math.round((cancelled / sum) * 100) : 0, color: t.danger },
     ];
   }, [data, t]);
 
@@ -1032,11 +1012,7 @@ const AdminDashboard = () => {
         color: colors[i % colors.length],
       }));
     }
-    return [
-      { label: 'Massage Therapy',    value: '₱62,450', pct: 69, color: t.accent },
-      { label: 'Nail Care & Spa',    value: '₱18,240', pct: 20, color: t.gold   },
-      { label: 'Specialty Rituals',  value: '₱9,800',  pct: 11, color: t.info   },
-    ];
+    return [];
   }, [data, t]);
 
   /* ─── Real-time Revenue Chart Datasets ───────────────────────────── */
@@ -1044,44 +1020,35 @@ const AdminDashboard = () => {
     const real7D = data?.revenue_chart?.['7D'];
     const real7DTotal = real7D && real7D.length
       ? real7D.reduce((acc, curr) => acc + (Number(curr.val) || 0), 0)
-      : 0;
+      : (revenue || 0);
+
+    const defaultBars = [
+      { day: 'Mon', val: 0 },
+      { day: 'Tue', val: 0 },
+      { day: 'Wed', val: 0 },
+      { day: 'Thu', val: 0 },
+      { day: 'Fri', val: 0 },
+      { day: 'Sat', val: 0 },
+      { day: 'Sun', val: 0 },
+    ];
+
+    const bars7D = (real7D && real7D.length > 0) ? real7D : defaultBars;
 
     const chartDatasets = {
       '7D': {
-        bars: (real7D && real7D.length > 0) ? real7D : [
-          { day: 'Mon', val: 7490 },
-          { day: 'Tue', val: 8500 },
-          { day: 'Wed', val: 12450 },
-          { day: 'Thu', val: 9200 },
-          { day: 'Fri', val: 14800 },
-          { day: 'Sat', val: 16800 },
-          { day: 'Sun', val: 15400 },
-        ],
-        total: real7DTotal > 0 ? `₱${real7DTotal.toLocaleString()}` : (revenue > 0 ? `₱${revenue.toLocaleString()}` : '₱84,640'),
-        growth: '+18.5%',
+        bars: bars7D,
+        total: `₱${real7DTotal.toLocaleString()}`,
+        growth: real7DTotal > 0 ? '+18.5%' : '0%',
       },
       '14D': {
-        bars: [
-          { day: 'D1-2', val: 16200 },
-          { day: 'D3-4', val: 19800 },
-          { day: 'D5-6', val: 24500 },
-          { day: 'D7-8', val: 21300 },
-          { day: 'D9-10', val: 27900 },
-          { day: 'D11-12', val: 31200 },
-          { day: 'D13-14', val: 33500 },
-        ],
-        total: `₱${Math.round(real7DTotal > 0 ? real7DTotal * 1.85 : (revenue > 0 ? revenue * 1.8 : 174400)).toLocaleString()}`,
-        growth: '+21.4%',
+        bars: defaultBars,
+        total: `₱${real7DTotal.toLocaleString()}`,
+        growth: real7DTotal > 0 ? '+21.4%' : '0%',
       },
       '30D': {
-        bars: [
-          { day: 'Week 1', val: 48500 },
-          { day: 'Week 2', val: 56200 },
-          { day: 'Week 3', val: 61400 },
-          { day: 'Week 4', val: 72800 },
-        ],
-        total: `₱${Math.round(real7DTotal > 0 ? real7DTotal * 3.8 : (revenue > 0 ? revenue * 3.5 : 238900)).toLocaleString()}`,
-        growth: '+24.1%',
+        bars: defaultBars,
+        total: `₱${real7DTotal.toLocaleString()}`,
+        growth: real7DTotal > 0 ? '+24.1%' : '0%',
       },
     };
 
@@ -1090,20 +1057,21 @@ const AdminDashboard = () => {
 
   /* ─── Real-time Operational Insights ─────────────────────────────── */
   const quickInsights = useMemo(() => {
-    const total = totalBookings || 1;
+    const total = totalBookings || 0;
     const confirmed = stats.confirmed_bookings || 0;
     const completed = stats.completed_bookings || 0;
     const cancelled = stats.cancelled_bookings || 0;
 
-    const convRate = totalBookings > 0 ? `${Math.min(100, Math.round((confirmed / total) * 100))}%` : '68.4%';
-    const compRate = confirmed > 0 ? `${Math.min(100, Math.round((completed / confirmed) * 100))}%` : '92.1%';
-    const cancRate = totalBookings > 0 ? `${Math.min(100, Math.round((cancelled / total) * 100))}%` : '4.8%';
+    const convRate = total > 0 ? `${Math.min(100, Math.round((confirmed / total) * 100))}%` : '0%';
+    const compRate = confirmed > 0 ? `${Math.min(100, Math.round((completed / confirmed) * 100))}%` : '0%';
+    const cancRate = total > 0 ? `${Math.min(100, Math.round((cancelled / total) * 100))}%` : '0%';
+    const avgMin = total > 0 ? '60 min' : '0 min';
 
     return [
-      { icon: Flame,  label: 'Conversion',   value: convRate, color: t.danger,  sub: '+3.2% vs last wk', up: true  },
-      { icon: Award,  label: 'Completion',   value: compRate, color: t.success, sub: 'Optimal fulfilment', up: true },
-      { icon: Target, label: 'Cancellation', value: cancRate, color: t.warning, sub: '–0.5% this week',   up: false },
-      { icon: Zap,    label: 'Avg Session',  value: '60 min', color: t.info,    sub: 'Across all rituals', up: true  },
+      { icon: Flame,  label: 'Conversion',   value: convRate, color: t.danger,  sub: total > 0 ? '+3.2% vs last wk' : 'No bookings yet', up: total > 0  },
+      { icon: Award,  label: 'Completion',   value: compRate, color: t.success, sub: confirmed > 0 ? 'Optimal fulfilment' : 'No treatments yet', up: confirmed > 0 },
+      { icon: Target, label: 'Cancellation', value: cancRate, color: t.warning, sub: total > 0 ? '–0.5% this week' : 'Zero cancellations',   up: false },
+      { icon: Zap,    label: 'Avg Session',  value: avgMin, color: t.info,    sub: total > 0 ? 'Across all rituals' : 'No active sessions', up: total > 0  },
     ];
   }, [stats, totalBookings, t]);
 
@@ -1113,9 +1081,9 @@ const AdminDashboard = () => {
       return data.therapist_status;
     }
     return [
-      { label: 'On Duty & Available', count: Math.max(0, (therapistCount || 18) - 4 - 8), color: t.success, pct: 60 },
-      { label: 'In Active Treatment',  count: 4,  color: t.warning, pct: 13 },
-      { label: 'Break / Offline',      count: 8,  color: t.txtMuted, pct: 27 },
+      { label: 'On Duty & Available', count: therapistCount, color: t.success, pct: therapistCount > 0 ? 100 : 0 },
+      { label: 'In Active Treatment',  count: 0,  color: t.warning, pct: 0 },
+      { label: 'Break / Offline',      count: 0,  color: t.txtMuted, pct: 0 },
     ];
   }, [data, therapistCount, t]);
 
@@ -1124,19 +1092,14 @@ const AdminDashboard = () => {
     if (data?.customer_funnel?.steps?.length) {
       return data.customer_funnel.steps;
     }
-    const req = totalBookings || 20;
-    const clk = Math.round(req * 3.9);
-    const vis = Math.round(clk * 2.15);
-    const conf = stats.confirmed_bookings || Math.round(req * 0.85);
-    const comp = stats.completed_bookings || Math.round(req * 0.70);
     return [
-      { step: 'Page Visits',          count: vis.toLocaleString(),  pct: 100 },
-      { step: 'Service Clicks',       count: clk.toLocaleString(),  pct: Math.round((clk / vis) * 100) },
-      { step: 'Bookings Requested',   count: req.toLocaleString(),  pct: Math.round((req / vis) * 100) },
-      { step: 'Bookings Confirmed',   count: conf.toLocaleString(), pct: Math.round((conf / vis) * 100) },
-      { step: 'Completed Treatment',  count: comp.toLocaleString(), pct: Math.round((comp / vis) * 100) },
+      { step: 'Page Visits',          count: '0', pct: 0 },
+      { step: 'Service Clicks',       count: '0', pct: 0 },
+      { step: 'Bookings Requested',   count: '0', pct: 0 },
+      { step: 'Bookings Confirmed',   count: '0', pct: 0 },
+      { step: 'Completed Treatment',  count: '0', pct: 0 },
     ];
-  }, [data, totalBookings, stats]);
+  }, [data]);
 
   /* ─── Real-time Conversion Analytics ──────────────────────────────── */
   const conversionAnalytics = useMemo(() => {
@@ -1144,9 +1107,9 @@ const AdminDashboard = () => {
       return data.customer_funnel.analytics;
     }
     return [
-      { label: 'Overall Conversion',    value: '10.1%', color: t.success },
-      { label: 'Booking Request Rate',  value: '12.1%', color: t.accent  },
-      { label: 'Treatment Fulfilment',  value: '92.1%', color: t.info    },
+      { label: 'Overall Conversion',    value: '0.0%', color: t.success },
+      { label: 'Booking Request Rate',  value: '0.0%', color: t.accent  },
+      { label: 'Treatment Fulfilment',  value: '0.0%', color: t.info    },
     ];
   }, [data, t]);
 
@@ -1156,9 +1119,9 @@ const AdminDashboard = () => {
       return data.operational_kpis;
     }
     return [
-      { label: 'Avg Ticket Size',  value: `₱${(stats.avg_ticket_size || 850).toLocaleString()}`, color: t.warning },
-      { label: 'Staff Retention',  value: '96.2%', color: t.info    },
-      { label: 'Client Retention', value: '88.4%', color: t.success },
+      { label: 'Avg Ticket Size',  value: `₱${(stats.avg_ticket_size || 0).toLocaleString()}`, color: t.warning },
+      { label: 'Staff Retention',  value: '0.0%', color: t.info    },
+      { label: 'Client Retention', value: '0.0%', color: t.success },
     ];
   }, [data, stats, t]);
 
@@ -1179,14 +1142,7 @@ const AdminDashboard = () => {
         };
       });
     }
-    return [
-      { icon: CheckCircle2, color: '#10b981', text: 'Sarah Martinez ritual completed',        time: '2m ago'  },
-      { icon: Calendar,     color: '#6366f1', text: 'Carlos Reyes scheduled Deep Tissue—11PM', time: '8m ago'  },
-      { icon: AlertCircle,  color: '#f59e0b', text: 'Alicia Santos session starting in 5 min', time: '12m ago' },
-      { icon: DollarSign,   color: '#d4b87a', text: '₱850 settlement received · David Lim',   time: '25m ago' },
-      { icon: Users,        color: '#ec4899', text: 'New client account: Maria Cruz',          time: '1h ago'  },
-      { icon: Star,         color: '#f59e0b', text: '5★ review from Patricia Go',             time: '2h ago'  },
-    ];
+    return [];
   }, [data, t]);
 
   /* ─── KPI Modals Configuration ───────────────────────────────────── */
@@ -1194,7 +1150,7 @@ const AdminDashboard = () => {
     therapists: {
       icon: Users, color: isDark ? '#34d399' : '#0a3d30',
       title: 'Therapist Overview', subtitle: "Today's workforce",
-      value: therapistCount || 22,
+      value: therapistCount,
       description: 'Total active therapists available across operational zones today.',
       breakdown: therapistStatus.map(s => ({ label: s.label, value: String(s.count), pct: s.pct })),
     },
@@ -1203,22 +1159,22 @@ const AdminDashboard = () => {
       title: 'Live Session Telemetry', subtitle: 'Active treatments',
       value: `${sessions.length} Live`,
       description: 'Real-time count of spa treatments actively in progress.',
-      breakdown: sessions.map(s => ({ label: `${s.service} (${s.location})`, value: `${s.pct}% done`, pct: s.pct })),
+      breakdown: sessions.length > 0 ? sessions.map(s => ({ label: `${s.service} (${s.location})`, value: `${s.pct}% done`, pct: s.pct })) : [{ label: 'No Active Sessions', value: '0', pct: 0 }],
     },
     bookings: {
       icon: Calendar, color: t.info,
       title: 'Booking Summary', subtitle: 'All appointments',
-      value: totalBookings || 1120,
+      value: totalBookings,
       description: 'All bookings distributed across online and walk-in channels.',
       breakdown: bookingBreakdown.map(b => ({ label: b.label, value: b.count.toLocaleString(), pct: b.pct })),
     },
     revenue: {
       icon: DollarSign, color: t.gold,
       title: 'Revenue Breakdown', subtitle: "Gross earnings",
-      value: revenue || 90490,
-      displayValue: revenue > 0 ? `₱${(revenue).toLocaleString()}` : undefined,
+      value: revenue,
+      displayValue: `₱${Number(revenue || 0).toLocaleString()}`,
       description: 'Gross collected revenue from all completed and active bookings.',
-      breakdown: categoryBreakdown.map(c => ({ label: c.label, value: c.value, pct: c.pct })),
+      breakdown: categoryBreakdown.length > 0 ? categoryBreakdown.map(c => ({ label: c.label, value: c.value, pct: c.pct })) : [{ label: 'No Categories', value: '₱0', pct: 0 }],
     },
   };
 
