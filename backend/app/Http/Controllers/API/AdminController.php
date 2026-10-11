@@ -578,35 +578,91 @@ class AdminController extends Controller
      */
     public function getHistory()
     {
-        $history = Appointment::with(['client', 'therapist', 'service'])
+        $appointments = Appointment::with(['client', 'therapist', 'service'])
             ->whereIn('status', ['Completed', 'Cancelled'])
             ->orderBy('datetime', 'desc')
-            ->get()
-            ->map(function ($appt) {
+            ->orderBy('id', 'asc')
+            ->get();
+
+        // Group appointments by booking_group_id so multi-service packages appear as ONE consolidated record.
+        // If booking_group_id is missing, group by client_id + datetime + status or single ID.
+        $grouped = $appointments->groupBy(function ($appt) {
+            if (!empty($appt->booking_group_id)) {
+                return $appt->booking_group_id;
+            }
+            $dt = $appt->datetime ? ($appt->datetime instanceof \DateTimeInterface ? $appt->datetime->format('Y-m-d H:i') : substr((string) $appt->datetime, 0, 16)) : '';
+            return 'group_' . $appt->client_id . '_' . $dt . '_' . $appt->status;
+        });
+
+        $history = $grouped->map(function ($group) {
+            $first = $group->first();
+            $isMulti = $group->count() > 1;
+
+            $totalPrice = (float) $group->sum(fn($a) => (float) ($a->service->price ?? 0));
+            $totalDuration = (int) $group->sum(fn($a) => (int) ($a->service->duration ?? 60));
+            $totalPaid = (float) $group->sum(fn($a) => (float) ($a->amount_paid ?? 0));
+
+            $allPaid = $group->every(fn($a) => $a->payment_status === 'paid');
+            $anyAwaiting = $group->contains(fn($a) => $a->payment_status === 'awaiting_payment');
+            $paymentStatus = $allPaid ? 'paid' : ($anyAwaiting ? 'awaiting_payment' : ($first->payment_status ?? 'unpaid'));
+
+            $servicesList = $group->map(function ($a) {
                 return [
-                    'id' => $appt->id,
-                    'client_name' => $appt->client ? $appt->client->name : 'Client',
-                    'client_email' => $appt->client ? $appt->client->email : '',
-                    'therapist_name' => $appt->therapist ? $appt->therapist->name : 'Unassigned',
-                    'therapist_id' => $appt->therapist_id,
-                    'service' => $appt->service ? $appt->service->name : 'Massage Service',
-                    'service_id' => $appt->service_id,
-                    'service_price' => $appt->service ? (float) $appt->service->price : null,
-                    'service_duration' => $appt->service ? (int) $appt->service->duration : null,
-                    'datetime' => $appt->datetime ? ($appt->datetime instanceof \DateTimeInterface ? $appt->datetime->format('Y-m-d H:i:s') : (string) $appt->datetime) : null,
-                    'status' => $appt->status,
-                    'notes' => $appt->notes ?? '',
-                    'payment_status' => $appt->payment_status ?? 'unpaid',
-                    'payment_method' => $appt->payment_method ?? 'cash',
-                    'amount_paid' => $appt->amount_paid ? (float) $appt->amount_paid : null,
-                    'paid_at' => $appt->paid_at ? ($appt->paid_at instanceof \DateTimeInterface ? $appt->paid_at->format('Y-m-d H:i:s') : (string) $appt->paid_at) : null,
+                    'id'               => $a->id,
+                    'service_id'       => $a->service_id,
+                    'name'             => $a->service ? $a->service->name : 'Custom Service',
+                    'price'            => $a->service ? (float) $a->service->price : 0,
+                    'duration'         => $a->service ? (int) $a->service->duration : 60,
+                    'therapist_name'   => $a->therapist ? $a->therapist->name : 'Unassigned',
+                    'therapist_id'     => $a->therapist_id,
+                    'payment_status'   => $a->payment_status ?? 'unpaid',
+                    'amount_paid'      => $a->amount_paid ? (float) $a->amount_paid : 0,
                 ];
-            });
+            })->values()->toArray();
+
+            $serviceNames = $group->map(fn($a) => $a->service ? $a->service->name : 'Custom Service')->values();
+            $serviceLabel = $isMulti ? $serviceNames->implode(', ') : ($first->service ? $first->service->name : 'Massage Service');
+
+            // Unique assigned therapists
+            $therapistNames = $group->map(fn($a) => $a->therapist ? $a->therapist->name : 'Unassigned')->unique()->values();
+            $therapistLabel = $therapistNames->implode(', ');
+
+            // Sorted IDs of all appointments in the group (e.g. 9, 10, 11...)
+            $sortedIds = $group->pluck('id')->sort()->values()->toArray();
+            $primaryId = $sortedIds[0] ?? $first->id;
+
+            return [
+                'id'                  => $primaryId,
+                'appointment_ids'     => $sortedIds,
+                'booking_group_id'    => $first->booking_group_id,
+                'is_multi_service'    => $isMulti,
+                'services_count'      => $group->count(),
+                'client_name'         => $first->client ? $first->client->name : 'Client',
+                'client_email'        => $first->client ? $first->client->email : '',
+                'client_phone'        => $first->client ? ($first->client->phone ?? '') : '',
+                'therapist_name'      => $therapistLabel,
+                'therapist_id'        => $first->therapist_id,
+                'service'             => $serviceLabel,
+                'services'            => $servicesList,
+                'service_id'          => $first->service_id,
+                'service_price'       => $totalPrice,
+                'total_price'         => $totalPrice,
+                'service_duration'    => $totalDuration,
+                'total_duration'      => $totalDuration,
+                'datetime'            => $first->datetime ? ($first->datetime instanceof \DateTimeInterface ? $first->datetime->format('Y-m-d H:i:s') : (string) $first->datetime) : null,
+                'status'              => $first->status,
+                'notes'               => $first->notes ?? '',
+                'payment_status'      => $paymentStatus,
+                'payment_method'      => $first->payment_method ?? 'cash',
+                'amount_paid'         => $totalPaid > 0 ? $totalPaid : ($allPaid ? $totalPrice : null),
+                'paid_at'             => $first->paid_at ? ($first->paid_at instanceof \DateTimeInterface ? $first->paid_at->format('Y-m-d H:i:s') : (string) $first->paid_at) : null,
+            ];
+        })->values();
 
         return response()->json([
-            'history' => $history,
+            'history'             => $history,
             'recent_appointments' => $history,
-            'appointments' => $history,
+            'appointments'        => $history,
         ]);
     }
 

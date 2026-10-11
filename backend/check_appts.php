@@ -1,11 +1,9 @@
 <?php
-require __DIR__ . '/vendor/autoload.php';
-$app = require_once __DIR__ . '/bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
-$kernel->bootstrap();
+require 'vendor/autoload.php';
+$app = require 'bootstrap/app.php';
+$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
-$appts = \App\Models\Appointment::all();
-echo "TOTAL: " . $appts->count() . PHP_EOL;
+$appts = App\Models\Appointment::with(['service', 'client'])->whereIn('id', [8, 9, 10, 11, 12, 13, 14, 15, 16])->get();
 foreach ($appts as $a) {
-    echo "ID: {$a->id}, status: {$a->status}, datetime: {$a->datetime}, client_id: {$a->client_id}, therapist_id: {$a->therapist_id}, service_id: {$a->service_id}" . PHP_EOL;
+    echo "ID: {$a->id} | Group: '{$a->booking_group_id}' | Status: '{$a->status}' | Service: " . ($a->service ? $a->service->name : 'none') . " | DT: {$a->datetime}\n";
 }

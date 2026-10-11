@@ -8,9 +8,10 @@ export const PAYMENT_METHODS = {
 };
 
 // ── Create a PayMongo Checkout Session ─────────────────────────────────────
-export async function createCheckoutSession({ appointmentId, paymentMethodTypes }) {
+export async function createCheckoutSession({ appointmentId, appointmentIds, paymentMethodTypes }) {
   const res = await API.post('/payment/create-checkout-session', {
     appointment_id:       appointmentId,
+    appointment_ids:      appointmentIds,
     payment_method_types: paymentMethodTypes,
     frontend_url:         typeof window !== 'undefined' ? window.location.origin : undefined,
   });

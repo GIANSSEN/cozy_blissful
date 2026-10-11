@@ -109,6 +109,7 @@ export default function PaymentModal({ appointment, onClose, onSuccess }) {
     try {
       const data = await createCheckoutSession({
         appointmentId:      appointment.id,
+        appointmentIds:     appointment.appointment_ids || (appointment.services?.map(s => s.id).filter(Boolean)),
         paymentMethodTypes: [selected],
       });
 

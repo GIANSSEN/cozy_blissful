@@ -57,18 +57,19 @@ class PaymentController extends Controller
             }
         }
 
-        // If any is already paid, reject
-        if ($appointments->contains('payment_status', 'paid')) {
-            return response()->json(['message' => 'One or more appointments are already fully paid.'], 422);
-        }
-
-        // If they share a booking_group_id, load ALL siblings automatically
-        $groupId = $appointments->first()->booking_group_id;
+        // If they share a booking_group_id, load ALL siblings automatically so all services are charged
+        $firstCandidate = $appointments->first();
+        $groupId = $firstCandidate ? $firstCandidate->booking_group_id : null;
         if ($groupId) {
             $appointments = Appointment::with('service', 'client')
                 ->where('booking_group_id', $groupId)
                 ->where('client_id', auth()->id())
                 ->get();
+        }
+
+        // If ALL appointments in the group are already paid, reject
+        if ($appointments->every(fn($a) => $a->payment_status === 'paid')) {
+            return response()->json(['message' => 'All appointments in this booking group are already fully paid.'], 422);
         }
 
         $primaryAppt = $appointments->first();
@@ -261,11 +262,50 @@ class PaymentController extends Controller
             }
         }
 
+        // Resolve all siblings in booking group to compute consolidated payment details
+        $siblings = $appointment->booking_group_id
+            ? Appointment::with('service')
+                ->where('booking_group_id', $appointment->booking_group_id)
+                ->get()
+            : collect([$appointment]);
+
+        $isMulti = $siblings->count() > 1;
+        $allPaid = $siblings->every(fn($a) => $a->payment_status === 'paid');
+        $anyPaid = $siblings->contains(fn($a) => $a->payment_status === 'paid');
+
+        // Total amount paid across all appointments in this booking group
+        $totalAmountPaid = (float) $siblings->sum(function ($a) {
+            if ($a->payment_status === 'paid') {
+                return (float) ($a->amount_paid > 0 ? $a->amount_paid : ($a->service->price ?? 0));
+            }
+            return 0;
+        });
+
+        // Total expected price
+        $totalExpectedPrice = (float) $siblings->sum(fn($a) => (float) ($a->service->price ?? 0));
+
+        $servicesList = $siblings->map(fn($a) => [
+            'id'             => $a->id,
+            'name'           => $a->service ? $a->service->name : 'Spa Treatment',
+            'price'          => (float) ($a->service->price ?? 0),
+            'duration'       => (int) ($a->service->duration ?? 60),
+            'payment_status' => $a->payment_status,
+            'amount_paid'    => (float) ($a->amount_paid ?? 0),
+        ])->values()->toArray();
+
         return response()->json([
-            'payment_status' => $appointment->payment_status,
-            'payment_method' => $appointment->payment_method,
-            'paid_at'        => $appointment->paid_at?->toISOString(),
-            'amount_paid'    => $appointment->amount_paid,
+            'payment_status'       => $allPaid ? 'paid' : ($anyPaid ? 'partially_paid' : $appointment->payment_status),
+            'payment_method'       => $appointment->payment_method,
+            'paid_at'              => $appointment->paid_at?->toISOString(),
+            'amount_paid'          => $totalAmountPaid > 0 ? $totalAmountPaid : (float) ($appointment->amount_paid ?? 0),
+            'total_amount_paid'    => $totalAmountPaid > 0 ? $totalAmountPaid : (float) ($appointment->amount_paid ?? 0),
+            'total_expected_price' => $totalExpectedPrice,
+            'is_multi_service'     => $isMulti,
+            'services_count'       => $siblings->count(),
+            'booking_group_id'     => $appointment->booking_group_id,
+            'appointment_id'       => $appointment->id,
+            'appointment_ids'      => $siblings->pluck('id')->values()->toArray(),
+            'services'             => $servicesList,
         ]);
     }
 
@@ -336,14 +376,23 @@ class PaymentController extends Controller
         ]);
 
         return response()->json([
-            'success'         => true,
-            'message'         => 'Test payment successfully confirmed!',
-            'payment_status'  => 'paid',
-            'payment_method'  => $method,
-            'amount_paid'     => $totalAmount,
-            'paid_at'         => $appointment->paid_at->toISOString(),
-            'appointment_id'  => $appointment->id,
-            'appointment_ids' => $siblings->pluck('id')->values(),
+            'success'           => true,
+            'message'           => 'Test payment successfully confirmed!',
+            'payment_status'    => 'paid',
+            'payment_method'    => $method,
+            'amount_paid'       => $totalAmount,
+            'total_amount_paid' => $totalAmount,
+            'is_multi_service'  => $siblings->count() > 1,
+            'services_count'    => $siblings->count(),
+            'paid_at'           => $appointment->paid_at->toISOString(),
+            'appointment_id'    => $appointment->id,
+            'appointment_ids'   => $siblings->pluck('id')->values(),
+            'services'          => $siblings->map(fn($a) => [
+                'id'       => $a->id,
+                'name'     => $a->service ? $a->service->name : 'Spa Treatment',
+                'price'    => (float) ($a->service->price ?? 0),
+                'duration' => (int) ($a->service->duration ?? 60),
+            ])->values(),
         ]);
     }
 
@@ -461,7 +510,21 @@ class PaymentController extends Controller
                 : collect($fallbackAppt ? [$fallbackAppt] : []);
 
             if ($siblings->isEmpty() && $fallbackAppt) {
-                $siblings = collect([$fallbackAppt]);
+                if ($fallbackAppt->booking_group_id) {
+                    $siblings = Appointment::with('service')
+                        ->where('booking_group_id', $fallbackAppt->booking_group_id)
+                        ->get();
+                } else {
+                    $siblings = collect([$fallbackAppt]);
+                }
+            } elseif ($siblings->isNotEmpty()) {
+                // Ensure ALL members of this booking group are resolved
+                $firstWithGroup = $siblings->first(fn($s) => !empty($s->booking_group_id));
+                if ($firstWithGroup) {
+                    $siblings = Appointment::with('service')
+                        ->where('booking_group_id', $firstWithGroup->booking_group_id)
+                        ->get();
+                }
             }
 
             $siblings->each(function ($a) use ($method) {

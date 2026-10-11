@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, Calendar, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle, Calendar, ArrowRight, Loader2, Sparkles, Check, Scissors } from 'lucide-react';
 import { verifyPayment } from '../../api/paymongo';
 
 export default function PaymentSuccess() {
@@ -41,8 +41,9 @@ export default function PaymentSuccess() {
     return () => clearInterval(pollRef.current);
   }, [apptId]);
 
-  const amountFormatted = details?.amount_paid
-    ? `₱${Number(details.amount_paid).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+  const rawAmount = details?.total_amount_paid ?? details?.amount_paid;
+  const amountFormatted = rawAmount
+    ? `₱${Number(rawAmount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
     : null;
 
   const paidAtFormatted = details?.paid_at
@@ -51,6 +52,19 @@ export default function PaymentSuccess() {
         day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
       })
     : null;
+
+  const services = details?.services || [];
+  const isMulti = details?.is_multi_service || services.length > 1;
+
+  const methodLabel = (m) => {
+    if (!m) return 'Online Payment';
+    const s = String(m).toLowerCase();
+    if (s.includes('gcash')) return 'GCash';
+    if (s.includes('maya')) return 'Maya';
+    if (s.includes('qrph')) return 'QR Ph (InstaPay)';
+    if (s.includes('card')) return 'Credit / Debit Card';
+    return s.toUpperCase();
+  };
 
   return (
     <div
@@ -70,7 +84,7 @@ export default function PaymentSuccess() {
         initial={{ opacity: 0, scale: 0.92, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-        className="relative w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl"
+        className="relative w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl my-6"
         style={{
           background: 'linear-gradient(145deg,#fdfcfa 0%,#f5f0e8 100%)',
           boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
@@ -121,42 +135,102 @@ export default function PaymentSuccess() {
           </h1>
           <p className="text-emerald-200/80 text-sm">
             {status === 'loading' ? 'Please wait while we verify your payment with PayMongo.' :
-             status === 'paid'    ? 'Your spa appointment has been fully confirmed.' :
+             status === 'paid'    ? (isMulti ? `All ${services.length || details?.services_count} spa treatments in your package have been fully confirmed!` : 'Your spa appointment has been fully confirmed.') :
              status === 'pending' ? 'Your payment is being processed. We will notify you shortly.' :
              'Could not verify payment. Please contact support.'}
           </p>
         </div>
 
         {/* Body */}
-        <div className="px-8 py-8 space-y-5">
+        <div className="px-6 sm:px-8 py-6 space-y-4">
           {status === 'paid' && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="rounded-2xl p-5 space-y-3"
+              className="rounded-2xl p-5 space-y-3.5"
               style={{ background: 'rgba(6,44,34,0.04)', border: '1px solid rgba(6,44,34,0.1)' }}
             >
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment Receipt</p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment Receipt</p>
+                {isMulti && (
+                  <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-700" /> {services.length || details?.services_count} Services Package
+                  </span>
+                )}
+              </div>
 
               {amountFormatted && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 font-semibold">Amount Paid</span>
-                  <span className="text-xl font-black text-emerald-900">{amountFormatted}</span>
+                <div className="flex items-center justify-between pb-2 border-b border-black/5">
+                  <div>
+                    <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Amount Paid</span>
+                    <p className="text-[11px] text-emerald-800 font-bold">Covering all booked services</p>
+                  </div>
+                  <span className="text-2xl font-black text-emerald-900 tabular-nums">{amountFormatted}</span>
+                </div>
+              )}
+
+              {details?.payment_method && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Payment Channel</span>
+                  <span className="font-bold text-slate-800 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
+                    {methodLabel(details.payment_method)}
+                  </span>
                 </div>
               )}
 
               {paidAtFormatted && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">Date & Time</span>
-                  <span className="font-semibold text-slate-700 text-right max-w-[60%]">{paidAtFormatted}</span>
+                  <span className="font-semibold text-slate-700 text-right max-w-[65%]">{paidAtFormatted}</span>
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-xs pt-2 border-t border-black/5">
-                <span className="text-slate-500">Appointment ID</span>
-                <span className="font-black text-emerald-900">#{String(apptId || 1).padStart(5, '0')}</span>
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-slate-500">Primary Booking ID</span>
+                <span className="font-black text-emerald-900 font-mono text-sm">#{String(apptId || 1).padStart(5, '0')}</span>
               </div>
+
+              {/* Multi-Service Itemized Breakdown */}
+              {isMulti && services.length > 0 && (
+                <div className="pt-3 border-t border-black/5 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-black text-amber-950 uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5">
+                      <Scissors className="w-3.5 h-3.5 text-amber-700" /> Included Treatments ({services.length})
+                    </span>
+                    <span className="text-emerald-800 text-[10px] font-bold">100% Paid in Full</span>
+                  </div>
+
+                  <div className="rounded-xl bg-white/80 border border-amber-200/60 p-2.5 divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                    {services.map((svc, idx) => (
+                      <div key={svc.id || idx} className="py-2 first:pt-1 last:pb-1 flex items-center justify-between gap-2 text-xs">
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 truncate">{svc.name}</p>
+                          <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                            <span>#{String(svc.id).padStart(5, '0')}</span>
+                            <span>•</span>
+                            <span>{svc.duration} mins</span>
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0 flex items-center gap-2">
+                          <span className="font-black text-emerald-900 tabular-nums">
+                            ₱{Number(svc.price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                          </span>
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                            <Check className="w-2.5 h-2.5 text-emerald-700" /> Paid
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {details?.appointment_ids?.length > 1 && (
+                    <p className="text-[10px] text-slate-500 font-mono text-right pt-0.5">
+                      Confirmed IDs: #{details.appointment_ids.map(id => String(id).padStart(5, '0')).join(', #')}
+                    </p>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -166,7 +240,7 @@ export default function PaymentSuccess() {
             style={{ background: 'rgba(191,161,95,0.08)', border: '1px solid rgba(191,161,95,0.2)' }}
           >
             <p className="text-slate-600 leading-relaxed">
-              <span className="font-bold text-amber-700">Cozy Blissful Spa</span> — A confirmation email will be sent to your inbox. Please arrive 5 minutes before your appointment.
+              <span className="font-bold text-amber-700">Cozy Blissful Spa</span> — A confirmation email for all booked treatments has been sent to your inbox. Please arrive 10 minutes before your appointment time.
             </p>
           </div>
 
@@ -174,7 +248,7 @@ export default function PaymentSuccess() {
           <button
             type="button"
             onClick={() => navigate('/client/dashboard')}
-            className="w-full py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg"
+            className="w-full py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg cursor-pointer"
             style={{
               background: 'linear-gradient(135deg,#062c22,#0f5040)',
               boxShadow: '0 6px 20px rgba(6,44,34,0.3)',

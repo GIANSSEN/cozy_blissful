@@ -11,7 +11,7 @@ import {
   Mail, FileText, Eye, Search, X, Download, Upload,
   CalendarCheck, FileSpreadsheet, Info, Zap,
   ChevronLeft, ChevronRight, ArrowUpDown, RotateCcw,
-  CalendarDays, Users,
+  CalendarDays, Users, Sparkles,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────────────── */
@@ -70,6 +70,69 @@ const startOfDay = (d) => {
 
 const PAGE_SIZE_OPTIONS = [8, 12, 24];
 const DEFAULT_PAGE_SIZE = 12;
+
+/* Helper to consolidate multiple services belonging to one booking into a single record */
+const groupHistoryList = (list = []) => {
+  const map = new Map();
+  for (const a of list) {
+    if (!a) continue;
+    const clientKey = (a.client_name || a.client || '').trim().toLowerCase();
+    const dtKey = String(a.datetime || '').slice(0, 16);
+    const statusKey = a.status || '';
+
+    const key = a.booking_group_id
+      ? `group_${a.booking_group_id}`
+      : (a.appointment_ids && a.appointment_ids.length > 1)
+      ? `grouped_ids_${a.id}`
+      : `${clientKey}|${dtKey}|${statusKey}`;
+
+    if (!map.has(key)) {
+      const initialIds = Array.isArray(a.appointment_ids) && a.appointment_ids.length > 0
+        ? [...a.appointment_ids]
+        : [a.id];
+      const initialServices = Array.isArray(a.services) && a.services.length > 0
+        ? [...a.services]
+        : (a.service ? [{
+            id: a.id,
+            name: a.service,
+            price: Number(a.service_price || 0),
+            duration: Number(a.service_duration || 60),
+            therapist_name: a.therapist_name || 'Unassigned',
+          }] : []);
+
+      map.set(key, {
+        ...a,
+        appointment_ids: initialIds,
+        services: initialServices,
+        is_multi_service: Boolean(a.is_multi_service || initialIds.length > 1 || initialServices.length > 1),
+        services_count: a.services_count || initialServices.length || initialIds.length,
+        service_price: Number(a.service_price || a.total_price || 0),
+        service_duration: Number(a.service_duration || a.total_duration || 0),
+      });
+    } else {
+      const g = map.get(key);
+      const curId = a.id;
+      if (!g.appointment_ids.includes(curId)) {
+        g.appointment_ids.push(curId);
+        g.is_multi_service = true;
+        g.service_price = Number(g.service_price || 0) + Number(a.service_price || 0);
+        g.service_duration = Number(g.service_duration || 0) + Number(a.service_duration || 0);
+        if (a.service) {
+          g.services.push({
+            id: curId,
+            name: a.service,
+            price: Number(a.service_price || 0),
+            duration: Number(a.service_duration || 60),
+            therapist_name: a.therapist_name || 'Unassigned',
+          });
+          g.service = g.services.map((s) => s.name).join(', ');
+        }
+        g.services_count = g.services.length;
+      }
+    }
+  }
+  return [...map.values()];
+};
 
 /* ─────────────────────────────────────────────────────────────────── */
 /*  READ-ONLY DETAIL MODAL — uses global cb-modal architecture          */
@@ -138,6 +201,11 @@ const HistoryDetailModal = ({ record, onClose }) => {
     }
   }
 
+  const isMulti = Boolean(record.is_multi_service || (record.services && record.services.length > 1));
+  const displayServiceName = isMulti
+    ? `Multi-Service Wellness Package (${record.services?.length || record.services_count} Treatments)`
+    : record.service;
+
   return (
     <div
       className="cb-modal-backdrop"
@@ -157,7 +225,7 @@ const HistoryDetailModal = ({ record, onClose }) => {
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           className="cb-modal-sheet"
           style={{
-            maxWidth: 560,
+            maxWidth: 580,
             background: C.modalBg,
             border: `1px solid ${C.cardBorder}`,
             outline: 'none',
@@ -186,8 +254,11 @@ const HistoryDetailModal = ({ record, onClose }) => {
                     Session Archive · Read Only
                   </span>
                   <h3 id="history-modal-title" style={{ fontSize: 17, fontWeight: 900, color: '#ffffff', margin: '2px 0 0', overflowWrap: 'break-word' }}>
-                    {record.service}
+                    {displayServiceName}
                   </h3>
+                  <p style={{ fontSize: 11, color: '#fef3c7', margin: '2px 0 0', fontWeight: 700, fontFamily: 'monospace' }}>
+                    Booking Ref: #{String(record.id).padStart(5, '0')} {isMulti ? `· ${record.services?.length || record.services_count} services bundle` : ''}
+                  </p>
                 </div>
               </div>
               <button
@@ -214,7 +285,7 @@ const HistoryDetailModal = ({ record, onClose }) => {
                   background: 'rgba(255,255,255,0.12)', padding: '3px 8px', borderRadius: 999,
                   border: '1px solid rgba(255,255,255,0.15)', display: 'inline-flex', alignItems: 'center', gap: 3,
                 }}>
-                  <Clock size={11} aria-hidden="true" /> {record.service_duration} min
+                  <Clock size={11} aria-hidden="true" /> {record.service_duration} min total
                 </span>
               )}
               <span style={{
@@ -229,6 +300,54 @@ const HistoryDetailModal = ({ record, onClose }) => {
 
           {/* Body */}
           <div className="cb-scroll" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+            {/* Multi-Service Itemized Breakdown */}
+            {isMulti && record.services?.length > 0 && (
+              <div style={{
+                padding: '14px 16px', borderRadius: 16,
+                background: isDark ? 'rgba(191,161,95,0.06)' : 'rgba(254,243,199,0.4)',
+                border: `1px solid ${isDark ? 'rgba(191,161,95,0.25)' : 'rgba(245,158,11,0.3)'}`,
+                display: 'flex', flexDirection: 'column', gap: 10,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: isDark ? '#e8cc8a' : '#92400e', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Sparkles size={13} aria-hidden="true" /> Included Treatments &amp; Therapies ({record.services.length})
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#047857' }}>
+                    Total: {record.service_duration} min · ₱{Number(record.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {record.services.map((svc, idx) => (
+                    <div key={svc.id || idx} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                      padding: '8px 12px', borderRadius: 10,
+                      background: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+                      border: `1px solid ${C.cardBorder}`,
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ fontSize: 12, fontWeight: 800, color: C.textPrimary, margin: 0 }}>
+                          {svc.name}
+                        </p>
+                        <p style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, margin: '2px 0 0' }}>
+                          #{String(svc.id).padStart(5, '0')} · {svc.duration} min · Specialist: {svc.therapist_name || 'Unassigned'}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <span style={{ fontSize: 12, fontWeight: 900, color: '#047857' }}>
+                          ₱{Number(svc.price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {record.appointment_ids?.length > 1 && (
+                  <p style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, margin: '4px 0 0', textAlign: 'right', fontFamily: 'monospace' }}>
+                    All Booking IDs: #{record.appointment_ids.map(id => String(id).padStart(5, '0')).join(', #')}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="cb-modal-grid-2col">
               <div style={{
                 padding: '12px 14px', borderRadius: 14, background: C.cardBg,
@@ -257,9 +376,30 @@ const HistoryDetailModal = ({ record, onClose }) => {
                 {record.service_price && (
                   <p style={{ fontSize: 11, fontWeight: 800, color: '#b45309', display: 'flex', alignItems: 'center', gap: 4, margin: '2px 0 0' }}>
                     <Zap size={12} aria-hidden="true" style={{ color: '#b45309', flexShrink: 0 }} />
-                    Fee: ₱{Number(record.service_price).toLocaleString()}
+                    {isMulti ? 'Total Fee' : 'Fee'}: ₱{Number(record.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                   </p>
                 )}
+              </div>
+            </div>
+
+            {/* Payment Summary */}
+            <div style={{
+              padding: '10px 14px', borderRadius: 12,
+              background: isDark ? 'rgba(5,150,105,0.08)' : 'rgba(5,150,105,0.05)',
+              border: `1px solid ${isDark ? 'rgba(5,150,105,0.25)' : 'rgba(5,150,105,0.2)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6,
+            }}>
+              <div>
+                <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#047857' }}>Payment Status</span>
+                <p style={{ fontSize: 12, fontWeight: 800, color: C.textPrimary, margin: '1px 0 0' }}>
+                  {record.payment_status === 'paid' ? 'Paid in Full' : record.payment_status} · via {String(record.payment_method || 'Cash').toUpperCase()}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 9, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.textMuted }}>Amount Paid</span>
+                <p style={{ fontSize: 13, fontWeight: 900, color: '#047857', margin: '1px 0 0' }}>
+                  ₱{Number(record.amount_paid || record.service_price || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </p>
               </div>
             </div>
 
@@ -384,7 +524,7 @@ const AdminHistory = () => {
       const archived = (rawList || []).filter(
         (a) => a.status === 'Completed' || a.status === 'Cancelled'
       );
-      setRecords(archived);
+      setRecords(groupHistoryList(archived));
     } catch (err) {
       const errMsg = err?.response?.data?.message || 'Could not reach the archive server. Check your connection and try again.';
       setLoadError(errMsg);
@@ -402,7 +542,7 @@ const AdminHistory = () => {
   /* Combined view: live archived records + session-only imported rows */
   const allRecords = useMemo(() => [
     ...records.map((r) => ({ ...r, imported: false })),
-    ...imported.map((r, i) => ({ ...r, id: r.id ?? `imp-${i}`, imported: true })),
+    ...groupHistoryList(imported).map((r, i) => ({ ...r, id: r.id ?? `imp-${i}`, imported: true })),
   ], [records, imported]);
 
   const therapistOptions = useMemo(() => {
@@ -436,11 +576,15 @@ const AdminHistory = () => {
       }
 
       if (!q) return true;
+      const idsStr = Array.isArray(a.appointment_ids) ? a.appointment_ids.map((id) => String(id)).join(' ') : String(a.id);
+      const servicesStr = Array.isArray(a.services) ? a.services.map((s) => s.name).join(' ') : (a.service || '');
       return (
         (a.service || '').toLowerCase().includes(q) ||
+        servicesStr.toLowerCase().includes(q) ||
         (a.client_name || a.client || '').toLowerCase().includes(q) ||
         (a.therapist_name || '').toLowerCase().includes(q) ||
-        String(a.id).toLowerCase().includes(q)
+        String(a.id).toLowerCase().includes(q) ||
+        idsStr.toLowerCase().includes(q)
       );
     });
 
@@ -905,18 +1049,42 @@ const AdminHistory = () => {
                   style={{ background: appt.imported ? (isDark ? 'rgba(37,99,235,0.05)' : 'rgba(37,99,235,0.03)') : 'transparent' }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-[11px] font-black font-mono tabular-nums" style={{ color: C.textMuted }}>
-                      #{String(appt.id).padStart(4, '0')}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[12px] font-black font-mono tabular-nums" style={{ color: C.textPrimary }}>
+                        #{String(appt.id).padStart(5, '0')}
+                      </span>
+                      {appt.is_multi_service && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 6,
+                          background: isDark ? 'rgba(191,161,95,0.2)' : 'rgba(254,243,199,1)',
+                          color: isDark ? '#e8cc8a' : '#92400e',
+                          border: `1px solid ${isDark ? 'rgba(191,161,95,0.4)' : '#fcd34d'}`,
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {appt.services_count || appt.services?.length} Services
+                        </span>
+                      )}
+                    </div>
                     {renderStatusBadge(appt.status)}
                   </div>
                   <div className="min-w-0">
                     <p className="text-[15px] font-black leading-snug" style={{ color: C.textPrimary, margin: 0, overflowWrap: 'break-word' }}>
                       {appt.client_name || appt.client}
                     </p>
-                    <p className="text-xs font-bold" style={{ color: C.textSecondary, margin: '2px 0 0', overflowWrap: 'break-word' }}>
-                      {appt.service}
-                    </p>
+                    {appt.is_multi_service ? (
+                      <div>
+                        <p className="text-xs font-black text-amber-900 dark:text-amber-300" style={{ margin: '2px 0 0' }}>
+                          Multi-Service Wellness Package ({appt.services_count || appt.services?.length} Services)
+                        </p>
+                        <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate" style={{ margin: '2px 0 0' }}>
+                          {appt.services ? appt.services.map((s) => s.name).join(' · ') : appt.service}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-bold" style={{ color: C.textSecondary, margin: '2px 0 0', overflowWrap: 'break-word' }}>
+                        {appt.service}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <p className="text-[11px] font-bold flex items-center gap-1.5 min-w-0" style={{ color: C.textMuted, margin: 0 }}>
@@ -998,9 +1166,25 @@ const AdminHistory = () => {
                       onMouseLeave={(e) => { e.currentTarget.style.background = appt.imported ? (isDark ? 'rgba(37,99,235,0.05)' : 'rgba(37,99,235,0.03)') : 'transparent'; }}
                     >
                       <div role="cell" className="flex flex-col gap-1 min-w-0">
-                        <span className="text-[11px] font-black font-mono tabular-nums" style={{ color: C.textMuted }}>
-                          #{String(appt.id).padStart(4, '0')}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[12px] font-black font-mono tabular-nums" style={{ color: C.textPrimary }}>
+                            #{String(appt.id).padStart(5, '0')}
+                          </span>
+                          {appt.is_multi_service && (
+                            <span
+                              title={`Package of ${appt.services_count || appt.services?.length} services (IDs: #${appt.appointment_ids?.map((id) => String(id).padStart(5, '0')).join(', #')})`}
+                              style={{
+                                fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 6,
+                                background: isDark ? 'rgba(191,161,95,0.2)' : 'rgba(254,243,199,1)',
+                                color: isDark ? '#e8cc8a' : '#92400e',
+                                border: `1px solid ${isDark ? 'rgba(191,161,95,0.4)' : '#fcd34d'}`,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {appt.services_count || appt.services?.length} Services
+                            </span>
+                          )}
+                        </div>
                         {appt.imported && (
                           <span style={{
                             fontSize: 8, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em',
@@ -1028,13 +1212,31 @@ const AdminHistory = () => {
                       </div>
 
                       <div role="cell" className="min-w-0">
-                        <p className="text-xs font-extrabold truncate" style={{ color: C.textPrimary, margin: 0 }} title={appt.service}>
-                          {appt.service}
-                        </p>
-                        {appt.service_duration && (
-                          <p className="text-[10px] font-semibold tabular-nums" style={{ color: C.textMuted, margin: '2px 0 0' }}>
-                            {appt.service_duration} min{appt.service_price ? ` • ₱${appt.service_price}` : ''}
-                          </p>
+                        {appt.is_multi_service ? (
+                          <>
+                            <p className="text-xs font-black truncate" style={{ color: C.textPrimary, margin: 0 }}>
+                              Multi-Service Wellness Package
+                            </p>
+                            <p className="text-[10px] font-medium truncate" style={{ color: C.textMuted, margin: '2px 0 0' }} title={appt.service}>
+                              {appt.services ? appt.services.map((s) => s.name).join(' · ') : appt.service}
+                            </p>
+                            {appt.service_duration && (
+                              <p className="text-[10px] font-semibold tabular-nums" style={{ color: isDark ? '#34d399' : '#047857', margin: '2px 0 0' }}>
+                                {appt.service_duration} min total • ₱{Number(appt.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })} total fee
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs font-extrabold truncate" style={{ color: C.textPrimary, margin: 0 }} title={appt.service}>
+                              {appt.service}
+                            </p>
+                            {appt.service_duration && (
+                              <p className="text-[10px] font-semibold tabular-nums" style={{ color: C.textMuted, margin: '2px 0 0' }}>
+                                {appt.service_duration} min{appt.service_price ? ` • ₱${Number(appt.service_price).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : ''}
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
 

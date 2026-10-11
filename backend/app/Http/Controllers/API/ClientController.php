@@ -424,18 +424,23 @@ class ClientController extends Controller
         return response()->json([
             'message' => count($appointments) === 1 ? 'Booking created successfully!' : count($appointments) . ' bookings created successfully!',
             'booking' => [
-                'id' => $firstAppt->id,
-                'therapist_name' => $firstAppt->therapist ? $firstAppt->therapist->name : 'Awaiting Assignment',
-                'therapist_id' => $firstAppt->therapist_id,
-                'service' => $primaryService->name, // primary service for backward compat
-                'services' => $serviceData, // full array for multi-service
-                'service_price' => (float) $totalPrice,
+                'id'               => $firstAppt->id,
+                'appointment_ids'  => collect($appointments)->pluck('id')->values()->toArray(),
+                'booking_group_id' => $groupId,
+                'is_multi_service' => count($appointments) > 1,
+                'services_count'   => count($appointments),
+                'therapist_name'   => $firstAppt->therapist ? $firstAppt->therapist->name : 'Awaiting Assignment',
+                'therapist_id'     => $firstAppt->therapist_id,
+                'service'          => $primaryService->name, // primary service for backward compat
+                'services'         => $serviceData, // full array for multi-service
+                'service_price'    => (float) $totalPrice,
+                'total_price'      => (float) $totalPrice,
                 'service_duration' => $totalDuration,
-                'datetime' => $firstAppt->datetime->format('Y-m-d H:i:s'),
-                'status' => 'Pending',
-                'notes' => $firstAppt->notes,
-                'payment_status' => 'unpaid',
-                'payment_method' => $chosenMethod,
+                'datetime'         => $firstAppt->datetime->format('Y-m-d H:i:s'),
+                'status'           => 'Pending',
+                'notes'            => $firstAppt->notes,
+                'payment_status'   => 'unpaid',
+                'payment_method'   => $chosenMethod,
             ],
         ], 201);
     }
