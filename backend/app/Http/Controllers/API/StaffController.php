@@ -147,6 +147,8 @@ class StaffController extends Controller
             ->get()
             ->map(fn($a) => [
                 'id' => $a->id,
+                'client_id' => $a->client_id,
+                'booking_group_id' => $a->booking_group_id,
                 'client' => $a->client?->name ?? 'Unknown',
                 'therapist' => $a->therapist?->name ?? 'Unassigned',
                 'therapist_id' => $a->therapist_id,

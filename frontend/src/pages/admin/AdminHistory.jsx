@@ -71,49 +71,70 @@ const startOfDay = (d) => {
 const PAGE_SIZE_OPTIONS = [8, 12, 24];
 const DEFAULT_PAGE_SIZE = 12;
 
+const normalizeGroupDateTime = (dt) => {
+  if (!dt) return '';
+  const d = new Date(dt);
+  if (isNaN(d.getTime())) return String(dt).slice(0, 16);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day} ${hh}:${mm}`;
+};
+
+const getGroupClientKey = (a) => String(
+  a.client_id ?? a.client_email ?? a.client_name ?? a.client ?? ''
+).trim().toLowerCase();
+
 /* Helper to consolidate multiple services belonging to one booking into a single record */
 const groupHistoryList = (list = []) => {
   const map = new Map();
   for (const a of list) {
     if (!a) continue;
-    const clientKey = (a.client_name || a.client || '').trim().toLowerCase();
-    const dtKey = String(a.datetime || '').slice(0, 16);
+    const clientKey = getGroupClientKey(a);
+    const dtKey = normalizeGroupDateTime(a.datetime);
     const statusKey = a.status || '';
 
     const key = a.booking_group_id
       ? `group_${a.booking_group_id}`
-      : (a.appointment_ids && a.appointment_ids.length > 1)
-      ? `grouped_ids_${a.id}`
+      : (Array.isArray(a.appointment_ids) && a.appointment_ids.length > 1)
+      ? `grouped_ids_${[...a.appointment_ids].map(Number).sort((x, y) => x - y).join('_')}`
       : `${clientKey}|${dtKey}|${statusKey}`;
 
     if (!map.has(key)) {
       const initialIds = Array.isArray(a.appointment_ids) && a.appointment_ids.length > 0
-        ? [...a.appointment_ids]
-        : [a.id];
+        ? [...a.appointment_ids].map(Number).filter(Number.isFinite)
+        : [Number(a.id)].filter(Number.isFinite);
       const initialServices = Array.isArray(a.services) && a.services.length > 0
         ? [...a.services]
         : (a.service ? [{
-            id: a.id,
+            id: Number(a.id),
             name: a.service,
-            price: Number(a.service_price || 0),
-            duration: Number(a.service_duration || 60),
+            price: Number(a.service_price || a.total_price || 0),
+            duration: Number(a.service_duration || a.total_duration || 60),
             therapist_name: a.therapist_name || 'Unassigned',
           }] : []);
 
+      const primaryId = initialIds.length > 0 ? Math.min(...initialIds) : a.id;
+
       map.set(key, {
         ...a,
-        appointment_ids: initialIds,
-        services: initialServices,
+        id: primaryId,
+        appointment_ids: initialIds.length > 0 ? initialIds.sort((x, y) => x - y) : [a.id],
+        services: initialServices.sort((x, y) => (Number(x.id) || 0) - (Number(y.id) || 0)),
         is_multi_service: Boolean(a.is_multi_service || initialIds.length > 1 || initialServices.length > 1),
-        services_count: a.services_count || initialServices.length || initialIds.length,
+        services_count: a.services_count || initialServices.length || initialIds.length || 1,
         service_price: Number(a.service_price || a.total_price || 0),
         service_duration: Number(a.service_duration || a.total_duration || 0),
       });
     } else {
       const g = map.get(key);
-      const curId = a.id;
-      if (!g.appointment_ids.includes(curId)) {
+      const curId = Number(a.id);
+      if (Number.isFinite(curId) && !g.appointment_ids.includes(curId)) {
         g.appointment_ids.push(curId);
+        g.appointment_ids.sort((x, y) => x - y);
+        g.id = Math.min(...g.appointment_ids);
         g.is_multi_service = true;
         g.service_price = Number(g.service_price || 0) + Number(a.service_price || 0);
         g.service_duration = Number(g.service_duration || 0) + Number(a.service_duration || 0);
@@ -125,9 +146,10 @@ const groupHistoryList = (list = []) => {
             duration: Number(a.service_duration || 60),
             therapist_name: a.therapist_name || 'Unassigned',
           });
+          g.services.sort((x, y) => (Number(x.id) || 0) - (Number(y.id) || 0));
           g.service = g.services.map((s) => s.name).join(', ');
         }
-        g.services_count = g.services.length;
+        g.services_count = g.services.length || g.appointment_ids.length;
       }
     }
   }
@@ -257,7 +279,7 @@ const HistoryDetailModal = ({ record, onClose }) => {
                     {displayServiceName}
                   </h3>
                   <p style={{ fontSize: 11, color: '#fef3c7', margin: '2px 0 0', fontWeight: 700, fontFamily: 'monospace' }}>
-                    Booking Ref: #{String(record.id).padStart(5, '0')} {isMulti ? `· ${record.services?.length || record.services_count} services bundle` : ''}
+                    Booking Ref: #{String(record.id).padStart(4, '0')} {isMulti ? `· ${record.services?.length || record.services_count} services bundle` : ''}
                   </p>
                 </div>
               </div>
@@ -329,7 +351,7 @@ const HistoryDetailModal = ({ record, onClose }) => {
                           {svc.name}
                         </p>
                         <p style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, margin: '2px 0 0' }}>
-                          #{String(svc.id).padStart(5, '0')} · {svc.duration} min · Specialist: {svc.therapist_name || 'Unassigned'}
+                          #{String(svc.id).padStart(4, '0')} · {svc.duration} min · Specialist: {svc.therapist_name || 'Unassigned'}
                         </p>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -342,7 +364,7 @@ const HistoryDetailModal = ({ record, onClose }) => {
                 </div>
                 {record.appointment_ids?.length > 1 && (
                   <p style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, margin: '4px 0 0', textAlign: 'right', fontFamily: 'monospace' }}>
-                    All Booking IDs: #{record.appointment_ids.map(id => String(id).padStart(5, '0')).join(', #')}
+                    All Booking IDs: #{record.appointment_ids.map(id => String(id).padStart(4, '0')).join(', #')}
                   </p>
                 )}
               </div>
@@ -576,7 +598,9 @@ const AdminHistory = () => {
       }
 
       if (!q) return true;
-      const idsStr = Array.isArray(a.appointment_ids) ? a.appointment_ids.map((id) => String(id)).join(' ') : String(a.id);
+      const idsStr = Array.isArray(a.appointment_ids)
+        ? a.appointment_ids.flatMap((id) => [String(id), String(id).padStart(4, '0'), `#${String(id).padStart(4, '0')}`]).join(' ')
+        : `${a.id} ${String(a.id).padStart(4, '0')} #${String(a.id).padStart(4, '0')}`;
       const servicesStr = Array.isArray(a.services) ? a.services.map((s) => s.name).join(' ') : (a.service || '');
       return (
         (a.service || '').toLowerCase().includes(q) ||
@@ -635,20 +659,30 @@ const AdminHistory = () => {
       return;
     }
     const XLSX = await import('xlsx');
-    const rows = filtered.map((a) => ({
-      'Booking ID': String(a.id).padStart(4, '0'),
-      'Client': a.client_name || a.client || '',
-      'Client Email': a.client_email || '',
-      'Therapist': a.therapist_name || 'Unassigned',
-      'Service': a.service || '',
-      'Date': fmtDate(a.datetime),
-      'Time': fmt12(a.datetime),
-      'Duration (min)': a.service_duration || '',
-      'Price (PHP)': a.service_price || '',
-      'Status': a.status || '',
-      'Remarks': a.notes || '',
-      'Source': a.imported ? 'Imported' : 'System',
-    }));
+    const rows = filtered.map((a) => {
+      const isMulti = Boolean(a.is_multi_service || (a.appointment_ids && a.appointment_ids.length > 1));
+      const bookingIdText = isMulti && a.appointment_ids?.length > 1
+        ? `#${String(a.id).padStart(4, '0')} (IDs: #${a.appointment_ids.map((id) => String(id).padStart(4, '0')).join(', #')})`
+        : `#${String(a.id).padStart(4, '0')}`;
+      const serviceText = isMulti && a.services?.length > 0
+        ? `Multi-Service Package (${a.services_count || a.services.length} Treatments: ${a.services.map((s) => s.name).join(', ')})`
+        : (a.service || '');
+
+      return {
+        'Booking ID': bookingIdText,
+        'Client': a.client_name || a.client || '',
+        'Client Email': a.client_email || '',
+        'Therapist': a.therapist_name || 'Unassigned',
+        'Service': serviceText,
+        'Date': fmtDate(a.datetime),
+        'Time': fmt12(a.datetime),
+        'Duration (min)': a.service_duration || '',
+        'Price (PHP)': a.service_price || '',
+        'Status': a.status || '',
+        'Remarks': a.notes || '',
+        'Source': a.imported ? 'Imported' : 'System',
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
@@ -1049,19 +1083,26 @@ const AdminHistory = () => {
                   style={{ background: appt.imported ? (isDark ? 'rgba(37,99,235,0.05)' : 'rgba(37,99,235,0.03)') : 'transparent' }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[12px] font-black font-mono tabular-nums" style={{ color: C.textPrimary }}>
-                        #{String(appt.id).padStart(5, '0')}
-                      </span>
-                      {appt.is_multi_service && (
-                        <span style={{
-                          fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 6,
-                          background: isDark ? 'rgba(191,161,95,0.2)' : 'rgba(254,243,199,1)',
-                          color: isDark ? '#e8cc8a' : '#92400e',
-                          border: `1px solid ${isDark ? 'rgba(191,161,95,0.4)' : '#fcd34d'}`,
-                          whiteSpace: 'nowrap',
-                        }}>
-                          {appt.services_count || appt.services?.length} Services
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[12px] font-black font-mono tabular-nums" style={{ color: C.textPrimary }}>
+                          #{String(appt.id).padStart(4, '0')}
+                        </span>
+                        {appt.is_multi_service && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 6,
+                            background: isDark ? 'rgba(191,161,95,0.2)' : 'rgba(254,243,199,1)',
+                            color: isDark ? '#e8cc8a' : '#92400e',
+                            border: `1px solid ${isDark ? 'rgba(191,161,95,0.4)' : '#fcd34d'}`,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {appt.services_count || appt.services?.length} Services
+                          </span>
+                        )}
+                      </div>
+                      {appt.is_multi_service && appt.appointment_ids?.length > 1 && (
+                        <span className="text-[10px] font-mono tabular-nums font-semibold" style={{ color: C.textMuted }}>
+                          IDs: #{appt.appointment_ids.map((id) => String(id).padStart(4, '0')).join(', #')}
                         </span>
                       )}
                     </div>
@@ -1168,11 +1209,11 @@ const AdminHistory = () => {
                       <div role="cell" className="flex flex-col gap-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[12px] font-black font-mono tabular-nums" style={{ color: C.textPrimary }}>
-                            #{String(appt.id).padStart(5, '0')}
+                            #{String(appt.id).padStart(4, '0')}
                           </span>
                           {appt.is_multi_service && (
                             <span
-                              title={`Package of ${appt.services_count || appt.services?.length} services (IDs: #${appt.appointment_ids?.map((id) => String(id).padStart(5, '0')).join(', #')})`}
+                              title={`Package of ${appt.services_count || appt.services?.length} services (All IDs: #${appt.appointment_ids?.map((id) => String(id).padStart(4, '0')).join(', #')})`}
                               style={{
                                 fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 6,
                                 background: isDark ? 'rgba(191,161,95,0.2)' : 'rgba(254,243,199,1)',
@@ -1185,6 +1226,15 @@ const AdminHistory = () => {
                             </span>
                           )}
                         </div>
+                        {appt.is_multi_service && appt.appointment_ids?.length > 1 && (
+                          <span
+                            className="text-[10px] font-mono tabular-nums font-semibold truncate"
+                            style={{ color: C.textMuted }}
+                            title={`Included Booking IDs: #${appt.appointment_ids.map((id) => String(id).padStart(4, '0')).join(', #')}`}
+                          >
+                            IDs: #{appt.appointment_ids.map((id) => String(id).padStart(4, '0')).join(', #')}
+                          </span>
+                        )}
                         {appt.imported && (
                           <span style={{
                             fontSize: 8, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em',

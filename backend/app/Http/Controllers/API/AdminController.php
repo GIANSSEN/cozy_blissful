@@ -538,6 +538,8 @@ class AdminController extends Controller
                 ->map(function ($appt) {
                     return [
                         'id'               => $appt->id,
+                        'client_id'        => $appt->client_id,
+                        'booking_group_id' => $appt->booking_group_id,
                         'client_name'      => $appt->client ? $appt->client->name : 'Client',
                         'client_email'     => $appt->client ? $appt->client->email : '',
                         'therapist_name'   => $appt->therapist ? $appt->therapist->name : 'Unassigned',
@@ -585,30 +587,32 @@ class AdminController extends Controller
             ->get();
 
         // Group appointments by booking_group_id so multi-service packages appear as ONE consolidated record.
-        // If booking_group_id is missing, group by client_id + datetime + status or single ID.
+        // If booking_group_id is missing, group by client_id + datetime + status.
         $grouped = $appointments->groupBy(function ($appt) {
             if (!empty($appt->booking_group_id)) {
-                return $appt->booking_group_id;
+                return 'group_' . $appt->booking_group_id;
             }
             $dt = $appt->datetime ? ($appt->datetime instanceof \DateTimeInterface ? $appt->datetime->format('Y-m-d H:i') : substr((string) $appt->datetime, 0, 16)) : '';
-            return 'group_' . $appt->client_id . '_' . $dt . '_' . $appt->status;
+            $clientIdentifier = $appt->client_id ?? ($appt->client?->email ?? ($appt->client?->name ?? 'client'));
+            return 'group_' . $clientIdentifier . '_' . $dt . '_' . $appt->status;
         });
 
         $history = $grouped->map(function ($group) {
-            $first = $group->first();
-            $isMulti = $group->count() > 1;
+            $sortedGroup = $group->sortBy('id')->values();
+            $first = $sortedGroup->first();
+            $isMulti = $sortedGroup->count() > 1;
 
-            $totalPrice = (float) $group->sum(fn($a) => (float) ($a->service->price ?? 0));
-            $totalDuration = (int) $group->sum(fn($a) => (int) ($a->service->duration ?? 60));
-            $totalPaid = (float) $group->sum(fn($a) => (float) ($a->amount_paid ?? 0));
+            $totalPrice = (float) $sortedGroup->sum(fn($a) => (float) ($a->service->price ?? 0));
+            $totalDuration = (int) $sortedGroup->sum(fn($a) => (int) ($a->service->duration ?? 60));
+            $totalPaid = (float) $sortedGroup->sum(fn($a) => (float) ($a->amount_paid ?? 0));
 
-            $allPaid = $group->every(fn($a) => $a->payment_status === 'paid');
-            $anyAwaiting = $group->contains(fn($a) => $a->payment_status === 'awaiting_payment');
+            $allPaid = $sortedGroup->every(fn($a) => $a->payment_status === 'paid');
+            $anyAwaiting = $sortedGroup->contains(fn($a) => $a->payment_status === 'awaiting_payment');
             $paymentStatus = $allPaid ? 'paid' : ($anyAwaiting ? 'awaiting_payment' : ($first->payment_status ?? 'unpaid'));
 
-            $servicesList = $group->map(function ($a) {
+            $servicesList = $sortedGroup->map(function ($a) {
                 return [
-                    'id'               => $a->id,
+                    'id'               => (int) $a->id,
                     'service_id'       => $a->service_id,
                     'name'             => $a->service ? $a->service->name : 'Custom Service',
                     'price'            => $a->service ? (float) $a->service->price : 0,
@@ -620,23 +624,23 @@ class AdminController extends Controller
                 ];
             })->values()->toArray();
 
-            $serviceNames = $group->map(fn($a) => $a->service ? $a->service->name : 'Custom Service')->values();
+            $serviceNames = $sortedGroup->map(fn($a) => $a->service ? $a->service->name : 'Custom Service')->values();
             $serviceLabel = $isMulti ? $serviceNames->implode(', ') : ($first->service ? $first->service->name : 'Massage Service');
 
             // Unique assigned therapists
-            $therapistNames = $group->map(fn($a) => $a->therapist ? $a->therapist->name : 'Unassigned')->unique()->values();
+            $therapistNames = $sortedGroup->map(fn($a) => $a->therapist ? $a->therapist->name : 'Unassigned')->unique()->values();
             $therapistLabel = $therapistNames->implode(', ');
 
             // Sorted IDs of all appointments in the group (e.g. 9, 10, 11...)
-            $sortedIds = $group->pluck('id')->sort()->values()->toArray();
-            $primaryId = $sortedIds[0] ?? $first->id;
+            $sortedIds = $sortedGroup->pluck('id')->map(fn($id) => (int) $id)->sort()->values()->toArray();
+            $primaryId = $sortedIds[0] ?? (int) $first->id;
 
             return [
                 'id'                  => $primaryId,
                 'appointment_ids'     => $sortedIds,
                 'booking_group_id'    => $first->booking_group_id,
                 'is_multi_service'    => $isMulti,
-                'services_count'      => $group->count(),
+                'services_count'      => $sortedGroup->count(),
                 'client_name'         => $first->client ? $first->client->name : 'Client',
                 'client_email'        => $first->client ? $first->client->email : '',
                 'client_phone'        => $first->client ? ($first->client->phone ?? '') : '',
